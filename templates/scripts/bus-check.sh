@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# bus-check.sh —— 协作总线 · 开工同步护栏(治信息差)。
+# 任意域会话「开工先跑这个」;部署 / 改契约 / 跑 migration 等不可逆动作前**再跑一次**。
+# 只读、不改任何东西;打印 当前期 / 契约 / 最近拍板 / 各域状态 / 在途提案 / 子仓同步 / 线上实况。
+# 规则⑨:「线上什么版本」以本脚本打的实况为准,文档不写。
+#
+# 项目接入点(可选):
+#   1) SUBREPOS 数组留空 = 自动发现一/二级目录下的独立 git 子仓;也可手工列死。
+#   2) 线上实况:提供 scripts/live-status.sh(自行调用部署平台 CLI,每行输出「名称<TAB或空格>版本」),
+#      本脚本存在即调用、不存在则提示。跳过:BUS_CHECK_NO_LIVE=1
+set -uo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT" || exit 1
+
+SUBREPOS=()   # 留空自动发现;或写死:SUBREPOS=("仓1" "目录/仓2")
+
+echo "════════ 协作总线 开工同步 (bus-check) ════════"
+echo "▸ 工作区: $ROOT"
+echo ""
+
+# 1) meta 仓是否落后远端
+git fetch --quiet 2>/dev/null || true
+LOCAL=$(git rev-parse @ 2>/dev/null || echo "?")
+REMOTE=$(git rev-parse '@{u}' 2>/dev/null || echo "")
+if [ -n "$REMOTE" ] && [ "$LOCAL" != "$REMOTE" ]; then
+  echo "⚠️  meta 仓与远端不一致 —— 开工前先 git pull !"
+else
+  echo "✅ meta 仓与远端同步(或无上游)"
+fi
+
+# 1.5) 子仓是否落后/领先远端
+if [ ${#SUBREPOS[@]} -eq 0 ]; then
+  while IFS= read -r g; do SUBREPOS+=("${g%/.git}"); done < <(ls -d ./*/.git ./*/*/.git 2>/dev/null | grep -v '^\./\.git')
+fi
+echo ""
+echo "── 子仓 ⇄ 远端 ──"
+for r in "${SUBREPOS[@]:-}"; do
+  [ -n "$r" ] && [ -d "$r/.git" ] || continue
+  git -C "$r" fetch --quiet 2>/dev/null || true
+  if git -C "$r" rev-parse '@{u}' >/dev/null 2>&1; then
+    ahead=$(git -C "$r" rev-list --count '@{u}..HEAD' 2>/dev/null || echo "?")
+    behind=$(git -C "$r" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo "?")
+    head_h=$(git -C "$r" rev-parse --short HEAD 2>/dev/null || echo "?")
+    flag="✅"; { [ "$behind" != "0" ] || [ "$ahead" != "0" ]; } && flag="⚠️ "
+    printf "  %s %-32s HEAD %s  领先 %s / 落后 %s\n" "$flag" "${r#./}" "$head_h" "$ahead" "$behind"
+  else
+    printf "  ·  %-32s (无上游)\n" "${r#./}"
+  fi
+done
+echo ""
+
+# 2) 当前期 + 看板指针 (pm/NOW.md)
+echo "── 当前期 / 协调看板 (pm/NOW.md) ──"
+grep -m1 "^\*\*当前期" pm/NOW.md 2>/dev/null || echo "  (NOW.md 无「当前期」行)"
+grep -m1 "本期轨道" pm/NOW.md 2>/dev/null || true
+grep -m1 "当期看板" pm/NOW.md 2>/dev/null || true
+echo ""
+
+# 3) 契约快照版本
+echo "── 契约 (contracts/PROTOCOL.md) ──"
+grep -m1 -E "契约快照对应版本" contracts/PROTOCOL.md 2>/dev/null || echo "  (无)"
+echo ""
+
+# 4) 最近拍板 (pm/decisions.md, 规则⑨ 决策单点)
+echo "── 最近拍板 (pm/decisions.md, 最新 3 条) ──"
+if [ -f pm/decisions.md ]; then
+  # perl -CSD -Mutf8 按「字符」截断,避免按字节截断把中文/省略号切成乱码
+  grep -E '^\| 20[0-9]{2}-' pm/decisions.md | head -3 | perl -CSD -Mutf8 -ne 'chomp; $_ = substr($_,0,110)."…" if length() > 110; print "  $_\n"'
+else
+  echo "  (无 pm/decisions.md)"
+fi
+echo ""
+
+# 5) 各域状态文件最近更新
+echo "── 各域状态 (pm/status/) ──"
+if [ -d pm/status ]; then
+  for f in pm/status/*.md; do
+    [ -e "$f" ] || continue
+    base="$(basename "$f")"; [ "$base" = "README.md" ] && continue
+    line=$(git log -1 --format="%h %ad %s" --date=short -- "$f" 2>/dev/null)
+    printf "  %-10s %s\n" "${base%.md}" "${line:-(未提交/未跟踪)}"
+  done
+else
+  echo "  (无 pm/status/)"
+fi
+echo ""
+
+# 6) 在途变更提案
+echo "── 在途变更提案 (pm/changes/) ──"
+found=0
+for f in pm/changes/*.md; do
+  [ -e "$f" ] || continue
+  base="$(basename "$f")"; [ "$base" = "README.md" ] && continue
+  echo "  - $base"; found=1
+done
+[ "$found" = 0 ] && echo "  (无)"
+echo ""
+
+# 7) 线上实况(规则⑨:线上版本唯一查询口;文档里的版本号一律不作准)
+echo "── 线上实况 ──"
+if [ "${BUS_CHECK_NO_LIVE:-0}" = "1" ]; then
+  echo "  (BUS_CHECK_NO_LIVE=1 跳过;线上版本以重跑本脚本为准)"
+elif [ -x scripts/live-status.sh ] || [ -f scripts/live-status.sh ]; then
+  bash scripts/live-status.sh 2>/dev/null | sed 's/^/  /' || echo "  (live-status.sh 执行失败 —— 检查部署平台 CLI 凭据/网络)"
+else
+  echo "  (未配置 scripts/live-status.sh —— 接入部署平台 CLI 后,每行输出「服务名 版本」即可;在此之前别引用任何文档里的\"当前版本\")"
+fi
+echo ""
+
+# 8) 最近 5 个 meta-repo commit
+echo "── 最近提交 (meta) ──"
+git log --oneline -5 2>/dev/null
+echo ""
+echo "▸ 开工四步: ① git pull(含子仓)  ② 读 NOW → 当期看板 → 契约 → 最近拍板  ③ 确认你域要动的不 stale  ④ 不可逆动作(部署/契约/migration)前重跑本脚本"
+echo "════════════════════════════════════════════"

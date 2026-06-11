@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+
+# 凭据 / 本地环境(红线:凭据不入 git)
+*.env
+.env
+.env.*
+*.local
+*.key
+*.pem
