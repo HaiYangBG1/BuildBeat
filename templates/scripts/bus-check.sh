@@ -8,9 +8,12 @@
 #   1) SUBREPOS 数组留空 = 自动发现一/二级目录下的独立 git 子仓;也可手工列死。
 #   2) 线上实况:提供 scripts/live-status.sh(自行调用部署平台 CLI,每行输出「名称<TAB或空格>版本」),
 #      本脚本存在即调用、不存在则提示。跳过:BUS_CHECK_NO_LIVE=1
+#   3) 生产漂移检测:提供 scripts/drift-check.sh + scripts/live-config.sh(见模板),
+#      本脚本存在即调用;`--update-baseline` 会透传给它(部署/改 env 后刷基线)。
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 1
+DRIFT_MODE=""; [ "${1:-}" = "--update-baseline" ] && DRIFT_MODE="--update-baseline"  # 透传给漂移检测
 
 SUBREPOS=()   # 留空自动发现;或写死:SUBREPOS=("仓1" "目录/仓2")
 
@@ -104,6 +107,15 @@ elif [ -x scripts/live-status.sh ] || [ -f scripts/live-status.sh ]; then
   bash scripts/live-status.sh 2>/dev/null | sed 's/^/  /' || echo "  (live-status.sh 执行失败 —— 检查部署平台 CLI 凭据/网络)"
 else
   echo "  (未配置 scripts/live-status.sh —— 接入部署平台 CLI 后,每行输出「服务名 版本」即可;在此之前别引用任何文档里的\"当前版本\")"
+fi
+echo ""
+
+# 7.5) 生产漂移检测(平台侧 env/secret 指纹 + 镜像tag↔git vs scripts/bus-baseline.json)
+echo "── 生产漂移检测 ──"
+if [ -f scripts/drift-check.sh ]; then
+  bash scripts/drift-check.sh $DRIFT_MODE
+else
+  echo "  (未配置 scripts/drift-check.sh —— 拷模板 + 接 live-config.sh 后,可检出「配置被改没部署 / 线上镜像 git 里找不到」类漂移)"
 fi
 echo ""
 

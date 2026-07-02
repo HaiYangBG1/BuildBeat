@@ -48,6 +48,7 @@ description: Solobaton —— 人在回路·一人公司(OPC)协作总线:一个
 │   ├── changes/               # 重轨变更 delta 提案 → 拍板 → 归档
 │   └── archive/<期>/           # 换期压缩仪式的归档落点
 ├── scripts/bus-check.sh       # 开工护栏(见模板)
+├── scripts/drift-check.sh     # 生产漂移检测:平台侧 env 指纹+镜像tag↔git vs 基线(见模板)
 ├── scripts/design-preview.sh  # Gate2 真渲染(见模板)
 └── <代码子仓们>/               # 各自独立 git + AGENTS.md/CLAUDE.md + CHANGELOG.md
 ```
@@ -75,7 +76,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 
 ## 6. 三个仪式(防腐烂的关键,缺了机制必朽)
 
-- **开工仪式**:bus-check(打印 当前期/契约/最近拍板/各域状态/子仓同步/线上实况)→ git pull → 确认要动的不 stale。
+- **开工仪式**:bus-check(打印 当前期/契约/最近拍板/各域状态/子仓同步/线上实况/生产漂移)→ git pull → 确认要动的不 stale。
 - **拍板仪式**:用户每拍一锤 → PM **先**在 `decisions.md` 落一行(决策+回写落点)→ 再分发回写各 SSOT。
 - **换期压缩仪式**:当期 看板/todo/验收清单 `git mv` 进 `pm/archive/<期>/`;status 全文快照入 archive、live 文件截断只留「基线+最近一条+归档指针」;NOW 流水清零。**NOW 长肥 = 腐烂开端。**
 
@@ -94,7 +95,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 - [ ] 1. 拷贝 templates/ 整树到新项目根,逐文件替换 <占位符>(项目名/仓名/部署平台/域表)
 - [ ] 2. meta 仓 git init + 远端;代码子仓各自独立 git,meta 仓 .gitignore 排除子仓目录与一切 *.env
 - [ ] 3. 定域:默认 PM/交付/验证 三域起步,运维并入交付;在 CLAUDE.md §1 路由表落定 cwd 与读写边界
-- [ ] 4. 接"线上实况":若有部署平台,写 scripts/live-status.sh(bus-check 会自动调用,见模板注释)
+- [ ] 4. 接"线上实况"与漂移基线:若有部署平台,写 scripts/live-status.sh(bus-check 自动调用)+ scripts/live-config.sh(drift-check 用,见模板注释),然后 `bash scripts/drift-check.sh --update-baseline` 打首版基线
 - [ ] 5. 第一期立项:pm/NOW.md 填当前期与轨道 → 建 <一期>-看板.md → decisions.md 记第一行
 - [ ] 6. 每个域开一个会话试跑开工仪式,确认 bus-check 输出齐全、各域能找到"开工先读"
 - [ ] 7. (可选)装 Stop hook 自动 push 已 commit 内容;装前务必加 secret 扫描一道闸
@@ -114,9 +115,10 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 | [templates/pm/changes/README.md](templates/pm/changes/README.md) | 重轨变更 delta 提案流程 + 模板 |
 | [templates/contracts/PROTOCOL.md](templates/contracts/PROTOCOL.md) | 契约唯一入口骨架 |
 | [templates/.claude/agents/reviewer.md](templates/.claude/agents/reviewer.md) | 只读核查门 subagent |
-| [templates/scripts/bus-check.sh](templates/scripts/bus-check.sh) | 开工护栏(含 live-status 钩子、子仓同步、最近拍板) |
+| [templates/scripts/bus-check.sh](templates/scripts/bus-check.sh) | 开工护栏(含 live-status 钩子、子仓同步、最近拍板、漂移检测集成) |
+| [templates/scripts/drift-check.sh](templates/scripts/drift-check.sh) | 生产漂移检测(env 指纹基线 + 镜像tag↔git 锚定;🔴只存指纹不存值) |
 | [templates/scripts/design-preview.sh](templates/scripts/design-preview.sh) | Gate2 真渲染静态服务 |
 
 ## 10. 反模式与实战教训
 
-血泪清单(每条都真实发生过)见 [lessons.md](lessons.md)——SSOT 腐烂、读过期 race、静态稿拍板返工螺旋、域过细收敛史、"当前版本"声明漂移、走查漏独立弹窗、状态条目膨胀、风险清单被新功能挤掉等。**搭完骨架后建议通读一遍,大部分零件就是为这些坑而生。**
+血泪清单(每条都真实发生过)见 [lessons.md](lessons.md)——SSOT 腐烂、读过期 race、静态稿拍板返工螺旋、域过细收敛史、"当前版本"声明漂移、走查漏独立弹窗、状态条目膨胀、风险清单被新功能挤掉、状态里的幽灵 hash、构建产物混入他人 WIP、平台侧配置漂移等。**搭完骨架后建议通读一遍,大部分零件就是为这些坑而生。**
