@@ -7,9 +7,9 @@
 
 ## 流程
 1. **提案** → 新建 `pm/changes/<yyyymmdd>-<短名>.md`(用下方模板)。
-2. **拍板** → 用户/PM 评审:批 / 改 / 否(落 `../decisions.md` 一行)。
+2. **拍板** → 用户/产品域评审:批 / 改 / 否(落 `../decisions.md` 一行)。
 3. **实现** → 各域按 change 里"分工"动手,commit hash 回写**自己的** `pm/status/<域>.md`。
-4. **归档** → 完成 + 核查门过 → PM 把 Delta 合并进 canonical(`contracts/PROTOCOL.md` / 需求文档),change 移到 `pm/changes/archive/`。
+4. **归档** → 完成 + 核查门过 → 产品域把 Delta 合并进 canonical(`contracts/PROTOCOL.md` / 需求文档),change 移到 `pm/changes/archive/`。
 
 ## 模板(复制改)
 ```md

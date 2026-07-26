@@ -7,12 +7,12 @@
 
 | 域 | cwd | 可写(拥有) | 只读 | 开工先读 | 状态写回 |
 |---|---|---|---|---|---|
-| **PM**(规格/编排) | `pm/` | `pm/**` | 全仓 | `pm/NOW.md` | 当期看板 + `pm/status/PM.md` |
-| **交付**(全栈,含运维) | 工作区根(同持 <N> 个代码仓) | `<代码仓1>/**` + `<代码仓2>/**`(**按仓分别 stage,不 `git add -A`**) | `pm/*` 当期文件、契约 | 各仓 `AGENTS.md` + `pm/NOW.md` | `pm/status/交付.md`(带 hash)+ 各仓 `CHANGELOG.md` + `contracts/PROTOCOL.md` |
-| **验证**(测试·走查) | `<被测仓>/` | `tests/**` · 视觉基线 · 走查报告 | 实现 + spec + 设计稿 + 契约 | `pm/NOW.md` + `tests/README.md` | `pm/status/验证.md` + 核查门证据(E2E 报告/视觉 diff/对比图) |
+| **产品**(规格/编排) | `pm/` | `pm/**` | 全仓 | `pm/NOW.md` | 当期看板 + `pm/status/产品.md` |
+| **全栈**(实现,含运维) | 工作区根(同持 <N> 个代码仓) | `<代码仓1>/**` + `<代码仓2>/**`(**按仓分别 stage,不 `git add -A`**) | `pm/*` 当期文件、契约 | 各仓 `AGENTS.md` + `pm/NOW.md` | `pm/status/全栈.md`(带 hash)+ 各仓 `CHANGELOG.md` + `contracts/PROTOCOL.md` |
+| **测试**(E2E·走查) | `<被测仓>/` | `tests/**` · 视觉基线 · 走查报告 | 实现 + spec + 设计稿 + 契约 | `pm/NOW.md` + `tests/README.md` | `pm/status/测试.md` + 核查门证据(E2E 报告/视觉 diff/对比图) |
 
-> **设计生成 = 外部工具**(非会话):PM 写 brief(必须要求**单 HTML 可渲染入口 + 关键流可点**)→ 人喂设计工具 → 稿落 `design/design_N期/` → 验证域走查 + 提带图 bug。
-> 🔴 **交付域合并多角色的补偿控制**:动契约必派 reviewer subagent(只读,见 `.claude/agents/reviewer.md`)+ 验证域独立核两端(写者≠审者)。
+> **设计生成 = 外部工具**(非会话):产品域写 brief(必须要求**单 HTML 可渲染入口 + 关键流可点**)→ 人喂设计工具 → 稿落 `design/design_N期/` → 测试域走查 + 提带图 bug。
+> 🔴 **全栈域合并多角色的补偿控制**:动契约必派 reviewer subagent(只读,见 `.claude/agents/reviewer.md`)+ 测试域独立核两端(写者≠审者)。
 > **开工护栏**:任意域开工**先跑 `bash scripts/bus-check.sh`** + `git pull`。
 
 ## 1.5 C 端审美红线(出 UI 的会话必读;非 UI 项目可删)
