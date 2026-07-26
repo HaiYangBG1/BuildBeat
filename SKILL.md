@@ -121,14 +121,16 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 
 ```
 - [ ] 1. 拷贝 templates/ 整树(`cp -R templates/. <新项目根>/`,`/.` 结尾才带上隐藏的 `.claude/`);**全部 <占位符> 按自查+确认结论填好,交付物里不得残留任何 <占位符>**;按有无 UI 删/留相关段落
-- [ ] 2. meta 仓 git init + 远端;代码子仓各自独立 git;meta 仓 .gitignore 排除子仓目录与一切 *.env
+- [ ] 2. meta 仓 git init + 远端;代码子仓各自独立 git;meta 仓 .gitignore 排除子仓目录与一切 *.env(拷 `templates/gitignore.template` 改名 `.gitignore`,替换子仓名)
 - [ ] 3. 域表按问题 B/C 落 CLAUDE.md §1 路由表(cwd / 可写 / 只读边界)
 - [ ] 4. 按自查结果接"线上实况"与漂移基线:实装则 `bash scripts/drift-check.sh --update-baseline` 打首版基线;无平台则留桩
 - [ ] 5. 第一期立项:pm/NOW.md 填当前期与轨道 → 建 <一期>-看板.md → decisions.md 第一行记「Bootstrap 结论」(自查+确认:域表/轨道/平台/UI 取舍——本项目第一次拍板)
 - [ ] 6. 跑 `bash scripts/bus-check.sh` 自检骨架(输出齐全、无报错),把输出贴给用户过目
-- [ ] 7. (可选)装 Stop hook 自动 push 已 commit 内容;装前务必先加 secret 扫描一道闸(如 gitleaks)
+- [ ] 7. (可选)装 Stop hook 自动 push 已 commit 内容;装前务必先加 secret 扫描一道闸(最小示例:push 前跑 `gitleaks dir <仓根>`,报警即拦)
 - [ ] 8. 收尾报告一屏:生成了什么 / 按自查+确认做了哪些取舍(含默认值项)/ 下一步开哪个会话、说哪句话(参照 指挥台.md)
 ```
+
+> 各文件「填好之后长什么样」,参照仓库 [example/](example/)(虚构「简账」项目跑完一期的快照)。
 
 ## 9. 模板索引(templates/,直接拷贝后改占位符)
 
@@ -147,6 +149,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 | [templates/scripts/bus-check.sh](templates/scripts/bus-check.sh) | 开工护栏(含 live-status 钩子、子仓同步、最近拍板、漂移检测集成) |
 | [templates/scripts/drift-check.sh](templates/scripts/drift-check.sh) | 生产漂移检测(env 指纹基线 + 镜像tag↔git 锚定;🔴只存指纹不存值) |
 | [templates/scripts/design-preview.sh](templates/scripts/design-preview.sh) | Gate2 真渲染静态服务 |
+| [templates/gitignore.template](templates/gitignore.template) | meta 仓 .gitignore 模板(排除子仓与 *.env;拷入后改名) |
 
 ## 10. 反模式与实战教训
 

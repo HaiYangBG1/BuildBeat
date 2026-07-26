@@ -8,6 +8,7 @@
 #   1) SUBREPOS 数组留空 = 自动发现一/二级目录下的独立 git 子仓;也可手工列死。
 #   2) 线上实况:提供 scripts/live-status.sh(自行调用部署平台 CLI,每行输出「名称<TAB或空格>版本」),
 #      本脚本存在即调用、不存在则提示。跳过:BUS_CHECK_NO_LIVE=1
+#      离线/弱网:BUS_CHECK_NO_FETCH=1 跳过 meta 仓与子仓的 git fetch(只看本地已知状态)
 #   3) 生产漂移检测:提供 scripts/drift-check.sh + scripts/live-config.sh(见模板),
 #      本脚本存在即调用;`--update-baseline` 会透传给它(部署/改 env 后刷基线)。
 set -uo pipefail
@@ -22,7 +23,7 @@ echo "▸ 工作区: $ROOT"
 echo ""
 
 # 1) meta 仓是否落后远端
-git fetch --quiet 2>/dev/null || true
+[ "${BUS_CHECK_NO_FETCH:-0}" = "1" ] || git fetch --quiet 2>/dev/null || true
 LOCAL=$(git rev-parse @ 2>/dev/null || echo "?")
 REMOTE=$(git rev-parse '@{u}' 2>/dev/null || echo "")
 if [ -n "$REMOTE" ] && [ "$LOCAL" != "$REMOTE" ]; then
@@ -39,7 +40,7 @@ echo ""
 echo "── 子仓 ⇄ 远端 ──"
 for r in "${SUBREPOS[@]:-}"; do
   [ -n "$r" ] && [ -d "$r/.git" ] || continue
-  git -C "$r" fetch --quiet 2>/dev/null || true
+  [ "${BUS_CHECK_NO_FETCH:-0}" = "1" ] || git -C "$r" fetch --quiet 2>/dev/null || true
   if git -C "$r" rev-parse '@{u}' >/dev/null 2>&1; then
     ahead=$(git -C "$r" rev-list --count '@{u}..HEAD' 2>/dev/null || echo "?")
     behind=$(git -C "$r" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo "?")
@@ -67,8 +68,12 @@ echo ""
 # 4) 最近拍板 (pm/decisions.md, 规则⑨ 决策单点)
 echo "── 最近拍板 (pm/decisions.md, 最新 3 条) ──"
 if [ -f pm/decisions.md ]; then
-  # perl -CSD -Mutf8 按「字符」截断,避免按字节截断把中文/省略号切成乱码
-  grep -E '^\| 20[0-9]{2}-' pm/decisions.md | head -3 | perl -CSD -Mutf8 -ne 'chomp; $_ = substr($_,0,110)."…" if length() > 110; print "  $_\n"'
+  if command -v perl >/dev/null 2>&1; then
+    # perl -CSD -Mutf8 按「字符」截断,避免按字节截断把中文/省略号切成乱码
+    grep -E '^\| 20[0-9]{2}-' pm/decisions.md | head -3 | perl -CSD -Mutf8 -ne 'chomp; $_ = substr($_,0,110)."…" if length() > 110; print "  $_\n"'
+  else
+    grep -E '^\| 20[0-9]{2}-' pm/decisions.md | head -3 | sed 's/^/  /'   # 无 perl:降级为不截断(截字节会把中文切成乱码)
+  fi
 else
   echo "  (无 pm/decisions.md)"
 fi
