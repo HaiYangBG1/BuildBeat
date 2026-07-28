@@ -2,7 +2,7 @@
 
 **简体中文** | [English](README.en.md)
 
-> 所有活塞在一个 AI 会话里,越聊越糊?想开新会话,又怕上下文丢失、怕再解释一遍?会话之间同步,全靠你复制粘贴?
+> 所有活儿都塞在一个 AI 会话里,越聊越糊?想开新会话,又怕上下文丢失、怕再解释一遍?会话之间同步,全靠你复制粘贴?
 > Solobaton 的答案:一个人指挥 N 个并行 AI 会话,像一支小团队一样交付中大型项目——**方法论**(怎么协作不乱)+ **脚手架**(拷贝即用的文件模板与脚本)。
 > 蒸馏自一个真实跑了多期迭代的项目:单人指挥 4 个 AI 会话,把含前端/BFF/多个后端服务/网关/审计的内部产品从零迭代、上线 30+ 次,踩坑、修坑、再把坑位固化成机制。
 
@@ -32,7 +32,7 @@
 
 ## 2. 怎么用
 
-**第 1 步 · 装技能**:把 `solobaton/` 复制或软链到 `~/.claude/skills/`(Claude Code)或 `~/.cursor/skills/`(Cursor);不装也可以直接说——「按 `AI底座/solobaton/SKILL.md` 给我搭协作骨架」。
+**第 1 步 · 装技能**:把 `solobaton/` 复制或软链到 `~/.claude/skills/`(Claude Code)或 `~/.cursor/skills/`(Cursor);不装也可以直接说——「按 `solobaton/SKILL.md` 给我搭协作骨架」。
 
 **第 2 步 · 一句话起步**(引导式 Bootstrap,详见 SKILL.md §8)。对任意会话说:
 
@@ -44,7 +44,7 @@
 
 ```bash
 # 拷贝脚手架(`/.` 结尾才带上隐藏的 .claude/),然后逐文件替换 <占位符>
-cp -R "AI底座/solobaton/templates/." <新项目根>/
+cp -R "solobaton/templates/." <新项目根>/
 bash scripts/bus-check.sh
 ```
 
@@ -92,7 +92,7 @@ flowchart LR
   ⚠️  jz-api         HEAD a3f21c9  领先 1 / 落后 0
 
 ── 当前期 / 协调看板 (pm/NOW.md) ──
-**当前期:一期(记账主流程 + 月度报表)**
+**当前期:一期(记账主流程 + 月度报表)**(已收尾:Gate4 已过、上线复核完,待换期)
 **本期轨道:标准轨**
 
 ── 协调层腐烂检测 ──
@@ -103,7 +103,7 @@ flowchart LR
 
 ── 最近拍板 (pm/decisions.md, 最新 3 条) ──
   | 2026-06-20 | 一期验收通过,批准上线(⛔Gate4);报表导出 CSV 挪二期 | …
-  | 2026-06-18 | ⛔Gate3 批准合并:月度报表(reviewer P1「空月除零」已修复复验)…
+  | 2026-06-19 | ⛔Gate3 批准合并:月度报表(走查 P1「空月除零」已修复复验)…
   | 2026-06-15 | ⛔Gate2 真渲染过:报表用柱状图不用折线;移动端两列改单列 | …
 
 ── 线上实况 ──
@@ -114,7 +114,7 @@ flowchart LR
   ✅ jz-api           配置/镜像==基线 (tag 0.2.0)
   —— 无漂移
 
-▸ 开工四步: ① git pull(含子仓) ② 读 NOW → 看板 → 契约 → 最近拍板 ③ 确认要动的不 stale ④ 不可逆动作前重跑本脚本
+▸ 开工四步: ① git pull(含子仓)  ② 读 NOW → 当期看板 → 契约 → 最近拍板  ③ 确认你域要动的不 stale  ④ 不可逆动作(部署/契约/migration)前重跑本脚本
 ```
 
 ## 5. 四个最值钱的机制(别处少见)
@@ -140,6 +140,7 @@ solobaton/
     ├── 指挥台.md               # 给你看的一页操作卡
     ├── pm/                    # 产品域协调层:NOW 薄指针 / 看板 / 拍板台账 / 状态分写 / 变更提案
     ├── contracts/PROTOCOL.md  # 跨边界契约唯一入口
+    ├── gitignore.template     # meta 仓 .gitignore 模板(拷入改名;排除子仓与 *.env)
     ├── .claude/agents/reviewer.md   # 只读核查门 subagent(写者≠审者)
     └── scripts/               # bus-check.sh(开工护栏) + drift-check.sh(生产漂移检测)
                                #   + design-preview.sh(真渲染)

@@ -1,7 +1,7 @@
 # example/ —— 教学沙盘:虚构项目「简账」跑完一期的快照
 
 > 这里的每个文件,都是 `templates/` 对应模板**填好占位符之后的样子**。
-> 🔴 项目、数据、人物、决策全部虚构(已脱敏);commit hash 均为示意值——真项目里 hash 必须真实可查(`git cat-file -t <hash>`,见 lessons.md 第 11 条)。
+> 🔴 项目、数据、人物、决策全部虚构(已脱敏);commit hash 均为示意值——真项目里 hash 必须真实可查(`git cat-file -t <hash>`,见 [lessons.md](../lessons.md) 第 11 条)。
 
 ## 沙盘设定
 

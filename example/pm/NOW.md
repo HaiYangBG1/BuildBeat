@@ -12,8 +12,8 @@
 | 🗳 拍板台账(决策单点) | `decisions.md` |
 | 🔌 契约 | `../contracts/PROTOCOL.md` |
 | 📊 各域状态(各写各的) | `status/产品.md` · `status/全栈.md` · `status/测试.md` |
-| 🔁 在途变更提案 | `changes/`(本期无) |
-| 📦 历史期归档 | `archive/`(换期后出现) |
+| 🔁 在途变更提案 | `changes/`(本期无提案,目录未建) |
+| 📦 历史期归档 | `archive/`(证据产物期中即写 `archive/一期/evidence/`;看板等文档换期时归档) |
 
 ---
 

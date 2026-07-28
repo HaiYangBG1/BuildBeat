@@ -40,7 +40,7 @@ The bus's answer: **information moves through files, not through your mouth; "do
 
 > "Use Solobaton to scaffold collaboration for my project."
 
-It **inspects your code first** (repo count / deploy platform / UI or not / contract boundaries — all self-checked, never asked), then asks you only three or four non-technical questions (a few days or long-term? / anyone else working with you? / default "Product / Fullstack / Testing" roles or custom? / who has final say on UI?), shows one confirmation screen, then generates a scaffold with **every placeholder already filled**, self-checks with bus-check, and hands it over. Projects outside the applicability boundary (§7) get talked out of it — no ceremony for ceremony's sake.
+It **inspects your code first** (repo count / deploy platform / UI or not / contract boundaries — all self-checked, never asked), then asks you only three or four non-technical questions (a few days or long-term? / anyone else working with you? / default "Product / Fullstack / Testing" roles or custom? / who has final say on UI?), shows one confirmation screen, then generates a scaffold with **every placeholder already filled**, self-checks with bus-check, and hands it over. For projects outside the applicability boundary (§7), it talks you out of using the bus — no ceremony for ceremony's sake.
 
 **Manual path** (works without installing the skill):
 
@@ -87,14 +87,14 @@ Day to day you say three sentences: "go", "X on the board is yours", "accept X".
 
 ```text
 ════════ Collaboration bus · kickoff sync (bus-check) ════════
-✅ meta repo in sync with remote
+✅ meta repo in sync with remote (or no upstream)
 
 ── sub-repos ⇄ remote ──
   ✅ jz-web         HEAD 7be04d2  ahead 0 / behind 0
   ⚠️  jz-api         HEAD a3f21c9  ahead 1 / behind 0
 
 ── current iteration / board (pm/NOW.md) ──
-Iteration 1 (core flows + monthly report) · standard track
+Iteration 1 (core bookkeeping flow + monthly report) (wrapped up, awaiting switch) · standard track
 
 ── coordination-layer rot check ──
   ✅ NOW thin, boards archived, status files lean
@@ -103,8 +103,8 @@ Iteration 1 (core flows + monthly report) · standard track
 Contract snapshot corresponds to: v0.2.0 (released 2026-06-20)
 
 ── latest decisions (pm/decisions.md, last 3) ──
-  | 2026-06-20 | Iteration 1 accepted, release approved (Gate4); CSV export moved to It.2 …
-  | 2026-06-18 | Gate3 merge approved: monthly report (reviewer P1 fixed & re-verified) …
+  | 2026-06-20 | Iteration 1 accepted, release approved (Gate4); CSV export moved to Iteration 2 …
+  | 2026-06-19 | Gate3 merge approved: monthly report (walkthrough P1 empty-month div-by-zero fixed & re-verified) …
   | 2026-06-15 | Gate2 passed on real render: bar chart over line; single column on mobile …
 
 ── live status ──
@@ -114,13 +114,15 @@ Contract snapshot corresponds to: v0.2.0 (released 2026-06-20)
 ── production drift ──
   ✅ jz-api           config/image == baseline (tag 0.2.0)
   —— no drift
+
+▸ Kickoff: ① git pull (incl. sub-repos)  ② read NOW → board → contract → latest decisions  ③ confirm nothing in your domain is stale  ④ rerun this script before irreversible actions (deploy / contract / migration)
 ```
 
 ## 5. The four mechanisms worth stealing
 
-- **Single point of truth (rule ⑨)**: live version, human decisions, iteration switch — the three fastest-rotting facts each have exactly one place of record/query; everywhere else holds pointers. A decision lands in `decisions.md` first, then fans out; unfinished write-backs stay visible as debt.
-- **Gate2 real-render approval (rule ⑩)**: design sign-off must happen on a **clickable prototype in a browser** — static mocks and screenshots don't count. Tuition paid for this rule: a redesign shipped and was overturned within 2 days, entirely because approval had been given on static boards.
-- **Iteration-switch compression ritual**: every iteration ends with forced archiving of the board, truncation of status files, and a reset of NOW; evidence artifacts (walkthrough shots / E2E reports) are written into `pm/archive/<iteration>/evidence/` the moment they're produced — zero moving at switch time. Without this ritual, coordination docs turn into an unread scroll within three weeks — so bus-check ships a **coordination-layer rot check**: a bloated NOW, a stale board lingering in pm/, or an oversized status file triggers red warnings at kickoff (a ritual without a guardrail is no ritual at all).
+- **Single source of truth (rule ⑨)**: live version, human decisions, iteration switch — the three fastest-rotting facts each have exactly one place of record/query; everywhere else holds pointers. A decision lands in `decisions.md` first, then fans out; unfinished write-backs stay visible as debt.
+- **Gate2 real-render approval (rule ⑩)**: design sign-off must happen on a **clickable prototype in a browser** — static mocks and screenshots don't count. Tuition paid for this rule: a redesign shipped and was overturned within 2 days, entirely because approval had been given on static mocks.
+- **Iteration-switch compression ritual**: every iteration ends with forced archiving of the board, truncation of status files, and a reset of NOW; evidence artifacts (walkthrough shots / E2E reports) are written into `pm/archive/<iteration>/evidence/` the moment they're produced — nothing left to move at switch time. Without this ritual, coordination docs turn into an unread scroll within three weeks — so bus-check ships a **coordination-layer rot check**: a bloated NOW, a stale board lingering in pm/, or an oversized status file triggers red warnings at kickoff (a ritual without a guardrail is no ritual at all).
 - **Production drift detection**: platform-side env/secrets and images live outside git; one console edit creates a second source of truth. Fingerprint them (🔴 sha256 fingerprints only, never values) and anchor image tags to git tags; bus-check compares against the baseline at every kickoff and prints red warnings — surfacing "config changed but never redeployed" and "live image not found in git" before you touch anything.
 
 ## 6. Repository layout
@@ -140,6 +142,7 @@ solobaton/
     ├── 指挥台.md               # one-page operator card for the human
     ├── pm/                    # Product-domain coordination: NOW pointer / board / decision log / per-domain status / change proposals
     ├── contracts/PROTOCOL.md  # the single entry point for cross-boundary contracts
+    ├── gitignore.template     # meta-repo .gitignore template (copy in and rename; excludes sub-repos and *.env)
     ├── .claude/agents/reviewer.md   # read-only review-gate subagent (writer ≠ reviewer)
     └── scripts/               # bus-check.sh (kickoff guard) + drift-check.sh (production drift)
                                #   + design-preview.sh (real render)
@@ -149,7 +152,7 @@ solobaton/
 
 - **Good fit**: ≥2 repos or deploy units, multi-iteration, one person wearing PM/dev/test/ops hats, AI sessions that need to hand work to each other.
 - **Bad fit**: single-repo small tasks, one-off scripts, anything wrapping up within a week — just run one session; the bus would be pure ceremony.
-- **Known limits**: the human remains the orchestration bottleneck (a feature, not a bug — human judgment is this playbook's moat); the process guarantees "built right", not "building the right thing" — topic selection still relies on your own discipline against a risk list (lessons.md #8).
+- **Known limits**: the human remains the orchestration bottleneck (a feature, not a bug — human judgment is this playbook's moat); the process guarantees "building it right", not "building the right thing" — topic selection still relies on your own discipline against a risk list (lessons.md #8).
 
 ## 8. The ten rules at a glance
 
@@ -163,7 +166,7 @@ solobaton/
 | ⑥ | Review gate | Before acceptance a reviewer checks 4-way consistency; done = hash + evidence |
 | ⑦ | Proposals + split status | Cross-domain changes go through delta proposals; each domain writes only its own status file |
 | ⑧ | Visual issues need images | UI bugs require implementation-vs-design screenshots side by side; words alone aren't evidence |
-| ⑨ | Single point of truth | Live version only by live query; decisions only in decisions.md; iteration switch requires compression |
+| ⑨ | Single source of truth | Live version only by live query; decisions only in decisions.md; iteration switch requires compression |
 | ⑩ | Gate2 real render | Design approval happens on a clickable prototype; static mocks don't count |
 
 ## 9. Plain-language glossary
@@ -175,15 +178,15 @@ solobaton/
 | Term | Plain meaning |
 |---|---|
 | File bus | Borrowed from "message bus": sessions never relay through you; information lives in agreed repo files, read on demand |
-| SSOT / single point of truth | A fact is recorded in exactly one place; everywhere else points to it — prevents contradictory copies |
+| SSOT (Single Source of Truth) | A fact is recorded in exactly one place; everywhere else points to it — prevents contradictory copies |
 | Gate (the four Gates) | Checkpoints — spec / design / merge / release — that a human must approve; AI may not auto-cross |
-| Three tracks | Process weight matched to change size: fast (small fix) / standard (one feature) / heavy (contract-touching) |
-| Review gate | Before acceptance, a read-only reviewer agent checks implementation / design / contract / spec against each other |
+| Three tracks | Process weight matched to change size: fast (small fix) / standard (one feature) / heavy (contract-touching) — small changes never ride the heavy process |
+| Review gate | Before acceptance, a read-only reviewer agent checks implementation / design / contract / spec against each other; mismatches get bounced back |
 | Writer ≠ reviewer | The session that wrote the code must not be the one reviewing it — self-review always passes |
 | Evidence-based done | "Done" requires commit hash + verifiable evidence (test command / file:line / screenshot), otherwise not done |
 | Human in the loop | Key decisions require a human; no fully automatic closed loop |
 | Decision / decision log | You make the call; the log (pm/decisions.md) is the single ledger where every call is recorded |
-| Iteration / switch | An iteration ≈ a sprint; switching = closing this one and opening the next, always with archiving |
+| Iteration / switch | An iteration ≈ a sprint; switching = closing this one and opening the next, always with archiving and compression |
 | Compression ritual | The fixed steps at iteration switch — archive docs, truncate status files — so coordination docs never rot |
 | Kickoff guard | The script you must run before working (bus-check.sh): one screen of progress / contract / decisions / live status |
 
@@ -191,9 +194,9 @@ solobaton/
 
 | Term | Plain meaning |
 |---|---|
-| Domain | One unit of division of labor = one independent AI session (e.g. Product / Fullstack / Testing) |
-| meta repo / sub-repo | meta repo = the git repo holding coordination files; sub-repos = each codebase's own git repo |
-| Contract (PROTOCOL) | Cross-repo / cross-service interface agreements; sole registry is contracts/PROTOCOL.md |
+| Domain | One unit of division of labor = one independent AI session (e.g. Product / Fullstack / Testing), each owning its own files — no crossing boundaries |
+| meta repo / sub-repo | meta repo = the git repo holding coordination files (board / contracts / status); sub-repos = each codebase's own git repo |
+| Contract (PROTOCOL) | Cross-repo / cross-service interface agreements (fields / behavior / error codes); sole registry is contracts/PROTOCOL.md |
 | Thin pointer | NOW.md only says "which iteration, which files to read" — a bookmark, not a notebook |
 | Board | The current iteration's work table: who does what, how far along, what's stuck |
 | Delta proposal | For big changes, first a file listing what changes (added/modified/removed), approved before work starts |
@@ -222,4 +225,4 @@ solobaton/
 
 ---
 
-*Version history: [CHANGELOG.md](CHANGELOG.md). When future projects hit new potholes, feed them back into lessons.md — this skill applies its own rules to itself: lessons are recorded in exactly one place, versions in exactly one place.*
+*Version history: [CHANGELOG.md](CHANGELOG.md). When future projects hit new potholes, feed them back into lessons.md — this skill applies its own rules — evidence-based done and single source of truth — to itself: lessons are recorded in exactly one place, versions in exactly one place.*

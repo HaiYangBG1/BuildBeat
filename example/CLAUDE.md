@@ -8,7 +8,7 @@
 |---|---|---|---|---|---|
 | **产品**(规格/编排) | `pm/` | `pm/**` | 全仓 | `pm/NOW.md` | 当期看板 + `pm/status/产品.md` |
 | **全栈**(实现,含运维) | 工作区根(同持 jz-web、jz-api 两仓) | `jz-web/**` + `jz-api/**`(**按仓分别 stage,不 `git add -A`**) | `pm/*` 当期文件、契约 | 各仓 `AGENTS.md` + `pm/NOW.md` | `pm/status/全栈.md`(带 hash)+ 各仓 `CHANGELOG.md` + `contracts/PROTOCOL.md` |
-| **测试**(E2E·走查) | `jz-web/` | `tests/**` · 走查报告 | 实现 + spec + 设计稿 + 契约 | `pm/NOW.md` + `tests/README.md` | `pm/status/测试.md` + 核查门证据(E2E 报告/对比图) |
+| **测试**(E2E·走查) | `jz-web/` | `tests/**` · 视觉基线 · 走查报告 | 实现 + spec + 设计稿 + 契约 | `pm/NOW.md` + `tests/README.md` | `pm/status/测试.md` + 核查门证据(E2E 报告/视觉 diff/对比图,**落 `pm/archive/<期>/evidence/`,换期零搬运**) |
 
 > 🔴 全栈域合并多角色的补偿控制:动契约必派 reviewer subagent + 测试域独立核两端(写者≠审者)。
 > 开工护栏:任意域开工先跑 `bash scripts/bus-check.sh` + `git pull`。

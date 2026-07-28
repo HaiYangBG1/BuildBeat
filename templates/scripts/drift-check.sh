@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# drift-check.sh —— 生产漂移检测(治「git ≠ 生产」与平台侧 env/secret 漂移,lessons.md 第 13 条)
+# drift-check.sh —— 生产漂移检测(治「git ≠ 生产」与平台侧 env/secret 漂移,solobaton lessons.md 第 13 条)
 # 比对「部署平台当前配置(env 指纹 + 镜像/版本 tag)」vs 基线快照 scripts/bus-baseline.json。
 # ⚠ 能力边界:检测「平台配置 vs 基线」——把"配置被改"暴露出来,逼"改完即确认部署 + 刷基线";
 #   不检测「running 容器 vs 平台配置」(配置改了没重新部署、容器跑旧值),后者需平台运行时 API,各项目自行增强。
@@ -47,12 +47,17 @@ fi
 
 # ── 刷新基线 ──
 if [ "$UPDATE" = "1" ]; then
-  acc="{}"
-  for pair in "${APPS[@]}"; do
+  acc="{}"; fail=0
+  for pair in "${APPS[@]:-}"; do
+    [ -n "$pair" ] || continue
     name="${pair%%|*}"
-    snap=$(_snapshot "$name") || { echo "  ⚠️  $name 查询失败,基线未含"; continue; }
+    snap=$(_snapshot "$name") || { echo "  ⚠️  $name 查询失败"; fail=1; continue; }
     acc=$(printf '%s' "$acc" | jq -c --arg n "$name" --argjson s "$snap" '. + {($n):$s}')
   done
+  if [ "$fail" = "1" ]; then
+    echo "  ✗ 有应用查询失败 —— 基线未写入(保留旧基线);修好平台 CLI/凭据后重跑 --update-baseline"
+    exit 1
+  fi
   printf '%s' "$acc" | jq --arg d "$(date +%Y-%m-%d)" \
     '{updated:$d, note:"🔴只存指纹不存value;改env/secret或部署后跑 scripts/drift-check.sh --update-baseline", apps:.}' \
     > "$BASELINE"
@@ -65,10 +70,12 @@ if [ ! -f "$BASELINE" ]; then
   echo "  ⚠️  无基线 → 先跑: bash scripts/drift-check.sh --update-baseline"; exit 0
 fi
 
-drift=0
-for pair in "${APPS[@]}"; do
+drift=0; checked=0
+for pair in "${APPS[@]:-}"; do
+  [ -n "$pair" ] || continue
   name="${pair%%|*}"; subrepo="${pair##*|}"
   snap=$(_snapshot "$name") || { printf "  %-16s (查询失败,跳过)\n" "$name"; continue; }
+  checked=1
   imgtag=$(printf '%s' "$snap" | jq -r '.imageTag')
   base_app=$(jq -c --arg n "$name" '.apps[$n] // empty' "$BASELINE" 2>/dev/null)
   if [ -z "$base_app" ]; then printf "  ⚠️  %-16s 基线无此应用 → --update-baseline\n" "$name"; drift=1; continue; fi
@@ -93,5 +100,7 @@ for pair in "${APPS[@]}"; do
   if [ -n "$msg" ] || [ -n "$gt" ]; then printf "  ⚠️  %-16s%s%s\n" "$name" "$msg" "$gt"; drift=1
   else printf "  ✅ %-16s 配置/镜像==基线 (tag %s)\n" "$name" "${imgtag:-?}"; fi
 done
-[ "$drift" = "0" ] && echo "  —— 无漂移" || echo "  ⚠️  有漂移 → 配置改了是否已重新部署?新部署是否打 tag + 跑 --update-baseline?"
+if [ "$checked" = "0" ]; then echo "  ⚠️  没有成功查到任何应用(APPS 为空或全部查询失败)—— 无法判定漂移,检查 APPS 配置/平台 CLI/凭据"
+elif [ "$drift" = "0" ]; then echo "  —— 无漂移"
+else echo "  ⚠️  有漂移 → 配置改了是否已重新部署?新部署是否打 tag + 跑 --update-baseline?"; fi
 exit 0

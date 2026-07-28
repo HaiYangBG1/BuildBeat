@@ -27,7 +27,13 @@ echo ""
 LOCAL=$(git rev-parse @ 2>/dev/null || echo "?")
 REMOTE=$(git rev-parse '@{u}' 2>/dev/null || echo "")
 if [ -n "$REMOTE" ] && [ "$LOCAL" != "$REMOTE" ]; then
-  echo "⚠️  meta 仓与远端不一致 —— 开工前先 git pull !"
+  m_behind=$(git rev-list --count 'HEAD..@{u}' 2>/dev/null || echo "?")
+  m_ahead=$(git rev-list --count '@{u}..HEAD' 2>/dev/null || echo "?")
+  if [ "$m_behind" != "0" ]; then
+    echo "⚠️  meta 仓落后远端 $m_behind 个提交 —— 开工前先 git pull !"
+  else
+    echo "⚠️  meta 仓领先远端 $m_ahead 个提交(本地未推送)—— 记得 git push"
+  fi
 else
   echo "✅ meta 仓与远端同步(或无上游)"
 fi
@@ -62,34 +68,42 @@ echo ""
 
 # 2.5) 协调层腐烂检测(仪式没有护栏 = 没有仪式;阈值可用 env 调:BUS_NOW_MAX / BUS_STATUS_MAX)
 echo "── 协调层腐烂检测 ──"
-rot=0
-NOW_MAX="${BUS_NOW_MAX:-40}"; ST_MAX="${BUS_STATUS_MAX:-60}"
-# a) NOW 薄指针长肥(lessons 第 1 条:NOW 长肥 = 腐烂开端)
-if [ -f pm/NOW.md ]; then
+if [ ! -f pm/NOW.md ]; then
+  echo "  (pm/NOW.md 不存在 —— 无法判定,先按模板建骨架)"
+else
+  rot=0; board_note=""
+  NOW_MAX="${BUS_NOW_MAX:-40}"; ST_MAX="${BUS_STATUS_MAX:-60}"
+  # a) NOW 薄指针长肥(solobaton lessons 第 1 条:NOW 长肥 = 腐烂开端)
   now_lines=$(wc -l < pm/NOW.md | tr -d ' ')
   if [ "$now_lines" -gt "$NOW_MAX" ]; then
     echo "  ⚠️  pm/NOW.md 已 $now_lines 行(>$NOW_MAX)—— 薄指针长肥,跑换期压缩仪式(NOW 底部 checklist)"; rot=1
   fi
-fi
-# b) 非当期看板滞留 pm/(该 git mv 进 archive/<期>/)
-cur_board=$(grep -m1 "当期看板" pm/NOW.md 2>/dev/null | sed -n 's/.*`\([^`]*看板[^`]*\.md\)`.*/\1/p')
-cur_board=$(basename "${cur_board:-}" 2>/dev/null)
-case "$cur_board" in *"<"*) cur_board="";; esac   # NOW 还是占位符 → 判不了,跳过
-if [ -n "$cur_board" ]; then
-  for b in pm/*看板*.md; do
-    [ -e "$b" ] || continue
-    base="$(basename "$b")"
-    [ "$base" = "$cur_board" ] || { echo "  ⚠️  $base 不是当期看板还留在 pm/ —— 归档进 pm/archive/<期>/"; rot=1; }
+  # b) 当期看板存在性 + 非当期看板滞留 pm/(该 git mv 进 archive/<期>/)
+  cur_board=$(grep -m1 "当期看板" pm/NOW.md 2>/dev/null | sed -n 's/.*`\([^`]*看板[^`]*\.md\)`.*/\1/p')
+  cur_board=$(basename "${cur_board:-}" 2>/dev/null)
+  case "$cur_board" in *"<"*) cur_board="";; esac   # NOW 还是占位符 → 判不了
+  if [ -z "$cur_board" ]; then
+    board_note="(NOW 未填当期看板,看板检查跳过)"
+  else
+    [ -f "pm/$cur_board" ] || { echo "  ⚠️  NOW 指向的当期看板 pm/$cur_board 不存在 —— 坏指针,先修 NOW"; rot=1; }
+    for b in pm/*看板*.md; do
+      [ -e "$b" ] || continue
+      base="$(basename "$b")"
+      [ "$base" = "$cur_board" ] || { echo "  ⚠️  $base 不是当期看板还留在 pm/ —— 归档进 pm/archive/<期>/"; rot=1; }
+    done
+  fi
+  # c) status 文件超长(该截断:全文快照进 archive,live 只留基线+最近一条)
+  for f in pm/status/*.md; do
+    [ -e "$f" ] || continue
+    base="$(basename "$f")"; [ "$base" = "README.md" ] && continue
+    n=$(wc -l < "$f" | tr -d ' ')
+    [ "$n" -le "$ST_MAX" ] || { echo "  ⚠️  pm/status/$base 已 $n 行(>$ST_MAX)—— 换期压缩仪式该截断了"; rot=1; }
   done
+  if [ "$rot" = 0 ]; then
+    if [ -n "$board_note" ]; then echo "  ✅ NOW 薄、status 克制 $board_note"
+    else echo "  ✅ NOW 薄、看板归位、status 克制"; fi
+  fi
 fi
-# c) status 文件超长(该截断:全文快照进 archive,live 只留基线+最近一条)
-for f in pm/status/*.md; do
-  [ -e "$f" ] || continue
-  base="$(basename "$f")"; [ "$base" = "README.md" ] && continue
-  n=$(wc -l < "$f" | tr -d ' ')
-  [ "$n" -le "$ST_MAX" ] || { echo "  ⚠️  pm/status/$base 已 $n 行(>$ST_MAX)—— 换期压缩仪式该截断了"; rot=1; }
-done
-[ "$rot" = 0 ] && echo "  ✅ NOW 薄、看板归位、status 克制"
 echo ""
 
 # 3) 契约快照版本
