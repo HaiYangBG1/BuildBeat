@@ -25,7 +25,7 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 |---|---|---|
 | **产品**(记账/编排) | 拆需求、定契约要点、维护看板与决策台账、派核查门 | `pm/**` |
 | **全栈**(实现,含运维) | 实现 + 改契约 + 部署;可同持多仓但**按仓分别 stage** | 代码仓 + `contracts/` |
-| **测试**(E2E·走查) | 黑盒 E2E + 视觉回归 + 设计走查,不合格直接提带图 bug | `tests/**` + 走查报告 |
+| **测试**(E2E·走查) | 黑盒 E2E + 视觉回归 + 设计走查,不合格直接提带图 bug | `tests/**` + 证据产物(落 `pm/archive/<期>/evidence/`) |
 
 - **reviewer = 只读 subagent**(不是常驻会话):核「实现↔设计↔契约↔需求」四方一致,模板见 [templates/.claude/agents/reviewer.md](templates/.claude/agents/reviewer.md)。
 - **设计生成 = 外部工具**(可选):产品域写 brief → 人喂设计工具 → 稿落 `design/design_N期/`;走查归测试域。
@@ -46,7 +46,8 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 │   ├── decisions.md           # 🔴 拍板台账(全工作区决策单点)
 │   ├── status/<域>.md          # 各域只写自己的(治文件 race)
 │   ├── changes/               # 重轨变更 delta 提案 → 拍板 → 归档
-│   └── archive/<期>/           # 换期压缩仪式的归档落点
+│   └── archive/<期>/           # 归档落点;当期证据产物(走查图/E2E报告)生成时即写
+│       └── evidence/          #   archive/<期>/evidence/,换期零搬运
 ├── scripts/bus-check.sh       # 开工护栏(见模板)
 ├── scripts/drift-check.sh     # 生产漂移检测:平台侧 env 指纹+镜像tag↔git vs 基线(见模板)
 ├── scripts/design-preview.sh  # Gate2 真渲染(见模板)
@@ -78,7 +79,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 
 - **开工仪式**:bus-check(打印 当前期/契约/最近拍板/各域状态/子仓同步/线上实况/生产漂移)→ git pull → 确认要动的不 stale。
 - **拍板仪式**:用户每拍一锤 → 产品域**先**在 `decisions.md` 落一行(决策+回写落点)→ 再分发回写各 SSOT。
-- **换期压缩仪式**:当期 看板/todo/验收清单 `git mv` 进 `pm/archive/<期>/`;status 全文快照入 archive、live 文件截断只留「基线+最近一条+归档指针」;NOW 流水清零。**NOW 长肥 = 腐烂开端。**
+- **换期压缩仪式**:当期 看板/todo/验收清单 `git mv` 进 `pm/archive/<期>/`;status 全文快照入 archive、live 文件截断只留「基线+最近一条+归档指针」;NOW 流水清零;核对证据产物已在 `archive/<期>/evidence/`、无散落临时文件。**NOW 长肥 = 腐烂开端**——bus-check 的「协调层腐烂检测」会在 NOW 长肥 / 旧看板滞留 / status 超长时开工红字报警(仪式没有护栏 = 没有仪式)。
 
 ## 7. 红线(每个会话受约束,写进 Agent.md)
 

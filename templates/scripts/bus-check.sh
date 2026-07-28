@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # bus-check.sh —— 协作总线 · 开工同步护栏(治信息差)。
 # 任意域会话「开工先跑这个」;部署 / 改契约 / 跑 migration 等不可逆动作前**再跑一次**。
-# 只读、不改任何东西;打印 当前期 / 契约 / 最近拍板 / 各域状态 / 在途提案 / 子仓同步 / 线上实况。
+# 只读、不改任何东西;打印 当前期 / 协调层腐烂检测 / 契约 / 最近拍板 / 各域状态 / 在途提案 / 子仓同步 / 线上实况。
 # 规则⑨:「线上什么版本」以本脚本打的实况为准,文档不写。
 #
 # 项目接入点(可选):
@@ -58,6 +58,38 @@ echo "── 当前期 / 协调看板 (pm/NOW.md) ──"
 grep -m1 "^\*\*当前期" pm/NOW.md 2>/dev/null || echo "  (NOW.md 无「当前期」行)"
 grep -m1 "本期轨道" pm/NOW.md 2>/dev/null || true
 grep -m1 "当期看板" pm/NOW.md 2>/dev/null || true
+echo ""
+
+# 2.5) 协调层腐烂检测(仪式没有护栏 = 没有仪式;阈值可用 env 调:BUS_NOW_MAX / BUS_STATUS_MAX)
+echo "── 协调层腐烂检测 ──"
+rot=0
+NOW_MAX="${BUS_NOW_MAX:-40}"; ST_MAX="${BUS_STATUS_MAX:-60}"
+# a) NOW 薄指针长肥(lessons 第 1 条:NOW 长肥 = 腐烂开端)
+if [ -f pm/NOW.md ]; then
+  now_lines=$(wc -l < pm/NOW.md | tr -d ' ')
+  if [ "$now_lines" -gt "$NOW_MAX" ]; then
+    echo "  ⚠️  pm/NOW.md 已 $now_lines 行(>$NOW_MAX)—— 薄指针长肥,跑换期压缩仪式(NOW 底部 checklist)"; rot=1
+  fi
+fi
+# b) 非当期看板滞留 pm/(该 git mv 进 archive/<期>/)
+cur_board=$(grep -m1 "当期看板" pm/NOW.md 2>/dev/null | sed -n 's/.*`\([^`]*看板[^`]*\.md\)`.*/\1/p')
+cur_board=$(basename "${cur_board:-}" 2>/dev/null)
+case "$cur_board" in *"<"*) cur_board="";; esac   # NOW 还是占位符 → 判不了,跳过
+if [ -n "$cur_board" ]; then
+  for b in pm/*看板*.md; do
+    [ -e "$b" ] || continue
+    base="$(basename "$b")"
+    [ "$base" = "$cur_board" ] || { echo "  ⚠️  $base 不是当期看板还留在 pm/ —— 归档进 pm/archive/<期>/"; rot=1; }
+  done
+fi
+# c) status 文件超长(该截断:全文快照进 archive,live 只留基线+最近一条)
+for f in pm/status/*.md; do
+  [ -e "$f" ] || continue
+  base="$(basename "$f")"; [ "$base" = "README.md" ] && continue
+  n=$(wc -l < "$f" | tr -d ' ')
+  [ "$n" -le "$ST_MAX" ] || { echo "  ⚠️  pm/status/$base 已 $n 行(>$ST_MAX)—— 换期压缩仪式该截断了"; rot=1; }
+done
+[ "$rot" = 0 ] && echo "  ✅ NOW 薄、看板归位、status 克制"
 echo ""
 
 # 3) 契约快照版本

@@ -9,7 +9,7 @@
 |---|---|---|---|---|---|
 | **产品**(规格/编排) | `pm/` | `pm/**` | 全仓 | `pm/NOW.md` | 当期看板 + `pm/status/产品.md` |
 | **全栈**(实现,含运维) | 工作区根(同持 <N> 个代码仓) | `<代码仓1>/**` + `<代码仓2>/**`(**按仓分别 stage,不 `git add -A`**) | `pm/*` 当期文件、契约 | 各仓 `AGENTS.md` + `pm/NOW.md` | `pm/status/全栈.md`(带 hash)+ 各仓 `CHANGELOG.md` + `contracts/PROTOCOL.md` |
-| **测试**(E2E·走查) | `<被测仓>/` | `tests/**` · 视觉基线 · 走查报告 | 实现 + spec + 设计稿 + 契约 | `pm/NOW.md` + `tests/README.md` | `pm/status/测试.md` + 核查门证据(E2E 报告/视觉 diff/对比图) |
+| **测试**(E2E·走查) | `<被测仓>/` | `tests/**` · 视觉基线 · 走查报告 | 实现 + spec + 设计稿 + 契约 | `pm/NOW.md` + `tests/README.md` | `pm/status/测试.md` + 核查门证据(E2E 报告/视觉 diff/对比图,**落 `pm/archive/<期>/evidence/`,换期零搬运**) |
 
 > **设计生成 = 外部工具**(非会话):产品域写 brief(必须要求**单 HTML 可渲染入口 + 关键流可点**)→ 人喂设计工具 → 稿落 `design/design_N期/` → 测试域走查 + 提带图 bug。
 > 🔴 **全栈域合并多角色的补偿控制**:动契约必派 reviewer subagent(只读,见 `.claude/agents/reviewer.md`)+ 测试域独立核两端(写者≠审者)。

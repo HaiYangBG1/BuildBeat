@@ -96,6 +96,9 @@ Day to day you say three sentences: "go", "X on the board is yours", "accept X".
 ── current iteration / board (pm/NOW.md) ──
 Iteration 1 (core flows + monthly report) · standard track
 
+── coordination-layer rot check ──
+  ✅ NOW thin, boards archived, status files lean
+
 ── contract (contracts/PROTOCOL.md) ──
 Contract snapshot corresponds to: v0.2.0 (released 2026-06-20)
 
@@ -117,7 +120,7 @@ Contract snapshot corresponds to: v0.2.0 (released 2026-06-20)
 
 - **Single point of truth (rule ⑨)**: live version, human decisions, iteration switch — the three fastest-rotting facts each have exactly one place of record/query; everywhere else holds pointers. A decision lands in `decisions.md` first, then fans out; unfinished write-backs stay visible as debt.
 - **Gate2 real-render approval (rule ⑩)**: design sign-off must happen on a **clickable prototype in a browser** — static mocks and screenshots don't count. Tuition paid for this rule: a redesign shipped and was overturned within 2 days, entirely because approval had been given on static boards.
-- **Iteration-switch compression ritual**: every iteration ends with forced archiving of the board, truncation of status files, and a reset of NOW. Without this ritual, coordination docs turn into an unread scroll within three weeks.
+- **Iteration-switch compression ritual**: every iteration ends with forced archiving of the board, truncation of status files, and a reset of NOW; evidence artifacts (walkthrough shots / E2E reports) are written into `pm/archive/<iteration>/evidence/` the moment they're produced — zero moving at switch time. Without this ritual, coordination docs turn into an unread scroll within three weeks — so bus-check ships a **coordination-layer rot check**: a bloated NOW, a stale board lingering in pm/, or an oversized status file triggers red warnings at kickoff (a ritual without a guardrail is no ritual at all).
 - **Production drift detection**: platform-side env/secrets and images live outside git; one console edit creates a second source of truth. Fingerprint them (🔴 sha256 fingerprints only, never values) and anchor image tags to git tags; bus-check compares against the baseline at every kickoff and prints red warnings — surfacing "config changed but never redeployed" and "live image not found in git" before you touch anything.
 
 ## 6. Repository layout
@@ -219,4 +222,4 @@ solobaton/
 
 ---
 
-*Version history: [CHANGELOG.md](CHANGELOG.md) (currently v1.4). When future projects hit new potholes, feed them back into lessons.md — this skill applies its own rules to itself: lessons are recorded in exactly one place, versions in exactly one place.*
+*Version history: [CHANGELOG.md](CHANGELOG.md). When future projects hit new potholes, feed them back into lessons.md — this skill applies its own rules to itself: lessons are recorded in exactly one place, versions in exactly one place.*
