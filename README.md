@@ -152,6 +152,7 @@ solobaton/
     ├── .claude/agents/reviewer.md   # 只读核查门 subagent(写者≠审者)
     └── scripts/               # bus-check.sh(开工护栏,--strict 机器闸) + drift-check.sh(生产漂移检测)
                                #   + design-preview.sh(真渲染) + pre-commit.sh(红线闸:gitleaks+strict)
+                               #   + verify-status.sh(测试全绿实查,L3 证据兜底)
 ```
 
 ## 7. 适用边界(诚实版)

@@ -50,7 +50,7 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 │       └── evidence/          #   archive/<期>/evidence/,换期零搬运
 ├── SOLOBATON.md               # 版本标记:本项目用的哪版 Solobaton + 升级/回灌说明
 ├── scripts/bus-check.sh       # 开工护栏(见模板)
-├── scripts/verify-status.sh   # 工程层验证能力(项目自写:每行「套件 命令 上次全绿」,bus-check 调用)
+├── scripts/verify-status.sh   # 工程层验证能力(模板含参考实现,改 SUITES 即接入;--run 真跑并记「上次全绿」)
 ├── scripts/drift-check.sh     # 生产漂移检测:平台侧 env 指纹+镜像tag↔git vs 基线(见模板)
 ├── scripts/design-preview.sh  # Gate2 真渲染(见模板)
 └── <代码子仓们>/               # 各自独立 git + AGENTS.md/CLAUDE.md + CHANGELOG.md
@@ -128,7 +128,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 - [ ] 1. 拷贝 templates/ 整树(`cp -R templates/. <新项目根>/`,`/.` 结尾才带上隐藏的 `.claude/`);**全部 <占位符> 按自查+确认结论填好,交付物里不得残留任何 <占位符>**;按有无 UI 删/留相关段落;`SOLOBATON.md` 填上拷入的版本号(对照上游 CHANGELOG 最新版)
 - [ ] 2. meta 仓 git init + 远端;代码子仓各自独立 git;meta 仓 .gitignore 排除子仓目录与一切 *.env(拷 `templates/gitignore.template` 改名 `.gitignore`,替换子仓名)
 - [ ] 3. 域表按问题 B/C 落 CLAUDE.md §1 路由表(cwd / 可写 / 只读边界)
-- [ ] 4. 按自查结果接"线上实况"与漂移基线:实装则 `bash scripts/drift-check.sh --update-baseline` 打首版基线;无平台则留桩;有测试命令则写 `scripts/verify-status.sh`(工程层验证能力,bus-check 会打;没有测试就如实留红字提醒)
+- [ ] 4. 按自查结果接"线上实况"与漂移基线:实装则 `bash scripts/drift-check.sh --update-baseline` 打首版基线;无平台则留桩;有测试命令则改 `scripts/verify-status.sh` 的 SUITES 接入(工程层验证能力,bus-check 会打;没有测试就留占位符,如实红字)
 - [ ] 5. 第一期立项:pm/NOW.md 填当前期与轨道 → 建 <一期>-看板.md → decisions.md 第一行记「Bootstrap 结论」(自查+确认:域表/轨道/平台/UI 取舍——本项目第一次拍板)
 - [ ] 6. 跑 `bash scripts/bus-check.sh` 自检骨架(输出齐全、无报错),把输出贴给用户过目
 - [ ] 7. 装机器闸(**默认,非可选**):meta 仓与各代码子仓逐仓 `cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`(gitleaks 拦凭据 + meta 仓 bus-check --strict 拦腐烂/幽灵 hash);`command -v gitleaks` 查无则提醒用户安装,并记入收尾报告
@@ -172,6 +172,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 | [templates/scripts/pre-commit.sh](templates/scripts/pre-commit.sh) | 红线机器闸五道:gitleaks 拦凭据 / bus-check --strict 拦腐烂·幽灵hash / 多域 status 拦 / 批量 stage 拦 / 契约同步提醒(逐仓拷进 `.git/hooks/pre-commit`) |
 | [templates/scripts/drift-check.sh](templates/scripts/drift-check.sh) | 生产漂移检测(env 指纹基线 + 镜像tag↔git 锚定;🔴只存指纹不存值) |
 | [templates/scripts/design-preview.sh](templates/scripts/design-preview.sh) | Gate2 真渲染静态服务 |
+| [templates/scripts/verify-status.sh](templates/scripts/verify-status.sh) | 工程层验证能力参考实现(SUITES 表 + `--run` 记「上次全绿」标记;L3 证据兜底) |
 | [templates/gitignore.template](templates/gitignore.template) | meta 仓 .gitignore 模板(排除子仓与 *.env;拷入后改名) |
 | [templates/SOLOBATON.md](templates/SOLOBATON.md) | 版本标记 + 升级路径 + 回灌通道(拷入后填版本号) |
 

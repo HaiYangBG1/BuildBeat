@@ -2,6 +2,16 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## v1.9 — 2026-08-01
+
+> 评估(第三版)回灌:消灭「常驻红字」(D2)——红字 = 真有事,是腐烂检测全部价值所在;太吵会瞎,和太松会漏同罪。
+> **拷出项目升级**:`scripts/pre-commit.sh`、`scripts/bus-check.sh` 整文件替换;新增 `scripts/verify-status.sh`;`.gitignore` 加 `.last-green-*`;`pm/NOW.md` 换期 checklist ① 加 `BUS_ALLOW_BULK` 提示。
+
+- **收窄闸⑤(D2 源头一,真实仓回放 59% 提交误响)**:只看契约**提供方**(controller/endpoint/schema/.proto/routes),排除**消费方**(src/api/ 等客户端调用层、前端页面 router)——消费方是跟随契约不是改契约;匹配/排除模式可用 `BUS_CONTRACT_HINT` / `BUS_CONTRACT_SKIP` 按项目调
+- **新增 verify-status.sh 参考实现(D2 源头二,此前是空插座)**:SUITES 表(npm/mvn 样例)+ `--run` 真跑并把「上次全绿时间」记进本地标记文件(`.last-green-*`,不入 git——新机器显示"从未全绿"是诚实的);还是占位符时如实 ⚠️
+- **修 D1 残留**:反引号段同时含链接与 hash 时,改为从段内**抠掉** URL/digest 而非整段丢弃,真 hash 不再陪葬
+- 换期 checklist ① 注明:归档超 40 文件会触发闸④,该单用 `BUS_ALLOW_BULK=1` 提交(评估指出的人机工程缺口)
+
 ## v1.8 — 2026-08-01
 
 > 工业化差距评估(第二版)回灌:修 D1 误报、补齐规则机器化、存量项目入口、版本/回灌通道、证据分级。

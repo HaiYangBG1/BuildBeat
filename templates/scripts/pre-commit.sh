@@ -58,10 +58,15 @@ if [ "${staged_n:-0}" -gt "$MAXN" ] && [ "${BUS_ALLOW_BULK:-0}" != "1" ]; then
   exit 1
 fi
 
-# ── 闸⑤:契约先落盘(规则②,仅提醒)——动了疑似接口边界的文件,契约同步了吗 ──
-if printf '%s\n' "$STAGED" | grep -qiE '(route|router|controller|endpoint|api|schema|\.proto)' \
-   && ! printf '%s\n' "$STAGED" | grep -q 'PROTOCOL\.md'; then
-  echo "⚠️  暂存文件里有疑似接口边界改动 —— 跨边界行为变了的话,先改 contracts/PROTOCOL.md 再动代码(规则②;此为提醒不拦截)"
+# ── 闸⑤:契约先落盘(规则②,仅提醒)——只看**提供方**(Controller/路由/schema 定义) ──
+# 消费方(src/api/ 等客户端调用层、前端页面 router)是「跟随契约」不是「改契约」,不提醒——
+# 宽匹配在真实仓回放中 59% 提交误响,常驻红字=没有红字(评估 D2)。按项目调下面两个 env;
+# 更精的收法(自行升级):只匹配 diff 内容里新增/删除的路由定义与 DTO 字段,或只在重轨提醒。
+CONTRACT_HINT="${BUS_CONTRACT_HINT:-controller|endpoint|schema|\.proto|routes?/|router\.(go|py|rb|php|java|kt)}"
+CONTRACT_SKIP="${BUS_CONTRACT_SKIP:-(^|/)api(s)?/|(^|/)src/router/|/client(s)?/|request}"
+hint_hits=$(printf '%s\n' "$STAGED" | grep -iE "$CONTRACT_HINT" | grep -viE "$CONTRACT_SKIP" || true)
+if [ -n "$hint_hits" ] && ! printf '%s\n' "$STAGED" | grep -q 'PROTOCOL\.md'; then
+  echo "⚠️  暂存文件疑似动了接口**提供方**($(printf '%s\n' "$hint_hits" | head -1) 等)—— 跨边界行为变了的话,先改 contracts/PROTOCOL.md 再动代码(规则②;此为提醒不拦截)"
 fi
 
 exit 0

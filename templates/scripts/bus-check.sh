@@ -13,8 +13,8 @@
 #      离线/弱网:BUS_CHECK_NO_FETCH=1 跳过 meta 仓与子仓的 git fetch(只看本地已知状态)
 #   3) 生产漂移检测:提供 scripts/drift-check.sh + scripts/live-config.sh(见模板),
 #      本脚本存在即调用;`--update-baseline` 会透传给它(部署/改 env 后刷基线)。
-#   4) 工程层验证能力:提供 scripts/verify-status.sh(每行输出「套件名 测试命令 上次全绿时间」),
-#      本脚本存在即调用、不存在则红字提示 —— 证据分级 L3(自动化测试)靠它兜底。
+#   4) 工程层验证能力:改 scripts/verify-status.sh(模板含参考实现)的 SUITES 接入测试命令,
+#      本脚本存在即调用 —— 证据分级 L3(自动化测试)靠它兜底;`--run` 真跑并记「上次全绿」。
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 1
@@ -187,12 +187,13 @@ echo ""
 echo "── 幽灵 hash 核验 (pm/status/) ──"
 if [ -d pm/status ]; then
   # 只认**反引号内**的 token(status 模板约定 hash 写成 `hash`,把约定变成解析规则,治误报):
-  #   排除含 :// 或 sha256: 的反引号串(URL/镜像digest);token 须同含字母与数字(干掉 defaced 这类纯字母英文词)。
+  #   先从反引号串里**抠掉** URL 与 sha256: digest(不整段丢弃——同段混有链接和真 hash 时保住 hash);
+  #   token 须同含字母与数字(干掉 defaced 这类纯字母英文词)。
   #   代价:纯字母/纯数字的 7 位真 hash(各约 0.1%/3.7%)会被静默跳过——良性漏检,换不误拦。
   HASHES=$(for f in pm/status/*.md; do
       [ -e "$f" ] || continue; [ "$(basename "$f")" = "README.md" ] && continue
       grep -hoE '`[^`]*`' "$f" 2>/dev/null
-    done | grep -v '://' | grep -v 'sha256:' \
+    done | sed -E 's#[a-zA-Z][a-zA-Z0-9+.-]*://[^` ]*##g; s#sha256:[0-9a-fA-F]*##g' \
         | grep -hoE '\b[0-9a-f]{7,40}\b' | grep '[a-f]' | grep '[0-9]' | sort -u)
   ghost=0; total=0
   for h in $HASHES; do

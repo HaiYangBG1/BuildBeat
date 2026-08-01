@@ -153,6 +153,7 @@ solobaton/
     ├── SOLOBATON.md           # version marker: which Solobaton this project uses + upgrade/feedback notes
     ├── .claude/agents/reviewer.md   # read-only review-gate subagent (writer ≠ reviewer)
     └── scripts/               # bus-check.sh (kickoff guard; --strict machine gate) + drift-check.sh (production drift)
+                               #   + verify-status.sh (live test-green check, backs L3 evidence)
                                #   + design-preview.sh (real render) + pre-commit.sh (red-line gate: gitleaks + strict)
 ```
 
