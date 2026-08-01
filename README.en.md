@@ -42,6 +42,8 @@ The bus's answer: **information moves through files, not through your mouth; "do
 
 It **inspects your code first** (repo count / deploy platform / UI or not / contract boundaries — all self-checked, never asked), then asks you only three or four non-technical questions (a few days or long-term? / anyone else working with you? / default "Product / Fullstack / Testing" roles or custom? / who has final say on UI?), shows one confirmation screen, then generates a scaffold with **every placeholder already filled**, self-checks with bus-check, and hands it over. For projects outside the applicability boundary (§7), it talks you out of using the bus — no ceremony for ceremony's sake.
 
+> Project **already exists with a pile of legacy code**? Skip bootstrap and run the **takeover ritual** (SKILL.md §8.5): survey first, draw the old/new boundary (new turf gets the full bus, old turf is maintenance-only), and iteration 0 is mandatory minimal-test-suite building — without tests, every acceptance gate downstream just spins.
+
 **Manual path** (works without installing the skill):
 
 ```bash
@@ -148,6 +150,7 @@ solobaton/
     ├── pm/                    # Product-domain coordination: NOW pointer / board / decision log / per-domain status / change proposals
     ├── contracts/PROTOCOL.md  # the single entry point for cross-boundary contracts
     ├── gitignore.template     # meta-repo .gitignore template (copy in and rename; excludes sub-repos and *.env)
+    ├── SOLOBATON.md           # version marker: which Solobaton this project uses + upgrade/feedback notes
     ├── .claude/agents/reviewer.md   # read-only review-gate subagent (writer ≠ reviewer)
     └── scripts/               # bus-check.sh (kickoff guard; --strict machine gate) + drift-check.sh (production drift)
                                #   + design-preview.sh (real render) + pre-commit.sh (red-line gate: gitleaks + strict)
@@ -229,6 +232,9 @@ solobaton/
 | CHANGELOG | Version log; "Keep a Changelog" is the common convention (reverse order, per-version sections) |
 | hook / Stop hook | Scripts auto-triggered by events; a Stop hook runs when a session finishes a turn; a pre-commit hook runs before every commit and can reject it |
 | gitleaks | Open-source credential scanner: sweeps changes before commit and blocks anything that looks like a key or password |
+| Evidence levels (L0–L4) | Trust tiers for evidence: claim < file:line < compiles < automated tests pass < verified live; standard track requires ≥ L3 |
+| Takeover ritual | The entry point for putting the bus on a **legacy project** (vs. from-zero bootstrap): survey, draw the old/new boundary, iteration 0 builds tests first |
+| SOLOBATON.md | Version marker at the project root: which Solobaton version it uses; upgrade against upstream CHANGELOG, feed new potholes back to upstream lessons |
 
 ---
 

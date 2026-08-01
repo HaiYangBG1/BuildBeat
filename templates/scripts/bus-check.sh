@@ -13,6 +13,8 @@
 #      离线/弱网:BUS_CHECK_NO_FETCH=1 跳过 meta 仓与子仓的 git fetch(只看本地已知状态)
 #   3) 生产漂移检测:提供 scripts/drift-check.sh + scripts/live-config.sh(见模板),
 #      本脚本存在即调用;`--update-baseline` 会透传给它(部署/改 env 后刷基线)。
+#   4) 工程层验证能力:提供 scripts/verify-status.sh(每行输出「套件名 测试命令 上次全绿时间」),
+#      本脚本存在即调用、不存在则红字提示 —— 证据分级 L3(自动化测试)靠它兜底。
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 1
@@ -67,6 +69,29 @@ for r in "${SUBREPOS[@]:-}"; do
 done
 echo ""
 
+# 1.7) 机器闸自检(一道闸的强度不超过守闸规则的强度 —— 用在跑的闸守新闸;.git/hooks 不进版本控制,克隆后闸不存在)
+echo "── 机器闸自检 (pre-commit) ──"
+gate_missing=""; gate_checked=0
+for r in . "${SUBREPOS[@]:-}"; do
+  [ -n "$r" ] || continue; [ -e "$r/.git" ] || continue
+  gate_checked=1
+  installed=0
+  [ -f "$r/.git/hooks/pre-commit" ] && installed=1
+  hpath=$(git -C "$r" config core.hooksPath 2>/dev/null || true)
+  if [ -n "$hpath" ]; then
+    { [ -f "$hpath/pre-commit" ] || [ -f "$r/$hpath/pre-commit" ]; } && installed=1
+  fi
+  [ "$installed" = 1 ] || gate_missing="$gate_missing ${r#./}"
+done
+if [ "$gate_checked" = 0 ]; then
+  echo "  (没有可检查的 git 仓 —— 无法判定)"
+elif [ -n "$gate_missing" ]; then
+  echo "  ⚠️  未装 pre-commit 闸:${gate_missing# } —— 每仓装一次(装法见 scripts/pre-commit.sh 头部注释)"
+else
+  echo "  ✅ meta 仓与全部子仓均已装 pre-commit 闸"
+fi
+echo ""
+
 # 2) 当前期 + 看板指针 (pm/NOW.md)
 echo "── 当前期 / 协调看板 (pm/NOW.md) ──"
 grep -m1 "^\*\*当前期" pm/NOW.md 2>/dev/null || echo "  (NOW.md 无「当前期」行)"
@@ -116,6 +141,15 @@ else
 fi
 echo ""
 
+# 2.7) 工程层验证能力(证据分级 L3「自动化测试」的前提是项目有能跑的测试;测试跑不动是比 NOW 长肥更重的腐烂)
+echo "── 工程层验证能力 ──"
+if [ -f scripts/verify-status.sh ]; then
+  bash scripts/verify-status.sh 2>/dev/null | sed 's/^/  /' || echo "  (verify-status.sh 执行失败)"
+else
+  echo "  ⚠️  未配置 scripts/verify-status.sh —— 项目验证能力未知,L3 级证据无从谈起(接入:每行输出「套件名 测试命令 上次全绿时间」)"
+fi
+echo ""
+
 # 3) 契约快照版本
 echo "── 契约 (contracts/PROTOCOL.md) ──"
 grep -m1 -E "契约快照对应版本" contracts/PROTOCOL.md 2>/dev/null || echo "  (无)"
@@ -152,10 +186,14 @@ echo ""
 # 5.5) 幽灵 hash 核验(lessons 第 11 条:status 声明的 commit 必须真实存在;「写了状态」≠「已提交」)
 echo "── 幽灵 hash 核验 (pm/status/) ──"
 if [ -d pm/status ]; then
+  # 只认**反引号内**的 token(status 模板约定 hash 写成 `hash`,把约定变成解析规则,治误报):
+  #   排除含 :// 或 sha256: 的反引号串(URL/镜像digest);token 须同含字母与数字(干掉 defaced 这类纯字母英文词)。
+  #   代价:纯字母/纯数字的 7 位真 hash(各约 0.1%/3.7%)会被静默跳过——良性漏检,换不误拦。
   HASHES=$(for f in pm/status/*.md; do
       [ -e "$f" ] || continue; [ "$(basename "$f")" = "README.md" ] && continue
-      grep -hoE '\b[0-9a-f]{7,40}\b' "$f" 2>/dev/null
-    done | grep '[a-f]' | sort -u)
+      grep -hoE '`[^`]*`' "$f" 2>/dev/null
+    done | grep -v '://' | grep -v 'sha256:' \
+        | grep -hoE '\b[0-9a-f]{7,40}\b' | grep '[a-f]' | grep '[0-9]' | sort -u)
   ghost=0; total=0
   for h in $HASHES; do
     total=$((total+1)); found=0

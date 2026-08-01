@@ -1,6 +1,6 @@
 ---
 name: solobaton
-description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 指挥多个并行 AI 会话交付中大型项目的方法论 + 可复制脚手架(会话路由/文件总线/四 Gate/三轨/核查门/决策台账/换期压缩仪式/开工护栏脚本/机器闸 pre-commit:gitleaks+bus-check --strict/引导式 Bootstrap:自查代码+少量提问)。当用户要为新的中大型项目搭多会话协作架构、提到"Solobaton/协作总线/Builder/人在回路/多 session 协作/AI 团队流程/项目骨架 bootstrap",或抱怨"多个 AI 会话信息不同步、验收漏验、文档腐烂、返工螺旋"时使用。
+description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 指挥多个并行 AI 会话交付中大型项目的方法论 + 可复制脚手架(会话路由/文件总线/四 Gate/三轨/核查门/决策台账/换期压缩仪式/开工护栏脚本/机器闸 pre-commit:gitleaks+bus-check --strict/引导式 Bootstrap:自查代码+少量提问/接管存量项目仪式/证据分级 L0-L4)。当用户要为新的中大型项目搭多会话协作架构、**要给已有的存量老项目套上协作流程(接管)**、提到"Solobaton/协作总线/Builder/人在回路/多 session 协作/AI 团队流程/项目骨架 bootstrap",或抱怨"多个 AI 会话信息不同步、验收漏验、文档腐烂、返工螺旋"时使用。
 ---
 
 # Solobaton —— 一个 Builder + N 个 AI 会话交付中大型项目(Builder 协作总线)
@@ -48,7 +48,9 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 │   ├── changes/               # 重轨变更 delta 提案 → 拍板 → 归档
 │   └── archive/<期>/           # 归档落点;当期证据产物(走查图/E2E报告)生成时即写
 │       └── evidence/          #   archive/<期>/evidence/,换期零搬运
+├── SOLOBATON.md               # 版本标记:本项目用的哪版 Solobaton + 升级/回灌说明
 ├── scripts/bus-check.sh       # 开工护栏(见模板)
+├── scripts/verify-status.sh   # 工程层验证能力(项目自写:每行「套件 命令 上次全绿」,bus-check 调用)
 ├── scripts/drift-check.sh     # 生产漂移检测:平台侧 env 指纹+镜像tag↔git vs 基线(见模板)
 ├── scripts/design-preview.sh  # Gate2 真渲染(见模板)
 └── <代码子仓们>/               # 各自独立 git + AGENTS.md/CLAUDE.md + CHANGELOG.md
@@ -61,11 +63,13 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 3. **交接靠 commit + 落盘**:做完 → 状态行带 hash,下游读 repo 即知进度,不靠人转述。
 4. **开工护栏**:任意会话开工先跑 `bash scripts/bus-check.sh` + `git pull`;**部署/改契约/migration 等不可逆动作前再跑一次**(治"会话中途决策已变还按旧信息干");pre-commit 挂 `bus-check --strict` 机器闸(确凿检出 协调层腐烂/幽灵 hash/生产漂移 即非零退出)。
 5. **三轨制**:快轨(小改:直接改+核查门)/ 标准轨(单功能:需求→设计→实现→验收)/ 重轨(契约变更/大改:+变更提案+多 agent 评审)。NOW 标本期轨道,别用牛刀杀鸡。
-6. **核查门**:验收/合并前派只读 reviewer 并行核「实现↔设计↔契约↔需求」;完成 = hash + 可核验证据。
+6. **核查门**:验收/合并前派只读 reviewer 并行核「实现↔设计↔契约↔需求」;完成 = hash + 可核验证据。**证据分五级**:L0 声称(不算证据)/ L1 `文件:行`(只证代码存在)/ L2 编译·类型过(结构对)/ L3 自动化测试过(行为对)/ L4 线上实测(真的能用)。**标准轨最低 L3,重轨与上线必须 L4**;L1 只可作 L3/L4 的补充定位,不单独当完成证据。项目测试跑不动 → 先补测试(bus-check「工程层验证能力」会红字提醒)。
 7. **变更提案 + 状态分写**:跨域变更走 `pm/changes/` delta 提案;各域只写 `pm/status/<域>.md`,别人只读——物理消灭"同文件互踩"。
 8. **视觉问题带图**:提 UI bug / 判设计符合性必附「实现截图 ⟷ 设计稿截图」并排对比,纯文字描述不算证据。
 9. **单点事实**:① 线上版本只信 bus-check 实查(任何文档不写"当前线上 vX",契约快照版本仅 PROTOCOL 头部一处)② 拍板第一动作 = `decisions.md` 追加一行+回写落点(欠账可见)③ 换期必跑压缩仪式。
 10. **Gate2 真渲染拍板**:设计拍板对象必须是**真渲染可点原型**(`bash scripts/design-preview.sh <期>`),静态稿/截图不充当拍板对象;设计 brief 必须要求"单 HTML 可渲染入口 + 关键流可点"。**终签同样要含真渲染走查**(spec 数值对 ≠ 渲染对)。
+
+> 十条之外的一条**元原则:能实查的不问人**——查代码 / 配置 / 部署平台能得到的事实,不拿去问用户、不信文档、不信上游转述(规则⑨与规则②的推广;§8 Bootstrap 的提问三原则同源)。
 
 ## 5. 节奏:四 Gate + 三轨
 
@@ -79,7 +83,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 
 - **开工仪式**:bus-check(打印 当前期/契约/最近拍板/各域状态/幽灵 hash 核验/子仓同步/线上实况/生产漂移)→ git pull → 确认要动的不 stale。护栏有机器闸形态:`bus-check --strict` 确凿检出即非零退出,默认由 `scripts/pre-commit.sh` 挂在每次 commit 前(红线3 禁 `--no-verify`,绕不过)——**每条规则问一句「违反了会怎样」,答案是「靠自觉」的就该机器化**。
 - **拍板仪式**:用户每拍一锤 → 产品域**先**在 `decisions.md` 落一行(决策+回写落点)→ 再分发回写各 SSOT。
-- **换期压缩仪式**:当期 看板/需求/todo/验收清单 `git mv` 进 `pm/archive/<期>/`;status 全文快照入 archive、live 文件截断只留「基线+最近一条+归档指针」;NOW 流水清零;核对证据产物已在 `archive/<期>/evidence/`、无散落临时文件。**NOW 长肥 = 腐烂开端**——bus-check 的「协调层腐烂检测」会在 NOW 长肥 / 旧看板滞留 / status 超长时开工红字报警(仪式没有护栏 = 没有仪式)。
+- **换期压缩仪式**:当期 看板/需求/todo/验收清单 `git mv` 进 `pm/archive/<期>/`;status 全文快照入 archive、live 文件截断只留「基线+最近一条+归档指针」;NOW 流水清零;核对证据产物已在 `archive/<期>/evidence/`、无散落临时文件。**NOW 长肥 = 腐烂开端**——bus-check 的「协调层腐烂检测」会在 NOW 长肥 / 旧看板滞留 / status 超长时开工红字报警(仪式没有护栏 = 没有仪式)。换期同时做**回灌一问**:本期踩到 Solobaton 没覆盖的新坑了吗?有 → 回上游 lessons.md 登记(见项目根 `SOLOBATON.md`)——没有回灌,N 个项目的坑不会变成组织资产,只会各踩各的。
 
 ## 7. 红线(每个会话受约束,写进 Agent.md)
 
@@ -121,10 +125,10 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 ### 8.2 生成 checklist(确认过后由 agent 执行)
 
 ```
-- [ ] 1. 拷贝 templates/ 整树(`cp -R templates/. <新项目根>/`,`/.` 结尾才带上隐藏的 `.claude/`);**全部 <占位符> 按自查+确认结论填好,交付物里不得残留任何 <占位符>**;按有无 UI 删/留相关段落
+- [ ] 1. 拷贝 templates/ 整树(`cp -R templates/. <新项目根>/`,`/.` 结尾才带上隐藏的 `.claude/`);**全部 <占位符> 按自查+确认结论填好,交付物里不得残留任何 <占位符>**;按有无 UI 删/留相关段落;`SOLOBATON.md` 填上拷入的版本号(对照上游 CHANGELOG 最新版)
 - [ ] 2. meta 仓 git init + 远端;代码子仓各自独立 git;meta 仓 .gitignore 排除子仓目录与一切 *.env(拷 `templates/gitignore.template` 改名 `.gitignore`,替换子仓名)
 - [ ] 3. 域表按问题 B/C 落 CLAUDE.md §1 路由表(cwd / 可写 / 只读边界)
-- [ ] 4. 按自查结果接"线上实况"与漂移基线:实装则 `bash scripts/drift-check.sh --update-baseline` 打首版基线;无平台则留桩
+- [ ] 4. 按自查结果接"线上实况"与漂移基线:实装则 `bash scripts/drift-check.sh --update-baseline` 打首版基线;无平台则留桩;有测试命令则写 `scripts/verify-status.sh`(工程层验证能力,bus-check 会打;没有测试就如实留红字提醒)
 - [ ] 5. 第一期立项:pm/NOW.md 填当前期与轨道 → 建 <一期>-看板.md → decisions.md 第一行记「Bootstrap 结论」(自查+确认:域表/轨道/平台/UI 取舍——本项目第一次拍板)
 - [ ] 6. 跑 `bash scripts/bus-check.sh` 自检骨架(输出齐全、无报错),把输出贴给用户过目
 - [ ] 7. 装机器闸(**默认,非可选**):meta 仓与各代码子仓逐仓 `cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`(gitleaks 拦凭据 + meta 仓 bus-check --strict 拦腐烂/幽灵 hash);`command -v gitleaks` 查无则提醒用户安装,并记入收尾报告
@@ -133,6 +137,22 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 ```
 
 > 各文件「填好之后长什么样」,参照仓库 [example/](example/)(虚构「简账」项目跑完一期的快照)。
+
+## 8.5 接管存量项目(10→N 入口:先摸底、划边界、补验证)
+
+> §8 假设从零起步;公司里大多数项目是**存量**的,两类项目的成本结构相反:0→1 的瓶颈是需求不确定,10→N 的瓶颈是**理解成本 ≫ 编写成本**、改坏的损失 ≫ 改对的收益。收到「给现有项目上 Solobaton」类请求走本节,别拿 §8 硬套;提问三原则(§8)同样适用。
+
+```
+- [ ] 1. 摸底(全自查,不问人):规模(文件/行数)、模块依赖、测试现状(几个测试/能不能跑/跑多久)、
+        危险区(被广泛依赖、一改炸全站的模块)、分支状态(落后多少/几个长命分支)→ 摸底报告一屏给用户
+- [ ] 2. 划绞杀者边界(用户拍板):「新地盘」(新功能/新模块)走全套总线;「老地盘」只维护、改动一律重轨。
+        边界写进 CLAUDE.md §1 与 PROTOCOL——同一项目里两种速度,不是折中成一种。
+        只问两个人话问题:「这项目还要长期投入吗?」「哪块最怕改坏?」(危险区,人比代码清楚)
+- [ ] 3. 第 0 期 = 补最小验证套件(强制,不做业务需求):核心链路 E2E 起步 + 接 scripts/verify-status.sh。
+        没有这一步,证据分级给不出 L3,后面所有 Gate 都在空转
+- [ ] 4. 产出分层 CLAUDE.md:根一份(路由 + 新旧边界)+ 各业务模块一份(模块地图,给 AI 会话降理解成本)
+- [ ] 5. 之后按 §8.2 步骤 2-9 走(骨架/机器闸/第一期立项);一期起步的优先级:补测试 > 机械重构 > 新功能
+```
 
 ## 9. 模板索引(templates/,直接拷贝后改占位符)
 
@@ -149,10 +169,11 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 | [templates/contracts/PROTOCOL.md](templates/contracts/PROTOCOL.md) | 契约唯一入口骨架 |
 | [templates/.claude/agents/reviewer.md](templates/.claude/agents/reviewer.md) | 只读核查门 subagent |
 | [templates/scripts/bus-check.sh](templates/scripts/bus-check.sh) | 开工护栏(含 live-status 钩子、子仓同步、最近拍板、幽灵 hash 核验、漂移检测集成;`--strict` 机器闸模式) |
-| [templates/scripts/pre-commit.sh](templates/scripts/pre-commit.sh) | 红线机器闸:gitleaks 拦凭据 + bus-check --strict 拦腐烂/幽灵 hash(逐仓拷进 `.git/hooks/pre-commit`) |
+| [templates/scripts/pre-commit.sh](templates/scripts/pre-commit.sh) | 红线机器闸五道:gitleaks 拦凭据 / bus-check --strict 拦腐烂·幽灵hash / 多域 status 拦 / 批量 stage 拦 / 契约同步提醒(逐仓拷进 `.git/hooks/pre-commit`) |
 | [templates/scripts/drift-check.sh](templates/scripts/drift-check.sh) | 生产漂移检测(env 指纹基线 + 镜像tag↔git 锚定;🔴只存指纹不存值) |
 | [templates/scripts/design-preview.sh](templates/scripts/design-preview.sh) | Gate2 真渲染静态服务 |
 | [templates/gitignore.template](templates/gitignore.template) | meta 仓 .gitignore 模板(排除子仓与 *.env;拷入后改名) |
+| [templates/SOLOBATON.md](templates/SOLOBATON.md) | 版本标记 + 升级路径 + 回灌通道(拷入后填版本号) |
 
 ## 10. 反模式与实战教训
 

@@ -40,6 +40,8 @@
 
 它会**先自己看代码**摸清项目(几个仓 / 部署平台 / 有无 UI / 契约边界都自查,不拿这些烦你),只问你三四个不需要技术背景的问题(做几天还是长期做 / 还有谁一起干 / 分工用默认的「产品/全栈/测试」还是自己定 / 界面谁说了算),一屏确认后生成一套**占位符已填好**的骨架,跑 bus-check 自检后交付;不符合适用边界(§7)的项目会被直接劝退,不硬上总线。
 
+> 项目**已经存在、有一堆存量代码**?不走 Bootstrap,走**接管仪式**(SKILL.md §8.5):先摸底、划新旧边界(新地盘走全套总线,老地盘只维护)、第 0 期强制补最小测试套件——没有测试,后面所有验收关卡都在空转。
+
 **手动路径**(不装技能也能用):
 
 ```bash
@@ -146,6 +148,7 @@ solobaton/
     ├── pm/                    # 产品域协调层:NOW 薄指针 / 看板 / 拍板台账 / 状态分写 / 变更提案
     ├── contracts/PROTOCOL.md  # 跨边界契约唯一入口
     ├── gitignore.template     # meta 仓 .gitignore 模板(拷入改名;排除子仓与 *.env)
+    ├── SOLOBATON.md           # 版本标记:项目用的哪版 Solobaton + 升级/回灌说明
     ├── .claude/agents/reviewer.md   # 只读核查门 subagent(写者≠审者)
     └── scripts/               # bus-check.sh(开工护栏,--strict 机器闸) + drift-check.sh(生产漂移检测)
                                #   + design-preview.sh(真渲染) + pre-commit.sh(红线闸:gitleaks+strict)
@@ -227,6 +230,9 @@ solobaton/
 | CHANGELOG | 变更日志;Keep a Changelog 是通行的书写规范(倒序、按版本分节) |
 | hook / Stop hook | 钩子:特定事件自动触发的脚本;Stop hook = 会话每轮收尾时自动跑的那种;pre-commit hook = 每次提交前自动跑、能拦下提交的那种 |
 | gitleaks | 开源凭据扫描器:提交前扫一遍改动,发现长得像密钥/密码的内容就报警拦下 |
+| 证据分级(L0–L4) | 证据的可信档位:声称 < 文件:行 < 编译过 < 自动化测试过 < 线上实测;标准轨最低 L3(测试过) |
+| 接管仪式 | 给**存量老项目**上总线的入口(区别于从零的 Bootstrap):先摸底、划新旧边界、第 0 期先补测试 |
+| SOLOBATON.md | 项目根的版本标记:记着用的哪版 Solobaton;升级对照上游 CHANGELOG,踩到新坑回灌上游 lessons |
 
 ---
 

@@ -2,6 +2,21 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## v1.8 — 2026-08-01
+
+> 工业化差距评估(第二版)回灌:修 D1 误报、补齐规则机器化、存量项目入口、版本/回灌通道、证据分级。
+> **拷出项目升级**:`scripts/bus-check.sh`、`scripts/pre-commit.sh` 整文件替换;`CLAUDE.md` 规则⑥/⑩ 补丁;新增根 `SOLOBATON.md`;`pm/NOW.md` 换期 checklist 第 4 条;`pm/status/README.md` 反引号约定。
+
+- **修 D1 幽灵 hash 误报**(评估指出,实测确认):提取只认**反引号内** token(status 约定即解析规则)+ 排除 URL/digest 串 + 须同含字母与数字——`defaced`、URL 片段不再误拦提交;代价:纯字母/纯数字 7 位真 hash 良性漏检(约 0.1% / 3.7%)
+- bus-check 新增**机器闸自检**:meta 仓与各子仓查 `.git/hooks/pre-commit`(或 core.hooksPath),未装红字——用在跑的闸守新闸
+- bus-check 新增**工程层验证能力**段:接 `scripts/verify-status.sh`(每行「套件 命令 上次全绿」),未配置红字提醒「L3 证据无从谈起」
+- pre-commit 补三道闸:**多域 status 同 commit 即拦**(规则⑦;换期仪式连同 archive/ 提交或 `BUS_RITUAL=1` 放行)、**暂存 >40 文件即拦**(红线2,像 add -A;`BUS_ALLOW_BULK=1` 放行)、**疑似接口文件未动 PROTOCOL 只提醒不拦**(规则②,契约在 meta 仓、代码在子仓,跨仓无法原子核验);修中文文件名被 git quotepath 转义导致规则匹配不上的 bug
+- **证据分五级 L0–L4** 写进规则⑥(标准轨最低 L3=自动化测试过,重轨/上线必须 L4=线上实测;L1 `文件:行` 只作定位不单独作数)
+- 新增 **§8.5 接管存量项目**(10→N 入口):摸底(全自查)→ 划绞杀者边界(新地盘全套总线 / 老地盘只维护走重轨)→ **第 0 期强制补最小验证套件** → 分层 CLAUDE.md
+- 新增 **templates/SOLOBATON.md 版本标记**:项目根记录所用版本;升级对照 CHANGELOG 各版的「拷出项目升级」行;回灌通道挂进换期仪式(「回灌一问」)
+- 元原则「**能实查的不问人**」入 §4 正文与模板 CLAUDE.md(规则⑨/②的推广,与 Bootstrap 提问三原则同源)
+- README 双语同步:接管仪式入口、文件树、白话表新增「证据分级 / 接管仪式 / SOLOBATON.md」
+
 ## v1.7 — 2026-07-31
 
 > 主题:规则从「靠自觉」到「有机器闸」(外部工业化差距评估回灌第一步:每条规则问一句「违反了会怎样」,答案是「靠自觉」的就机器化)。
