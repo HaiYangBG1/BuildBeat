@@ -46,6 +46,8 @@
 # 拷贝脚手架(`/.` 结尾才带上隐藏的 .claude/),然后逐文件替换 <占位符>
 cp -R "solobaton/templates/." <新项目根>/
 bash scripts/bus-check.sh
+# 装机器闸(meta 仓与各代码子仓,每仓一次):gitleaks 拦凭据 + bus-check --strict 拦腐烂/幽灵 hash
+cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 ```
 
 ### 举个例子
@@ -102,9 +104,12 @@ flowchart LR
 **契约快照对应版本:`v0.2.0`**(2026-06-20 上线)
 
 ── 最近拍板 (pm/decisions.md, 最新 3 条) ──
-  | 2026-06-20 | 一期验收通过,批准上线(⛔Gate4);报表导出 CSV 挪二期 | …
-  | 2026-06-19 | ⛔Gate3 批准合并:月度报表(走查 P1「空月除零」已修复复验)…
-  | 2026-06-15 | ⛔Gate2 真渲染过:报表用柱状图不用折线;移动端两列改单列 | …
+  | 2026-06-20 | 你 | 一期验收通过,批准上线(⛔Gate4);报表导出 CSV 挪二期 | …
+  | 2026-06-19 | 你 | ⛔Gate3 批准合并:月度报表(走查 P1「空月除零」已修复复验)…
+  | 2026-06-15 | 你 | ⛔Gate2 真渲染过:报表用柱状图不用折线;移动端两列改单列 | …
+
+── 幽灵 hash 核验 (pm/status/) ──
+  ✅ 7 个 hash 全部可解析
 
 ── 线上实况 ──
   jz-api   v0.2.0
@@ -121,7 +126,7 @@ flowchart LR
 
 - **单点事实(规则⑨)**:线上版本、用户拍板、换期——三类最容易腐烂的事实,各自只有一个登记/查询处,其它地方一律放指针。拍板先落 `decisions.md` 一行再回写,回写欠账全程可见。
 - **Gate2 真渲染拍板(规则⑩)**:设计拍板对象必须是**浏览器里能点的真原型**,静态稿和截图不算数。这条规则的学费:一次改版上线 2 天就被推翻重做,根因全是"对着静态稿拍板,见到真东西才表真态"。
-- **换期压缩仪式**:每期收尾强制归档看板、截断状态文件、清零 NOW 流水;证据产物(走查图/E2E 报告)生成时就写进 `pm/archive/<期>/evidence/`,换期零搬运。没有这个仪式,协调文档三周内必然长成没人读的流水账——所以 bus-check 自带**协调层腐烂检测**:NOW 长肥 / 旧看板滞留 / status 超长,开工就红字报警(仪式没有护栏 = 没有仪式)。
+- **换期压缩仪式**:每期收尾强制归档看板、截断状态文件、清零 NOW 流水;证据产物(走查图/E2E 报告)生成时就写进 `pm/archive/<期>/evidence/`,换期零搬运。没有这个仪式,协调文档三周内必然长成没人读的流水账——所以 bus-check 自带**协调层腐烂检测**:NOW 长肥 / 旧看板滞留 / status 超长,开工就红字报警(仪式没有护栏 = 没有仪式)。红字还能变闸:bus-check 顺带核验 status 里的每个 commit hash 真实存在(**幽灵 hash** = 臆造的"完成"),`--strict` 模式下腐烂/幽灵 hash/漂移任一确凿检出即非零退出,默认由 `scripts/pre-commit.sh` 挂在每次 commit 前——gitleaks 拦凭据也在这道闸里,规则不靠自觉靠机器。
 - **生产漂移检测**:部署平台的 env/secret 与镜像不在 git 里,控制台一改就是第二事实源。对它做指纹基线(🔴只存 sha256 指纹不存值)+ 镜像 tag↔git tag 锚定,bus-check 开工自动比对红字报警——把「配置改了没部署」「线上镜像 git 里找不到」暴露在动手之前。
 
 ## 6. 文件构成
@@ -142,8 +147,8 @@ solobaton/
     ├── contracts/PROTOCOL.md  # 跨边界契约唯一入口
     ├── gitignore.template     # meta 仓 .gitignore 模板(拷入改名;排除子仓与 *.env)
     ├── .claude/agents/reviewer.md   # 只读核查门 subagent(写者≠审者)
-    └── scripts/               # bus-check.sh(开工护栏) + drift-check.sh(生产漂移检测)
-                               #   + design-preview.sh(真渲染)
+    └── scripts/               # bus-check.sh(开工护栏,--strict 机器闸) + drift-check.sh(生产漂移检测)
+                               #   + design-preview.sh(真渲染) + pre-commit.sh(红线闸:gitleaks+strict)
 ```
 
 ## 7. 适用边界(诚实版)
@@ -159,7 +164,7 @@ solobaton/
 | ① | 唯一看板指针 | 入口永远是 NOW.md,换期只改它一处,看板名不写死进别处 |
 | ② | 契约落盘不喊话 | 先改 PROTOCOL.md 再动代码;对方的协议声明独立核查再信 |
 | ③ | 交接靠 commit | 状态行带 hash,下游读 repo 即知进度 |
-| ④ | 开工护栏 | 开工跑 bus-check;**不可逆动作前再跑一次** |
+| ④ | 开工护栏 | 开工跑 bus-check;**不可逆动作前再跑一次**;`--strict` 挂 pre-commit 当闸 |
 | ⑤ | 三轨制 | 快轨/标准轨/重轨,别用牛刀杀鸡 |
 | ⑥ | 核查门 | 验收前 reviewer 核四方一致;完成 = hash + 证据 |
 | ⑦ | 提案+状态分写 | 跨域变更走 delta 提案;各域只写自己的状态文件 |
@@ -187,6 +192,7 @@ solobaton/
 | 期 / 换期 | 期 ≈ 一轮迭代(sprint);换期 = 收尾这轮、开下一轮,强制伴随归档压缩 |
 | 压缩仪式 | 换期时归档当期文档、截短状态文件的固定动作——防协调文档长成没人读的流水账 |
 | 开工护栏 | 干活前必跑的检查脚本(bus-check.sh):一屏打出进度 / 契约 / 最近决策 / 线上实况 |
+| 机器闸(--strict) | 违反了会被真的拦下的那种规则:bus-check --strict 检出问题就非零退出,挂进 pre-commit 后,有问题的 commit 直接被拒 |
 
 ### 文件与角色
 
@@ -219,7 +225,8 @@ solobaton/
 | BFF | Backend for Frontend:专为前端聚合数据的中间层服务 |
 | cwd | 会话的工作目录——决定这个会话"站在哪里"看项目 |
 | CHANGELOG | 变更日志;Keep a Changelog 是通行的书写规范(倒序、按版本分节) |
-| hook / Stop hook | 钩子:特定事件自动触发的脚本;Stop hook = 会话每轮收尾时自动跑的那种 |
+| hook / Stop hook | 钩子:特定事件自动触发的脚本;Stop hook = 会话每轮收尾时自动跑的那种;pre-commit hook = 每次提交前自动跑、能拦下提交的那种 |
+| gitleaks | 开源凭据扫描器:提交前扫一遍改动,发现长得像密钥/密码的内容就报警拦下 |
 
 ---
 

@@ -28,7 +28,7 @@
 **① 唯一看板指针** —— 入口永远是 `pm/NOW.md`,它指向当期看板;**换期只改 NOW 一处,看板文件名不得写死进本文件或其它文档**。
 **② 契约落盘不喊话** —— 跨边界接口先改 `contracts/PROTOCOL.md` 再动代码;收到协议声明**独立核查再信**(实测/读代码/查部署配置),不照单全收。
 **③ 交接靠 commit + 落盘** —— 做完 → 状态行带 commit hash,下游读 repo 即知进度。
-**④ 开工护栏** —— 开工先 `bash scripts/bus-check.sh` + `git pull`;**部署/改契约/migration 等不可逆动作前再跑一次**。
+**④ 开工护栏** —— 开工先 `bash scripts/bus-check.sh` + `git pull`;**部署/改契约/migration 等不可逆动作前再跑一次**;pre-commit 挂 `bus-check --strict` 机器闸(检出腐烂/幽灵 hash 即拦 commit,见 `scripts/pre-commit.sh`)。
 **⑤ 三轨制** —— 快轨(小改:直接改+核查门)/ 标准轨(单功能全流程)/ 重轨(契约变更/大改:+`pm/changes/` 提案+多 agent 评审);NOW 标本期轨道。
 **⑥ 核查门** —— 验收/合并前派 reviewer 并行核「实现↔设计↔契约↔需求」四方一致;**完成 = hash + 可核验证据,无证据不算完成**。
 **⑦ 变更提案 + 状态分写** —— 跨域变更走 `pm/changes/` delta 提案;**各域只写自己的 `pm/status/<域>.md`**,别人只读。
@@ -38,7 +38,7 @@
 
 ## 3. 红线(每个会话受约束)
 
-1. **凭据不入 git、不出本机**:文档只标位置不写值;本地 .env 必须 gitignore + 600 权限。
+1. **凭据不入 git、不出本机**:文档只标位置不写值;本地 .env 必须 gitignore + 600 权限;机器闸 = gitleaks pre-commit 默认装(`scripts/pre-commit.sh`),报警即拦。
 2. **不 `git add -A`**:只 stage 自己域的具体文件;同持多仓按仓分别提交。
 3. **不未授权部署**、不 force-push、不 `--amend`、不 `--no-verify`。
 4. **每次部署完必更对应仓 `CHANGELOG.md`**;长连接服务部署带优雅下线(<PreStop/drain 机制>)。

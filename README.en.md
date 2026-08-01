@@ -48,6 +48,8 @@ It **inspects your code first** (repo count / deploy platform / UI or not / cont
 # Copy the scaffold (the trailing /. is required — it brings the hidden .claude/ along), then replace <placeholders>
 cp -R "solobaton/templates/." <project-root>/
 bash scripts/bus-check.sh
+# Install the machine gate (meta repo + every code sub-repo, once per repo): gitleaks blocks credentials + bus-check --strict blocks rot / ghost hashes
+cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 ```
 
 ### A worked example
@@ -103,9 +105,12 @@ Iteration 1 (core bookkeeping flow + monthly report) (wrapped up, awaiting switc
 Contract snapshot corresponds to: v0.2.0 (released 2026-06-20)
 
 ── latest decisions (pm/decisions.md, last 3) ──
-  | 2026-06-20 | Iteration 1 accepted, release approved (Gate4); CSV export moved to Iteration 2 …
-  | 2026-06-19 | Gate3 merge approved: monthly report (walkthrough P1 empty-month div-by-zero fixed & re-verified) …
-  | 2026-06-15 | Gate2 passed on real render: bar chart over line; single column on mobile …
+  | 2026-06-20 | you | Iteration 1 accepted, release approved (Gate4); CSV export moved to Iteration 2 …
+  | 2026-06-19 | you | Gate3 merge approved: monthly report (walkthrough P1 empty-month div-by-zero fixed & re-verified) …
+  | 2026-06-15 | you | Gate2 passed on real render: bar chart over line; single column on mobile …
+
+── ghost-hash check (pm/status/) ──
+  ✅ all 7 hashes resolve
 
 ── live status ──
   jz-api   v0.2.0
@@ -122,7 +127,7 @@ Contract snapshot corresponds to: v0.2.0 (released 2026-06-20)
 
 - **Single source of truth (rule ⑨)**: live version, human decisions, iteration switch — the three fastest-rotting facts each have exactly one place of record/query; everywhere else holds pointers. A decision lands in `decisions.md` first, then fans out; unfinished write-backs stay visible as debt.
 - **Gate2 real-render approval (rule ⑩)**: design sign-off must happen on a **clickable prototype in a browser** — static mocks and screenshots don't count. Tuition paid for this rule: a redesign shipped and was overturned within 2 days, entirely because approval had been given on static mocks.
-- **Iteration-switch compression ritual**: every iteration ends with forced archiving of the board, truncation of status files, and a reset of NOW; evidence artifacts (walkthrough shots / E2E reports) are written into `pm/archive/<iteration>/evidence/` the moment they're produced — nothing left to move at switch time. Without this ritual, coordination docs turn into an unread scroll within three weeks — so bus-check ships a **coordination-layer rot check**: a bloated NOW, a stale board lingering in pm/, or an oversized status file triggers red warnings at kickoff (a ritual without a guardrail is no ritual at all).
+- **Iteration-switch compression ritual**: every iteration ends with forced archiving of the board, truncation of status files, and a reset of NOW; evidence artifacts (walkthrough shots / E2E reports) are written into `pm/archive/<iteration>/evidence/` the moment they're produced — nothing left to move at switch time. Without this ritual, coordination docs turn into an unread scroll within three weeks — so bus-check ships a **coordination-layer rot check**: a bloated NOW, a stale board lingering in pm/, or an oversized status file triggers red warnings at kickoff (a ritual without a guardrail is no ritual at all). The red warnings can also become a gate: bus-check additionally verifies that every commit hash in status files actually exists in git (a **ghost hash** is an imagined "done"), and in `--strict` mode any confirmed rot / ghost hash / drift exits non-zero — `scripts/pre-commit.sh` hooks this into every commit by default, with gitleaks in the same gate to block credentials. Rules enforced by machines, not by goodwill.
 - **Production drift detection**: platform-side env/secrets and images live outside git; one console edit creates a second source of truth. Fingerprint them (🔴 sha256 fingerprints only, never values) and anchor image tags to git tags; bus-check compares against the baseline at every kickoff and prints red warnings — surfacing "config changed but never redeployed" and "live image not found in git" before you touch anything.
 
 ## 6. Repository layout
@@ -144,8 +149,8 @@ solobaton/
     ├── contracts/PROTOCOL.md  # the single entry point for cross-boundary contracts
     ├── gitignore.template     # meta-repo .gitignore template (copy in and rename; excludes sub-repos and *.env)
     ├── .claude/agents/reviewer.md   # read-only review-gate subagent (writer ≠ reviewer)
-    └── scripts/               # bus-check.sh (kickoff guard) + drift-check.sh (production drift)
-                               #   + design-preview.sh (real render)
+    └── scripts/               # bus-check.sh (kickoff guard; --strict machine gate) + drift-check.sh (production drift)
+                               #   + design-preview.sh (real render) + pre-commit.sh (red-line gate: gitleaks + strict)
 ```
 
 ## 7. Applicability (the honest version)
@@ -161,7 +166,7 @@ solobaton/
 | ① | Single board pointer | The entry is always NOW.md; switching iterations edits one place; board filenames never hard-coded elsewhere |
 | ② | Contracts land in files, not in chat | Change PROTOCOL.md before code; independently verify the other side's protocol claims before trusting |
 | ③ | Hand-offs ride on commits | Status lines carry hashes; downstream reads the repo to know progress |
-| ④ | Kickoff guard | Run bus-check at kickoff; **run it again before any irreversible action** |
+| ④ | Kickoff guard | Run bus-check at kickoff; **run it again before any irreversible action**; hook `--strict` into pre-commit as a gate |
 | ⑤ | Three tracks | Fast / standard / heavy — don't kill a chicken with a cleaver |
 | ⑥ | Review gate | Before acceptance a reviewer checks 4-way consistency; done = hash + evidence |
 | ⑦ | Proposals + split status | Cross-domain changes go through delta proposals; each domain writes only its own status file |
@@ -189,6 +194,7 @@ solobaton/
 | Iteration / switch | An iteration ≈ a sprint; switching = closing this one and opening the next, always with archiving and compression |
 | Compression ritual | The fixed steps at iteration switch — archive docs, truncate status files — so coordination docs never rot |
 | Kickoff guard | The script you must run before working (bus-check.sh): one screen of progress / contract / decisions / live status |
+| Machine gate (--strict) | A rule that actually stops you when violated: bus-check --strict exits non-zero on confirmed findings; wired into pre-commit, a bad commit is simply rejected |
 
 ### Files & roles
 
@@ -221,7 +227,8 @@ solobaton/
 | BFF | Backend for Frontend: a middle layer aggregating data for the frontend |
 | cwd | A session's working directory — where the session "stands" in the project |
 | CHANGELOG | Version log; "Keep a Changelog" is the common convention (reverse order, per-version sections) |
-| hook / Stop hook | Scripts auto-triggered by events; a Stop hook runs when a session finishes a turn |
+| hook / Stop hook | Scripts auto-triggered by events; a Stop hook runs when a session finishes a turn; a pre-commit hook runs before every commit and can reject it |
+| gitleaks | Open-source credential scanner: sweeps changes before commit and blocks anything that looks like a key or password |
 
 ---
 

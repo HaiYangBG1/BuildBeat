@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # bus-check.sh —— 协作总线 · 开工同步护栏(治信息差)。
 # 任意域会话「开工先跑这个」;部署 / 改契约 / 跑 migration 等不可逆动作前**再跑一次**。
-# 只读、不改任何东西;打印 当前期 / 协调层腐烂检测 / 契约 / 最近拍板 / 各域状态 / 在途提案 / 子仓同步 / 线上实况。
+# 只读、不改任何东西;打印 当前期 / 协调层腐烂检测 / 契约 / 最近拍板 / 各域状态 / 幽灵hash核验 / 在途提案 / 子仓同步 / 线上实况。
 # 规则⑨:「线上什么版本」以本脚本打的实况为准,文档不写。
+# --strict:机器闸模式 —— 确凿检出「协调层腐烂 / 幽灵 hash / 生产漂移」任一即 exit 1(挂 pre-commit/CI 用,见 pre-commit.sh)。
+#   只对确凿检出翻脸;「无法判定 / 未配置 / 跳过」不拦,不给流水线添堵。不带 --strict 仍恒 exit 0,只当仪表盘。
 #
 # 项目接入点(可选):
 #   1) SUBREPOS 数组留空 = 自动发现一/二级目录下的独立 git 子仓;也可手工列死。
@@ -14,7 +16,13 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 1
-DRIFT_MODE=""; [ "${1:-}" = "--update-baseline" ] && DRIFT_MODE="--update-baseline"  # 透传给漂移检测
+DRIFT_MODE=""; STRICT=0; STRICT_HITS=""   # STRICT_HITS 累计确凿检出项;--strict 下非空 = exit 1
+for arg in "$@"; do
+  case "$arg" in
+    --update-baseline) DRIFT_MODE="--update-baseline" ;;  # 透传给漂移检测
+    --strict) STRICT=1 ;;
+  esac
+done
 
 SUBREPOS=()   # 留空自动发现;或写死:SUBREPOS=("仓1" "目录/仓2")
 
@@ -102,6 +110,8 @@ else
   if [ "$rot" = 0 ]; then
     if [ -n "$board_note" ]; then echo "  ✅ NOW 薄、status 克制 $board_note"
     else echo "  ✅ NOW 薄、看板归位、status 克制"; fi
+  else
+    STRICT_HITS="$STRICT_HITS 协调层腐烂"
   fi
 fi
 echo ""
@@ -139,6 +149,30 @@ else
 fi
 echo ""
 
+# 5.5) 幽灵 hash 核验(lessons 第 11 条:status 声明的 commit 必须真实存在;「写了状态」≠「已提交」)
+echo "── 幽灵 hash 核验 (pm/status/) ──"
+if [ -d pm/status ]; then
+  HASHES=$(for f in pm/status/*.md; do
+      [ -e "$f" ] || continue; [ "$(basename "$f")" = "README.md" ] && continue
+      grep -hoE '\b[0-9a-f]{7,40}\b' "$f" 2>/dev/null
+    done | grep '[a-f]' | sort -u)
+  ghost=0; total=0
+  for h in $HASHES; do
+    total=$((total+1)); found=0
+    for r in . "${SUBREPOS[@]:-}"; do
+      [ -n "$r" ] && [ -d "$r" ] || continue
+      git -C "$r" cat-file -t "$h" >/dev/null 2>&1 && { found=1; break; }
+    done
+    [ "$found" = 1 ] || { echo "  ⚠️  $h —— meta 仓与全部子仓查无此号(幽灵 hash:臆造/被重置/躺工作树没提交;若刚换机器,先 git pull 复核)"; ghost=1; }
+  done
+  if [ "$ghost" = 1 ]; then STRICT_HITS="$STRICT_HITS 幽灵hash"
+  elif [ "$total" = 0 ]; then echo "  (status 里暂无 hash)"
+  else echo "  ✅ $total 个 hash 全部可解析"; fi
+else
+  echo "  (无 pm/status/)"
+fi
+echo ""
+
 # 6) 在途变更提案
 echo "── 在途变更提案 (pm/changes/) ──"
 found=0
@@ -164,7 +198,8 @@ echo ""
 # 7.5) 生产漂移检测(平台侧 env/secret 指纹 + 镜像tag↔git vs scripts/bus-baseline.json)
 echo "── 生产漂移检测 ──"
 if [ -f scripts/drift-check.sh ]; then
-  bash scripts/drift-check.sh $DRIFT_MODE
+  bash scripts/drift-check.sh $DRIFT_MODE; drc=$?
+  [ "$drc" = 2 ] && STRICT_HITS="$STRICT_HITS 生产漂移"   # drift-check 约定:exit 2 = 确凿检出漂移
 else
   echo "  (未配置 scripts/drift-check.sh —— 拷模板 + 接 live-config.sh 后,可检出「配置被改没部署 / 线上镜像 git 里找不到」类漂移)"
 fi
@@ -175,4 +210,9 @@ echo "── 最近提交 (meta) ──"
 git log --oneline -5 2>/dev/null
 echo ""
 echo "▸ 开工四步: ① git pull(含子仓)  ② 读 NOW → 当期看板 → 契约 → 最近拍板  ③ 确认你域要动的不 stale  ④ 不可逆动作(部署/契约/migration)前重跑本脚本"
+if [ "$STRICT" = 1 ] && [ -n "$STRICT_HITS" ]; then
+  echo "⛔ strict 未过:${STRICT_HITS# } —— 按上方 ⚠️ 红字修完再来(机器闸非零退出)"
+  echo "════════════════════════════════════════════"
+  exit 1
+fi
 echo "════════════════════════════════════════════"

@@ -2,6 +2,18 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## v1.7 — 2026-07-31
+
+> 主题:规则从「靠自觉」到「有机器闸」(外部工业化差距评估回灌第一步:每条规则问一句「违反了会怎样」,答案是「靠自觉」的就机器化)。
+
+- bus-check 新增 **`--strict` 机器闸模式**:确凿检出「协调层腐烂 / 幽灵 hash / 生产漂移」任一即 exit 1;「无法判定/未配置/跳过」不拦,不给流水线添堵;不带参仍恒 exit 0 只当仪表盘
+- bus-check 新增**幽灵 hash 核验**:pm/status 里每个 commit hash 逐个对 meta 仓 + 全部子仓 `git cat-file -t`,查无此号红字报警(lessons 第 11 条机器化;此前只能靠接手会话自觉核)
+- drift-check 退出码语义化:确凿检出漂移 exit 2(供 --strict 拦截);无漂移/跳过/无法判定仍 exit 0,`--update-baseline` 失败仍 exit 1
+- 新增 `templates/scripts/pre-commit.sh` **红线机器闸**:gitleaks 扫暂存区拦凭据(v8.19+ `git` 子命令与旧版 `protect` 自适应)+ meta 仓 bus-check --strict 拦腐烂/幽灵 hash;红线3 已禁 `--no-verify`,闸绕不过
+- **gitleaks 从"可选"转默认**:Bootstrap checklist 第 7 步改为默认装机器闸(此前 gitleaks 只作为可选 Stop hook 的前置出现,不装 hook 就整个不出现——正是 lessons 第 10 条的坑);Stop hook 自动 push 顺延为可选第 8 步
+- decisions.md 增「**拍板人**」列:单人项目固定写自己;Gate3 合并与 Gate4 上线未必同一人批,审计与将来多人由此可查(模板与 example 沙盘同步)
+- README(中英)同步:§2 手动路径补装闸命令、§4 示例输出补幽灵 hash 核验段与拍板人列、§5 机制、§6 文件树、§8 规则④、§9 白话表新增「机器闸 / gitleaks / pre-commit hook」
+
 ## v1.6 — 2026-07-28
 
 > 全项目 review 回灌(3 个独立审查代理交叉核查 + 脚本沙盘实测)。

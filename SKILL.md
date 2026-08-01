@@ -1,6 +1,6 @@
 ---
 name: solobaton
-description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 指挥多个并行 AI 会话交付中大型项目的方法论 + 可复制脚手架(会话路由/文件总线/四 Gate/三轨/核查门/决策台账/换期压缩仪式/开工护栏脚本/引导式 Bootstrap:自查代码+少量提问)。当用户要为新的中大型项目搭多会话协作架构、提到"Solobaton/协作总线/Builder/人在回路/多 session 协作/AI 团队流程/项目骨架 bootstrap",或抱怨"多个 AI 会话信息不同步、验收漏验、文档腐烂、返工螺旋"时使用。
+description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 指挥多个并行 AI 会话交付中大型项目的方法论 + 可复制脚手架(会话路由/文件总线/四 Gate/三轨/核查门/决策台账/换期压缩仪式/开工护栏脚本/机器闸 pre-commit:gitleaks+bus-check --strict/引导式 Bootstrap:自查代码+少量提问)。当用户要为新的中大型项目搭多会话协作架构、提到"Solobaton/协作总线/Builder/人在回路/多 session 协作/AI 团队流程/项目骨架 bootstrap",或抱怨"多个 AI 会话信息不同步、验收漏验、文档腐烂、返工螺旋"时使用。
 ---
 
 # Solobaton —— 一个 Builder + N 个 AI 会话交付中大型项目(Builder 协作总线)
@@ -59,7 +59,7 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 1. **唯一看板指针**:入口永远是 `pm/NOW.md` → 当期看板;换期只改 NOW 一处,**看板文件名不得写死进任何别的文档**。
 2. **契约落盘不喊话**:跨边界接口先改 `contracts/PROTOCOL.md` 再动代码;收到对方的协议声明**独立核查再信**(实测/读代码/查部署配置),不照单全收。
 3. **交接靠 commit + 落盘**:做完 → 状态行带 hash,下游读 repo 即知进度,不靠人转述。
-4. **开工护栏**:任意会话开工先跑 `bash scripts/bus-check.sh` + `git pull`;**部署/改契约/migration 等不可逆动作前再跑一次**(治"会话中途决策已变还按旧信息干")。
+4. **开工护栏**:任意会话开工先跑 `bash scripts/bus-check.sh` + `git pull`;**部署/改契约/migration 等不可逆动作前再跑一次**(治"会话中途决策已变还按旧信息干");pre-commit 挂 `bus-check --strict` 机器闸(确凿检出 协调层腐烂/幽灵 hash/生产漂移 即非零退出)。
 5. **三轨制**:快轨(小改:直接改+核查门)/ 标准轨(单功能:需求→设计→实现→验收)/ 重轨(契约变更/大改:+变更提案+多 agent 评审)。NOW 标本期轨道,别用牛刀杀鸡。
 6. **核查门**:验收/合并前派只读 reviewer 并行核「实现↔设计↔契约↔需求」;完成 = hash + 可核验证据。
 7. **变更提案 + 状态分写**:跨域变更走 `pm/changes/` delta 提案;各域只写 `pm/status/<域>.md`,别人只读——物理消灭"同文件互踩"。
@@ -77,13 +77,13 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 
 ## 6. 三个仪式(防腐烂的关键,缺了机制必朽)
 
-- **开工仪式**:bus-check(打印 当前期/契约/最近拍板/各域状态/子仓同步/线上实况/生产漂移)→ git pull → 确认要动的不 stale。
+- **开工仪式**:bus-check(打印 当前期/契约/最近拍板/各域状态/幽灵 hash 核验/子仓同步/线上实况/生产漂移)→ git pull → 确认要动的不 stale。护栏有机器闸形态:`bus-check --strict` 确凿检出即非零退出,默认由 `scripts/pre-commit.sh` 挂在每次 commit 前(红线3 禁 `--no-verify`,绕不过)——**每条规则问一句「违反了会怎样」,答案是「靠自觉」的就该机器化**。
 - **拍板仪式**:用户每拍一锤 → 产品域**先**在 `decisions.md` 落一行(决策+回写落点)→ 再分发回写各 SSOT。
 - **换期压缩仪式**:当期 看板/需求/todo/验收清单 `git mv` 进 `pm/archive/<期>/`;status 全文快照入 archive、live 文件截断只留「基线+最近一条+归档指针」;NOW 流水清零;核对证据产物已在 `archive/<期>/evidence/`、无散落临时文件。**NOW 长肥 = 腐烂开端**——bus-check 的「协调层腐烂检测」会在 NOW 长肥 / 旧看板滞留 / status 超长时开工红字报警(仪式没有护栏 = 没有仪式)。
 
 ## 7. 红线(每个会话受约束,写进 Agent.md)
 
-1. **凭据不入 git、不出本机**:文档只标位置不写值;本地 .env 必须 gitignore + 600 权限。
+1. **凭据不入 git、不出本机**:文档只标位置不写值;本地 .env 必须 gitignore + 600 权限;Bootstrap 默认装 gitleaks pre-commit 闸(`scripts/pre-commit.sh`),报警即拦——红线不能只靠自觉(lessons 第 10 条)。
 2. **不 `git add -A`**:多会话共编,只 stage 自己域的具体文件;同持多仓时按仓分别提交。
 3. **不未授权部署**、不 force-push、不 `--amend`、不 `--no-verify`。
 4. **每次部署完必更对应仓 CHANGELOG**(Keep a Changelog,倒序)。
@@ -127,8 +127,9 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 - [ ] 4. 按自查结果接"线上实况"与漂移基线:实装则 `bash scripts/drift-check.sh --update-baseline` 打首版基线;无平台则留桩
 - [ ] 5. 第一期立项:pm/NOW.md 填当前期与轨道 → 建 <一期>-看板.md → decisions.md 第一行记「Bootstrap 结论」(自查+确认:域表/轨道/平台/UI 取舍——本项目第一次拍板)
 - [ ] 6. 跑 `bash scripts/bus-check.sh` 自检骨架(输出齐全、无报错),把输出贴给用户过目
-- [ ] 7. (可选)装 Stop hook 自动 push 已 commit 内容;装前务必先加 secret 扫描一道闸(最小示例:push 前跑 `gitleaks dir <仓根>`,报警即拦)
-- [ ] 8. 收尾报告一屏:生成了什么 / 按自查+确认做了哪些取舍(含默认值项)/ 下一步开哪个会话、说哪句话(参照 指挥台.md)
+- [ ] 7. 装机器闸(**默认,非可选**):meta 仓与各代码子仓逐仓 `cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`(gitleaks 拦凭据 + meta 仓 bus-check --strict 拦腐烂/幽灵 hash);`command -v gitleaks` 查无则提醒用户安装,并记入收尾报告
+- [ ] 8. (可选)装 Stop hook 自动 push 已 commit 内容(secret 闸已在第 7 步默认上;要更稳可在 push 前再跑一道 `gitleaks dir <仓根>`)
+- [ ] 9. 收尾报告一屏:生成了什么 / 按自查+确认做了哪些取舍(含默认值项)/ 下一步开哪个会话、说哪句话(参照 指挥台.md)
 ```
 
 > 各文件「填好之后长什么样」,参照仓库 [example/](example/)(虚构「简账」项目跑完一期的快照)。
@@ -147,7 +148,8 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 | [templates/pm/changes/README.md](templates/pm/changes/README.md) | 重轨变更 delta 提案流程 + 模板 |
 | [templates/contracts/PROTOCOL.md](templates/contracts/PROTOCOL.md) | 契约唯一入口骨架 |
 | [templates/.claude/agents/reviewer.md](templates/.claude/agents/reviewer.md) | 只读核查门 subagent |
-| [templates/scripts/bus-check.sh](templates/scripts/bus-check.sh) | 开工护栏(含 live-status 钩子、子仓同步、最近拍板、漂移检测集成) |
+| [templates/scripts/bus-check.sh](templates/scripts/bus-check.sh) | 开工护栏(含 live-status 钩子、子仓同步、最近拍板、幽灵 hash 核验、漂移检测集成;`--strict` 机器闸模式) |
+| [templates/scripts/pre-commit.sh](templates/scripts/pre-commit.sh) | 红线机器闸:gitleaks 拦凭据 + bus-check --strict 拦腐烂/幽灵 hash(逐仓拷进 `.git/hooks/pre-commit`) |
 | [templates/scripts/drift-check.sh](templates/scripts/drift-check.sh) | 生产漂移检测(env 指纹基线 + 镜像tag↔git 锚定;🔴只存指纹不存值) |
 | [templates/scripts/design-preview.sh](templates/scripts/design-preview.sh) | Gate2 真渲染静态服务 |
 | [templates/gitignore.template](templates/gitignore.template) | meta 仓 .gitignore 模板(排除子仓与 *.env;拷入后改名) |

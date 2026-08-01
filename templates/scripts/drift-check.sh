@@ -15,6 +15,7 @@
 #   bash scripts/drift-check.sh                   # 检测(scripts/ 下存在本脚本时 bus-check 自动调用)
 #   bash scripts/drift-check.sh --update-baseline # 刷新基线(改 env/secret 或部署后跑 = 「确认已部署」动作)
 #   BUS_CHECK_NO_LIVE=1 ...                        # 跳过线上查询
+# 退出码:0 = 无漂移/跳过/无法判定;1 = --update-baseline 失败(基线保护);2 = 确凿检出漂移(bus-check --strict 据此拦)
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT" || exit 1
 BASELINE="scripts/bus-baseline.json"
@@ -100,7 +101,6 @@ for pair in "${APPS[@]:-}"; do
   if [ -n "$msg" ] || [ -n "$gt" ]; then printf "  ⚠️  %-16s%s%s\n" "$name" "$msg" "$gt"; drift=1
   else printf "  ✅ %-16s 配置/镜像==基线 (tag %s)\n" "$name" "${imgtag:-?}"; fi
 done
-if [ "$checked" = "0" ]; then echo "  ⚠️  没有成功查到任何应用(APPS 为空或全部查询失败)—— 无法判定漂移,检查 APPS 配置/平台 CLI/凭据"
-elif [ "$drift" = "0" ]; then echo "  —— 无漂移"
-else echo "  ⚠️  有漂移 → 配置改了是否已重新部署?新部署是否打 tag + 跑 --update-baseline?"; fi
-exit 0
+if [ "$checked" = "0" ]; then echo "  ⚠️  没有成功查到任何应用(APPS 为空或全部查询失败)—— 无法判定漂移,检查 APPS 配置/平台 CLI/凭据"; exit 0
+elif [ "$drift" = "0" ]; then echo "  —— 无漂移"; exit 0
+else echo "  ⚠️  有漂移 → 配置改了是否已重新部署?新部署是否打 tag + 跑 --update-baseline?"; exit 2; fi
