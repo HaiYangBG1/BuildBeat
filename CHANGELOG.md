@@ -4,8 +4,16 @@
 
 ## Unreleased
 
-- **后续 npm 发布去长期 token**:新增手动触发的 GitHub Actions Trusted Publishing 工作流；只接受三段式 annotated tag，要求 tag 精确落在 `main`、包版本与 tag 一致、registry 版本尚不存在，并在发布前重跑测试/文档/pack 检查
-- **OIDC 与 provenance**:发布 job 仅授予 `contents: read`、`id-token: write`，不读取 `NODE_AUTH_TOKEN`；npm Trusted Publisher 绑定精确仓库与 `publish.yml` 后，后续公共包由短期 OIDC 凭据发布并自动生成 provenance
+## v1.16.2 — 2026-08-22
+
+> 主题:把 Trusted Publishing 从“已配置”推进到可实发验收的证据链。脚手架版本仍是 v1.16，CLI 命令边界不变，项目写入/升级/卸载仍未开放。
+> **拷出项目升级**:业务模板和已拷出项目零修改；本补丁只加固 npm 包的发布与供应链验证。
+
+- **npm 发布去长期 token**:新增手动触发的 GitHub Actions Trusted Publishing 工作流；发布 job 仅授予 `contents: read`、`id-token: write`，不读取 `NODE_AUTH_TOKEN` 或 `NPM_TOKEN`
+- **发布源收紧**:只接受三段式 annotated tag；发布时 tag 目标、checkout `HEAD`、`GITHUB_SHA` 与远端 `main` HEAD 必须四者全等，不允许从旧 tag 或非 `main` ref 发布
+- **registry + provenance 回读**:`npm publish` 后不只等版本可见，还必须读到精确的 `dist.attestations.url` 和 SLSA v1 predicate；缺 provenance 则工作流失败
+- **签名与安装实测**:工作流从官方 registry 安装新包、核对可执行文件版本，并通过 `npm audit signatures` 验证 registry signature 与 provenance attestation
+- **证据边界**:workflow/绑定/tag 存在都不等于 OIDC 发布已验证；只有新版本工作流成功、registry/provenance 回读和独立安装全通过后，才能创建匹配的 GitHub Release
 
 ## v1.16.1 — 2026-08-22
 

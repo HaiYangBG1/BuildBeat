@@ -54,9 +54,11 @@ jobs:
           fi
 
           git fetch --no-tags origin main:refs/remotes/origin/main
+          test "$GITHUB_REF" = "refs/heads/main"
           test "$(git cat-file -t "$RELEASE_TAG")" = "tag"
           test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$(git rev-parse HEAD)"
-          git merge-base --is-ancestor HEAD refs/remotes/origin/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse refs/remotes/origin/main)"
 
           package_version="$(node -p "require('./package.json').version")"
           test "$RELEASE_TAG" = "v$package_version"
@@ -101,3 +103,37 @@ jobs:
           done
           echo "Published version did not become readable from the official registry." >&2
           exit 1
+
+      - name: Verify provenance metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "require('./package.json').version")"
+          expected_url="https://registry.npmjs.org/-/npm/v1/attestations/solobaton@$package_version"
+          expected_predicate="https://slsa.dev/provenance/v1"
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            attestation_url="$(npm view "solobaton@$package_version" dist.attestations.url 2>/dev/null || true)"
+            predicate_type="$(npm view "solobaton@$package_version" dist.attestations.provenance.predicateType 2>/dev/null || true)"
+            if [[ "$attestation_url" = "$expected_url" && "$predicate_type" = "$expected_predicate" ]]; then
+              printf 'Verified provenance metadata for solobaton@%s.\n' "$package_version"
+              exit 0
+            fi
+            printf 'Provenance readback attempt %s is not complete yet.\n' "$attempt"
+            sleep 5
+          done
+          echo "Published version is readable, but its expected provenance metadata is missing." >&2
+          exit 1
+
+      - name: Verify installed package and attestation signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "require('./package.json').version")"
+          release_probe="$(mktemp -d)"
+          npm install --prefix "$release_probe" "solobaton@$package_version" \
+            --registry=https://registry.npmjs.org/ --ignore-scripts --no-audit --no-fund
+          test "$(node "$release_probe/node_modules/solobaton/bin/solobaton.js" --version)" = "$package_version"
+          (
+            cd "$release_probe"
+            npm audit signatures --registry=https://registry.npmjs.org/
+          )

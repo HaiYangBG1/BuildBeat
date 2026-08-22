@@ -46,18 +46,18 @@ It inspects the code and configuration first, identifying repositories, deploy u
 
 ### CLI v0: distributed through npm, still read-only for projects
 
-v1.16 adds a zero-third-party-runtime-dependency CLI for Node.js 20+. Starting with `solobaton@1.16.1`, the CLI is formally distributed through npm. Pin the version for reproducible one-off checks:
+v1.16 adds a zero-third-party-runtime-dependency CLI for Node.js 20+. Starting with `solobaton@1.16.1`, the CLI is formally distributed through npm. Pin the current package version for reproducible one-off checks:
 
 ```bash
-npx --yes solobaton@1.16.1 doctor /path/to/project
-npx --yes solobaton@1.16.1 init /path/to/project --dry-run
-npx --yes solobaton@1.16.1 adopt /path/to/project --dry-run --json
+npx --yes solobaton@1.16.2 doctor /path/to/project
+npx --yes solobaton@1.16.2 init /path/to/project --dry-run
+npx --yes solobaton@1.16.2 adopt /path/to/project --dry-run --json
 ```
 
 For regular use, manage an explicit global CLI installation:
 
 ```bash
-npm install --global solobaton@1.16.1  # install a pinned version
+npm install --global solobaton@1.16.2  # install a pinned version
 solobaton doctor /path/to/project
 npm install --global solobaton@latest  # update the CLI package
 npm uninstall --global solobaton       # remove the global CLI

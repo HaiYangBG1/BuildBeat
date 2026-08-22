@@ -274,9 +274,14 @@ def check_publish_workflow() -> list[str]:
         "workflow_dispatch:",
         "id-token: write",
         "npm install --global npm@11.19.0",
-        "git merge-base --is-ancestor HEAD refs/remotes/origin/main",
+        'test "$GITHUB_REF" = "refs/heads/main"',
+        'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
+        'test "$(git rev-parse HEAD)" = "$(git rev-parse refs/remotes/origin/main)"',
         "npm publish --access public",
         "Refuse an existing registry version",
+        "dist.attestations.url",
+        "https://slsa.dev/provenance/v1",
+        "npm audit signatures",
     )
     for fragment in required_fragments:
         if fragment not in workflow:
