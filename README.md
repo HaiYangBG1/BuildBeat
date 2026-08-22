@@ -213,12 +213,15 @@ flowchart LR
 - [`example/`](example/)：虚构「简账」项目跑完一期后的完整文件快照；
 - [`lessons.md`](lessons.md)：真实反模式、根因与解法；
 - [`docs/CLI.md`](docs/CLI.md)：CLI 生命周期、文件所有权、manifest 和安全升级/卸载合同；
+- [`docs/CLI-PILOT-2026-08-23.md`](docs/CLI-PILOT-2026-08-23.md)：三个真实存量项目的 CLI v0 只读试点与写入边界决策；
 - [`docs/RELEASING.md`](docs/RELEASING.md)：npm 发布 Gate、验证与 Trusted Publishing 迁移；
+- [`CONTRIBUTING.md`](CONTRIBUTING.md)：贡献、验证和 PR 边界；
+- [`SECURITY.md`](SECURITY.md)：支持版本与私密漏洞报告通道；
 - [`CHANGELOG.md`](CHANGELOG.md)：版本历史和拷出项目升级说明。
 
 ## 贡献
 
-欢迎 Issue 和 Pull Request。修改流程语义时，请同时更新 `SKILL.md`、相关模板、中文/英文 README、示例和 CHANGELOG，并说明：
+欢迎 Issue 和 Pull Request。完整提交规则见 [`CONTRIBUTING.md`](CONTRIBUTING.md)；未公开漏洞请勿发公开 Issue，按 [`SECURITY.md`](SECURITY.md) 私密报告。修改流程语义时，请同时更新 `SKILL.md`、相关模板、中文/英文 README、示例和 CHANGELOG，并说明：
 
 1. 解决了哪个真实失败模式；
 2. 如何复现；

@@ -14,6 +14,7 @@ Release evidence at this commit: source package version `solobaton@1.16.3`; late
 6. `npm install/update/uninstall` manage the CLI package only. They must never be described as project-scaffold `init/upgrade/uninstall` support.
 7. After a version is published, later `main` documentation changes carrying that same `package.json` version do not redefine its artifact and are not releasable candidates. The next publication requires a new package version, Changelog heading, and annotated tag.
 8. Distribution-facing executable examples use `solobaton@latest`, not a hard-coded release number. This keeps the immutable npm README usable before and after publication. Reproducible consumers first resolve `npm view solobaton@latest version`, record that exact version, and substitute it for `@latest`; exact release evidence remains in this runbook and the matching GitHub Release.
+9. The active repository ruleset `Protect release tags` must match `refs/tags/v*`, forbid tag updates and deletions, and grant no bypass actor. It deliberately does not forbid creation, so a reviewed new release tag can still be created once.
 
 ## Candidate checks
 
@@ -33,6 +34,18 @@ git diff --check
 ```
 
 Before pushing a tag, confirm that the package name/version is absent from the official registry and that the candidate commit's `main` CI is green. An `E404` only proves point-in-time absence; it does not reserve the name.
+
+Also read back the server-side tag rule instead of assuming that repository documentation represents current GitHub configuration:
+
+```bash
+tag_ruleset_id="$(gh api repos/HaiYangBG1/solobaton/rulesets \
+  --jq '.[] | select(.name == "Protect release tags" and .target == "tag") | .id')"
+test -n "$tag_ruleset_id"
+gh api "repos/HaiYangBG1/solobaton/rulesets/$tag_ruleset_id" \
+  --jq '{enforcement, include: .conditions.ref_name.include, rules: [.rules[].type], bypass_actors}'
+```
+
+The expected readback is active enforcement, include pattern `refs/tags/v*`, exactly the `update` and `deletion` rules, and an empty bypass list. Stop the release if that mutable server-side state differs.
 
 ## Initial public package bootstrap
 

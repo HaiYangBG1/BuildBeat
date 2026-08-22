@@ -4,6 +4,11 @@
 
 ## Unreleased
 
+- **仓库安全基线**：新增 npm/GitHub Actions Dependabot 周检、JavaScript/TypeScript CodeQL、SECURITY/贡献/行为规范、CODEOWNERS、Issue/PR 模板；CI 中第三方 Action 改为不可变完整 commit SHA
+- **发布引用保护**：GitHub 服务端 `Protect release tags` ruleset 覆盖 `refs/tags/v*`，禁止更新和删除已创建的发布 tag，且无绕过角色；发布 runbook 增加回读步骤
+- **CLI v0 真实试点**：使用官方 npm registry 的 `solobaton@1.16.3` 对三个存量项目运行只读 `doctor` 和 `adopt --dry-run`；Git 可见状态前后一致，并正确区分未安装、旧版已安装和部分安装状态
+- **写入边界收口**：当前试点不足以支持安全写入；`init/adopt/upgrade/uninstall` 写入能力继续 fail-closed，未来必须作为独立产品里程碑审批和验收，不再作为本次仓库维护的遗留项
+
 ## v1.16.3 — 2026-08-23
 
 > 主题:修复 npm 上不可变 README 的执行命令永久落后一版的发布闭环。脚手架版本仍是 v1.16，CLI 命令边界不变，项目写入/升级/卸载仍未开放。
