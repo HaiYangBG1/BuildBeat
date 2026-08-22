@@ -1,6 +1,6 @@
 # Solobaton CLI lifecycle contract
 
-Status: **CLI v0 read-only preview** · source/package version `solobaton@1.16.3` · latest independently verified npm distribution `solobaton@1.16.2` · Node.js 20+ · zero third-party runtime dependencies.
+Status: **CLI v0 read-only preview** · source/package version `solobaton@1.16.3` · latest independently verified npm distribution `solobaton@1.16.3` · Node.js 20+ · zero third-party runtime dependencies.
 
 The CLI does not replace `SKILL.md`. The Skill tells an AI session how to operate the delivery protocol; the CLI provides deterministic inspection and, in later versions, safe scaffold lifecycle operations.
 
