@@ -167,6 +167,17 @@ def check_readme_shape() -> list[str]:
             errors.append(f"README.md: missing section {zh_heading}")
         if en_heading not in en:
             errors.append(f"README.en.md: missing section {en_heading}")
+
+    required_boundary_pairs = (
+        ("多人账号、角色/权限", "multi-user accounts, roles and permissions"),
+        ("不采集或上传项目使用数据", "does not collect or upload project usage data"),
+        ("遥测采集", "telemetry collection"),
+    )
+    for zh_boundary, en_boundary in required_boundary_pairs:
+        if zh_boundary not in zh:
+            errors.append(f"README.md: missing product boundary {zh_boundary}")
+        if en_boundary not in en:
+            errors.append(f"README.en.md: missing product boundary {en_boundary}")
     return errors
 
 

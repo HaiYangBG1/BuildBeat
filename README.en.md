@@ -169,6 +169,8 @@ Not recommended for:
 
 Known boundaries: the human remains the final decision-maker. The protocol raises confidence that an agreed goal was delivered correctly; it does not guarantee that the product direction was correct. Automatic rule loading and skill directories also differ between AI coding tools, so compatibility claims should follow each tool's current documentation and real tests.
 
+Current non-goals: multi-user accounts, roles and permissions, or an organization administration surface; telemetry collection, team-performance scoring, or a metrics dashboard. The Solobaton CLI does not collect or upload project usage data. These are not unfinished maintenance items. Any future proposal needs a separate product milestone with explicit requirements, data definitions, privacy/authorization governance, and an acceptance Gate.
+
 ## Installed project layout
 
 ```text
