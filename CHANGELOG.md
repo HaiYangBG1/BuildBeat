@@ -2,6 +2,18 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## v1.15 — 2026-08-22
+
+> 主题:从「PR 里描述做过验证」迈到「仓库自己可重复证明」。README 只承担定位与上手,完整规则继续单点留在 SKILL;已发生过的脚本回归变成动态沙盘测试,PR/main 变更由 CI 自动执行。
+> **拷出项目升级**:整文件替换 `scripts/bus-check.sh`、`scripts/design-preview.sh`、`scripts/pre-commit.sh`(紧凑布局则替换 `pm/scripts/` 同名文件),更新项目 `SOLOBATON.md` 版本即可。三处都是带空格路径/静态检查兼容补丁,没有新增流程 Gate 或配置项;仓库自身的 `.github/`、`tests/` 不拷进业务项目。
+
+- **README 渐进式重构**:中英文首屏统一为「交付协议与脚手架,不是 Agent Runtime」;保留一句话 Bootstrap、存量接管、适用边界和能力降级;删除长样例输出、十条规则复述和不可持续的兼容性绝对声明,完整语义链接回 `SKILL.md`
+- **仓库行为回归套件**:`tests/test-scripts.sh` 用 `mktemp` 动态创建隔离 Git 沙盘,覆盖默认/紧凑布局、协调层腐烂、幽灵 hash 与 URL 边角、多域 status、换期例外、批量 stage、契约提示降噪、gitleaks 阻断、验证占位符、真渲染路径和漂移基线保护,当前共 38 个断言
+- **文档可移植性检查**:`tests/check-docs.sh` 校验全部受版本控制的 Markdown 相对链接、拒绝 `filecite/cite` 内部标记、核中英 README 结构/frontmatter/关键模板与示例版本,不再把一次性研究环境引用当交付证据
+- **GitHub Actions CI**:PR 与 main push 自动跑 Bash 语法、ShellCheck、文档检查、commit whitespace,并在 Ubuntu/macOS 双平台跑行为套件;Windows 仍未声称支持
+- **Shell 健壮性**:`bus-check.sh` 不再用 `ls | grep` 发现子仓,带空格的子仓名可稳定识别;`design-preview.sh` 不再用 `ls` 选择 HTML,带空格入口可正确 URL 编码;`pre-commit.sh` 的 status 计数改为单次 `awk`
+- **刻意未做**:不新增 Gate/域/reviewer 模式,不先造完整 CLI,不拆出一组会复制 SKILL 语义的 docs;下一阶段先收外部试点数据再决定产品面扩张
+
 ## v1.14 — 2026-08-22
 
 > 主题:给 reviewer 加 `review-ready` 硬前置与调用预算。写者先把候选收敛干净,独立 reviewer 再一次消费稳定候选;不再让 reviewer 充当实现中的后台 lint,也不让一个 subagent 用连续状态更新制造“框框 review”风暴。

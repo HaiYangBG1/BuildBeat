@@ -8,3 +8,7 @@
 *.local
 *.key
 *.pem
+
+# Repository-local Python checks
+__pycache__/
+*.pyc

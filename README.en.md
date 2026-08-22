@@ -1,253 +1,215 @@
-# Solobaton — One Builder, One Baton, an Orchestra of AI Sessions
+# Solobaton
 
 [简体中文](README.md) | **English**
 
-> Everything crammed into one AI chat session, getting muddier the longer it runs? Afraid to open a new session because you'd lose context and have to explain everything again? Syncing sessions by copy-pasting between them yourself?
-> Solobaton's answer: one person conducting N parallel AI sessions, shipping mid-to-large projects like a small team — a **methodology** (how to collaborate without chaos) plus **scaffolding** (copy-and-go file templates and scripts).
-> Distilled from a real project across many iterations: one person conducting 4 AI sessions, taking an internal product (frontend / BFF / multiple backend services / gateway / audit) from zero through 30+ production releases — hitting the potholes, fixing them, then hardening each one into a mechanism.
+**One Builder, one baton, an orchestra of AI sessions.**
 
-> **Language note**: the skill body (`SKILL.md`), templates, and script output are currently Chinese-first. The methodology itself is language-agnostic — when bootstrapping, just ask your agent to translate the scaffold as it fills it in.
+Solobaton is a **file-first, human-gated AI software-delivery protocol and scaffold** for solo builders. It does not create agents, manage models, or provide an agent runtime. It coordinates independent AI coding sessions around shared context, write boundaries, contract changes, completion evidence, and human authorization.
 
----
+> **Information moves through files, not through a human messenger. Done requires evidence. Humans approve specification, design, merge, and release.**
 
-## 1. What problem does it solve
+Requirements, boards, contracts, decisions, status, and verification evidence live in Git-managed files. A session can be closed or replaced without taking the project's working context with it.
 
-**First, the single-session trap — most people building with AI look like this:**
+Solobaton was distilled from a real product developed across multiple iterations: one person coordinating four AI sessions across a frontend, BFF, multiple backend services, a gateway, and auditing. Failures encountered in that work became explicit rules, templates, and Shell guardrails.
 
-- **Held hostage by one chat window**: everything happens in one session; you dare not open a new one — afraid of losing context, afraid you can't re-explain it all.
-- **One session does all the work**: the longer it runs, the more scattered its attention (context rot); hit the context ceiling and forced compression forgets what mattered; tasks queue up single-file because parallel work would collide.
-- **You are the sync layer**: copy-pasting between sessions, while agents stall mid-task waiting for you to supply context.
+> **Language note:** `SKILL.md`, the scaffold templates, and script output are currently Chinese-first. The delivery protocol is language-independent, and a project can translate its generated scaffold during bootstrap.
 
-**And once you do open multiple sessions (Claude Code / Cursor / etc.), seven new problems hit:**
+## The problem it solves
 
-| Pain | Typical symptom |
-|---|---|
-| **Information gaps** | Session A doesn't know B already changed the API, and builds against the old version |
-| **Human message bus** | You shuttle "backend said… frontend beware…" between sessions; you are the bottleneck |
-| **Fake done / missed checks** | A session says "done" without verifying; acceptance relies on your eyeballs and always misses |
-| **Premature hand-back** | A session ships one document or subtask and returns the baton; safe in-scope work waits until you say "continue" again |
-| **Approval fatigue** | Fourteen acceptance checks become fourteen separate decisions; every draft edit interrupts you until real Gates disappear in confirmation noise |
-| **Doc rot** | "Current version / current progress" written in five docs, three of them contradicting each other |
-| **Rework spiral** | You approve a static design mock, see the real implementation, reverse yourself, and a whole UI layer gets redone |
+When several AI coding sessions work on one project, code generation is rarely the hardest part. Delivery state is:
 
-The bus's answer: **information moves through files, not through your mouth; "done" requires evidence; execution keeps moving inside a user-level work package; approvals are reserved for real forks and Gates; facts that rot live in exactly one place.** Once context is externalized into files, **every session becomes disposable** — crashed, full, closed? Open a new one, run the kickoff script, and it's back at full strength. That is what makes you unafraid to run N sessions.
+- Session A keeps working against an old interface after session B changed it.
+- The builder copy-pastes context between sessions and becomes the message bus.
+- An agent says “done” without a test, commit, or live evidence.
+- A session hands work back after one document or commit and waits to be told “continue.”
+- Every reversible draft choice interrupts the builder until real stage Gates disappear in confirmation noise.
+- Current progress, production version, and decisions are copied into several documents and begin to contradict one another.
 
-> Jargon warning: "bus / SSOT / Gate / domain" can be confusing at first sight — §9 has a plain-language glossary.
+Solobaton reduces those problems to four pillars:
 
-## 2. How to use it
+1. **Independent sessions:** Product, Fullstack, and Testing are the default domains, each with an explicit write boundary.
+2. **File bus:** `NOW → board → contracts → status`; handoffs do not depend on chat memory.
+3. **Human at the Gate:** specification, design, merge, and release cannot be crossed automatically.
+4. **Evidence-based done:** completion requires a commit hash and verifiable evidence. No evidence means not done.
 
-**Step 1 · Install the skill**: copy or symlink `solobaton/` into `~/.claude/skills/` (Claude Code) or `~/.cursor/skills/` (Cursor). Without installing, you can also just say: "Follow `solobaton/SKILL.md` and scaffold collaboration for my project."
+## Start in five minutes
 
-**Step 2 · Start with one sentence** (guided bootstrap, see SKILL.md §8). Tell any session:
+### Recommended: guided bootstrap
 
-> "Use Solobaton to scaffold collaboration for my project."
+Keep this repository at any stable local path, or place it in a local skill directory currently supported by your AI coding tool. Ask the session to read [`SKILL.md`](SKILL.md), then say:
 
-It **inspects your code first** (repo count / deploy platform / UI or not / contract boundaries — all self-checked, never asked), then asks you only three or four non-technical questions (a few days or long-term? / anyone else working with you? / default "Product / Fullstack / Testing" roles or custom? / who has final say on UI?), shows one confirmation screen, then generates a scaffold with **every placeholder already filled**, self-checks with bus-check, and hands it over. For projects outside the applicability boundary (§7), it talks you out of using the bus — no ceremony for ceremony's sake.
+> Use Solobaton to scaffold collaboration for my project.
 
-> Project **already exists with a pile of legacy code**? Skip bootstrap and run the **takeover ritual** (SKILL.md §8.5): survey first, draw the old/new boundary (new turf gets the full bus, old turf is maintenance-only), and iteration 0 is mandatory minimal-test-suite building — without tests, every acceptance gate downstream just spins. Use the **compact layout** for the scaffold: guardrail scripts go to `pm/scripts/` instead of the root `scripts/` (a legacy repo almost always already has its own `scripts/`), so the project root gains exactly one directory (`pm/`) and the coordination layer's boundary stays obvious.
+It inspects the code and configuration first, identifying repositories, deploy units, UI surfaces, and contract boundaries. It asks only three or four simple questions that cannot be answered from the project, shows one confirmation screen, then generates a scaffold filled with project facts and runs its self-check.
 
-**Manual path** (works without installing the skill):
+> Do not apply the new-project template directly to a large existing codebase. Use the **brownfield takeover ritual** in `SKILL.md` §8.5: survey the system, draw the old/new boundary, establish minimum verification, and use the compact `pm/scripts/` layout so Solobaton does not collide with the project's own `scripts/` directory.
+
+### Manual installation
+
+Use this path only when you already understand the templates:
 
 ```bash
-# Copy the scaffold (the trailing /. is required — it brings the hidden .claude/ along), then replace <placeholders>
-cp -R "solobaton/templates/." <project-root>/
-bash scripts/bus-check.sh
-# Install the machine gate (meta repo + every code sub-repo, once per repo): gitleaks blocks credentials + bus-check --strict blocks rot / ghost hashes
-cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+git clone https://github.com/HaiYangBG1/solobaton.git
+cp -R "solobaton/templates/." /path/to/new-project/
+cd /path/to/new-project
 ```
 
-### A worked example
+You must then:
 
-Say you're building a "web expense tracker": one frontend repo, one backend repo, long-term iteration.
+1. replace every `<placeholder>` in every copied file;
+2. merge `gitignore.template` into the project's `.gitignore`;
+3. configure real test commands in `verify-status.sh`;
+4. run `bash scripts/bus-check.sh` and inspect every capability boundary;
+5. install the pre-commit guard in the meta repo and in each code sub-repo:
 
-1. **Scaffold (once)**: say "Use Solobaton to scaffold collaboration for my project." It discovers the two repos, notices there's a UI, and asks only three things: long-term? just you? default Product/Fullstack/Testing split? You answer, nod at the summary screen, done.
-2. **Daily work**: open three sessions, one per domain. **In each session's first message, assign the role**:
-   - To **Product**: "You are Product — you break down requirements, keep the board, log decisions. Break down the 'monthly report' feature." → It writes the spec, updates the board, waits for your call (⛔Gate1)
-   - To **Fullstack**: "You are Fullstack — you implement and ship. 'Monthly report' on the board is yours, go." → It runs bus-check to sync up, claims one work package spanning related subtasks, keeps implementing within scope, then leaves a commit hash + evidence
-   - To **Testing**: "You are Testing — you verify and find faults. Accept 'monthly report'." → It runs E2E, walks the UI against design screenshots, files bugs with side-by-side images
+```bash
+cp scripts/pre-commit.sh .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
 
-   After that, no more role-setting — just say "go / X on the board is yours / accept X".
-3. **You only make real calls**: spec, design (approved only after clicking a real rendered prototype), merge, release — four gates need your nod. Reversible pre-freeze choices arrive as one packet of 2–5 real forks; derived constraints and status bookkeeping do not interrupt you. Each settled packet becomes one ledger row. Information flows through files; **you are not the messenger, and you do not have to keep saying “continue.”**
+Installing [`gitleaks`](https://github.com/gitleaks/gitleaks) is strongly recommended. Without it, the remaining pre-commit checks still run, but secret scanning degrades to a warning instead of a blocking gate. Git hooks are not part of ordinary Git history; install them again after a fresh clone, or explicitly configure a versioned `core.hooksPath`.
 
-> The full file snapshot of this fictional project after one iteration lives in [`example/`](example/) — see exactly what every template looks like once filled in.
+## Daily operation
 
-## 3. Core ideas: four pillars
+The first time you open the three sessions, declare their roles:
 
-1. **True multi-session isolation** — each "domain" is an independent session (own cwd, own context, writes only its own files). Naturally resistant to context rot; naturally enforces "writer ≠ reviewer".
-2. **Human at the Gate** — spec / design / merge / release are four decision points that a human must approve, **never auto-crossed**. The human is metronome and judge, not messenger.
-3. **File bus** — all hand-offs go through repo files: `NOW.md` (pointer) → board → contract → per-domain status. Any session picks up its own context at kickoff; you never relay.
-4. **Evidence-based done** — any claim of "done" must carry a commit hash + verifiable evidence (test command / `file:line` / live check / screenshot). **No evidence = not done.**
+```text
+You are the Product session. Own requirements, the board, and decisions. Start.
+```
 
-Requirement IDs, acceptance checks, and commits can stay fine-grained, but a session claims one user-level work package (`objective / in_scope / terminal_condition`). Documents, reviewer returns, and status writes are events inside that package; while safe in-scope work remains, the session keeps going.
+```text
+You are the Fullstack session. Own implementation, contracts, and deployment. Start the work package assigned to you on the board.
+```
 
-## 4. What it looks like running
+```text
+You are the Testing session. Own black-box acceptance, E2E, and evidence. Verify the current candidate.
+```
+
+At the start of every session, synchronize the repository and run the guardrail:
+
+```bash
+git pull
+bash scripts/bus-check.sh
+```
+
+Synchronize every sub-repo separately in a multi-repo project. Run `bus-check.sh` again before changing a contract, running a migration, deploying, or taking another irreversible action.
+
+Common commands:
+
+```bash
+bash scripts/bus-check.sh --strict       # exits non-zero on confirmed rot, ghost hashes, or drift
+bash scripts/verify-status.sh --run       # runs configured project suites and records the latest green result
+bash scripts/design-preview.sh 1          # opens the real clickable prototype before Gate 2 for UI work
+```
+
+## Core mechanisms
+
+- **Work packages:** keep moving toward one independently acceptable user outcome instead of handing back after one file, commit, or reviewer result.
+- **Three approval levels:** `STOP_NOW` for authorization, frozen semantics, and irreversible actions; `BATCH_AT_GATE` for reversible choices; `NO_APPROVAL` for derived in-scope work.
+- **Three tracks:** fast, standard, and heavy tracks select process weight by risk rather than applying every ceremony to every change.
+- **Single sources of truth:** `NOW.md` stays a thin pointer, while contracts, decisions, status, and live queries each have one authoritative entry point.
+- **Review-ready gate:** launch one independent milestone reviewer only after the candidate is stable, worktrees are clean, L3 evidence is green, and there are no known pending fixes.
+- **Machine guardrails:** `bus-check --strict`, pre-commit, gitleaks, and project tests turn deterministic rules into executable checks.
+- **Production-state evidence:** after a project supplies `live-status.sh` and `live-config.sh`, Solobaton can compare deployment-platform configuration with a baseline. It does not automatically prove that a running container loaded the latest configuration.
+- **Brownfield takeover:** establish system boundaries and minimum verification before applying the full bus to new territory; do not rewrite unknown legacy behavior.
+
+The complete rules, bootstrap, and takeover procedure live in [`SKILL.md`](SKILL.md). Real failure modes and their design rationale live in [`lessons.md`](lessons.md).
+
+## Operating model
 
 ```mermaid
 flowchart LR
-    PM["Product session<br/>spec + bookkeeping"] -->|"Gate1 you approve spec"| Design["design tool output"]
-    Design -->|"click real prototype, then Gate2"| Deliver["Fullstack session<br/>implement + contract"]
-    Deliver -->|"one review after review-ready"| Verify["Testing session<br/>E2E + visual walkthrough"]
-    Verify -->|"Gate3 you approve merge"| Deploy["deploy"]
-    Deploy -->|"Gate4 you approve release"| PM
+    PM["Product session<br/>requirements · board · decisions"] -->|"Gate 1: approve specification"| Design["Design tool<br/>clickable prototype"]
+    Design -->|"Gate 2: approve real render"| Deliver["Fullstack session<br/>implementation · contract · deployment"]
+    Deliver -->|"one review after review-ready"| Verify["Testing session<br/>E2E · walkthrough · evidence"]
+    Verify -->|"Gate 3: approve merge"| Deploy["Deployment candidate"]
+    Deploy -->|"Gate 4: approve release"| PM
 ```
 
-The baton comes back only when the package is complete with evidence, a genuine human-only blocker appears, or you explicitly asked for a checkpoint. Approval has three levels: `STOP_NOW` (crossing a Gate, scope, freeze, irreversible-action, or risk boundary), `BATCH_AT_GATE` (reversible choices collected for one Gate packet), and `NO_APPROVAL` (facts, derived constraints, status/archive work, and ordinary P2 items handled autonomously).
+The human does not relay context between sessions. The human makes judgments that cannot be delegated, while ordinary facts, archiving, status updates, and reversible implementation inside an approved boundary continue autonomously.
 
-Day to day you say three sentences: "go", "X on the board is yours", "accept X". Every session starts by running `bus-check.sh` — one screen showing: current iteration, contract version, last three decisions, per-domain progress, sub-repo sync, **actual live version** (queried from the platform, never trusted from docs), **production drift** (platform-side env fingerprints / image tag ↔ git vs. baseline). Sample output (excerpt, translated — the script currently prints Chinese; project setup in [`example/`](example/)):
+## Applicability
+
+Recommended for projects that:
+
+- have at least two repositories or deploy units;
+- will evolve for several weeks or longer;
+- have one builder wearing product, development, testing, and operations hats;
+- need stable handoffs between several AI coding sessions;
+- value verifiable delivery records without introducing a complex agent runtime.
+
+Not recommended for:
+
+- small single-repo changes;
+- one-off scripts;
+- work expected to finish within a week;
+- projects with no verification capability and no intent to establish a minimum test suite first.
+
+Known boundaries: the human remains the final decision-maker. The protocol raises confidence that an agreed goal was delivered correctly; it does not guarantee that the product direction was correct. Automatic rule loading and skill directories also differ between AI coding tools, so compatibility claims should follow each tool's current documentation and real tests.
+
+## Installed project layout
 
 ```text
-════════ Collaboration bus · kickoff sync (bus-check) ════════
-✅ meta repo in sync with remote (or no upstream)
-
-── sub-repos ⇄ remote ──
-  ✅ jz-web         HEAD 7be04d2  ahead 0 / behind 0
-  ⚠️  jz-api         HEAD a3f21c9  ahead 1 / behind 0
-
-── current iteration / board (pm/NOW.md) ──
-Iteration 1 (core bookkeeping flow + monthly report) (wrapped up, awaiting switch) · standard track
-
-── coordination-layer rot check ──
-  ✅ NOW thin, boards archived, status files lean
-
-── contract (contracts/PROTOCOL.md) ──
-Contract snapshot corresponds to: v0.2.0 (released 2026-06-20)
-
-── latest decisions (pm/decisions.md, last 3) ──
-  | 2026-06-20 | you | Iteration 1 accepted, release approved (Gate4); CSV export moved to Iteration 2 …
-  | 2026-06-19 | you | Gate3 merge approved: monthly report (walkthrough P1 empty-month div-by-zero fixed & re-verified) …
-  | 2026-06-15 | you | Gate2 passed on real render: bar chart over line; single column on mobile …
-
-── ghost-hash check (pm/status/) ──
-  ✅ all 7 hashes resolve
-
-── live status ──
-  jz-api   v0.2.0
-  jz-web   v0.2.0
-
-── production drift ──
-  ✅ jz-api           config/image == baseline (tag 0.2.0)
-  —— no drift
-
-▸ Kickoff: ① git pull (incl. sub-repos)  ② read NOW → board → contract → latest decisions  ③ confirm nothing in your domain is stale  ④ rerun this script before irreversible actions (deploy / contract / migration)
+<project-root>/
+├── AGENTS.md                       # session routing, bus rules, and red lines
+├── CLAUDE.md                       # compatibility pointer; never duplicates the rules
+├── ARCHITECTURE.md                 # system facts and sub-project index
+├── contracts/PROTOCOL.md           # cross-boundary contract entry point
+├── pm/
+│   ├── NOW.md                      # thin pointer to the current iteration
+│   ├── <iteration>-board.md
+│   ├── decisions.md
+│   ├── status/
+│   ├── changes/
+│   └── archive/<iteration>/evidence/
+├── scripts/
+│   ├── bus-check.sh
+│   ├── verify-status.sh
+│   ├── drift-check.sh
+│   ├── design-preview.sh
+│   └── pre-commit.sh
+├── .claude/agents/reviewer.md      # read-only milestone / risk-delta / closure review
+├── 指挥台.md                        # one-page operator card
+└── SOLOBATON.md                    # installed Solobaton version and upgrade record
 ```
 
-## 5. The five mechanisms worth stealing
+The compact brownfield layout moves the scripts, operator card, and version marker into `pm/`. See `SKILL.md` §3 for the complete rules.
 
-- **Work packages + approval tiers**: fine-grained requirements retain traceability while execution continues toward one user-level result; sub-artifacts never trigger hand-back. Only authorization/freeze/irreversibility boundaries interrupt immediately, reversible forks batch at a Gate, and derived work proceeds autonomously.
-- **Single source of truth (rule ⑨)**: live version, settled decision packets, iteration switch — the three fastest-rotting facts each have exactly one place of record/query; everywhere else holds pointers. A settled packet lands in `decisions.md` once, then fans out; partial conversation progress stays out of the permanent ledger.
-- **Gate2 real-render approval (rule ⑩)**: design sign-off must happen on a **clickable prototype in a browser** — static mocks and screenshots don't count. Tuition paid for this rule: a redesign shipped and was overturned within 2 days, entirely because approval had been given on static mocks.
-- **Iteration-switch compression ritual**: every iteration ends with forced archiving of the board, truncation of status files, and a reset of NOW; evidence artifacts (walkthrough shots / E2E reports) are written into `pm/archive/<iteration>/evidence/` the moment they're produced — nothing left to move at switch time. Without this ritual, coordination docs turn into an unread scroll within three weeks — so bus-check ships a **coordination-layer rot check**: a bloated NOW, a stale board lingering in pm/, or an oversized status file triggers red warnings at kickoff (a ritual without a guardrail is no ritual at all). The red warnings can also become a gate: bus-check additionally verifies that every commit hash in status files actually exists in git (a **ghost hash** is an imagined "done"), and in `--strict` mode any confirmed rot / ghost hash / drift exits non-zero — `scripts/pre-commit.sh` hooks this into every commit by default, with gitleaks in the same gate to block credentials. Rules enforced by machines, not by goodwill.
-- **Production drift detection**: platform-side env/secrets and images live outside git; one console edit creates a second source of truth. Fingerprint them (🔴 sha256 fingerprints only, never values) and anchor image tags to git tags; bus-check compares against the baseline at every kickoff and prints red warnings — surfacing "config changed but never redeployed" and "live image not found in git" before you touch anything.
+## Capabilities and dependencies
 
-## 6. Repository layout
-
-```
-solobaton/
-├── SKILL.md       # methodology body for agents: domain model / ten rules / 4 gates + 3 tracks /
-│                  #   work packages + approval tiers / three rituals / red lines / guided bootstrap
-├── lessons.md     # 18 anti-patterns (symptom → root cause → cure), every one happened for real
-├── README.md      # Chinese intro (this file's original)
-├── README.en.md   # this file
-├── CHANGELOG.md   # version history
-├── example/       # teaching sandbox: a fictional project's full file snapshot after one iteration
-└── templates/     # copy to a new project root, replace <placeholders>, run
-    ├── AGENTS.md              # session routing + ten rules + red lines (open standard, auto-loaded by every session)
-    ├── CLAUDE.md              # one-line pointer → AGENTS.md (for tools that only read this name; never copy content)
-    ├── ARCHITECTURE.md        # full-stack overview skeleton (credentials: location only, never values; read on demand)
-    ├── 指挥台.md               # one-page operator card for the human
-    ├── pm/                    # Product-domain coordination: NOW pointer / board / decision log / per-domain status / change proposals
-    ├── contracts/PROTOCOL.md  # the single entry point for cross-boundary contracts
-    ├── gitignore.template     # meta-repo .gitignore template (copy in and rename; excludes sub-repos and *.env)
-    ├── SOLOBATON.md           # version marker: which Solobaton this project uses + upgrade/feedback notes
-    ├── .claude/agents/reviewer.md   # read-only reviewer (milestone / risk-delta / closure)
-    └── scripts/               # bus-check.sh (kickoff guard; --strict machine gate) + drift-check.sh (production drift)
-                               #   + verify-status.sh (live test-green check, backs L3 evidence)
-                               #   + design-preview.sh (real render) + pre-commit.sh (red-line gate: gitleaks + strict)
-```
-
-## 7. Applicability (the honest version)
-
-- **Good fit**: ≥2 repos or deploy units, multi-iteration, one person wearing PM/dev/test/ops hats, AI sessions that need to hand work to each other.
-- **Bad fit**: single-repo small tasks, one-off scripts, anything wrapping up within a week — just run one session; the bus would be pure ceremony.
-- **Known limits**: the human remains the orchestration bottleneck (a feature, not a bug — human judgment is this playbook's moat); the process guarantees "building it right", not "building the right thing" — topic selection still relies on your own discipline against a risk list (lessons.md #8).
-
-## 8. The ten rules at a glance
-
-| # | Rule | One-liner |
+| Capability | Dependency | When missing |
 |---|---|---|
-| ① | Single board pointer | The entry is always NOW.md; switching iterations edits one place; board filenames never hard-coded elsewhere |
-| ② | Contracts land in files, not in chat | Change PROTOCOL.md before code; independently verify the other side's protocol claims before trusting |
-| ③ | Hand-offs ride on commits | Update status with hashes at package completion or a real blocker; atomic commits do not each interrupt the human |
-| ④ | Kickoff guard | Run bus-check at kickoff; **run it again before any irreversible action**; hook `--strict` into pre-commit as a gate |
-| ⑤ | Three tracks | Fast / standard / heavy; size work packages by vertical outcome, not by file |
-| ⑥ | Review gate | Machine gates stay continuous; launch one milestone review only after a clean, green, no-known-fix review-ready preflight; batch P0/P1 closure |
-| ⑦ | Proposals + split status | Cross-domain changes use delta proposals; each domain writes its own status, batched by work package |
-| ⑧ | Visual issues need images | UI bugs require implementation-vs-design screenshots side by side; words alone aren't evidence |
-| ⑨ | Single source of truth | Live version only by live query; each settled decision packet is logged once; iteration switch requires compression |
-| ⑩ | Gate2 real render | Design approval happens on a clickable prototype; static mocks don't count |
+| File bus and basic checks | Git, Bash | The core workflow cannot run |
+| Real-render design preview | Python 3 | The bundled preview script cannot run |
+| Blocking secret scan | gitleaks | Degrades to a warning; do not claim a secret gate exists |
+| Production-config drift | `jq`, a SHA tool, project `live-config.sh` | Explicitly skipped; no production-state conclusion |
+| Live-version query | project `live-status.sh` and platform CLI | Explicitly unconfigured; documentation is not treated as live truth |
+| L3 test evidence | real `SUITES` in project `verify-status.sh` | Reports unconfigured; cannot claim automation is green |
 
-## 9. Plain-language glossary
+## Continue reading
 
-> One line each, grouped as collaboration mechanics / files & roles / engineering terms.
+- [`SKILL.md`](SKILL.md): the single complete entry point for the methodology and bootstrap;
+- [`example/`](example/): the full file snapshot of a fictional project after one iteration;
+- [`lessons.md`](lessons.md): real anti-patterns, root causes, and fixes;
+- [`CHANGELOG.md`](CHANGELOG.md): version history and upgrade instructions for copied projects.
 
-### Collaboration mechanics
+## Contributing
 
-| Term | Plain meaning |
-|---|---|
-| File bus | Borrowed from "message bus": sessions never relay through you; information lives in agreed repo files, read on demand |
-| SSOT (Single Source of Truth) | A fact is recorded in exactly one place; everywhere else points to it — prevents contradictory copies |
-| Gate (the four Gates) | Checkpoints — spec / design / merge / release — that a human must approve; AI may not auto-cross |
-| Three tracks | Process weight matched to change size: fast (small fix) / standard (one feature) / heavy (contract-touching) — small changes never ride the heavy process |
-| Work package | The user-level result one session owns, with objective / in_scope / terminal_condition; it may span multiple IDs, documents, and commits |
-| Approval tiers | STOP_NOW / BATCH_AT_GATE / NO_APPROVAL: only true boundary crossings or irreversible actions interrupt immediately |
-| Decision packet | Two to five independent human forks presented together; acceptance checks and derived constraints do not masquerade as separate decisions |
-| Review gate | Machine checks run on every commit; the writer stabilizes first; only a clean `HEAD=candidate` with green L3/render evidence and no known fixes gets one full review |
-| Writer ≠ reviewer | The session that wrote the code must not be the one reviewing it — self-review always passes |
-| Evidence-based done | "Done" requires commit hash + verifiable evidence (test command / file:line / screenshot), otherwise not done |
-| Human in the loop | Key decisions require a human; no fully automatic closed loop |
-| Decision / decision log | You settle a real decision packet; the log (pm/decisions.md) records that result once, not partial conversation progress |
-| Iteration / switch | An iteration ≈ a sprint; switching = closing this one and opening the next, always with archiving and compression |
-| Compression ritual | The fixed steps at iteration switch — archive docs, truncate status files — so coordination docs never rot |
-| Kickoff guard | The script you must run before working (bus-check.sh): one screen of progress / contract / decisions / live status |
-| Machine gate (--strict) | A rule that actually stops you when violated: bus-check --strict exits non-zero on confirmed findings; wired into pre-commit, a bad commit is simply rejected |
+Issues and pull requests are welcome. A change to workflow semantics should update `SKILL.md`, affected templates, both READMEs, the example, and the changelog. Explain:
 
-### Files & roles
+1. which real failure mode the change addresses;
+2. how to reproduce it;
+3. which automated checks show that it did not regress existing behavior.
 
-| Term | Plain meaning |
-|---|---|
-| Domain | One unit of division of labor = one independent AI session (e.g. Product / Fullstack / Testing), each owning its own files — no crossing boundaries |
-| meta repo / sub-repo | meta repo = the git repo holding coordination files (board / contracts / status); sub-repos = each codebase's own git repo |
-| Contract (PROTOCOL) | Cross-repo / cross-service interface agreements (fields / behavior / error codes); sole registry is contracts/PROTOCOL.md |
-| Thin pointer | NOW.md only says "which iteration, which files to read" — a bookmark, not a notebook |
-| Board | The current iteration's work table: who does what, how far along, what's stuck |
-| Delta proposal | For big changes, first a file listing what changes (added/modified/removed), approved before work starts |
-| reviewer / subagent | A temporary read-only agent launched only after review-ready; it reviews silently and returns once, with one milestone plus one batched closure by default per package/Gate |
-| Debt entry | An unfinished item parked on the board; whoever claims it clears it |
+Run at least:
 
-### Engineering terms
+```bash
+bash -n templates/scripts/*.sh
+bash tests/test-scripts.sh
+bash tests/check-docs.sh
+git diff --check
+```
 
-| Term | Plain meaning |
-|---|---|
-| Context rot | A long-running session's memory distorts and attention scatters; answers drift off target |
-| Production drift | What actually runs in production no longer matches what git records (e.g. console env edit, no redeploy) |
-| Fingerprint (sha256) | Content hashed into a fixed-length string: any change flips the fingerprint, without exposing the content |
-| E2E | End-to-end test: walk a feature like a real user, not just unit-test a function |
-| Walkthrough | Screen-by-screen human comparison of implementation vs. design, with screenshots |
-| Four states | Every screen must handle: loading / empty / error / mobile |
-| Real render | A prototype that opens and clicks in a browser — as opposed to a static image |
-| UI meta-annotation | Developer-facing text leaking into the visible UI (data caveats / mock markers / debug info) |
-| WIP | Work in progress: changes written but not committed |
-| Ghost hash | A commit hash recorded in a status doc that doesn't exist in git — the "done" was imagined |
-| stale | Working from outdated information (the decision changed; you didn't know) |
-| BFF | Backend for Frontend: a middle layer aggregating data for the frontend |
-| cwd | A session's working directory — where the session "stands" in the project |
-| CHANGELOG | Version log; "Keep a Changelog" is the common convention (reverse order, per-version sections) |
-| hook / Stop hook | Scripts auto-triggered by events; a Stop hook runs when a session finishes a turn; a pre-commit hook runs before every commit and can reject it |
-| gitleaks | Open-source credential scanner: sweeps changes before commit and blocks anything that looks like a key or password |
-| Evidence levels (L0–L4) | Trust tiers for evidence: claim < file:line < compiles < automated tests pass < verified live; standard track requires ≥ L3 |
-| Takeover ritual | The entry point for putting the bus on a **legacy project** (vs. from-zero bootstrap): survey, draw the old/new boundary, iteration 0 builds tests first |
-| SOLOBATON.md | Version marker at the project root: which Solobaton version it uses; upgrade against upstream CHANGELOG, feed new potholes back to upstream lessons |
+## License
 
----
-
-*Version history: [CHANGELOG.md](CHANGELOG.md). When future projects hit new potholes, feed them back into lessons.md — this skill applies its own rules — evidence-based done and single source of truth — to itself: lessons are recorded in exactly one place, versions in exactly one place.*
+[MIT](LICENSE) © 2026 HaiYangBG
