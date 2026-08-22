@@ -32,6 +32,7 @@ CRITICAL_TEMPLATE_FILES = (
     "templates/scripts/drift-check.sh",
 )
 CRITICAL_CLI_FILES = (
+    ".github/scripts/publish-candidate.sh",
     ".github/workflows/publish.yml",
     "bin/solobaton.js",
     "docs/CLI.md",
@@ -44,6 +45,7 @@ CRITICAL_CLI_FILES = (
     "src/planner.js",
     "src/project.js",
     "tests/cli.test.js",
+    "tests/publish-workflow.test.js",
 )
 
 
@@ -227,12 +229,50 @@ def check_cli_package() -> list[str]:
         if required not in prepublish:
             errors.append(f"package.json: prepublishOnly must include {required}")
 
-    package_spec = f"solobaton@{version}"
+    release_guide = (ROOT / "docs/RELEASING.md").read_text(encoding="utf-8")
+    verified_match = re.search(
+        r"latest independently verified npm distribution `solobaton@(\d+\.\d+\.\d+)`",
+        release_guide,
+    )
+    verified_version = verified_match.group(1) if verified_match else ""
+    if verified_match is None:
+        errors.append(
+            "docs/RELEASING.md: latest independently verified npm distribution is missing"
+        )
+    elif version_match is not None:
+        verified_parts = tuple(int(part) for part in verified_version.split("."))
+        candidate_parts = tuple(int(part) for part in version.split("."))
+        if verified_parts > candidate_parts:
+            errors.append(
+                "docs/RELEASING.md: verified npm distribution cannot exceed package candidate"
+            )
+    if f"package candidate `solobaton@{version}`" not in release_guide:
+        errors.append("docs/RELEASING.md: package candidate evidence is stale")
+
+    verified_spec = f"solobaton@{verified_version}"
     distribution_docs = ("README.md", "README.en.md", "docs/CLI.md")
     for relative in distribution_docs:
         content = (ROOT / relative).read_text(encoding="utf-8")
-        if package_spec not in content:
-            errors.append(f"{relative}: missing current package spec {package_spec}")
+        if verified_version:
+            required_commands = (
+                f"npx --yes {verified_spec}",
+                f"npm install --global {verified_spec}",
+            )
+            for command in required_commands:
+                if command not in content:
+                    errors.append(
+                        f"{relative}: missing independently verified package command {command}"
+                    )
+        if verified_version != version:
+            candidate_commands = (
+                f"npx --yes solobaton@{version}",
+                f"npm install --global solobaton@{version}",
+            )
+            for command in candidate_commands:
+                if command in content:
+                    errors.append(
+                        f"{relative}: executable command claims unverified candidate {command}"
+                    )
     cli_contract = (ROOT / "docs/CLI.md").read_text(encoding="utf-8")
     if f'"cliVersion": "{version}"' not in cli_contract:
         errors.append("docs/CLI.md: manifest example CLI version is stale")
@@ -246,6 +286,8 @@ def check_cli_package() -> list[str]:
             errors.append(f"{relative}: stale npm publication claim remains")
     if not ((ROOT / "bin/solobaton.js").stat().st_mode & 0o111):
         errors.append("bin/solobaton.js: executable bit is missing")
+    if not ((ROOT / ".github/scripts/publish-candidate.sh").stat().st_mode & 0o111):
+        errors.append(".github/scripts/publish-candidate.sh: executable bit is missing")
     return errors
 
 
@@ -270,19 +312,52 @@ def check_publish_workflow() -> list[str]:
     errors: list[str] = []
     relative = ".github/workflows/publish.yml"
     workflow = (ROOT / relative).read_text(encoding="utf-8")
+    helper_relative = ".github/scripts/publish-candidate.sh"
+    helper = (ROOT / helper_relative).read_text(encoding="utf-8")
     required_fragments = (
         "workflow_dispatch:",
+        "name: npm-publish",
         "id-token: write",
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
         "npm install --global npm@11.19.0",
-        "git merge-base --is-ancestor HEAD refs/remotes/origin/main",
-        "npm publish --access public",
-        "Refuse an existing registry version",
+        'test "$GITHUB_REF" = "refs/heads/main"',
+        'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
+        'test "$(git rev-parse HEAD)" = "$(git rev-parse refs/remotes/origin/main)"',
+        "bash .github/scripts/publish-candidate.sh",
+        "needs: publish",
+        "dist.attestations.url",
+        "https://slsa.dev/provenance/v1",
+        "npm audit signatures",
     )
     for fragment in required_fragments:
         if fragment not in workflow:
             errors.append(f"{relative}: missing trusted-publishing guard {fragment}")
     if "NODE_AUTH_TOKEN" in workflow or "NPM_TOKEN" in workflow:
         errors.append(f"{relative}: long-lived npm publish token must not be configured")
+    if workflow.count("id-token: write") != 1:
+        errors.append(f"{relative}: exactly one publish job may receive id-token: write")
+
+    action_refs = re.findall(
+        r"uses:\s+actions/(?:checkout|setup-node)@([^\s]+)", workflow
+    )
+    if not action_refs or any(
+        re.fullmatch(r"[0-9a-f]{40}", reference) is None for reference in action_refs
+    ):
+        errors.append(f"{relative}: publish workflow actions must use immutable full SHAs")
+
+    helper_fragments = (
+        'official_registry="https://registry.npmjs.org/"',
+        "registry_integrity",
+        'npm publish "$candidate_tarball" --access public',
+        '[[ "$existing_integrity" == "$candidate_integrity" ]]',
+        "registry reconciliation proved the exact candidate",
+    )
+    for fragment in helper_fragments:
+        if fragment not in helper:
+            errors.append(f"{helper_relative}: missing publish recovery guard {fragment}")
+    if "NODE_AUTH_TOKEN" in helper or "NPM_TOKEN" in helper:
+        errors.append(f"{helper_relative}: long-lived npm publish token must not be configured")
     return errors
 
 

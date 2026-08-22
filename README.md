@@ -44,7 +44,7 @@ Solobaton 把这些问题收敛成四个支柱：
 
 ### CLI v0：npm 正式分发，项目仍只读
 
-v1.16 新增零第三方运行时依赖的 Node.js 20+ CLI；从 `solobaton@1.16.1` 起通过 npm 正式分发。一次性检查建议固定版本，便于复现：
+v1.16 新增零第三方运行时依赖的 Node.js 20+ CLI；从 `solobaton@1.16.1` 起通过 npm 正式分发。一次性检查建议固定最新已独立验证的包版本，便于复现：
 
 ```bash
 npx --yes solobaton@1.16.1 doctor /path/to/project
@@ -55,7 +55,7 @@ npx --yes solobaton@1.16.1 adopt /path/to/project --dry-run --json
 需要长期使用时，可以显式管理全局 CLI：
 
 ```bash
-npm install --global solobaton@1.16.1  # 安装固定版本
+npm install --global solobaton@1.16.1  # 安装最新已独立验证版本
 solobaton doctor /path/to/project
 npm install --global solobaton@latest  # 更新 CLI 包
 npm uninstall --global solobaton       # 移除全局 CLI

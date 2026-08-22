@@ -1,6 +1,6 @@
 # Solobaton CLI lifecycle contract
 
-Status: **CLI v0 read-only preview** · distributed as `solobaton@1.16.1` · Node.js 20+ · zero third-party runtime dependencies.
+Status: **CLI v0 read-only preview** · source/package candidate `solobaton@1.16.2` · latest independently verified npm distribution `solobaton@1.16.1` · Node.js 20+ · zero third-party runtime dependencies.
 
 The CLI does not replace `SKILL.md`. The Skill tells an AI session how to operate the delivery protocol; the CLI provides deterministic inspection and, in later versions, safe scaffold lifecycle operations.
 
@@ -12,7 +12,7 @@ npx --yes solobaton@1.16.1 init /path/to/project --dry-run
 npx --yes solobaton@1.16.1 adopt /path/to/project --dry-run
 ```
 
-A repository checkout may replace `npx --yes solobaton@1.16.1` with `node bin/solobaton.js`.
+A repository checkout may replace `npx --yes solobaton@1.16.1` with `node bin/solobaton.js`; that source command runs the checked-out candidate and is not npm distribution evidence.
 
 - `doctor` reads an existing project and reports installation state, layout, version marker, required files, unresolved canonical placeholders, hooks, and capability dependencies.
 - `init --dry-run` inspects a new-project target and emits the default-layout installation plan.
@@ -35,8 +35,8 @@ The public npm package gives the executable a conventional, reversible distribut
 
 | Intent | Command | Project effect |
 |---|---|---|
-| Reproducible one-off run | `npx --yes solobaton@1.16.1 doctor <project>` | Read-only inspection; no persistent global CLI installation |
-| Install a pinned global CLI | `npm install --global solobaton@1.16.1` | Installs only the package and executable |
+| Reproducible one-off run | `npx --yes solobaton@1.16.1 doctor <project>` | Read-only inspection using the latest independently verified distribution; no persistent global CLI installation |
+| Install a pinned global CLI | `npm install --global solobaton@1.16.1` | Installs the latest independently verified package and executable |
 | Update the global CLI | `npm install --global solobaton@latest` | Replaces only the globally installed package |
 | Remove the global CLI | `npm uninstall --global solobaton` | Removes only the global package and executable |
 
@@ -74,7 +74,7 @@ A write-capable release must create `.solobaton/manifest.json`. Schema 1 is rese
 {
   "schemaVersion": 1,
   "scaffoldVersion": "v1.16",
-  "cliVersion": "1.16.1",
+  "cliVersion": "1.16.2",
   "layout": "default",
   "installedAt": "2026-08-22T00:00:00.000Z",
   "files": {
