@@ -44,7 +44,7 @@ st_count=$(printf '%s\n' "$STAGED" | grep -c '^pm/status/.*\.md$' 2>/dev/null | 
 st_count=${st_count:-0}
 if [ "$st_count" -ge 2 ] && [ "${BUS_RITUAL:-0}" != "1" ]; then
   # 排除 status/README.md 自身;换期压缩仪式(连同 archive/ 提交)放行
-  real=$(printf '%s\n' "$STAGED" | grep '^pm/status/.*\.md$' | grep -v 'README\.md$' | wc -l | tr -d ' ')
+  real=$(printf '%s\n' "$STAGED" | awk '/^pm\/status\/.*\.md$/ && $0 !~ /README\.md$/ {n++} END {print n+0}')
   has_archive=$(printf '%s\n' "$STAGED" | grep -c '^pm/archive/' 2>/dev/null | tr -d ' ')
   if [ "${real:-0}" -ge 2 ] && [ "${has_archive:-0}" = "0" ]; then
     echo "⛔ 一次 commit 暂存了 $real 个域的 status(规则⑦:各域只写自己的)—— 分开提交;换期压缩仪式请连同 pm/archive/ 一起提交(或 BUS_RITUAL=1 git commit)"

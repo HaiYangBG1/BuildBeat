@@ -21,12 +21,24 @@ DIR="$ROOT/design/design_${N}期"
 [ -d "$DIR" ] || DIR="$ROOT/design/$N"
 if [ ! -d "$DIR" ]; then
   echo "✗ 找不到设计目录: design/design_${N}期 或 design/$N" >&2
-  echo "  现有:"; ls -d "$ROOT"/design/design_* 2>/dev/null | sed "s|$ROOT/|  - |"
+  echo "  现有:"
+  existing_n=0
+  for existing in "$ROOT"/design/design_*; do
+    [ -d "$existing" ] || continue
+    printf '  - %s\n' "${existing#"$ROOT"/}"
+    existing_n=$((existing_n + 1))
+  done
+  [ "$existing_n" -gt 0 ] || echo "  (无)"
   exit 1
 fi
 
-ENTRY=$(ls "$DIR"/*.html 2>/dev/null | head -1)
-echo "▸ 渲染 ${DIR#$ROOT/} → http://localhost:$PORT/"
+ENTRY=""
+for candidate in "$DIR"/*.html; do
+  [ -f "$candidate" ] || continue
+  ENTRY="$candidate"
+  break
+done
+echo "▸ 渲染 ${DIR#"$ROOT"/} → http://localhost:$PORT/"
 [ -n "${ENTRY:-}" ] && echo "▸ 入口: http://localhost:$PORT/$(basename "$ENTRY" | sed 's/ /%20/g')"
 echo "▸ Gate2 拍板前:浏览器里把关键流点一遍(规则⑩)。Ctrl-C 停止。"
 exec python3 -m http.server "$PORT" --directory "$DIR"

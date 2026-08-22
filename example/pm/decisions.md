@@ -5,6 +5,7 @@
 
 | 日期 | 拍板人 | 决策包 | 回写(落点 → 状态) |
 |---|---|---|---|
+| 2026-08-22 | 你 | 【FLOW-UPSTREAM-TESTS】升级 Solobaton v1.15:替换 3 个路径健壮性脚本;上游 README/CI/测试不拷入业务项目;流程语义不变 | SOLOBATON.md / 产品 status → ✅;历史决策与看板不回改 |
 | 2026-08-22 | 你 | 【FLOW-REVIEW-READY】升级 Solobaton v1.14:候选满足 `HEAD=candidate`、干净、L3/渲染绿、无待修后才做一次 milestone;P0/P1 合并 closure;reviewer 静默返回 | AGENTS.md 规则⑥ / SOLOBATON.md / 一期-看板.md → ✅;历史报告不回改 |
 | 2026-08-22 | 你 | 【FLOW-20260822】升级 Solobaton v1.13:会话按工作包持续推进;审批分 STOP_NOW/BATCH_AT_GATE/NO_APPROVAL;决策包收敛后只记一次 | AGENTS.md §2.5 / SOLOBATON.md / 一期-看板.md / status 口径 → ✅;历史部分记录不回改 |
 | 2026-08-22 | 你 | 升级 Solobaton v1.12:机器闸常驻;高风险 delta 定向核;里程碑候选只全核一次;同一 hash 复用结论 | AGENTS.md 规则⑥ / SOLOBATON.md / 一期-看板.md 核查节奏 → ✅;历史报告不回改 |

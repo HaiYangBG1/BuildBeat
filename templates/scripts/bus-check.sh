@@ -55,7 +55,10 @@ fi
 
 # 1.5) 子仓是否落后/领先远端
 if [ ${#SUBREPOS[@]} -eq 0 ]; then
-  while IFS= read -r g; do SUBREPOS+=("${g%/.git}"); done < <(ls -d ./*/.git ./*/*/.git 2>/dev/null | grep -v '^\./\.git')
+  for g in ./*/.git ./*/*/.git; do
+    [ -d "$g" ] || continue
+    SUBREPOS+=("${g%/.git}")
+  done
 fi
 echo ""
 echo "── 子仓 ⇄ 远端 ──"
@@ -117,6 +120,7 @@ else
     echo "  ⚠️  pm/NOW.md 已 $now_lines 行(>$NOW_MAX)—— 薄指针长肥,跑换期压缩仪式(NOW 底部 checklist)"; rot=1
   fi
   # b) 当期看板存在性 + 非当期看板滞留 pm/(该 git mv 进 archive/<期>/)
+  # shellcheck disable=SC2016 # single quotes intentionally protect the backticks in the sed pattern
   cur_board=$(grep -m1 "当期看板" pm/NOW.md 2>/dev/null | sed -n 's/.*`\([^`]*看板[^`]*\.md\)`.*/\1/p')
   cur_board=$(basename "${cur_board:-}" 2>/dev/null)
   case "$cur_board" in *"<"*) cur_board="";; esac   # NOW 还是占位符 → 判不了
@@ -197,6 +201,7 @@ if [ -d pm/status ]; then
   #   代价:纯字母/纯数字的 7 位真 hash(各约 0.1%/3.7%)会被静默跳过——良性漏检,换不误拦。
   HASHES=$(for f in pm/status/*.md; do
       [ -e "$f" ] || continue; [ "$(basename "$f")" = "README.md" ] && continue
+      # shellcheck disable=SC2016 # backticks are literal Markdown delimiters, not shell expansion
       grep -hoE '`[^`]*`' "$f" 2>/dev/null
     done | sed -E 's#[a-zA-Z][a-zA-Z0-9+.-]*://[^` ]*##g; s#sha256:[0-9a-fA-F]*##g' \
         | grep -hoE '\b[0-9a-f]{7,40}\b' | grep '[a-f]' | grep '[0-9]' | sort -u)
