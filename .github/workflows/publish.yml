@@ -1,0 +1,103 @@
+name: Publish npm package
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Exact annotated release tag, for example v1.17.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish ${{ inputs.tag }} to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+    steps:
+      - name: Check out the exact tag
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ inputs.tag }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org/
+          package-manager-cache: false
+
+      - name: Install the pinned OIDC-capable npm CLI
+        run: npm install --global npm@11.19.0
+
+      - name: Validate tag, ancestry, and package version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must use vMAJOR.MINOR.PATCH." >&2
+            exit 1
+          fi
+
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          test "$(git cat-file -t "$RELEASE_TAG")" = "tag"
+          test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$(git rev-parse HEAD)"
+          git merge-base --is-ancestor HEAD refs/remotes/origin/main
+
+          package_version="$(node -p "require('./package.json').version")"
+          test "$RELEASE_TAG" = "v$package_version"
+          test -z "$(git status --porcelain=v1)"
+
+      - name: Install package metadata
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Re-run release checks
+        run: |
+          npm test
+          npm run check:docs
+          npm run pack:check
+          test -z "$(git status --porcelain=v1)"
+
+      - name: Refuse an existing registry version
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "require('./package.json').version")"
+          if npm view "solobaton@$package_version" version >/dev/null 2>&1; then
+            echo "solobaton@$package_version already exists; npm versions are immutable." >&2
+            exit 1
+          fi
+
+      - name: Publish through npm Trusted Publishing
+        run: npm publish --access public
+
+      - name: Verify official registry readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "require('./package.json').version")"
+          for attempt in 1 2 3 4 5 6; do
+            published_version="$(npm view "solobaton@$package_version" version 2>/dev/null || true)"
+            if [[ "$published_version" = "$package_version" ]]; then
+              printf 'Verified solobaton@%s on the official registry.\n' "$published_version"
+              exit 0
+            fi
+            printf 'Registry readback attempt %s did not return the version yet.\n' "$attempt"
+            sleep 5
+          done
+          echo "Published version did not become readable from the official registry." >&2
+          exit 1

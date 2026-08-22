@@ -32,6 +32,7 @@ CRITICAL_TEMPLATE_FILES = (
     "templates/scripts/drift-check.sh",
 )
 CRITICAL_CLI_FILES = (
+    ".github/workflows/publish.yml",
     "bin/solobaton.js",
     "docs/CLI.md",
     "docs/RELEASING.md",
@@ -265,6 +266,26 @@ def check_example_version() -> list[str]:
     return []
 
 
+def check_publish_workflow() -> list[str]:
+    errors: list[str] = []
+    relative = ".github/workflows/publish.yml"
+    workflow = (ROOT / relative).read_text(encoding="utf-8")
+    required_fragments = (
+        "workflow_dispatch:",
+        "id-token: write",
+        "npm install --global npm@11.19.0",
+        "git merge-base --is-ancestor HEAD refs/remotes/origin/main",
+        "npm publish --access public",
+        "Refuse an existing registry version",
+    )
+    for fragment in required_fragments:
+        if fragment not in workflow:
+            errors.append(f"{relative}: missing trusted-publishing guard {fragment}")
+    if "NODE_AUTH_TOKEN" in workflow or "NPM_TOKEN" in workflow:
+        errors.append(f"{relative}: long-lived npm publish token must not be configured")
+    return errors
+
+
 def main() -> int:
     paths = markdown_files()
     errors = []
@@ -275,6 +296,7 @@ def main() -> int:
     errors.extend(check_critical_files())
     errors.extend(check_cli_package())
     errors.extend(check_example_version())
+    errors.extend(check_publish_workflow())
 
     if errors:
         print("Documentation checks failed:", file=sys.stderr)

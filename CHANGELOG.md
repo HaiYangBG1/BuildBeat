@@ -2,6 +2,11 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- **后续 npm 发布去长期 token**:新增手动触发的 GitHub Actions Trusted Publishing 工作流；只接受三段式 annotated tag，要求 tag 精确落在 `main`、包版本与 tag 一致、registry 版本尚不存在，并在发布前重跑测试/文档/pack 检查
+- **OIDC 与 provenance**:发布 job 仅授予 `contents: read`、`id-token: write`，不读取 `NODE_AUTH_TOKEN`；npm Trusted Publisher 绑定精确仓库与 `publish.yml` 后，后续公共包由短期 OIDC 凭据发布并自动生成 provenance
+
 ## v1.16.1 — 2026-08-22
 
 > 主题:把 CLI v0 从“只可源码运行”推进到可审计的 npm 公共分发。脚手架版本仍是 v1.16，项目写入能力仍未开放；本补丁只建立 CLI 包的安装、更新、移除和发布证据链。
