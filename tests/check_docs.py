@@ -241,13 +241,13 @@ def check_cli_package() -> list[str]:
         )
     elif version_match is not None:
         verified_parts = tuple(int(part) for part in verified_version.split("."))
-        candidate_parts = tuple(int(part) for part in version.split("."))
-        if verified_parts > candidate_parts:
+        source_parts = tuple(int(part) for part in version.split("."))
+        if verified_parts > source_parts:
             errors.append(
-                "docs/RELEASING.md: verified npm distribution cannot exceed package candidate"
+                "docs/RELEASING.md: verified npm distribution cannot exceed source package version"
             )
-    if f"package candidate `solobaton@{version}`" not in release_guide:
-        errors.append("docs/RELEASING.md: package candidate evidence is stale")
+    if f"source package version `solobaton@{version}`" not in release_guide:
+        errors.append("docs/RELEASING.md: source package version evidence is stale")
 
     verified_spec = f"solobaton@{verified_version}"
     distribution_docs = ("README.md", "README.en.md", "docs/CLI.md")
@@ -264,14 +264,14 @@ def check_cli_package() -> list[str]:
                         f"{relative}: missing independently verified package command {command}"
                     )
         if verified_version != version:
-            candidate_commands = (
+            unverified_source_commands = (
                 f"npx --yes solobaton@{version}",
                 f"npm install --global solobaton@{version}",
             )
-            for command in candidate_commands:
+            for command in unverified_source_commands:
                 if command in content:
                     errors.append(
-                        f"{relative}: executable command claims unverified candidate {command}"
+                        f"{relative}: executable command claims unverified source version {command}"
                     )
     cli_contract = (ROOT / "docs/CLI.md").read_text(encoding="utf-8")
     if f'"cliVersion": "{version}"' not in cli_contract:

@@ -17,6 +17,7 @@
 - **发布身份收紧**:OIDC job 的第三方 Action 固定到完整 commit SHA，并绑定需人工批准且仅允许受保护分支的 `npm-publish` GitHub Environment；npm Trusted Publisher 仍必须配置同名 environment
 - **候选与分发证据分离**:`package.json`/manifest 可表达 `1.16.2` 候选，但可执行的 `npx`/安装文档在新版本完成 registry/provenance/安装回读前继续指向已独立验证的 `1.16.1`
 - **证据边界**:workflow/绑定/tag 存在都不等于 OIDC 发布已验证；只有新版本工作流成功、registry/provenance 回读和独立安装全通过后，才能创建匹配的 GitHub Release
+- **真实发布验收**:`solobaton@1.16.2` 已通过 GitHub OIDC 发布，官方 registry `latest`/精确 tarball/SLSA v1 provenance/registry signature/attestation/隔离安装/只读 `doctor` 独立回读全部通过；精确发布物由 `v1.16.2@368f1f2` 保全，并已创建匹配的 GitHub Release
 
 ## v1.16.1 — 2026-08-22
 
