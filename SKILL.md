@@ -1,6 +1,6 @@
 ---
 name: solobaton
-description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 指挥多个并行 AI 会话交付中大型项目的方法论 + 可复制脚手架(会话路由/文件总线/四 Gate/三轨/任务包/审批分层/核查门/决策台账/换期压缩仪式/开工护栏脚本/机器闸 pre-commit:gitleaks+bus-check --strict/引导式 Bootstrap:自查代码+少量提问/接管存量项目仪式/证据分级 L0-L4)。当用户要为新的中大型项目搭多会话协作架构、**要给已有的存量老项目套上协作流程(接管)**、提到"Solobaton/协作总线/Builder/人在回路/多 session 协作/AI 团队流程/项目骨架 bootstrap",或抱怨"多个 AI 会话信息不同步、任务过早结束、审批打断过多、验收漏验、文档腐烂、返工螺旋"时使用。
+description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 指挥多个并行 AI 会话交付中大型项目的方法论 + 可复制脚手架(会话路由/文件总线/四 Gate/三轨/任务包/审批分层/核查门/决策台账/换期压缩仪式/开工护栏脚本/机器闸 pre-commit:gitleaks+bus-check --strict/引导式 Bootstrap:自查代码+少量提问/接管存量项目仪式/证据分级 L0-L4)。当用户要为新的中大型项目搭多会话协作架构、**要给已有的存量老项目套上协作流程(接管)**、提到"Solobaton/协作总线/Builder/人在回路/多 session 协作/AI 团队流程/项目骨架 bootstrap",或抱怨"多个 AI 会话信息不同步、任务过早结束、审批打断过多、review 过于频繁、验收漏验、文档腐烂、返工螺旋"时使用。
 ---
 
 # Solobaton —— 一个 Builder + N 个 AI 会话交付中大型项目(Builder 协作总线)
@@ -29,9 +29,9 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 | **全栈**(实现,含运维) | 实现 + 改契约 + 部署;可同持多仓但**按仓分别 stage** | 代码仓 + `contracts/` |
 | **测试**(E2E·走查) | 黑盒 E2E + 视觉回归 + 设计走查,不合格直接提带图 bug | `tests/**` + 证据产物(落 `pm/archive/<期>/evidence/`) |
 
-- **reviewer = 只读 subagent**(不是常驻会话):支持 `milestone`(里程碑候选全核)/ `risk-delta`(高风险语义定向核)/ `closure`(只复核 finding 修复)三种模式,模板见 [templates/.claude/agents/reviewer.md](templates/.claude/agents/reviewer.md)。
+- **reviewer = review-ready 后才启动的只读 subagent**(不是常驻会话):支持 `milestone`(稳定里程碑候选全核)/ `risk-delta`(冻结后高风险语义定向核)/ `closure`(合并复核 finding 修复)三种模式;一次调用静默核完再返回,不做进度播报,模板见 [templates/.claude/agents/reviewer.md](templates/.claude/agents/reviewer.md)。
 - **设计生成 = 外部工具**(可选):产品域写 brief → 人喂设计工具 → 稿落 `design/design_N期/`;走查归测试域。
-- **切域依据是"物理边界(仓/部署单元)+ 是否需要独立核查",不是人类公司职能表。** 实践教训:按职能切出 6 个域,两个月内被迫合并回 4 个(前端+后端合并、设计+测试合并)——每多一个域,人的编排成本和信息差面积都翻倍。**合并会丢"天然独立核查"防线,必须用补偿控制顶上**:里程碑候选由 reviewer 全核 + 测试域独立核两端;实现中只有高风险语义 delta 立即定向核,不因每次草稿/小任务动契约就重跑全审。
+- **切域依据是"物理边界(仓/部署单元)+ 是否需要独立核查",不是人类公司职能表。** 实践教训:按职能切出 6 个域,两个月内被迫合并回 4 个(前端+后端合并、设计+测试合并)——每多一个域,人的编排成本和信息差面积都翻倍。**合并会丢"天然独立核查"防线,必须用补偿控制顶上**:review-ready 里程碑候选由 reviewer 全核 + 测试域独立核两端;首次 milestone 前写者自行发现的问题先合并收敛,只有修改冻结外部语义/不可逆副作用或 milestone 后新生高风险语义才定向核,不因每次草稿/修复重开 reviewer。
 
 ## 3. 文件总线布局
 
@@ -78,7 +78,7 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 3. **交接靠 commit + 落盘**:工作包完成或到真实阻塞点 → 状态行带**交付候选/报告** hash,下游读 repo 即知进度,不靠人转述;hash 不是 status 行自身 commit(禁止自引用)。原子 commit 可以多次,但不为每个 commit 单独收尾和打断人;尚无新候选就写已核基线 hash +「无新候选」,不得编 hash。
 4. **开工护栏**:任意会话开工先跑 `bash scripts/bus-check.sh` + `git pull`;**部署/改契约/migration 等不可逆动作前再跑一次**(治"会话中途决策已变还按旧信息干");pre-commit 挂 `bus-check --strict` 机器闸(确凿检出 协调层腐烂/幽灵 hash/生产漂移 即非零退出)。
 5. **三轨制**:快轨(小改:直接改+核查门)/ 标准轨(单功能:需求→设计→实现→验收)/ 重轨(契约变更/大改:+变更提案+多 agent 评审)。NOW 标本期轨道,别用牛刀杀鸡;工作包默认取一条可独立验收的纵向结果或下一个 Gate/里程碑候选,不按文件、commit 或验收条目拆会话。
-6. **核查门(风险批次 + 里程碑候选)**:① 轻量机器闸每次提交都跑,受影响自动化测试按变更批次跑,里程碑候选跑全量并留 L3 证据;② 完整 reviewer 绑定一个可复现的里程碑候选 hash 集,核「实现↔设计↔契约↔需求」一次;③ 任务中仅当出现**冻结契约对外语义、鉴权/租户/Secret/fail-closed、持久化键空间或不可逆外部副作用**变化时,对 `base..candidate` 做 `risk-delta` 定向核。文件数、草稿演进、归档/状态回写和普通 P2 不是完整核查触发器。候选 hash 未变且机器证据仍绿 → 合并前复用原结论;变化只复核 delta。P0/P1 阻塞,P2 默认挂账;首轮报告保留原文,后续只追加 closure 表。**完成 = hash + 可核验证据**;证据分 L0 声称 / L1 `文件:行` / L2 编译·类型 / L3 自动化测试 / L4 线上实测。标准轨最低 L3,重轨与上线必须 L4;L1 只作补充定位。项目测试跑不动 → 先补测试。
+6. **核查门(review-ready + 一次候选核查)**:① 轻量机器闸每次提交,受影响测试按批次;首次 milestone reviewer 只在四项同时成立后启动:工作包实现/写者自查完成、所有候选仓 `HEAD=candidate` 且干净、受影响/全量 L3 与真渲染证据绿、无已知待修或计划改 hash。② 首次 milestone 前,鉴权/租户/Secret/fail-closed/持久化等写者自发现问题统一进实现语义清单并自行收敛,不边改边审;只有修改已冻结对外契约或不可逆副作用才 `STOP_NOW`,批准后按一个风险批次核 `risk-delta`。③ 每工作包每 Gate 默认 1 次 milestone;P0/P1 合并修完后 1 次 closure,P2 不复核。reviewer 返回前 hash 变化 → 原审查 `SUPERSEDED`,不得把连续修补包装成 delta 链;重新 review-ready 后再替代。milestone 后新生高风险语义才做 `risk-delta`,同一 hash+绿证据直接复用。**完成 = hash + 可核验证据**;证据分 L0 声称 / L1 `文件:行` / L2 编译·类型 / L3 自动化测试 / L4 线上实测。标准轨最低 L3,重轨与上线必须 L4;L1 只作补充定位。项目测试跑不动 → 先补测试。
 7. **变更提案 + 状态分写**:跨域变更走 `pm/changes/` delta 提案;各域只写 `pm/status/<域>.md`,别人只读——物理消灭"同文件互踩"。状态按工作包/里程碑批量更新,不为每个子产物另起一次交接。
 8. **视觉问题带图**:提 UI bug / 判设计符合性必附「实现截图 ⟷ 设计稿截图」并排对比,纯文字描述不算证据。
 9. **单点事实**:① 线上版本只信 bus-check 实查(任何文档不写"当前线上 vX",契约快照版本仅 PROTOCOL 头部一处)② 每个收敛后的**真实决策包**只在 `decisions.md` 记一行并回写落点;验收条目、推导结论、对话中的部分进度不得膨胀成独立拍板③ 换期必跑压缩仪式。
@@ -113,7 +113,7 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 ## 5. 节奏:四 Gate + 三轨
 
 ```
-Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+机器闸+实现语义清单 → 里程碑候选核查一次 → Gate3 合并(人批,reviewer 批准≠合并)
+Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+机器闸+实现语义清单 → review-ready 自检 → 稳定里程碑候选核查一次 → Gate3 合并(人批,reviewer 批准≠合并)
 → Gate4 上线(人批) → 测试域复核 → 产品域收尾记账
 ```
 快轨可跳 Gate1/2,但机器闸、证据制与**合并候选一次核查**任何轨都不跳;高风险 delta 不得借快轨绕过独立核查。
@@ -130,7 +130,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 2. **不 `git add -A`**:多会话共编,只 stage 自己域的具体文件;同持多仓时按仓分别提交。
 3. **不未授权部署**、不 force-push、不 `--amend`、不 `--no-verify`。
 4. **每次部署完必更对应仓 CHANGELOG**(Keep a Changelog,倒序)。
-5. **写者≠审者**:里程碑候选与高风险语义 delta 必过独立 reviewer;同一候选 hash 复用结论,不靠重复全审制造安全感。
+5. **写者≠审者**:review-ready 里程碑候选必过独立 reviewer;写者自发现问题先收敛,不送未稳定 hash。P0/P1 合并修完再做一次 closure;同一 hash 复用结论,不靠重复全审制造安全感。
 6. 资源选型 **稳定 > 便宜**;长连接服务部署带优雅下线(PreStop/drain)。
 
 ## 8. Bootstrap 新项目(引导式:自查 → 少量提问 → 确认 → 生成)

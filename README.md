@@ -84,7 +84,7 @@ cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 flowchart LR
     PM["产品会话<br/>拆需求·记账"] -->|"Gate1 你批规格"| Design["设计工具出稿"]
     Design -->|"真渲染原型你点过再批 Gate2"| Deliver["全栈会话<br/>实现+改契约"]
-    Deliver -->|"里程碑候选 reviewer 一次全核"| Verify["测试会话<br/>E2E+带图走查"]
+    Deliver -->|"review-ready 后 reviewer 一次全核"| Verify["测试会话<br/>E2E+带图走查"]
     Verify -->|"Gate3 你批合并"| Deploy["部署"]
     Deploy -->|"Gate4 你批上线"| PM
 ```
@@ -144,7 +144,7 @@ flowchart LR
 solobaton/
 ├── SKILL.md       # 给 agent 读的方法论主体:域模型 / 十条规则 / 四Gate+三轨 /
 │                  #   任务包+审批分层 / 三个仪式 / 红线 / 引导式 Bootstrap
-├── lessons.md     # 17 条反模式(症状→根因→解药),每条都真实发生过
+├── lessons.md     # 18 条反模式(症状→根因→解药),每条都真实发生过
 ├── README.md      # 本文(给人读的介绍;英文版 README.en.md)
 ├── CHANGELOG.md   # 版本史
 ├── example/       # 教学沙盘:虚构「简账」项目跑完一期的文件快照(模板填好后的样子)
@@ -178,7 +178,7 @@ solobaton/
 | ③ | 交接靠 commit | 工作包完成或真实阻塞时状态带 hash;原子 commit 不逐个打断人 |
 | ④ | 开工护栏 | 开工跑 bus-check;**不可逆动作前再跑一次**;`--strict` 挂 pre-commit 当闸 |
 | ⑤ | 三轨制 | 快轨/标准轨/重轨;工作包按纵向结果,不按文件拆 |
-| ⑥ | 核查门 | 机器闸常驻;高风险 delta 定向核;里程碑候选 hash 集只全核一次 |
+| ⑥ | 核查门 | 机器闸常驻;候选干净、L3 绿且无待修后才启动一次 milestone;P0/P1 合并 closure |
 | ⑦ | 提案+状态分写 | 跨域变更走 delta 提案;各域只写自己的状态文件,按工作包批量更新 |
 | ⑧ | 视觉带图 | UI bug 必附实现⟷设计稿截图并排,纯文字不算证据 |
 | ⑨ | 单点事实 | 线上版本只实查;收敛决策包只记一次;换期必压缩 |
@@ -199,7 +199,7 @@ solobaton/
 | 工作包 | 一次会话认领的用户级结果,写清 objective/in_scope/terminal_condition;可以覆盖多个需求 ID、文档和 commit |
 | 审批分层 | 立即停(STOP_NOW)/门前批(BATCH_AT_GATE)/无需批(NO_APPROVAL):只有真正越界或不可逆的事马上打断人 |
 | 决策包 | 2–5 个需要人取舍的独立变量集中拍一次;验收条目和推导结论不冒充独立决策 |
-| 核查门 | 机器闸每提交;高风险语义只核 delta;稳定里程碑候选派只读 reviewer 全核一次,同一 hash 复用结论 |
+| 核查门 | 机器闸每提交;首次 milestone 前写者先收敛;`HEAD=candidate`、工作树干净、L3/渲染证据绿且无待修后才派 reviewer 一次全核 |
 | 写者≠审者 | 写代码和审代码不能是同一个会话——自己审自己必然全对 |
 | 证据制完成 | 说"完成"必须带 commit hash + 可核验证据(测试命令 / 文件:行 / 截图),否则不算完成 |
 | 人在回路 | human-in-the-loop:关键决策必须有人参与,不许 AI 全自动闭环 |
@@ -219,7 +219,7 @@ solobaton/
 | 薄指针 | NOW.md 只写"当前哪一期、去看哪些文件"——是书签,不是笔记本 |
 | 看板 | 当期的任务分工表:谁做什么、到哪一步、卡在哪 |
 | delta 提案 | 大改先写一份"改什么"清单(逐条标 增 / 删 / 改)的提案文件,拍板后才动手 |
-| reviewer / 子代理 | 主会话临时派出的只读审查 agent,有 milestone / risk-delta / closure 三种模式;审完即走、不常驻、无权改代码 |
+| reviewer / 子代理 | review-ready 后临时派出的只读审查 agent;单次静默核完再返回,每包每 Gate 默认一次 milestone + 一次合并 closure,不常驻、不改代码 |
 | 挂账 | 把"欠着没做完的事"记在看板上,谁认领谁销账 |
 
 ### 工程名词

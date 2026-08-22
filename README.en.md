@@ -86,7 +86,7 @@ Requirement IDs, acceptance checks, and commits can stay fine-grained, but a ses
 flowchart LR
     PM["Product session<br/>spec + bookkeeping"] -->|"Gate1 you approve spec"| Design["design tool output"]
     Design -->|"click real prototype, then Gate2"| Deliver["Fullstack session<br/>implement + contract"]
-    Deliver -->|"one milestone review per candidate"| Verify["Testing session<br/>E2E + visual walkthrough"]
+    Deliver -->|"one review after review-ready"| Verify["Testing session<br/>E2E + visual walkthrough"]
     Verify -->|"Gate3 you approve merge"| Deploy["deploy"]
     Deploy -->|"Gate4 you approve release"| PM
 ```
@@ -145,7 +145,7 @@ Contract snapshot corresponds to: v0.2.0 (released 2026-06-20)
 solobaton/
 ├── SKILL.md       # methodology body for agents: domain model / ten rules / 4 gates + 3 tracks /
 │                  #   work packages + approval tiers / three rituals / red lines / guided bootstrap
-├── lessons.md     # 17 anti-patterns (symptom → root cause → cure), every one happened for real
+├── lessons.md     # 18 anti-patterns (symptom → root cause → cure), every one happened for real
 ├── README.md      # Chinese intro (this file's original)
 ├── README.en.md   # this file
 ├── CHANGELOG.md   # version history
@@ -180,7 +180,7 @@ solobaton/
 | ③ | Hand-offs ride on commits | Update status with hashes at package completion or a real blocker; atomic commits do not each interrupt the human |
 | ④ | Kickoff guard | Run bus-check at kickoff; **run it again before any irreversible action**; hook `--strict` into pre-commit as a gate |
 | ⑤ | Three tracks | Fast / standard / heavy; size work packages by vertical outcome, not by file |
-| ⑥ | Review gate | Machine gates stay continuous; high-risk deltas get scoped review; each milestone candidate gets one full review |
+| ⑥ | Review gate | Machine gates stay continuous; launch one milestone review only after a clean, green, no-known-fix review-ready preflight; batch P0/P1 closure |
 | ⑦ | Proposals + split status | Cross-domain changes use delta proposals; each domain writes its own status, batched by work package |
 | ⑧ | Visual issues need images | UI bugs require implementation-vs-design screenshots side by side; words alone aren't evidence |
 | ⑨ | Single source of truth | Live version only by live query; each settled decision packet is logged once; iteration switch requires compression |
@@ -201,7 +201,7 @@ solobaton/
 | Work package | The user-level result one session owns, with objective / in_scope / terminal_condition; it may span multiple IDs, documents, and commits |
 | Approval tiers | STOP_NOW / BATCH_AT_GATE / NO_APPROVAL: only true boundary crossings or irreversible actions interrupt immediately |
 | Decision packet | Two to five independent human forks presented together; acceptance checks and derived constraints do not masquerade as separate decisions |
-| Review gate | Machine checks run on every commit; only high-risk semantics get delta review; one stable milestone hash set gets one full 4-way review and reuses that result while unchanged |
+| Review gate | Machine checks run on every commit; the writer stabilizes first; only a clean `HEAD=candidate` with green L3/render evidence and no known fixes gets one full review |
 | Writer ≠ reviewer | The session that wrote the code must not be the one reviewing it — self-review always passes |
 | Evidence-based done | "Done" requires commit hash + verifiable evidence (test command / file:line / screenshot), otherwise not done |
 | Human in the loop | Key decisions require a human; no fully automatic closed loop |
@@ -221,7 +221,7 @@ solobaton/
 | Thin pointer | NOW.md only says "which iteration, which files to read" — a bookmark, not a notebook |
 | Board | The current iteration's work table: who does what, how far along, what's stuck |
 | Delta proposal | For big changes, first a file listing what changes (added/modified/removed), approved before work starts |
-| reviewer / subagent | A temporary read-only agent with milestone / risk-delta / closure modes — reviews and leaves, never edits code |
+| reviewer / subagent | A temporary read-only agent launched only after review-ready; it reviews silently and returns once, with one milestone plus one batched closure by default per package/Gate |
 | Debt entry | An unfinished item parked on the board; whoever claims it clears it |
 
 ### Engineering terms

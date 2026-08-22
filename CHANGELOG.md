@@ -2,6 +2,18 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## v1.14 — 2026-08-22
+
+> 主题:给 reviewer 加 `review-ready` 硬前置与调用预算。写者先把候选收敛干净,独立 reviewer 再一次消费稳定候选;不再让 reviewer 充当实现中的后台 lint,也不让一个 subagent 用连续状态更新制造“框框 review”风暴。
+> **拷出项目升级**:① 补丁修改根 `AGENTS.md` 规则⑥与红线 5;② 整文件替换 `.claude/agents/reviewer.md`;③ 更新 `指挥台.md` 的 review-ready 节奏;④ 更新项目 `SOLOBATON.md` 版本并在 `decisions.md` 记一次流程拍板。历史报告/status 不回改,脚本零改动。
+
+- **review-ready 四项硬前置**:首次 milestone 只能在工作包实现/写者自查完成、所有候选仓 `HEAD=candidate` 且工作树干净、受影响/全量 L3 与真渲染证据绿、无已知待修或计划改 hash 后启动;缺一项就不派 reviewer
+- **首次 milestone 前不做伪 delta**:鉴权/租户/Secret/fail-closed/持久化等写者自发现问题先集中进实现语义清单并自行收敛;只有修改已冻结对外契约或不可逆副作用才提前 `STOP_NOW`,批准后按一个风险批次核 `risk-delta`
+- **reviewer 调用预算**:每工作包每 Gate 默认 1 次 milestone;首轮 P0/P1 合并修完后 1 次 closure,P2 不复核;milestone 完成后真正新生的高风险语义才追加 `risk-delta`
+- **旧候选立即作废**:reviewer 返回前 candidate 改变 → 本次审查标 `SUPERSEDED` 并停止;写者重新收敛到 review-ready 后才启动替代 milestone,不得把连续自修包装成 delta 链
+- **单次静默输出**:reviewer 除输入缺失/真实阻塞外不发中间进度和分批 findings,整个 scope 核完后一次返回;`milestone` 缺 review-ready 证据只回 `NOT_READY`,不制造 P0/P1/P2 报告
+- **文档与模板同步**:`SKILL.md`、中英 README、`templates/AGENTS.md`、reviewer、指挥台及 example 更新;新反模式记入 lessons 第 18 条
+
 ## v1.13 — 2026-08-22
 
 > 主题:把「细粒度追踪」与「执行/审批粒度」解耦。会话按用户级工作包持续推进,不因子文档/commit/reviewer/status 过早结束;审批分 `STOP_NOW / BATCH_AT_GATE / NO_APPROVAL`,只让真正改变授权、冻结语义或不可逆状态的事项立即打断人。
