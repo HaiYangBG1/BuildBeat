@@ -2,6 +2,18 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## v1.16.1 — 2026-08-22
+
+> 主题:把 CLI v0 从“只可源码运行”推进到可审计的 npm 公共分发。脚手架版本仍是 v1.16，项目写入能力仍未开放；本补丁只建立 CLI 包的安装、更新、移除和发布证据链。
+> **拷出项目升级**:业务模板和已拷出项目零修改。`npm uninstall --global solobaton` 只移除全局 CLI，不删除项目中的 Solobaton 文件；项目生命周期 `solobaton upgrade/uninstall` 仍保持 fail-closed。
+
+- **正式 npm 入口**:发布 `solobaton@1.16.1`；一次性运行使用带版本的 `npx --yes solobaton@1.16.1 ...`，全局安装使用 `npm install --global solobaton@1.16.1`
+- **包生命周期与项目生命周期分离**:`npm install --global solobaton@latest` 更新 CLI 包，`npm uninstall --global solobaton` 移除 CLI 包；二者都不写业务项目，也不等价于尚未开放的 `solobaton upgrade/uninstall`
+- **发布护栏**:`publishConfig` 固定 public npm registry 和公开可见性，`prepublishOnly` 重跑 CLI、文档与 pack 检查；文档检查要求包版本、Changelog、安装命令和 manifest 示例对齐
+- **分发元数据**:补齐 homepage 与 issue tracker；包继续保持零第三方运行时依赖、Node.js 20+，并携带 canonical templates、Skill、CLI 合同和示例
+- **回归证据**:CLI 19/19、Shell 行为 38/38，并对实际 tarball 做隔离安装、版本、`doctor` 和零项目写入验证
+- **后续发布安全**:首次包创建使用 npm 交互式 2FA；包存在后切换到 GitHub Actions Trusted Publishing/OIDC 和自动 provenance，不保存长期发布 token
+
 ## v1.16 — 2026-08-22
 
 > 主题:建立 `Skill + CLI` 双入口的第一块确定性地基。CLI v0 只做 `doctor` 与 `init/adopt --dry-run`,把项目扫描、布局识别、生命周期阻塞和未来文件所有权规则变成可测试接口;所有写操作继续 fail-closed,不拿“规划中的 upgrade/uninstall”冒充已交付能力。

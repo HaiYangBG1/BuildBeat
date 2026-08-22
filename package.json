@@ -1,6 +1,6 @@
 {
   "name": "solobaton",
-  "version": "1.16.0",
+  "version": "1.16.1",
   "description": "File-first, human-gated delivery bus for solo builders orchestrating multiple AI coding sessions.",
   "type": "module",
   "bin": {
@@ -20,8 +20,10 @@
     "lessons.md"
   ],
   "scripts": {
+    "check:docs": "bash tests/check-docs.sh",
     "test": "node --test tests/cli.test.js",
-    "pack:check": "npm pack --dry-run"
+    "pack:check": "npm pack --dry-run",
+    "prepublishOnly": "npm test && npm run check:docs && npm run pack:check"
   },
   "engines": {
     "node": ">=20"
@@ -29,6 +31,14 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/HaiYangBG1/solobaton.git"
+  },
+  "homepage": "https://github.com/HaiYangBG1/solobaton#readme",
+  "bugs": {
+    "url": "https://github.com/HaiYangBG1/solobaton/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "keywords": [
     "ai-coding",
