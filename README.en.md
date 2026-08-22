@@ -215,12 +215,15 @@ The compact brownfield layout moves the scripts, operator card, and version mark
 - [`example/`](example/): the full file snapshot of a fictional project after one iteration;
 - [`lessons.md`](lessons.md): real anti-patterns, root causes, and fixes;
 - [`docs/CLI.md`](docs/CLI.md): lifecycle, file ownership, manifest, and safe upgrade/uninstall contract;
+- [`docs/CLI-PILOT-2026-08-23.md`](docs/CLI-PILOT-2026-08-23.md): read-only CLI v0 evidence from three real brownfield projects and the write-boundary decision;
 - [`docs/RELEASING.md`](docs/RELEASING.md): npm release Gates, verification, and the Trusted Publishing migration;
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): contribution, verification, and pull-request boundaries;
+- [`SECURITY.md`](SECURITY.md): supported versions and the private vulnerability-reporting channel;
 - [`CHANGELOG.md`](CHANGELOG.md): version history and upgrade instructions for copied projects.
 
 ## Contributing
 
-Issues and pull requests are welcome. A change to workflow semantics should update `SKILL.md`, affected templates, both READMEs, the example, and the changelog. Explain:
+Issues and pull requests are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the complete submission rules. Do not open a public issue for an undisclosed vulnerability; report it privately through [`SECURITY.md`](SECURITY.md). A change to workflow semantics should update `SKILL.md`, affected templates, both READMEs, the example, and the changelog. Explain:
 
 1. which real failure mode the change addresses;
 2. how to reproduce it;

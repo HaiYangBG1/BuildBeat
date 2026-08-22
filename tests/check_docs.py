@@ -47,6 +47,19 @@ CRITICAL_CLI_FILES = (
     "tests/cli.test.js",
     "tests/publish-workflow.test.js",
 )
+CRITICAL_GOVERNANCE_FILES = (
+    ".github/CODEOWNERS",
+    ".github/ISSUE_TEMPLATE/bug_report.yml",
+    ".github/ISSUE_TEMPLATE/config.yml",
+    ".github/ISSUE_TEMPLATE/feature_request.yml",
+    ".github/PULL_REQUEST_TEMPLATE.md",
+    ".github/dependabot.yml",
+    ".github/workflows/codeql.yml",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "docs/CLI-PILOT-2026-08-23.md",
+)
 
 
 def markdown_files() -> list[Path]:
@@ -179,10 +192,94 @@ def check_frontmatter() -> list[str]:
 
 def check_critical_files() -> list[str]:
     return [
-        f"missing critical scaffold file: {relative}"
-        for relative in (*CRITICAL_TEMPLATE_FILES, *CRITICAL_CLI_FILES)
+        f"missing critical repository file: {relative}"
+        for relative in (
+            *CRITICAL_TEMPLATE_FILES,
+            *CRITICAL_CLI_FILES,
+            *CRITICAL_GOVERNANCE_FILES,
+        )
         if not (ROOT / relative).is_file()
     ]
+
+
+def check_workflow_action_pins() -> list[str]:
+    errors: list[str] = []
+    for path in sorted((ROOT / ".github/workflows").glob("*.yml")):
+        for line_number, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            match = re.match(r"\s*uses:\s+([^\s#]+)", line)
+            if match is None:
+                continue
+            action = match.group(1)
+            if action.startswith("./") or action.startswith("docker://"):
+                continue
+            reference = action.rsplit("@", 1)[-1] if "@" in action else ""
+            if re.fullmatch(r"[0-9a-f]{40}", reference) is None:
+                errors.append(
+                    f"{path.relative_to(ROOT)}:{line_number}: external action must use an immutable full commit SHA"
+                )
+    return errors
+
+
+def check_repository_governance() -> list[str]:
+    errors: list[str] = []
+    dependabot_relative = ".github/dependabot.yml"
+    dependabot_path = ROOT / dependabot_relative
+    dependabot = (
+        dependabot_path.read_text(encoding="utf-8")
+        if dependabot_path.is_file()
+        else ""
+    )
+    dependabot_fragments = (
+        "version: 2",
+        "package-ecosystem: npm",
+        "package-ecosystem: github-actions",
+        "interval: weekly",
+        "timezone: Asia/Singapore",
+        "open-pull-requests-limit:",
+    )
+    for fragment in dependabot_fragments:
+        if fragment not in dependabot:
+            errors.append(f"{dependabot_relative}: missing dependency-update guard {fragment}")
+
+    codeql_relative = ".github/workflows/codeql.yml"
+    codeql_path = ROOT / codeql_relative
+    codeql = codeql_path.read_text(encoding="utf-8") if codeql_path.is_file() else ""
+    codeql_fragments = (
+        "pull_request:",
+        "push:",
+        "schedule:",
+        "security-events: write",
+        "languages: javascript-typescript",
+        "github/codeql-action/init@",
+        "github/codeql-action/analyze@",
+    )
+    for fragment in codeql_fragments:
+        if fragment not in codeql:
+            errors.append(f"{codeql_relative}: missing CodeQL guard {fragment}")
+    if "pull_request_target:" in codeql:
+        errors.append(f"{codeql_relative}: pull_request_target must not execute repository code")
+
+    security_path = ROOT / "SECURITY.md"
+    security = security_path.read_text(encoding="utf-8") if security_path.is_file() else ""
+    private_report_url = (
+        "https://github.com/HaiYangBG1/solobaton/security/advisories/new"
+    )
+    if private_report_url not in security:
+        errors.append("SECURITY.md: private vulnerability-reporting URL is missing")
+
+    runbook = (ROOT / "docs/RELEASING.md").read_text(encoding="utf-8")
+    for fragment in (
+        "Protect release tags",
+        "refs/tags/v*",
+        "update",
+        "deletion",
+        "empty bypass list",
+    ):
+        if fragment not in runbook:
+            errors.append(f"docs/RELEASING.md: missing release-tag guard {fragment}")
+    return errors
 
 
 def check_cli_package() -> list[str]:
@@ -369,6 +466,8 @@ def main() -> int:
     errors.extend(check_cli_package())
     errors.extend(check_example_version())
     errors.extend(check_publish_workflow())
+    errors.extend(check_workflow_action_pins())
+    errors.extend(check_repository_governance())
 
     if errors:
         print("Documentation checks failed:", file=sys.stderr)
@@ -378,7 +477,7 @@ def main() -> int:
 
     print(
         f"Documentation checks passed: {len(paths)} Markdown files, "
-        "relative links, bilingual README shape, frontmatter, critical files, and CLI package metadata."
+        "relative links, bilingual README shape, frontmatter, critical files, CLI package metadata, and repository governance."
     )
     return 0
 

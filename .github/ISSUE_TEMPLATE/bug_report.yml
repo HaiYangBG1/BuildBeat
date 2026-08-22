@@ -1,0 +1,72 @@
+name: Bug report
+description: Report a reproducible Solobaton defect.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Solobaton. Do not include credentials, tokens, private source, or vulnerability details here.
+
+  - type: input
+    id: version
+    attributes:
+      label: Solobaton version
+      description: Run `solobaton --version`, or provide the source commit.
+      placeholder: 1.16.3 or a commit SHA
+    validations:
+      required: true
+
+  - type: dropdown
+    id: entrypoint
+    attributes:
+      label: Entry point
+      options:
+        - npm CLI
+        - source CLI
+        - Skill/bootstrap
+        - generated scaffold scripts
+        - documentation
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include the command and a minimal, sanitized project shape.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Node.js version, shell, and relevant tool versions.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed credentials, private source, and personal data from this report.
+          required: true
+        - label: This is not a security vulnerability; security reports use the private channel linked below.
+          required: true

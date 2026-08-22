@@ -1,0 +1,54 @@
+name: Feature request
+description: Propose a change grounded in a real delivery failure mode.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: failure-mode
+    attributes:
+      label: Observed failure mode
+      description: What happened in a real project, and why did the current workflow not contain it?
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Reproduction or evidence
+      description: Provide a sanitized sequence, fixture, or measurable symptom.
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe the behavior or acceptance boundary, not only a proposed implementation.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      multiple: true
+      options:
+        - CLI
+        - Skill/bootstrap
+        - scaffold templates
+        - repository checks
+        - release workflow
+        - documentation
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Boundary check
+      options:
+        - label: I considered whether this belongs in Solobaton rather than a target project's own tooling.
+          required: true
+        - label: I have not assumed that a preview, check, or proposal authorizes project writes, merges, or releases.
+          required: true
