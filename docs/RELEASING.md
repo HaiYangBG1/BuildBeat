@@ -2,7 +2,7 @@
 
 This runbook governs the public npm package. It does not authorize project-scaffold writes, a Git merge, or a production rollout. Each state transition still requires its own human Gate.
 
-Release evidence at this commit: package candidate `solobaton@1.16.2`; latest independently verified npm distribution `solobaton@1.16.1`. Executable `npx` and install documentation must keep using the verified version until registry, provenance, signature, and isolated-install readback all succeed for the candidate.
+Release evidence at this commit: source package version `solobaton@1.16.2`; latest independently verified npm distribution `solobaton@1.16.2`. The immutable published artifact remains anchored by annotated tag `v1.16.2` at commit `368f1f2`. Workflow run [32585264739](https://github.com/HaiYangBG1/solobaton/actions/runs/32585264739) and an independent official-registry readback verified the exact tarball, SLSA v1 provenance, registry signature, attestation, isolated installation, executable version, and zero-write `doctor` behavior before executable documentation advanced to this version.
 
 ## Release invariants
 
@@ -12,6 +12,7 @@ Release evidence at this commit: package candidate `solobaton@1.16.2`; latest in
 4. `publishConfig.registry` stays pinned to `https://registry.npmjs.org/`; a developer's mirror configuration must not redirect a public release.
 5. A successful `npm publish` response is not enough. Registry metadata, tarball contents, an isolated install, the executable version, and a read-only command must be checked independently.
 6. `npm install/update/uninstall` manage the CLI package only. They must never be described as project-scaffold `init/upgrade/uninstall` support.
+7. After a version is published, later `main` documentation changes carrying that same `package.json` version do not redefine its artifact and are not releasable candidates. The next publication requires a new package version, Changelog heading, and annotated tag.
 
 ## Candidate checks
 
