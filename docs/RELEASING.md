@@ -63,7 +63,26 @@ Only after this readback should the matching GitHub Release be published and doc
 
 ## Future releases: Trusted Publishing
 
-After the package exists, configure npm Trusted Publishing for this public repository and a dedicated `.github/workflows/publish.yml`. The workflow must use a GitHub-hosted runner, Node 24, a current npm CLI that supports OIDC, `contents: read`, and `id-token: write`; it must re-run the candidate checks and verify that the release tag equals `v${package.version}` before `npm publish`.
+After the package exists, configure npm Trusted Publishing for this public repository and `.github/workflows/publish.yml`. The workflow is deliberately manual: a human supplies one exact annotated tag only after the tag is on `main` and its CI is green. It uses a GitHub-hosted runner, Node 24, pinned npm 11.19.0, `contents: read`, and job-scoped `id-token: write`; it rejects a non-semantic or lightweight tag, a tag outside `main`, a package-version mismatch, an existing immutable registry version, or failed release checks.
+
+Bind the npm package to the exact workflow after that workflow exists on the default branch:
+
+```bash
+npx --yes npm@11.19.0 trust github solobaton \
+  --file publish.yml \
+  --repo HaiYangBG1/solobaton \
+  --allow-publish \
+  --registry=https://registry.npmjs.org/
+```
+
+For a future version, push the reviewed annotated tag, wait for its `main` CI, then trigger the workflow and verify it before creating the GitHub Release:
+
+```bash
+gh workflow run publish.yml -f tag=vX.Y.Z
+gh run watch --exit-status
+```
+
+The workflow performs the registry readback itself; the release operator must still repeat the isolated-install check before publishing the matching GitHub Release. Never use `workflow_dispatch` to bypass the repository's human merge or tag Gate.
 
 Trusted Publishing removes the long-lived write token and automatically emits provenance for supported public GitHub repositories. Configure the exact owner, repository, workflow filename, allowed `npm publish` action, and—if used—the GitHub environment on npmjs.com. See npm's [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) and [provenance](https://docs.npmjs.com/generating-provenance-statements/) documentation.
 
