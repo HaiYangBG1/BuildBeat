@@ -36,8 +36,10 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             git diff --check "${{ github.event.pull_request.base.sha }}...HEAD"
-          else
+          elif [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
             git diff-tree --check --no-commit-id --root -r HEAD
+          else
+            git diff --check "${{ github.event.before }}...${{ github.sha }}"
           fi
 
   behavior:
