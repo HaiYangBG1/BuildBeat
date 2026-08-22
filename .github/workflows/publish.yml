@@ -20,6 +20,8 @@ jobs:
     name: Publish ${{ inputs.tag }} to npm
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment:
+      name: npm-publish
     permissions:
       contents: read
       id-token: write
@@ -28,14 +30,14 @@ jobs:
       NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
     steps:
       - name: Check out the exact tag
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ inputs.tag }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24"
           registry-url: https://registry.npmjs.org/
@@ -74,34 +76,87 @@ jobs:
           npm run pack:check
           test -z "$(git status --porcelain=v1)"
 
-      - name: Refuse an existing registry version
+      - name: Pack the exact release candidate
+        id: candidate
         shell: bash
         run: |
           set -euo pipefail
           package_version="$(node -p "require('./package.json').version")"
-          if npm view "solobaton@$package_version" version >/dev/null 2>&1; then
-            echo "solobaton@$package_version already exists; npm versions are immutable." >&2
-            exit 1
-          fi
+          candidate_dir="$RUNNER_TEMP/solobaton-candidate"
+          mkdir -p "$candidate_dir"
+          pack_json="$(npm pack --json --pack-destination "$candidate_dir")"
+          package_file="$(node -e 'const value=JSON.parse(process.argv[1]); if (!Array.isArray(value) || value.length !== 1) process.exit(1); process.stdout.write(value[0].filename)' "$pack_json")"
+          candidate_integrity="$(node -e 'const value=JSON.parse(process.argv[1]); if (!Array.isArray(value) || value.length !== 1) process.exit(1); process.stdout.write(value[0].integrity)' "$pack_json")"
+          test -f "$candidate_dir/$package_file"
+          test -n "$candidate_integrity"
+          test -z "$(git status --porcelain=v1)"
+          {
+            printf 'version=%s\n' "$package_version"
+            printf 'integrity=%s\n' "$candidate_integrity"
+            printf 'tarball=%s\n' "$candidate_dir/$package_file"
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Publish through npm Trusted Publishing
-        run: npm publish --access public
+      - name: Publish or reconcile the exact candidate through npm Trusted Publishing
+        shell: bash
+        env:
+          SOLOBATON_PACKAGE_VERSION: ${{ steps.candidate.outputs.version }}
+          SOLOBATON_CANDIDATE_INTEGRITY: ${{ steps.candidate.outputs.integrity }}
+          SOLOBATON_CANDIDATE_TARBALL: ${{ steps.candidate.outputs.tarball }}
+        run: bash .github/scripts/publish-candidate.sh
 
-      - name: Verify official registry readback
+  verify:
+    name: Verify ${{ inputs.tag }} from npm
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+    steps:
+      - name: Check out the immutable published commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org/
+          package-manager-cache: false
+
+      - name: Install the pinned verification npm CLI
+        run: npm install --global npm@11.19.0
+
+      - name: Verify exact official-registry artifact
         shell: bash
         run: |
           set -euo pipefail
           package_version="$(node -p "require('./package.json').version")"
-          for attempt in 1 2 3 4 5 6; do
+          test "$RELEASE_TAG" = "v$package_version"
+          candidate_dir="$RUNNER_TEMP/solobaton-verify-candidate"
+          mkdir -p "$candidate_dir"
+          pack_json="$(npm pack --json --pack-destination "$candidate_dir")"
+          candidate_integrity="$(node -e 'const value=JSON.parse(process.argv[1]); if (!Array.isArray(value) || value.length !== 1) process.exit(1); process.stdout.write(value[0].integrity)' "$pack_json")"
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24; do
             published_version="$(npm view "solobaton@$package_version" version 2>/dev/null || true)"
-            if [[ "$published_version" = "$package_version" ]]; then
-              printf 'Verified solobaton@%s on the official registry.\n' "$published_version"
+            published_integrity="$(npm view "solobaton@$package_version" dist.integrity 2>/dev/null || true)"
+            if [[ "$published_version" = "$package_version" && "$published_integrity" = "$candidate_integrity" ]]; then
+              printf 'Verified exact solobaton@%s artifact on the official registry.\n' "$published_version"
               exit 0
             fi
-            printf 'Registry readback attempt %s did not return the version yet.\n' "$attempt"
+            if [[ -n "$published_integrity" && "$published_integrity" != "$candidate_integrity" ]]; then
+              echo "Published package integrity does not match the reviewed candidate." >&2
+              exit 1
+            fi
+            printf 'Exact registry readback attempt %s is not complete yet.\n' "$attempt"
             sleep 5
           done
-          echo "Published version did not become readable from the official registry." >&2
+          echo "The exact reviewed artifact did not become readable from the official registry." >&2
           exit 1
 
       - name: Verify provenance metadata
@@ -111,7 +166,7 @@ jobs:
           package_version="$(node -p "require('./package.json').version")"
           expected_url="https://registry.npmjs.org/-/npm/v1/attestations/solobaton@$package_version"
           expected_predicate="https://slsa.dev/provenance/v1"
-          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24; do
             attestation_url="$(npm view "solobaton@$package_version" dist.attestations.url 2>/dev/null || true)"
             predicate_type="$(npm view "solobaton@$package_version" dist.attestations.provenance.predicateType 2>/dev/null || true)"
             if [[ "$attestation_url" = "$expected_url" && "$predicate_type" = "$expected_predicate" ]]; then

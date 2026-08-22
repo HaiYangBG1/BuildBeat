@@ -21,7 +21,7 @@
   ],
   "scripts": {
     "check:docs": "bash tests/check-docs.sh",
-    "test": "node --test tests/cli.test.js",
+    "test": "node --test tests/*.test.js",
     "pack:check": "npm pack --dry-run",
     "prepublishOnly": "npm test && npm run check:docs && npm run pack:check"
   },

@@ -2,6 +2,8 @@
 
 This runbook governs the public npm package. It does not authorize project-scaffold writes, a Git merge, or a production rollout. Each state transition still requires its own human Gate.
 
+Release evidence at this commit: package candidate `solobaton@1.16.2`; latest independently verified npm distribution `solobaton@1.16.1`. Executable `npx` and install documentation must keep using the verified version until registry, provenance, signature, and isolated-install readback all succeed for the candidate.
+
 ## Release invariants
 
 1. One npm version maps to one immutable annotated Git tag and one exact source commit. Never move a published version's tag.
@@ -17,9 +19,9 @@ Run from the exact release candidate:
 
 ```bash
 npm ci --ignore-scripts --no-audit --no-fund
-bash -n templates/scripts/*.sh tests/*.sh
-shellcheck -x templates/scripts/*.sh tests/*.sh
-actionlint
+bash -n .github/scripts/*.sh templates/scripts/*.sh tests/*.sh
+shellcheck -x .github/scripts/*.sh templates/scripts/*.sh tests/*.sh
+actionlint .github/workflows/*.yml
 bash tests/check-docs.sh
 bash tests/test-scripts.sh
 npm test
@@ -65,7 +67,11 @@ Only after this readback should the matching GitHub Release be published and doc
 
 ## Trusted Publishing releases
 
-The public npm package is bound to this repository and `.github/workflows/publish.yml`. The workflow is deliberately manual: a human supplies one exact annotated tag only after the release commit is the current `main` HEAD and its CI is green. It uses a GitHub-hosted runner, Node 24, pinned npm 11.19.0, `contents: read`, and job-scoped `id-token: write`; it rejects a non-semantic or lightweight tag, any dispatch outside `main`, a tag/checkout/event/remote-HEAD mismatch, a package-version mismatch, an existing immutable registry version, or failed release checks.
+For Trusted Publishing, the public npm package must be bound to this repository and `.github/workflows/publish.yml`. The workflow is deliberately manual: a human supplies one exact annotated tag only after the release commit is the current `main` HEAD and its CI is green. The OIDC-bearing `publish` job uses a GitHub-hosted runner, Node 24, pinned npm 11.19.0, immutable full-SHA action references, `contents: read`, job-scoped `id-token: write`, and the protected `npm-publish` GitHub Environment. That Environment must be restricted to protected branches and require an authorized release reviewer; its branch policy and explicit approval form the server-side dispatch boundary.
+
+Before publishing, the job rejects a non-semantic or lightweight tag, any dispatch outside `main`, a tag/checkout/event/remote-HEAD mismatch, a package-version mismatch, or failed release checks. It then packs one exact tarball. If the registry version already exists, publication may continue only when `dist.integrity` exactly matches that candidate. If `npm publish` returns an ambiguous failure, bounded registry reconciliation accepts only the same integrity. A different artifact fails closed.
+
+Registry, provenance, install, and signature readback run in a separate `verify` job without `id-token: write`. This lets an operator rerun failed verification without attempting to republish an immutable npm version; successful publication still does not count as a verified release until that job and the independent readback below both pass.
 
 Bind the npm package to the exact workflow after that workflow exists on the default branch:
 
@@ -73,6 +79,7 @@ Bind the npm package to the exact workflow after that workflow exists on the def
 npx --yes npm@11.19.0 trust github solobaton \
   --file publish.yml \
   --repo HaiYangBG1/solobaton \
+  --env npm-publish \
   --allow-publish \
   --registry=https://registry.npmjs.org/
 ```
@@ -80,12 +87,12 @@ npx --yes npm@11.19.0 trust github solobaton \
 For a new version, push the reviewed annotated tag, wait for its `main` CI, then trigger the workflow and verify it before creating the GitHub Release:
 
 ```bash
-gh workflow run publish.yml -f tag=vX.Y.Z
+gh workflow run publish.yml --ref main -f tag=vX.Y.Z
 gh run watch --exit-status
 ```
 
 The workflow waits for exact registry-version readback, requires `dist.attestations` to expose an npm attestation URL with the SLSA v1 provenance predicate, installs the public package into a clean temporary prefix, checks its executable version, and runs `npm audit signatures`. The release operator must still repeat the isolated-install and read-only `doctor` check independently before publishing the matching GitHub Release. Never use `workflow_dispatch` to bypass the repository's human merge or tag Gate.
 
-Trusted Publishing removes the long-lived write token and automatically emits provenance for supported public GitHub repositories. Configure the exact owner, repository, workflow filename, allowed `npm publish` action, and—if used—the GitHub environment on npmjs.com. See npm's [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) and [provenance](https://docs.npmjs.com/generating-provenance-statements/) documentation.
+Trusted Publishing removes the long-lived write token and automatically emits provenance for supported public GitHub repositories. Configure the exact owner, repository, workflow filename, allowed `npm publish` action, and the exact `npm-publish` environment on npmjs.com. A GitHub Environment without the matching npm-side environment binding is not sufficient evidence. See npm's [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) and [provenance](https://docs.npmjs.com/generating-provenance-statements/) documentation.
 
 The first manually published version is not retroactively provenance-backed. Record that evidence boundary in its GitHub Release instead of implying otherwise. The existence of the workflow and trusted-publisher binding is configuration evidence only; npm explicitly validates the binding only during a real publish. After the first OIDC release succeeds, separately set npm publishing access to require 2FA and disallow traditional tokens. That account-governance change is not part of a repository merge or package release Gate.

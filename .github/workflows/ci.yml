@@ -21,13 +21,13 @@ jobs:
           fetch-depth: 0
 
       - name: Check Shell syntax
-        run: bash -n templates/scripts/*.sh tests/*.sh
+        run: bash -n .github/scripts/*.sh templates/scripts/*.sh tests/*.sh
 
       - name: Run ShellCheck
         run: |
           sudo apt-get update
           sudo apt-get install --yes shellcheck
-          shellcheck -x templates/scripts/*.sh tests/*.sh
+          shellcheck -x .github/scripts/*.sh templates/scripts/*.sh tests/*.sh
 
       - name: Check documentation
         run: bash tests/check-docs.sh
@@ -85,7 +85,7 @@ jobs:
       - name: Install package metadata
         run: npm ci --ignore-scripts
 
-      - name: Run CLI regression suite
+      - name: Run Node regression suite
         run: npm test
 
       - name: Audit package contents

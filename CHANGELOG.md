@@ -13,6 +13,9 @@
 - **发布源收紧**:只接受三段式 annotated tag；发布时 tag 目标、checkout `HEAD`、`GITHUB_SHA` 与远端 `main` HEAD 必须四者全等，不允许从旧 tag 或非 `main` ref 发布
 - **registry + provenance 回读**:`npm publish` 后不只等版本可见，还必须读到精确的 `dist.attestations.url` 和 SLSA v1 predicate；缺 provenance 则工作流失败
 - **签名与安装实测**:工作流从官方 registry 安装新包、核对可执行文件版本，并通过 `npm audit signatures` 验证 registry signature 与 provenance attestation
+- **可恢复发布**:发布与回读拆为独立 job；已存在版本或 `npm publish` 响应不确定时，只有 registry `dist.integrity` 与已审 tarball 精确一致才继续，并由 5 个发布状态回归覆盖
+- **发布身份收紧**:OIDC job 的第三方 Action 固定到完整 commit SHA，并绑定需人工批准且仅允许受保护分支的 `npm-publish` GitHub Environment；npm Trusted Publisher 仍必须配置同名 environment
+- **候选与分发证据分离**:`package.json`/manifest 可表达 `1.16.2` 候选，但可执行的 `npx`/安装文档在新版本完成 registry/provenance/安装回读前继续指向已独立验证的 `1.16.1`
 - **证据边界**:workflow/绑定/tag 存在都不等于 OIDC 发布已验证；只有新版本工作流成功、registry/provenance 回读和独立安装全通过后，才能创建匹配的 GitHub Release
 
 ## v1.16.1 — 2026-08-22
