@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
@@ -29,6 +30,18 @@ CRITICAL_TEMPLATE_FILES = (
     "templates/scripts/verify-status.sh",
     "templates/scripts/design-preview.sh",
     "templates/scripts/drift-check.sh",
+)
+CRITICAL_CLI_FILES = (
+    "bin/solobaton.js",
+    "docs/CLI.md",
+    "package-lock.json",
+    "package.json",
+    "src/cli.js",
+    "src/constants.js",
+    "src/doctor.js",
+    "src/planner.js",
+    "src/project.js",
+    "tests/cli.test.js",
 )
 
 
@@ -163,9 +176,40 @@ def check_frontmatter() -> list[str]:
 def check_critical_files() -> list[str]:
     return [
         f"missing critical scaffold file: {relative}"
-        for relative in CRITICAL_TEMPLATE_FILES
+        for relative in (*CRITICAL_TEMPLATE_FILES, *CRITICAL_CLI_FILES)
         if not (ROOT / relative).is_file()
     ]
+
+
+def check_cli_package() -> list[str]:
+    errors: list[str] = []
+    package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+    lock = json.loads((ROOT / "package-lock.json").read_text(encoding="utf-8"))
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+
+    version = package.get("version", "")
+    version_match = re.fullmatch(r"(\d+)\.(\d+)\.\d+", version)
+    latest_match = re.search(r"^## v(\d+)\.(\d+)", changelog, re.MULTILINE)
+    if version_match is None:
+        errors.append("package.json: version must use three-part SemVer")
+    elif latest_match is None or version_match.groups()[:2] != latest_match.groups():
+        errors.append(
+            "package.json: major/minor version does not match the latest changelog release"
+        )
+
+    if lock.get("version") != version:
+        errors.append("package-lock.json: root version does not match package.json")
+    if package.get("bin", {}).get("solobaton") != "bin/solobaton.js":
+        errors.append("package.json: solobaton bin entry must point to bin/solobaton.js")
+    package_files = package.get("files", [])
+    for required in ("docs/", "example/", "templates/", "lessons.md"):
+        if required not in package_files:
+            errors.append(f"package.json: published files must include {required}")
+    if package.get("engines", {}).get("node") != ">=20":
+        errors.append("package.json: supported Node floor must stay explicit at >=20")
+    if not ((ROOT / "bin/solobaton.js").stat().st_mode & 0o111):
+        errors.append("bin/solobaton.js: executable bit is missing")
+    return errors
 
 
 def check_example_version() -> list[str]:
@@ -193,6 +237,7 @@ def main() -> int:
     errors.extend(check_readme_shape())
     errors.extend(check_frontmatter())
     errors.extend(check_critical_files())
+    errors.extend(check_cli_package())
     errors.extend(check_example_version())
 
     if errors:
@@ -203,7 +248,7 @@ def main() -> int:
 
     print(
         f"Documentation checks passed: {len(paths)} Markdown files, "
-        "relative links, bilingual README shape, frontmatter, and critical scaffold files."
+        "relative links, bilingual README shape, frontmatter, critical files, and CLI package metadata."
     )
     return 0
 

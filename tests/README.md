@@ -7,6 +7,8 @@ These checks validate Solobaton itself. They are separate from `templates/script
 ```bash
 bash tests/test-scripts.sh
 bash tests/check-docs.sh
+npm test
+npm run pack:check
 ```
 
 `test-scripts.sh` creates disposable Git repositories under a `mktemp` directory and exercises both supported layouts. Its scenarios cover:
@@ -22,4 +24,6 @@ bash tests/check-docs.sh
 - missing rendered-design failure and an HTML entry whose filename contains spaces;
 - drift-baseline protection and changed-key reporting when `jq` is available.
 
-`check-docs.sh` uses only Python's standard library. It validates relative Markdown links, rejects non-portable internal citation markers, checks the bilingual README structure and required frontmatter, and confirms that critical scaffold files exist.
+`check-docs.sh` uses only Python's standard library. It validates relative Markdown links, rejects non-portable internal citation markers, checks the bilingual README structure and required frontmatter, confirms that critical scaffold/CLI files exist, and keeps package, changelog, and example versions aligned.
+
+`cli.test.js` uses Node's built-in test runner and disposable directories. It verifies the v0 read-only boundary, default/compact planning, project-signal detection, zero-write behavior, layout conflict handling, manifest fail-closed behavior, stable JSON/error codes, and the executable entry point. `pack:check` audits which files would enter the npm package; it does not publish anything.

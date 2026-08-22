@@ -1,0 +1,43 @@
+{
+  "name": "solobaton",
+  "version": "1.16.0",
+  "description": "File-first, human-gated delivery bus for solo builders orchestrating multiple AI coding sessions.",
+  "type": "module",
+  "bin": {
+    "solobaton": "bin/solobaton.js"
+  },
+  "files": [
+    "bin/",
+    "docs/",
+    "example/",
+    "src/",
+    "templates/",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "README.en.md",
+    "SKILL.md",
+    "lessons.md"
+  ],
+  "scripts": {
+    "test": "node --test tests/cli.test.js",
+    "pack:check": "npm pack --dry-run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HaiYangBG1/solobaton.git"
+  },
+  "keywords": [
+    "ai-coding",
+    "file-first",
+    "human-in-the-loop",
+    "scaffold",
+    "software-delivery",
+    "solo-builder"
+  ],
+  "author": "HaiYangBG",
+  "license": "MIT"
+}
