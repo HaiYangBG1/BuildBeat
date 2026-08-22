@@ -13,6 +13,7 @@
 - **可复现语义保留**:需要固定执行时先用 `npm view solobaton@latest version` 记录精确版本，再用该版本替换 `@latest`；精确 tag、commit、integrity 和 provenance 证据仍留在发布 runbook 与 GitHub Release
 - **防回归机器闸**:文档检查强制三份分发文档同时包含 `@latest` 执行入口和精确版本解析命令，并拒绝任何硬编码 semver 的 `npx`/全局安装命令
 - **候选证据边界**:`package.json` 与 manifest 已表达 `1.16.3` 候选，但在对应 annotated tag、OIDC 发布、registry/provenance/签名/隔离安装回读全绿前，已独立验证分发版仍是 `1.16.2`
+- **真实发布验收**:`solobaton@1.16.3` 已通过 GitHub OIDC 发布，官方 registry `latest`/精确 tarball/SLSA v1 provenance/registry signature/attestation/隔离安装/只读 `doctor`/registry README 独立回读全部通过；精确发布物由 `v1.16.3@821ea3e` 保全，并已创建匹配的 GitHub Release
 
 ## v1.16.2 — 2026-08-22
 
