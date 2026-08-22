@@ -11,8 +11,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  FILE_POLICIES,
   IGNORED_SCAN_DIRECTORIES,
   MANIFEST_PATH,
+  MANIFEST_SCHEMA_VERSION,
   RENDER_REQUIRED_PLACEHOLDERS,
   SCRIPT_NAMES,
   filePolicy,
@@ -22,6 +24,19 @@ const TEMPLATE_ROOT = fileURLToPath(new URL("../templates/", import.meta.url));
 const MAX_SCAN_DEPTH = 4;
 const MAX_SCAN_ENTRIES = 5000;
 const TEXT_LIMIT_BYTES = 512 * 1024;
+const MAX_MANIFEST_FILES = 5000;
+const MANIFEST_TOP_LEVEL_KEYS = new Set([
+  "schemaVersion",
+  "scaffoldVersion",
+  "cliVersion",
+  "layout",
+  "installedAt",
+  "files",
+  "integrations",
+]);
+const MANIFEST_FILE_KEYS = new Set(["policy", "baselineSha256"]);
+const MANIFEST_INTEGRATION_KEYS = ["gitignore", "hooks"];
+const MANIFEST_POLICIES = new Set(Object.values(FILE_POLICIES));
 
 function posixPath(value) {
   return value.split(path.sep).join("/");
@@ -45,6 +60,158 @@ function safeLabel(value) {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 120);
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isCanonicalTimestamp(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) {
+    return false;
+  }
+  try {
+    return new Date(value).toISOString() === value;
+  } catch {
+    return false;
+  }
+}
+
+function isSafeManifestPath(target, value) {
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.endsWith("/") ||
+    value.includes("\\") ||
+    /[\u0000-\u001f\u007f]/.test(value) ||
+    path.posix.isAbsolute(value) ||
+    path.win32.isAbsolute(value) ||
+    path.posix.normalize(value) !== value
+  ) {
+    return false;
+  }
+  const segments = value.split("/");
+  if (segments.some((segment) => segment === "" || segment === "." || segment === "..")) {
+    return false;
+  }
+
+  const resolved = path.resolve(target, ...segments);
+  const relative = path.relative(target, resolved);
+  if (relative === "" || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    return false;
+  }
+
+  let current = target;
+  for (const segment of segments) {
+    current = path.join(current, segment);
+    try {
+      if (lstatSync(current).isSymbolicLink()) {
+        return false;
+      }
+    } catch (error) {
+      if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+        break;
+      }
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateManifest(data, target) {
+  const issues = [];
+  const seen = new Set();
+  const addIssue = (code, message) => {
+    if (!seen.has(code)) {
+      seen.add(code);
+      issues.push({ code, message });
+    }
+  };
+
+  if (!isPlainObject(data)) {
+    addIssue("manifest.invalid_root", "Manifest root must be a JSON object.");
+    return issues;
+  }
+  if (!Number.isInteger(data.schemaVersion)) {
+    addIssue("manifest.invalid_schema_version", "Manifest schemaVersion must be an integer.");
+    return issues;
+  }
+  if (data.schemaVersion !== MANIFEST_SCHEMA_VERSION) {
+    return issues;
+  }
+
+  if (Object.keys(data).some((key) => !MANIFEST_TOP_LEVEL_KEYS.has(key))) {
+    addIssue("manifest.unknown_field", "Manifest contains a field not defined by schema 1.");
+  }
+  if (typeof data.scaffoldVersion !== "string" || !/^v\d+\.\d+(?:\.\d+)?$/.test(data.scaffoldVersion)) {
+    addIssue("manifest.invalid_scaffold_version", "Manifest scaffoldVersion is missing or invalid.");
+  }
+  if (typeof data.cliVersion !== "string" || !/^\d+\.\d+\.\d+$/.test(data.cliVersion)) {
+    addIssue("manifest.invalid_cli_version", "Manifest cliVersion is missing or invalid.");
+  }
+  if (!["default", "compact"].includes(data.layout)) {
+    addIssue("manifest.invalid_layout", "Manifest layout must be default or compact.");
+  }
+  if (!isCanonicalTimestamp(data.installedAt)) {
+    addIssue("manifest.invalid_installed_at", "Manifest installedAt must be a canonical UTC timestamp.");
+  }
+
+  if (!isPlainObject(data.files)) {
+    addIssue("manifest.invalid_files", "Manifest files must be an object record.");
+  } else {
+    const entries = Object.entries(data.files);
+    if (entries.length > MAX_MANIFEST_FILES) {
+      addIssue("manifest.too_many_files", `Manifest files cannot exceed ${MAX_MANIFEST_FILES} entries.`);
+    }
+    for (const [filename, record] of entries.slice(0, MAX_MANIFEST_FILES)) {
+      if (!isSafeManifestPath(target, filename)) {
+        addIssue(
+          "manifest.invalid_file_path",
+          "Manifest file paths must be normalized repository-relative paths without symlink traversal.",
+        );
+      }
+      if (!isPlainObject(record)) {
+        addIssue("manifest.invalid_file_record", "Each manifest file entry must be an object record.");
+        continue;
+      }
+      if (Object.keys(record).some((key) => !MANIFEST_FILE_KEYS.has(key))) {
+        addIssue("manifest.invalid_file_record", "Manifest file entries contain only policy and baselineSha256.");
+      }
+      if (!MANIFEST_POLICIES.has(record.policy)) {
+        addIssue("manifest.invalid_file_policy", "Manifest file policy is missing or unsupported.");
+      }
+      if (typeof record.baselineSha256 !== "string" || !/^[0-9a-f]{64}$/.test(record.baselineSha256)) {
+        addIssue(
+          "manifest.invalid_file_hash",
+          "Manifest baselineSha256 must be exactly 64 lowercase hexadecimal characters.",
+        );
+      }
+    }
+  }
+
+  if (!isPlainObject(data.integrations)) {
+    addIssue("manifest.invalid_integrations", "Manifest integrations must be an object record.");
+  } else {
+    const keys = Object.keys(data.integrations);
+    if (
+      keys.length !== MANIFEST_INTEGRATION_KEYS.length ||
+      MANIFEST_INTEGRATION_KEYS.some((key) => !Object.hasOwn(data.integrations, key)) ||
+      keys.some((key) => !MANIFEST_INTEGRATION_KEYS.includes(key))
+    ) {
+      addIssue(
+        "manifest.invalid_integrations",
+        "Schema 1 integrations must contain exactly gitignore and hooks.",
+      );
+    }
+    if (MANIFEST_INTEGRATION_KEYS.some((key) => data.integrations[key] !== null)) {
+      addIssue(
+        "manifest.invalid_integration_record",
+        "Schema 1 integration records must be null until a write-capable schema defines them.",
+      );
+    }
+  }
+
+  return issues;
 }
 
 function walk(root, { maxDepth = MAX_SCAN_DEPTH, ignore = true } = {}) {
@@ -192,19 +359,18 @@ function inspectManifest(target) {
   }
   try {
     const data = JSON.parse(text);
+    const root = isPlainObject(data) ? data : {};
+    const validationIssues = validateManifest(data, target);
     return {
       state: "present",
       path: MANIFEST_PATH,
-      schemaVersion: Number.isInteger(data.schemaVersion) ? data.schemaVersion : null,
+      schemaVersion: Number.isInteger(root.schemaVersion) ? root.schemaVersion : null,
       scaffoldVersion:
-        typeof data.scaffoldVersion === "string" ? safeLabel(data.scaffoldVersion).slice(0, 40) : null,
-      cliVersion: typeof data.cliVersion === "string" ? safeLabel(data.cliVersion).slice(0, 40) : null,
-      layout: typeof data.layout === "string" ? safeLabel(data.layout).slice(0, 40) : null,
-      hasFiles: Boolean(data.files) && typeof data.files === "object" && !Array.isArray(data.files),
-      hasIntegrations:
-        Boolean(data.integrations) &&
-        typeof data.integrations === "object" &&
-        !Array.isArray(data.integrations),
+        typeof root.scaffoldVersion === "string" ? safeLabel(root.scaffoldVersion).slice(0, 40) : null,
+      cliVersion: typeof root.cliVersion === "string" ? safeLabel(root.cliVersion).slice(0, 40) : null,
+      layout: typeof root.layout === "string" ? safeLabel(root.layout).slice(0, 40) : null,
+      installedAt: typeof root.installedAt === "string" ? safeLabel(root.installedAt).slice(0, 40) : null,
+      validationIssues,
     };
   } catch {
     return { state: "invalid", path: MANIFEST_PATH, reason: "invalid-json" };

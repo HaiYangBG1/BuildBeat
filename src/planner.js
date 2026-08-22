@@ -1,4 +1,4 @@
-import { CLI_VERSION, SCAFFOLD_VERSION } from "./constants.js";
+import { CLI_VERSION, OUTPUT_SCHEMA_VERSION, SCAFFOLD_VERSION } from "./constants.js";
 import { inspectProject, plannedFiles } from "./project.js";
 
 export function buildPlan({ mode, target, layout }) {
@@ -109,7 +109,7 @@ export function buildPlan({ mode, target, layout }) {
       ];
 
   return {
-    schemaVersion: 1,
+    schemaVersion: OUTPUT_SCHEMA_VERSION,
     command: mode,
     cliVersion: CLI_VERSION,
     scaffoldVersion: SCAFFOLD_VERSION,
