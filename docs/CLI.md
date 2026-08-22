@@ -1,18 +1,19 @@
 # Solobaton CLI lifecycle contract
 
-Status: **CLI v0 read-only preview** · source/package version `solobaton@1.16.2` · latest independently verified npm distribution `solobaton@1.16.2` · Node.js 20+ · zero third-party runtime dependencies.
+Status: **CLI v0 read-only preview** · source/package version `solobaton@1.16.3` · latest independently verified npm distribution `solobaton@1.16.2` · Node.js 20+ · zero third-party runtime dependencies.
 
 The CLI does not replace `SKILL.md`. The Skill tells an AI session how to operate the delivery protocol; the CLI provides deterministic inspection and, in later versions, safe scaffold lifecycle operations.
 
 ## v0 command boundary
 
 ```bash
-npx --yes solobaton@1.16.2 doctor /path/to/project
-npx --yes solobaton@1.16.2 init /path/to/project --dry-run
-npx --yes solobaton@1.16.2 adopt /path/to/project --dry-run
+npm view solobaton@latest version
+npx --yes solobaton@latest doctor /path/to/project
+npx --yes solobaton@latest init /path/to/project --dry-run
+npx --yes solobaton@latest adopt /path/to/project --dry-run
 ```
 
-A repository checkout may replace `npx --yes solobaton@1.16.2` with `node bin/solobaton.js`; that source command runs the checked-out version and must still be evaluated separately from npm distribution evidence.
+Record the version returned by `npm view` and substitute that exact version for `@latest` when the invocation must be reproducible. A repository checkout may replace `npx --yes solobaton@latest` with `node bin/solobaton.js`; that source command runs the checked-out version and must still be evaluated separately from npm distribution evidence.
 
 - `doctor` reads an existing project and reports installation state, layout, version marker, required files, unresolved canonical placeholders, hooks, and capability dependencies.
 - `init --dry-run` inspects a new-project target and emits the default-layout installation plan.
@@ -35,9 +36,9 @@ The public npm package gives the executable a conventional, reversible distribut
 
 | Intent | Command | Project effect |
 |---|---|---|
-| Reproducible one-off run | `npx --yes solobaton@1.16.2 doctor <project>` | Read-only inspection using the latest independently verified distribution; no persistent global CLI installation |
-| Install a pinned global CLI | `npm install --global solobaton@1.16.2` | Installs the latest independently verified package and executable |
-| Update the global CLI | `npm install --global solobaton@latest` | Replaces only the globally installed package |
+| Current one-off run | `npx --yes solobaton@latest doctor <project>` | Read-only inspection using the registry's current release; no persistent global CLI installation |
+| Resolve an exact version | `npm view solobaton@latest version` | Records the version to substitute for `@latest` in a reproducible invocation |
+| Install or update the global CLI | `npm install --global solobaton@latest` | Replaces only the globally installed package and executable |
 | Remove the global CLI | `npm uninstall --global solobaton` | Removes only the global package and executable |
 
 Package-manager operations never create, update, or remove a project's scaffold. The similarly named `solobaton upgrade` and `solobaton uninstall` commands are a separate project lifecycle and remain disabled in CLI v0. Removing an `npx` cache is also outside Solobaton's project lifecycle.
@@ -74,7 +75,7 @@ A write-capable release must create `.solobaton/manifest.json`. Schema 1 is rese
 {
   "schemaVersion": 1,
   "scaffoldVersion": "v1.16",
-  "cliVersion": "1.16.2",
+  "cliVersion": "1.16.3",
   "layout": "default",
   "installedAt": "2026-08-22T00:00:00.000Z",
   "files": {

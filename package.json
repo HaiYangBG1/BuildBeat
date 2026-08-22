@@ -1,6 +1,6 @@
 {
   "name": "solobaton",
-  "version": "1.16.2",
+  "version": "1.16.3",
   "description": "File-first, human-gated delivery bus for solo builders orchestrating multiple AI coding sessions.",
   "type": "module",
   "bin": {

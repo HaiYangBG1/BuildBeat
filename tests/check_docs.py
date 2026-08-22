@@ -249,30 +249,27 @@ def check_cli_package() -> list[str]:
     if f"source package version `solobaton@{version}`" not in release_guide:
         errors.append("docs/RELEASING.md: source package version evidence is stale")
 
-    verified_spec = f"solobaton@{verified_version}"
     distribution_docs = ("README.md", "README.en.md", "docs/CLI.md")
     for relative in distribution_docs:
         content = (ROOT / relative).read_text(encoding="utf-8")
-        if verified_version:
-            required_commands = (
-                f"npx --yes {verified_spec}",
-                f"npm install --global {verified_spec}",
+        required_commands = (
+            "npm view solobaton@latest version",
+            "npx --yes solobaton@latest",
+            "npm install --global solobaton@latest",
+        )
+        for command in required_commands:
+            if command not in content:
+                errors.append(
+                    f"{relative}: missing evergreen npm package command {command}"
+                )
+        hard_coded_command = re.search(
+            r"(?:npx --yes|npm install --global)\s+solobaton@\d+\.\d+\.\d+",
+            content,
+        )
+        if hard_coded_command is not None:
+            errors.append(
+                f"{relative}: hard-coded executable package command will make the immutable npm README stale: {hard_coded_command.group(0)}"
             )
-            for command in required_commands:
-                if command not in content:
-                    errors.append(
-                        f"{relative}: missing independently verified package command {command}"
-                    )
-        if verified_version != version:
-            unverified_source_commands = (
-                f"npx --yes solobaton@{version}",
-                f"npm install --global solobaton@{version}",
-            )
-            for command in unverified_source_commands:
-                if command in content:
-                    errors.append(
-                        f"{relative}: executable command claims unverified source version {command}"
-                    )
     cli_contract = (ROOT / "docs/CLI.md").read_text(encoding="utf-8")
     if f'"cliVersion": "{version}"' not in cli_contract:
         errors.append("docs/CLI.md: manifest example CLI version is stale")

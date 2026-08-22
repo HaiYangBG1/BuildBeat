@@ -4,6 +4,16 @@
 
 ## Unreleased
 
+## v1.16.3 — 2026-08-23
+
+> 主题:修复 npm 上不可变 README 的执行命令永久落后一版的发布闭环。脚手架版本仍是 v1.16，CLI 命令边界不变，项目写入/升级/卸载仍未开放。
+> **拷出项目升级**:业务模板和已拷出项目零修改；本补丁只修复 npm 分发文档与机器检查。
+
+- **npm 落地页不再过期**:中英 README 与 CLI 合同的可执行示例改用 `solobaton@latest`；同一份文件在发布前指向 registry 已有版本，发布后自然指向新版，不再因 tarball 不可变而永久落后
+- **可复现语义保留**:需要固定执行时先用 `npm view solobaton@latest version` 记录精确版本，再用该版本替换 `@latest`；精确 tag、commit、integrity 和 provenance 证据仍留在发布 runbook 与 GitHub Release
+- **防回归机器闸**:文档检查强制三份分发文档同时包含 `@latest` 执行入口和精确版本解析命令，并拒绝任何硬编码 semver 的 `npx`/全局安装命令
+- **候选证据边界**:`package.json` 与 manifest 已表达 `1.16.3` 候选，但在对应 annotated tag、OIDC 发布、registry/provenance/签名/隔离安装回读全绿前，已独立验证分发版仍是 `1.16.2`
+
 ## v1.16.2 — 2026-08-22
 
 > 主题:把 Trusted Publishing 从“已配置”推进到可实发验收的证据链。脚手架版本仍是 v1.16，CLI 命令边界不变，项目写入/升级/卸载仍未开放。
