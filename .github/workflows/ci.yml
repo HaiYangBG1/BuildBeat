@@ -58,3 +58,35 @@ jobs:
 
       - name: Run script regression suite
         run: bash tests/test-scripts.sh
+
+  cli:
+    name: CLI (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node: 20
+          - os: ubuntu-latest
+            node: 24
+          - os: macos-latest
+            node: 24
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install package metadata
+        run: npm ci --ignore-scripts
+
+      - name: Run CLI regression suite
+        run: npm test
+
+      - name: Audit package contents
+        run: npm run pack:check

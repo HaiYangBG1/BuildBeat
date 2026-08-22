@@ -42,6 +42,18 @@ Solobaton 把这些问题收敛成四个支柱：
 
 > 已经存在大量代码的项目不要直接套新项目模板。使用 `SKILL.md` §8.5 的**存量接管仪式**：先摸底、划新旧边界、补最小验证能力，再采用 `pm/scripts/` 紧凑布局，避免撞上原项目自己的 `scripts/`。
 
+### CLI v0 预览：先检查，不写项目
+
+v1.16 新增零第三方运行时依赖的 Node.js 20+ CLI。当前版本只把确定性的项目扫描和生命周期计划变成机器接口，尚未发布 npm，也不执行安装写入：
+
+```bash
+node bin/solobaton.js doctor /path/to/project
+node bin/solobaton.js init /path/to/project --dry-run
+node bin/solobaton.js adopt /path/to/project --dry-run --json
+```
+
+`doctor` 检查已有骨架的布局、版本、关键文件、占位符、Hook 与依赖降级；`init/adopt --dry-run` 分别规划默认/紧凑布局。省略 `--dry-run` 会明确拒绝且不创建任何文件。CLI 不替代 Skill 的代码理解、少量提问和一屏确认，完整边界见 [`docs/CLI.md`](docs/CLI.md)。npm 发布完成并独立验证前，不要把 `npx solobaton` 当成可用入口。
+
 ### 手动安装
 
 只建议在你已经理解模板含义时使用：
@@ -183,12 +195,14 @@ flowchart LR
 | 生产配置漂移 | `jq`、SHA 工具、项目 `live-config.sh` | 明确跳过，不能外推生产状态 |
 | 线上版本查询 | 项目 `live-status.sh` 和平台 CLI | 明确未配置，不引用文档版本冒充线上事实 |
 | L3 测试证据 | 项目填写 `verify-status.sh` 的 `SUITES` | 只能报告未配置，不能声称自动化测试已绿 |
+| CLI v0 检查/规划 | Node.js 20+、本仓库源码 | 回退到 Skill/手动流程；当前无写入、升级、卸载能力 |
 
 ## 继续阅读
 
 - [`SKILL.md`](SKILL.md)：方法论与 Bootstrap 的唯一完整入口；
 - [`example/`](example/)：虚构「简账」项目跑完一期后的完整文件快照；
 - [`lessons.md`](lessons.md)：真实反模式、根因与解法；
+- [`docs/CLI.md`](docs/CLI.md)：CLI 生命周期、文件所有权、manifest 和安全升级/卸载合同；
 - [`CHANGELOG.md`](CHANGELOG.md)：版本历史和拷出项目升级说明。
 
 ## 贡献
@@ -202,9 +216,11 @@ flowchart LR
 提交前至少运行：
 
 ```bash
-bash -n templates/scripts/*.sh
+bash -n templates/scripts/*.sh tests/*.sh
 bash tests/test-scripts.sh
 bash tests/check-docs.sh
+npm test
+npm run pack:check
 git diff --check
 ```
 

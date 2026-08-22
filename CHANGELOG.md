@@ -2,6 +2,19 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## v1.16 — 2026-08-22
+
+> 主题:建立 `Skill + CLI` 双入口的第一块确定性地基。CLI v0 只做 `doctor` 与 `init/adopt --dry-run`,把项目扫描、布局识别、生命周期阻塞和未来文件所有权规则变成可测试接口;所有写操作继续 fail-closed,不拿“规划中的 upgrade/uninstall”冒充已交付能力。
+> **拷出项目升级**:没有模板文件需要替换。项目可把 `SOLOBATON.md` 版本更新为 v1.16;若从上游源码运行 `node bin/solobaton.js doctor <项目根>`,旧项目会被诚实标为 `legacy/unmanaged`(缺 manifest),不影响现有 Shell 护栏。CLI 尚未发布 npm,不要写 `npx solobaton` 作为已可用安装路径。
+
+- **零依赖 Node CLI v0**:新增 `package.json`、`bin/solobaton.js` 与 `src/`;要求 Node.js 20+,包内带 canonical templates,但运行时不引入第三方依赖
+- **只读生命周期命令**:`doctor` 检查安装/布局/版本/关键文件/占位符/Hook/依赖降级;`init --dry-run` 规划默认布局;`adopt --dry-run` 规划紧凑布局和存量接管;均支持稳定 `--json`
+- **写操作 fail-closed**:`init/adopt` 缺 `--dry-run` 返回 exit 2 且零写入;`diff/upgrade/uninstall` 只保留命令名并明确返回未开放,避免把危险半成品包装成正式能力
+- **生命周期合同**:`docs/CLI.md` 冻结 `replace-if-unmodified / three-way-only / project-owned / merge-only` 四类文件策略、manifest schema 1、升级三方比较、卸载保留规则、事务回滚和 Hook/.gitignore 合并边界
+- **扫描隐私边界**:最多四层/5,000 条目,跳过构建与 vendor 目录,不跟随 symlink;JSON 只输出路径/计数/能力元数据/finding code,不回显源码、配置值或 Secret
+- **CLI 回归与 CI**:Node 内置测试覆盖 17 个场景;CI 在 Node 20/24 与 Ubuntu/macOS 组合执行 `npm ci`、测试和 pack 内容检查
+- **刻意未做**:没有项目文件写入、manifest 落盘、自动升级/卸载、npm publish、Git 初始化/提交/推送或 Windows Shell 护栏兼容声明;Skill 仍负责代码级理解、少量提问和人 Gate
+
 ## v1.15 — 2026-08-22
 
 > 主题:从「PR 里描述做过验证」迈到「仓库自己可重复证明」。README 只承担定位与上手,完整规则继续单点留在 SKILL;已发生过的脚本回归变成动态沙盘测试,PR/main 变更由 CI 自动执行。

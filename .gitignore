@@ -12,3 +12,7 @@
 # Repository-local Python checks
 __pycache__/
 *.pyc
+
+# Repository-local Node CLI development
+node_modules/
+*.tgz
