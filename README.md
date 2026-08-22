@@ -80,7 +80,7 @@ cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 flowchart LR
     PM["产品会话<br/>拆需求·记账"] -->|"Gate1 你批规格"| Design["设计工具出稿"]
     Design -->|"真渲染原型你点过再批 Gate2"| Deliver["全栈会话<br/>实现+改契约"]
-    Deliver -->|"reviewer 只读核查"| Verify["测试会话<br/>E2E+带图走查"]
+    Deliver -->|"里程碑候选 reviewer 一次全核"| Verify["测试会话<br/>E2E+带图走查"]
     Verify -->|"Gate3 你批合并"| Deploy["部署"]
     Deploy -->|"Gate4 你批上线"| PM
 ```
@@ -137,7 +137,7 @@ flowchart LR
 solobaton/
 ├── SKILL.md       # 给 agent 读的方法论主体:域模型 / 十条规则 / 四Gate+三轨 /
 │                  #   三个仪式 / 红线 / 引导式 Bootstrap(自查→少量提问→生成)
-├── lessons.md     # 15 条反模式(症状→根因→解药),每条都真实发生过
+├── lessons.md     # 16 条反模式(症状→根因→解药),每条都真实发生过
 ├── README.md      # 本文(给人读的介绍;英文版 README.en.md)
 ├── CHANGELOG.md   # 版本史
 ├── example/       # 教学沙盘:虚构「简账」项目跑完一期的文件快照(模板填好后的样子)
@@ -150,7 +150,7 @@ solobaton/
     ├── contracts/PROTOCOL.md  # 跨边界契约唯一入口
     ├── gitignore.template     # meta 仓 .gitignore 模板(拷入改名;排除子仓与 *.env)
     ├── SOLOBATON.md           # 版本标记:项目用的哪版 Solobaton + 升级/回灌说明
-    ├── .claude/agents/reviewer.md   # 只读核查门 subagent(写者≠审者)
+    ├── .claude/agents/reviewer.md   # 只读核查门 subagent(milestone / risk-delta / closure)
     └── scripts/               # bus-check.sh(开工护栏,--strict 机器闸) + drift-check.sh(生产漂移检测)
                                #   + design-preview.sh(真渲染) + pre-commit.sh(红线闸:gitleaks+strict)
                                #   + verify-status.sh(测试全绿实查,L3 证据兜底)
@@ -171,7 +171,7 @@ solobaton/
 | ③ | 交接靠 commit | 状态行带 hash,下游读 repo 即知进度 |
 | ④ | 开工护栏 | 开工跑 bus-check;**不可逆动作前再跑一次**;`--strict` 挂 pre-commit 当闸 |
 | ⑤ | 三轨制 | 快轨/标准轨/重轨,别用牛刀杀鸡 |
-| ⑥ | 核查门 | 验收前 reviewer 核四方一致;完成 = hash + 证据 |
+| ⑥ | 核查门 | 机器闸常驻;高风险 delta 定向核;里程碑候选 hash 集只全核一次 |
 | ⑦ | 提案+状态分写 | 跨域变更走 delta 提案;各域只写自己的状态文件 |
 | ⑧ | 视觉带图 | UI bug 必附实现⟷设计稿截图并排,纯文字不算证据 |
 | ⑨ | 单点事实 | 线上版本只实查;拍板只记 decisions.md;换期必压缩 |
@@ -189,7 +189,7 @@ solobaton/
 | SSOT / 单点事实 | Single Source of Truth:一个事实只在一处登记,别处只放"去哪查"的指针——防多处复写互相矛盾 |
 | Gate(四 Gate) | 关卡:规格 / 设计 / 合并 / 上线四个决策点,必须人拍板,AI 不得自动跨过 |
 | 三轨制 | 按改动大小选流程重量:快轨(小改)/ 标准轨(单功能)/ 重轨(动契约的大改),小事不走大流程 |
-| 核查门 | 验收前派只读审查 agent 把「实现 / 设计 / 契约 / 需求」四方对一遍,对不上打回 |
+| 核查门 | 机器闸每提交;高风险语义只核 delta;稳定里程碑候选派只读 reviewer 全核一次,同一 hash 复用结论 |
 | 写者≠审者 | 写代码和审代码不能是同一个会话——自己审自己必然全对 |
 | 证据制完成 | 说"完成"必须带 commit hash + 可核验证据(测试命令 / 文件:行 / 截图),否则不算完成 |
 | 人在回路 | human-in-the-loop:关键决策必须有人参与,不许 AI 全自动闭环 |
@@ -209,7 +209,7 @@ solobaton/
 | 薄指针 | NOW.md 只写"当前哪一期、去看哪些文件"——是书签,不是笔记本 |
 | 看板 | 当期的任务分工表:谁做什么、到哪一步、卡在哪 |
 | delta 提案 | 大改先写一份"改什么"清单(逐条标 增 / 删 / 改)的提案文件,拍板后才动手 |
-| reviewer / 子代理 | 主会话临时派出的只读审查 agent(subagent),审完即走、不常驻、无权改代码 |
+| reviewer / 子代理 | 主会话临时派出的只读审查 agent,有 milestone / risk-delta / closure 三种模式;审完即走、不常驻、无权改代码 |
 | 挂账 | 把"欠着没做完的事"记在看板上,谁认领谁销账 |
 
 ### 工程名词

@@ -14,7 +14,7 @@
 | **测试**(E2E·走查) | `<被测仓>/` | `tests/**` · 视觉基线 · 走查报告 | 实现 + spec + 设计稿 + 契约 | `pm/NOW.md` + `tests/README.md` | `pm/status/测试.md` + 核查门证据(E2E 报告/视觉 diff/对比图,**落 `pm/archive/<期>/evidence/`,换期零搬运**) |
 
 > **设计生成 = 外部工具**(非会话):产品域写 brief(必须要求**单 HTML 可渲染入口 + 关键流可点**)→ 人喂设计工具 → 稿落 `design/design_N期/` → 测试域走查 + 提带图 bug。
-> 🔴 **全栈域合并多角色的补偿控制**:动契约必派 reviewer subagent(只读,见 `.claude/agents/reviewer.md`)+ 测试域独立核两端(写者≠审者)。
+> 🔴 **全栈域合并多角色的补偿控制**:里程碑候选必须由 reviewer subagent(只读,见 `.claude/agents/reviewer.md`)全核 + 测试域独立核两端;实现中出现冻结契约/鉴权/租户/Secret/fail-closed/持久化或不可逆副作用变化时做 `risk-delta` 定向核。写者≠审者不变,但不按每个草稿或小任务重复全审。
 > **开工护栏**:任意域开工**先跑 `bash scripts/bus-check.sh`** + `git pull`。
 
 ## 1.5 C 端审美红线(出 UI 的会话必读;非 UI 项目可删)
@@ -32,7 +32,7 @@
 **③ 交接靠 commit + 落盘** —— 做完 → 状态行带 commit hash,下游读 repo 即知进度。
 **④ 开工护栏** —— 开工先 `bash scripts/bus-check.sh` + `git pull`;**部署/改契约/migration 等不可逆动作前再跑一次**;pre-commit 挂 `bus-check --strict` 机器闸(检出腐烂/幽灵 hash 即拦 commit,见 `scripts/pre-commit.sh`)。
 **⑤ 三轨制** —— 快轨(小改:直接改+核查门)/ 标准轨(单功能全流程)/ 重轨(契约变更/大改:+`pm/changes/` 提案+多 agent 评审);NOW 标本期轨道。
-**⑥ 核查门** —— 验收/合并前派 reviewer 并行核「实现↔设计↔契约↔需求」四方一致;**完成 = hash + 可核验证据,无证据不算完成**。证据分五级:L0 声称 / L1 `文件:行` / L2 编译过 / L3 自动化测试过 / L4 线上实测——**标准轨最低 L3,重轨与上线必须 L4**;L1 只作补充定位不单独作数。
+**⑥ 核查门(风险批次 + 里程碑候选)** —— 轻量机器闸每次提交都跑,受影响自动化测试按变更批次跑,里程碑候选跑全量并留 L3 证据;完整 reviewer 绑定一个里程碑候选 hash 集,核「实现↔设计↔契约↔需求」一次。任务中只有冻结契约对外语义、鉴权/租户/Secret/fail-closed、持久化键空间或不可逆外部副作用变化才做 `risk-delta` 定向核;文件数、草稿演进、归档/status 回写与普通 P2 不触发完整核查。候选 hash 未变且机器证据仍绿 → 合并前复用原结论;变化只核 delta。P0/P1 阻塞,P2 默认挂账;首轮报告保留原文,后续只追加 closure 表。**完成 = hash + 可核验证据**;标准轨最低 L3,重轨与上线必须 L4,L1 只作补充定位。
 **⑦ 变更提案 + 状态分写** —— 跨域变更走 `pm/changes/` delta 提案;**各域只写自己的 `pm/status/<域>.md`**,别人只读。
 **⑧ 视觉问题带图对比** —— 提 UI bug / 判设计符合性必附『实现截图 ⟷ 设计稿截图』并排 + 标注差异点;纯文字不算证据。
 **⑨ 单点事实** —— 线上版本只信 `bus-check` 实查(任何文档不写"当前线上 vX",契约快照版本仅 `PROTOCOL.md` 头部);拍板第一动作 = `pm/decisions.md` 追加一行+回写落点;换期必跑压缩仪式(NOW 底部 checklist),**NOW 永远是薄指针、禁堆流水**。
@@ -46,4 +46,4 @@
 2. **不 `git add -A`**:只 stage 自己域的具体文件;同持多仓按仓分别提交。
 3. **不未授权部署**、不 force-push、不 `--amend`、不 `--no-verify`。
 4. **每次部署完必更对应仓 `CHANGELOG.md`**;长连接服务部署带优雅下线(<PreStop/drain 机制>)。
-5. **写者≠审者**:动契约/验收必过独立 reviewer。
+5. **写者≠审者**:里程碑候选与高风险语义 delta 必过独立 reviewer;同一候选 hash 复用结论,不重复全审。

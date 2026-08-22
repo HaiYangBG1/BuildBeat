@@ -8,8 +8,9 @@
 ## 流程
 1. **提案** → 新建 `pm/changes/<yyyymmdd>-<短名>.md`(用下方模板)。
 2. **拍板** → 用户/产品域评审:批 / 改 / 否(落 `../decisions.md` 一行)。
-3. **实现** → 各域按 change 里"分工"动手,commit hash 回写**自己的** `pm/status/<域>.md`。
-4. **归档** → 完成 + 核查门过 → 产品域把 Delta 合并进 canonical(`contracts/PROTOCOL.md` / 需求文档),change 移到 `pm/changes/archive/`。
+3. **实现** → 各域按 change 里"分工"动手,轻量机器闸每次提交、受影响测试按变更批次;只把实现期新增的失败态、不可达状态、默认值/阈值、fail-closed 方向记进同一份「实现语义清单」,不为每个小任务新建完整审查报告。
+4. **候选** → 收敛一个精确的里程碑候选 hash 集。实现中若出现冻结契约/鉴权/租户/Secret/fail-closed/持久化或不可逆副作用变化,只对对应 `base..candidate` 做 `risk-delta` 定向核。
+5. **核查 + 归档** → 对里程碑候选做一次完整核查;P0/P1 清零后,产品域把 Delta 合并进 canonical(`contracts/PROTOCOL.md` / 需求文档),change 移到 `pm/changes/archive/`。同一候选 hash 合并前复用结论,不重复全审。
 
 ## 模板(复制改)
 ```md
@@ -23,6 +24,14 @@
 ## 分工(谁做)
 | 域 | 做什么 | commit |
 |---|---|---|
+## 实现语义清单(只记实现期新产生的自由度;没有就写「无」)
+| 类别 | 决定/发现 | 契约覆盖 | 处置 |
+|---|---|---|---|
+| 新失败态 / 不可达状态 / 默认值或阈值 / fail-closed 方向 | | 已覆盖 / 需回流 / 改实现 | |
+## 里程碑候选
+- base:<hash 或多仓 hash 集>
+- candidate:<hash 或多仓 hash 集>
+- 机器证据:<测试 / gitleaks / bus-check / L3-L4 指针>
 ## 验收点(怎么验 —— 核查门逐条核,必带可核验证据)
 - [ ] <证据:测试命令 / 文件:行 / 线上实测 / 截图>
 ```

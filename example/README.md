@@ -14,7 +14,7 @@
 
 1. [pm/NOW.md](pm/NOW.md) —— 任何会话开工第一眼:当前期是什么、去看哪些文件
 2. [pm/一期-看板.md](pm/一期-看板.md) —— 阶段门怎么勾、分工与挂账长什么样
-3. [pm/decisions.md](pm/decisions.md) —— 拍板台账:一期六锤下来的样子(注意每行都有回写落点)
+3. [pm/decisions.md](pm/decisions.md) —— 拍板台账:一期拍板 + 一次 Solobaton 升级的样子(注意每行都有回写落点)
 4. [pm/status/](pm/status/) —— 三个域各写各的状态:带 hash、带证据指针、条目克制
 5. [contracts/PROTOCOL.md](contracts/PROTOCOL.md) —— 跨仓契约:快照 + 关键对齐点 + 变更记录(含"独立核查"列)
 6. [AGENTS.md](AGENTS.md) / [ARCHITECTURE.md](ARCHITECTURE.md) —— 路由表和全栈总图填好后的样子(根上另有 [CLAUDE.md](CLAUDE.md),只是指向 `AGENTS.md` 的一行指针)

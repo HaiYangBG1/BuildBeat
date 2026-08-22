@@ -27,9 +27,9 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 | **全栈**(实现,含运维) | 实现 + 改契约 + 部署;可同持多仓但**按仓分别 stage** | 代码仓 + `contracts/` |
 | **测试**(E2E·走查) | 黑盒 E2E + 视觉回归 + 设计走查,不合格直接提带图 bug | `tests/**` + 证据产物(落 `pm/archive/<期>/evidence/`) |
 
-- **reviewer = 只读 subagent**(不是常驻会话):核「实现↔设计↔契约↔需求」四方一致,模板见 [templates/.claude/agents/reviewer.md](templates/.claude/agents/reviewer.md)。
+- **reviewer = 只读 subagent**(不是常驻会话):支持 `milestone`(里程碑候选全核)/ `risk-delta`(高风险语义定向核)/ `closure`(只复核 finding 修复)三种模式,模板见 [templates/.claude/agents/reviewer.md](templates/.claude/agents/reviewer.md)。
 - **设计生成 = 外部工具**(可选):产品域写 brief → 人喂设计工具 → 稿落 `design/design_N期/`;走查归测试域。
-- **切域依据是"物理边界(仓/部署单元)+ 是否需要独立核查",不是人类公司职能表。** 实践教训:按职能切出 6 个域,两个月内被迫合并回 4 个(前端+后端合并、设计+测试合并)——每多一个域,人的编排成本和信息差面积都翻倍。**合并会丢"天然独立核查"防线,必须用补偿控制顶上**(全栈域动契约 → 必派 reviewer + 测试域独立核两端)。
+- **切域依据是"物理边界(仓/部署单元)+ 是否需要独立核查",不是人类公司职能表。** 实践教训:按职能切出 6 个域,两个月内被迫合并回 4 个(前端+后端合并、设计+测试合并)——每多一个域,人的编排成本和信息差面积都翻倍。**合并会丢"天然独立核查"防线,必须用补偿控制顶上**:里程碑候选由 reviewer 全核 + 测试域独立核两端;实现中只有高风险语义 delta 立即定向核,不因每次草稿/小任务动契约就重跑全审。
 
 ## 3. 文件总线布局
 
@@ -76,7 +76,7 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 3. **交接靠 commit + 落盘**:做完 → 状态行带 hash,下游读 repo 即知进度,不靠人转述。
 4. **开工护栏**:任意会话开工先跑 `bash scripts/bus-check.sh` + `git pull`;**部署/改契约/migration 等不可逆动作前再跑一次**(治"会话中途决策已变还按旧信息干");pre-commit 挂 `bus-check --strict` 机器闸(确凿检出 协调层腐烂/幽灵 hash/生产漂移 即非零退出)。
 5. **三轨制**:快轨(小改:直接改+核查门)/ 标准轨(单功能:需求→设计→实现→验收)/ 重轨(契约变更/大改:+变更提案+多 agent 评审)。NOW 标本期轨道,别用牛刀杀鸡。
-6. **核查门**:验收/合并前派只读 reviewer 并行核「实现↔设计↔契约↔需求」;完成 = hash + 可核验证据。**证据分五级**:L0 声称(不算证据)/ L1 `文件:行`(只证代码存在)/ L2 编译·类型过(结构对)/ L3 自动化测试过(行为对)/ L4 线上实测(真的能用)。**标准轨最低 L3,重轨与上线必须 L4**;L1 只可作 L3/L4 的补充定位,不单独当完成证据。项目测试跑不动 → 先补测试(bus-check「工程层验证能力」会红字提醒)。
+6. **核查门(风险批次 + 里程碑候选)**:① 轻量机器闸每次提交都跑,受影响自动化测试按变更批次跑,里程碑候选跑全量并留 L3 证据;② 完整 reviewer 绑定一个可复现的里程碑候选 hash 集,核「实现↔设计↔契约↔需求」一次;③ 任务中仅当出现**冻结契约对外语义、鉴权/租户/Secret/fail-closed、持久化键空间或不可逆外部副作用**变化时,对 `base..candidate` 做 `risk-delta` 定向核。文件数、草稿演进、归档/状态回写和普通 P2 不是完整核查触发器。候选 hash 未变且机器证据仍绿 → 合并前复用原结论;变化只复核 delta。P0/P1 阻塞,P2 默认挂账;首轮报告保留原文,后续只追加 closure 表。**完成 = hash + 可核验证据**;证据分 L0 声称 / L1 `文件:行` / L2 编译·类型 / L3 自动化测试 / L4 线上实测。标准轨最低 L3,重轨与上线必须 L4;L1 只作补充定位。项目测试跑不动 → 先补测试。
 7. **变更提案 + 状态分写**:跨域变更走 `pm/changes/` delta 提案;各域只写 `pm/status/<域>.md`,别人只读——物理消灭"同文件互踩"。
 8. **视觉问题带图**:提 UI bug / 判设计符合性必附「实现截图 ⟷ 设计稿截图」并排对比,纯文字描述不算证据。
 9. **单点事实**:① 线上版本只信 bus-check 实查(任何文档不写"当前线上 vX",契约快照版本仅 PROTOCOL 头部一处)② 拍板第一动作 = `decisions.md` 追加一行+回写落点(欠账可见)③ 换期必跑压缩仪式。
@@ -87,10 +87,10 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 ## 5. 节奏:四 Gate + 三轨
 
 ```
-Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+核查门 → Gate3 合并(人批,reviewer 批准≠合并)
+Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+机器闸+实现语义清单 → 里程碑候选核查一次 → Gate3 合并(人批,reviewer 批准≠合并)
 → Gate4 上线(人批) → 测试域复核 → 产品域收尾记账
 ```
-快轨可跳 Gate1/2,但核查门和证据制**任何轨都不跳**。
+快轨可跳 Gate1/2,但机器闸、证据制与**合并候选一次核查**任何轨都不跳;高风险 delta 不得借快轨绕过独立核查。
 
 ## 6. 三个仪式(防腐烂的关键,缺了机制必朽)
 
@@ -104,7 +104,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 2. **不 `git add -A`**:多会话共编,只 stage 自己域的具体文件;同持多仓时按仓分别提交。
 3. **不未授权部署**、不 force-push、不 `--amend`、不 `--no-verify`。
 4. **每次部署完必更对应仓 CHANGELOG**(Keep a Changelog,倒序)。
-5. **写者≠审者**:动契约/验收必过独立 reviewer(subagent 还原这道防线)。
+5. **写者≠审者**:里程碑候选与高风险语义 delta 必过独立 reviewer;同一候选 hash 复用结论,不靠重复全审制造安全感。
 6. 资源选型 **稳定 > 便宜**;长连接服务部署带优雅下线(PreStop/drain)。
 
 ## 8. Bootstrap 新项目(引导式:自查 → 少量提问 → 确认 → 生成)
@@ -185,7 +185,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 | [templates/pm/status/README.md](templates/pm/status/README.md) | 状态分写约定 + 域文件模板 |
 | [templates/pm/changes/README.md](templates/pm/changes/README.md) | 重轨变更 delta 提案流程 + 模板 |
 | [templates/contracts/PROTOCOL.md](templates/contracts/PROTOCOL.md) | 契约唯一入口骨架 |
-| [templates/.claude/agents/reviewer.md](templates/.claude/agents/reviewer.md) | 只读核查门 subagent |
+| [templates/.claude/agents/reviewer.md](templates/.claude/agents/reviewer.md) | 只读核查门 subagent(`milestone` / `risk-delta` / `closure`) |
 | [templates/scripts/bus-check.sh](templates/scripts/bus-check.sh) | 开工护栏(含 live-status 钩子、子仓同步、最近拍板、幽灵 hash 核验、漂移检测集成;`--strict` 机器闸模式) |
 | [templates/scripts/pre-commit.sh](templates/scripts/pre-commit.sh) | 红线机器闸五道:gitleaks 拦凭据 / bus-check --strict 拦腐烂·幽灵hash / 多域 status 拦 / 批量 stage 拦 / 契约同步提醒(逐仓拷进 `.git/hooks/pre-commit`) |
 | [templates/scripts/drift-check.sh](templates/scripts/drift-check.sh) | 生产漂移检测(env 指纹基线 + 镜像tag↔git 锚定;🔴只存指纹不存值) |
