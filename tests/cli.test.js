@@ -92,8 +92,14 @@ function writeManifest(root, overrides = {}) {
       scaffoldVersion: "v1.16",
       cliVersion: "1.16.0",
       layout: "default",
-      files: {},
-      integrations: {},
+      installedAt: "2026-08-22T00:00:00.000Z",
+      files: {
+        "scripts/bus-check.sh": {
+          policy: "replace-if-unmodified",
+          baselineSha256: "a".repeat(64),
+        },
+      },
+      integrations: { gitignore: null, hooks: null },
       ...overrides,
     }),
   );
@@ -116,8 +122,13 @@ test("init without dry-run is rejected and creates nothing", async (t) => {
   const parent = tempRoot(t);
   const target = path.join(parent, "future-project");
   const result = await invoke(["init", target, "--json"]);
+  const error = JSON.parse(result.stdout);
   assert.equal(result.status, 2);
-  assert.equal(JSON.parse(result.stdout).error.code, "write_phase_not_available");
+  assert.equal(error.schemaVersion, 1);
+  assert.equal(error.command, "init");
+  assert.equal(error.cliVersion, CLI_VERSION);
+  assert.equal(error.ok, false);
+  assert.equal(error.error.code, "write_phase_not_available");
   assert.equal(existsSync(target), false);
 });
 
@@ -278,12 +289,56 @@ test("doctor rejects manifest layout and scaffold version mismatches", async (t)
   assert.ok(report.findings.some((item) => item.code === "manifest.version_mismatch"));
 });
 
+test("doctor rejects unsafe or unvalidated schema 1 manifest fields", async (t) => {
+  const target = tempRoot(t);
+  makeDefaultInstall(target);
+  writeManifest(target, {
+    installedAt: "yesterday",
+    files: {
+      "../../outside": {
+        policy: "overwrite-anything",
+        baselineSha256: "not-a-sha",
+        unexpected: true,
+      },
+    },
+    integrations: { gitignore: {}, hooks: null },
+    unexpected: true,
+  });
+  const result = await invoke(["doctor", target, "--json"]);
+  const report = JSON.parse(result.stdout);
+  const codes = new Set(report.findings.map((item) => item.code));
+  assert.equal(result.status, 1);
+  assert.ok(codes.has("manifest.unknown_field"));
+  assert.ok(codes.has("manifest.invalid_installed_at"));
+  assert.ok(codes.has("manifest.invalid_file_path"));
+  assert.ok(codes.has("manifest.invalid_file_record"));
+  assert.ok(codes.has("manifest.invalid_file_policy"));
+  assert.ok(codes.has("manifest.invalid_file_hash"));
+  assert.ok(codes.has("manifest.invalid_integration_record"));
+});
+
 test("reserved lifecycle commands are explicit rather than simulated", async () => {
   for (const command of ["diff", "upgrade", "uninstall"]) {
     const result = await invoke([command, "--json"]);
+    const error = JSON.parse(result.stdout);
     assert.equal(result.status, 2);
-    assert.equal(JSON.parse(result.stdout).error.code, "command_not_available");
+    assert.equal(error.schemaVersion, 1);
+    assert.equal(error.command, command);
+    assert.equal(error.cliVersion, CLI_VERSION);
+    assert.equal(error.ok, false);
+    assert.equal(error.error.code, "command_not_available");
   }
+});
+
+test("JSON usage errors use the versioned error envelope", async () => {
+  const result = await invoke(["init", "--layout", "sideways", "--dry-run", "--json"]);
+  const error = JSON.parse(result.stdout);
+  assert.equal(result.status, 2);
+  assert.equal(error.schemaVersion, 1);
+  assert.equal(error.command, "init");
+  assert.equal(error.cliVersion, CLI_VERSION);
+  assert.equal(error.ok, false);
+  assert.equal(error.error.code, "usage");
 });
 
 test("invalid options use the stable usage exit code", async () => {

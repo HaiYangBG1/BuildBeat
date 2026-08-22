@@ -6,6 +6,7 @@ const packageJson = JSON.parse(
 
 export const CLI_VERSION = packageJson.version;
 export const SCAFFOLD_VERSION = `v${CLI_VERSION.split(".").slice(0, 2).join(".")}`;
+export const OUTPUT_SCHEMA_VERSION = 1;
 export const MANIFEST_PATH = ".solobaton/manifest.json";
 export const MANIFEST_SCHEMA_VERSION = 1;
 

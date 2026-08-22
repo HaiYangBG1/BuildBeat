@@ -77,11 +77,13 @@ A write-capable release must create `.solobaton/manifest.json`. Schema 1 is rese
 
 Rules:
 
-1. Paths are normalized repository-relative paths and must stay inside the target root.
-2. Hashes describe the exact bytes installed by the CLI; they are not hashes of current project state after user edits.
-3. No credentials, environment values, file contents, or inferred private architecture facts enter the manifest.
-4. Unknown schema versions fail closed. A missing manifest means a legacy/unmanaged install: `doctor` may inspect it, but automated upgrade/uninstall must not guess ownership.
-5. The manifest itself does not make a project healthy; real verification and human Gates remain separate.
+1. Schema 1 accepts only the top-level fields shown above. `installedAt` is a canonical UTC timestamp with milliseconds.
+2. Paths are normalized POSIX repository-relative paths, cannot traverse symlinks, and must stay inside the target root.
+3. Every file record contains only a supported `policy` and a 64-character lowercase hexadecimal `baselineSha256`. Hashes describe the exact bytes installed by the CLI; they are not hashes of current project state after user edits.
+4. Schema 1 `integrations` contains exactly `gitignore` and `hooks`. Both values remain `null` until a later write-capable schema defines a non-null record before applying integration changes.
+5. No credentials, environment values, file contents, or inferred private architecture facts enter the manifest.
+6. Unknown schema versions and malformed known schemas fail closed. A missing manifest means a legacy/unmanaged install: `doctor` may inspect it, but automated upgrade/uninstall must not guess ownership.
+7. The manifest itself does not make a project healthy; real verification and human Gates remain separate.
 
 ## Future write transaction
 

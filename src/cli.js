@@ -1,4 +1,4 @@
-import { CLI_VERSION } from "./constants.js";
+import { CLI_VERSION, OUTPUT_SCHEMA_VERSION } from "./constants.js";
 import { formatDoctor, runDoctor } from "./doctor.js";
 import { buildPlan, formatPlan } from "./planner.js";
 
@@ -68,9 +68,26 @@ function outputJson(io, value) {
   io.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }
 
-function writeError(io, message, json = false, code = "usage") {
+function commandLabel(value) {
+  if (typeof value !== "string" || value.length === 0) {
+    return null;
+  }
+  return value
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80) || null;
+}
+
+function writeError(io, message, { json = false, code = "usage", command = null } = {}) {
   if (json) {
-    outputJson(io, { ok: false, error: { code, message } });
+    outputJson(io, {
+      schemaVersion: OUTPUT_SCHEMA_VERSION,
+      command: commandLabel(command),
+      cliVersion: CLI_VERSION,
+      ok: false,
+      error: { code, message },
+    });
   } else {
     io.stderr.write(`Error: ${message}\n`);
   }
@@ -81,7 +98,10 @@ export async function run(args, io = { stdout: process.stdout, stderr: process.s
   try {
     options = parse(args);
   } catch (error) {
-    writeError(io, error.message, args.includes("--json"));
+    writeError(io, error.message, {
+      json: args.includes("--json"),
+      command: args[0] || null,
+    });
     return 2;
   }
 
@@ -113,8 +133,11 @@ export async function run(args, io = { stdout: process.stdout, stderr: process.s
         writeError(
           io,
           "CLI v0 is read-only. Re-run with --dry-run; no project files were changed.",
-          options.json,
-          "write_phase_not_available",
+          {
+            json: options.json,
+            code: "write_phase_not_available",
+            command: options.command,
+          },
         );
         return 2;
       }
@@ -132,8 +155,11 @@ export async function run(args, io = { stdout: process.stdout, stderr: process.s
       writeError(
         io,
         `${options.command} is reserved by the lifecycle contract but is not enabled in CLI v0.`,
-        options.json,
-        "command_not_available",
+        {
+          json: options.json,
+          code: "command_not_available",
+          command: options.command,
+        },
       );
       return 2;
     }
@@ -141,10 +167,14 @@ export async function run(args, io = { stdout: process.stdout, stderr: process.s
     throw new UsageError(`Unknown command: ${options.command}`);
   } catch (error) {
     if (error instanceof UsageError) {
-      writeError(io, error.message, options.json);
+      writeError(io, error.message, { json: options.json, command: options.command });
       return 2;
     }
-    writeError(io, error.message, options.json, "runtime_error");
+    writeError(io, error.message, {
+      json: options.json,
+      code: "runtime_error",
+      command: options.command,
+    });
     return 1;
   }
 }

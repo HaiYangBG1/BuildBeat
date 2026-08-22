@@ -5,6 +5,7 @@ import {
   CLI_VERSION,
   COMMON_REQUIRED_FILES,
   MANIFEST_SCHEMA_VERSION,
+  OUTPUT_SCHEMA_VERSION,
   SCRIPT_NAMES,
 } from "./constants.js";
 import { inspectProject } from "./project.js";
@@ -97,6 +98,7 @@ export function runDoctor(targetInput) {
     add(findings, "error", "manifest.invalid", "The lifecycle manifest is unreadable or invalid JSON.", inspection.manifest.path);
   } else if (
     inspection.manifest.state === "present" &&
+    inspection.manifest.schemaVersion !== null &&
     inspection.manifest.schemaVersion !== MANIFEST_SCHEMA_VERSION
   ) {
     add(
@@ -107,45 +109,12 @@ export function runDoctor(targetInput) {
       inspection.manifest.path,
     );
   } else if (inspection.manifest.state === "present") {
-    if (!["default", "compact"].includes(inspection.manifest.layout)) {
-      add(
-        findings,
-        "error",
-        "manifest.invalid_layout",
-        "Manifest layout must be default or compact.",
-        inspection.manifest.path,
-      );
-    }
-    if (!/^v\d+\.\d+(?:\.\d+)?$/.test(inspection.manifest.scaffoldVersion || "")) {
-      add(
-        findings,
-        "error",
-        "manifest.invalid_scaffold_version",
-        "Manifest scaffoldVersion is missing or invalid.",
-        inspection.manifest.path,
-      );
-    }
-    if (!/^\d+\.\d+\.\d+$/.test(inspection.manifest.cliVersion || "")) {
-      add(
-        findings,
-        "error",
-        "manifest.invalid_cli_version",
-        "Manifest cliVersion is missing or invalid.",
-        inspection.manifest.path,
-      );
-    }
-    if (!inspection.manifest.hasFiles || !inspection.manifest.hasIntegrations) {
-      add(
-        findings,
-        "error",
-        "manifest.incomplete",
-        "Manifest must contain object-valued files and integrations records.",
-        inspection.manifest.path,
-      );
+    for (const issue of inspection.manifest.validationIssues) {
+      add(findings, "error", issue.code, issue.message, inspection.manifest.path);
     }
     if (
       installation.state === "installed" &&
-      inspection.manifest.layout &&
+      ["default", "compact"].includes(inspection.manifest.layout) &&
       inspection.manifest.layout !== installation.layout
     ) {
       add(
@@ -159,7 +128,7 @@ export function runDoctor(targetInput) {
     if (
       installation.state === "installed" &&
       installation.version &&
-      inspection.manifest.scaffoldVersion &&
+      /^v\d+\.\d+(?:\.\d+)?$/.test(inspection.manifest.scaffoldVersion || "") &&
       inspection.manifest.scaffoldVersion !== installation.version
     ) {
       add(
@@ -245,7 +214,7 @@ export function runDoctor(targetInput) {
   };
 
   return {
-    schemaVersion: 1,
+    schemaVersion: OUTPUT_SCHEMA_VERSION,
     command: "doctor",
     cliVersion: CLI_VERSION,
     target: inspection.target,
