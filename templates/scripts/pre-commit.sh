@@ -10,6 +10,7 @@
 #        提醒检查 PROTOCOL.md 是否同步;契约在 meta 仓、代码在子仓,跨仓无法原子核验,故不拦以免误伤。
 # 装法(meta 仓 + 各代码子仓,每仓各装一次;子仓从 meta 仓拷同一份即可):
 #   cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+#   (紧凑布局下脚本在 pm/scripts/,拷贝源路径随之改;闸②两种布局都能自己找到 bus-check)
 #   (钩子想进版本控制可改用:git config core.hooksPath <钩子目录>,克隆后一次 config 即带)
 # 配套:红线3 已禁 --no-verify,这道闸绕不过去;bus-check 会自检「闸装了没」。
 set -uo pipefail
@@ -26,11 +27,12 @@ else
   echo "⚠️  未装 gitleaks —— 红线1(凭据不入 git)当前没有机器闸,只剩自觉。装:brew install gitleaks"
 fi
 
-# ── 闸②:bus-check --strict(只有 meta 仓同时有 pm/NOW.md 与 scripts/bus-check.sh)──
-if [ -f pm/NOW.md ] && [ -f scripts/bus-check.sh ]; then
-  out=$(BUS_CHECK_NO_FETCH=1 BUS_CHECK_NO_LIVE=1 bash scripts/bus-check.sh --strict 2>&1) || {
+# ── 闸②:bus-check --strict(只有协调层仓同时有 pm/NOW.md 与 bus-check.sh;两种布局都认,见 SKILL §3)──
+BC=""; for p in scripts/bus-check.sh pm/scripts/bus-check.sh; do [ -f "$p" ] && { BC="$p"; break; }; done
+if [ -f pm/NOW.md ] && [ -n "$BC" ]; then
+  out=$(BUS_CHECK_NO_FETCH=1 BUS_CHECK_NO_LIVE=1 bash "$BC" --strict 2>&1) || {
     printf '%s\n' "$out" | grep -E "⚠️|⛔"
-    echo "⛔ bus-check --strict 未过 —— 全量输出看:bash scripts/bus-check.sh"
+    echo "⛔ bus-check --strict 未过 —— 全量输出看:bash $BC"
     exit 1
   }
 fi

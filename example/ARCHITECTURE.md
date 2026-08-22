@@ -1,4 +1,4 @@
-# Agent.md — 简账 全栈总图(AI 会话接手按需读这份)
+# ARCHITECTURE.md — 简账 全栈总图(AI 会话接手按需读这份)
 
 > 一句话:极简个人记账 Web 应用,单用户,先跑通「记一笔 → 看列表 → 月度报表」。
 > 🔴 凭据一律**只标位置、不写值**。
@@ -17,9 +17,9 @@ jz-api(Node + Express + SQLite,示例 PaaS 单实例)
 
 ```
 简账/
-├── Agent.md / CLAUDE.md / 指挥台.md / contracts/ / design/ / pm/ / scripts/
-├── jz-web/        # ★ 前端;详见其 AGENTS.md
-└── jz-api/        # ★ 后端 API + SQLite;详见其 AGENTS.md
+├── AGENTS.md / ARCHITECTURE.md / 指挥台.md / contracts/ / design/ / pm/ / scripts/
+├── jz-web/        # ★ 前端;详见其自己的 AGENTS.md
+└── jz-api/        # ★ 后端 API + SQLite;详见其自己的 AGENTS.md
 ```
 
 ## 2. 基础设施标识(资源变动时更新本节)
@@ -36,4 +36,4 @@ jz-api(Node + Express + SQLite,示例 PaaS 单实例)
 
 ## 3. 红线 / 4. 子项目文档索引
 
-(与 [templates/Agent.md](../templates/Agent.md) 一致,沙盘从略;改 jz-web 先读其 `AGENTS.md`,改契约先读 `contracts/PROTOCOL.md`。)
+(与 [templates/ARCHITECTURE.md](../templates/ARCHITECTURE.md) 一致,沙盘从略;改 jz-web 先读其自己的 `AGENTS.md`,改契约先读 `contracts/PROTOCOL.md`。)

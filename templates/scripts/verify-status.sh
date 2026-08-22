@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 # verify-status.sh —— 工程层验证能力(证据分级 L3「自动化测试过」的兜底;bus-check §2.7 自动调用)
+# 本脚本按自身位置定位协调层根,放 <根>/scripts/ 或 <根>/pm/scripts/ 均可(紧凑布局见 SKILL §3);下文命令示例按默认布局写。
 # 两种用法:
 #   bash scripts/verify-status.sh        # 打印各套件状态:套件 | 命令 | 上次全绿时间(bus-check 调的是这个)
 #   bash scripts/verify-status.sh --run  # 逐套件真跑;全绿的套件记录「上次全绿时间」到标记文件
-# 接入:改 SUITES 数组即可(名称|命令;命令里自己 cd 进子仓)。标记文件 scripts/.last-green-<套件>
+# 接入:改 SUITES 数组即可(名称|命令;命令里自己 cd 进子仓)。标记文件 .last-green-<套件>(与本脚本同目录)
 # 是本地实查产物,不入 git(gitignore.template 已排除)——新机器上显示"从未全绿"是诚实的:你确实没在这台机器跑过。
 set -uo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT" || exit 1
+# 协调层根 = 向上最近的含 pm/NOW.md 的目录;SDIR = 本脚本目录(相对根)。见 bus-check.sh 同段注释。
+_sd="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$_sd"; for _ in 1 2 3 4; do [ -f "$ROOT/pm/NOW.md" ] && break; ROOT="$(dirname "$ROOT")"; done
+[ -f "$ROOT/pm/NOW.md" ] || ROOT="$(cd "$_sd/.." && pwd)"
+SDIR="${_sd#"$ROOT"/}"; [ "$SDIR" = "$_sd" ] && SDIR="."
+cd "$ROOT" || exit 1
 
 # 套件表:名称|命令(示例:npm / mvn 各一,按项目替换;没有测试就留占位符,bus-check 会如实红字)
 SUITES=(
@@ -23,7 +29,7 @@ for pair in "${SUITES[@]:-}"; do
     ph_warned=1; continue;; esac
   n=$((n+1))
   name="${pair%%|*}"; cmd="${pair#*|}"
-  mark="scripts/.last-green-$name"
+  mark="$SDIR/.last-green-$name"
   if [ "$RUN" = 1 ]; then
     echo "▸ 跑 $name:$cmd"
     if bash -c "$cmd"; then

@@ -42,7 +42,7 @@ The bus's answer: **information moves through files, not through your mouth; "do
 
 It **inspects your code first** (repo count / deploy platform / UI or not / contract boundaries — all self-checked, never asked), then asks you only three or four non-technical questions (a few days or long-term? / anyone else working with you? / default "Product / Fullstack / Testing" roles or custom? / who has final say on UI?), shows one confirmation screen, then generates a scaffold with **every placeholder already filled**, self-checks with bus-check, and hands it over. For projects outside the applicability boundary (§7), it talks you out of using the bus — no ceremony for ceremony's sake.
 
-> Project **already exists with a pile of legacy code**? Skip bootstrap and run the **takeover ritual** (SKILL.md §8.5): survey first, draw the old/new boundary (new turf gets the full bus, old turf is maintenance-only), and iteration 0 is mandatory minimal-test-suite building — without tests, every acceptance gate downstream just spins.
+> Project **already exists with a pile of legacy code**? Skip bootstrap and run the **takeover ritual** (SKILL.md §8.5): survey first, draw the old/new boundary (new turf gets the full bus, old turf is maintenance-only), and iteration 0 is mandatory minimal-test-suite building — without tests, every acceptance gate downstream just spins. Use the **compact layout** for the scaffold: guardrail scripts go to `pm/scripts/` instead of the root `scripts/` (a legacy repo almost always already has its own `scripts/`), so the project root gains exactly one directory (`pm/`) and the coordination layer's boundary stays obvious.
 
 **Manual path** (works without installing the skill):
 
@@ -138,14 +138,15 @@ Contract snapshot corresponds to: v0.2.0 (released 2026-06-20)
 solobaton/
 ├── SKILL.md       # methodology body for agents: domain model / ten rules / 4 gates + 3 tracks /
 │                  #   three rituals / red lines / guided bootstrap (inspect → few questions → generate)
-├── lessons.md     # 14 anti-patterns (symptom → root cause → cure), every one happened for real
+├── lessons.md     # 15 anti-patterns (symptom → root cause → cure), every one happened for real
 ├── README.md      # Chinese intro (this file's original)
 ├── README.en.md   # this file
 ├── CHANGELOG.md   # version history
 ├── example/       # teaching sandbox: a fictional project's full file snapshot after one iteration
 └── templates/     # copy to a new project root, replace <placeholders>, run
-    ├── CLAUDE.md              # session routing + ten rules (auto-loaded by every session)
-    ├── Agent.md               # full-stack overview skeleton (credentials: location only, never values)
+    ├── AGENTS.md              # session routing + ten rules + red lines (open standard, auto-loaded by every session)
+    ├── CLAUDE.md              # one-line pointer → AGENTS.md (for tools that only read this name; never copy content)
+    ├── ARCHITECTURE.md        # full-stack overview skeleton (credentials: location only, never values; read on demand)
     ├── 指挥台.md               # one-page operator card for the human
     ├── pm/                    # Product-domain coordination: NOW pointer / board / decision log / per-domain status / change proposals
     ├── contracts/PROTOCOL.md  # the single entry point for cross-boundary contracts

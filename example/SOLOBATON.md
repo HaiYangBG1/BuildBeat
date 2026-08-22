@@ -1,6 +1,7 @@
 # SOLOBATON.md — 本项目的协作骨架版本标记
 
 **本项目使用 Solobaton `v1.8`**(2026-06-10 拷入,沙盘示意)
+**协调层布局:`默认`**(脚本在 `scripts/`;简账是从零起的项目,根上本来没别的东西 —— 接管存量项目才用紧凑布局)
 来源:<https://github.com/HaiYangBG1/solobaton>
 
 ## 升级

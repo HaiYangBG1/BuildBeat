@@ -1,7 +1,7 @@
-# Agent.md — <项目名> 全栈总图(AI 会话接手按需读这份)
+# ARCHITECTURE.md — <项目名> 全栈总图(AI 会话接手按需读这份)
 
 > 一句话:<项目是什么、给谁用、核心取舍>。
-> 本文是**顶层总图**:架构链路 + 文件夹 + 基础设施标识。各子系统细节在各自的 `AGENTS.md`/`README.md`,文末有索引。
+> 本文是**顶层总图**:架构链路 + 文件夹 + 基础设施标识。**按需读,不自动装载**(自动装载的是根 `AGENTS.md`)。各子系统细节在各代码子仓自己的 `AGENTS.md`/`README.md`,文末有索引。
 > 🔴 凭据(key / DB 密码 / token)一律**只标位置、不写值**。任何会话不得把凭据写进任何文档或代码。
 
 ## 0. 架构链路
@@ -20,7 +20,7 @@
 
 ```
 <项目根>/
-├── Agent.md / CLAUDE.md / 指挥台.md / contracts/ / design/ / pm/ / scripts/
+├── AGENTS.md / ARCHITECTURE.md / 指挥台.md / contracts/ / design/ / pm/ / scripts/
 ├── <代码仓1>/        # ★ <说明>;详见其 AGENTS.md
 └── <代码仓2>/        # ★ <说明>
 ```
@@ -39,7 +39,7 @@
 - <运行时 env 实查> → `<平台 CLI 命令>`
 
 ## 3. 红线
-见根 `CLAUDE.md §3`(凭据/不 add -A/不未授权部署/CHANGELOG/写者≠审者)。
+见根 `AGENTS.md §3`(凭据/不 add -A/不未授权部署/CHANGELOG/写者≠审者)。
 
 ## 4. 子项目文档索引(改哪块先读哪份)
 

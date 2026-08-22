@@ -2,6 +2,33 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## v1.11 — 2026-08-08
+
+> 主题:装载入口去厂商化(回灌教训 15)。**breaking(两个文件改名)**:拷出项目要跟着改名 + 复核全仓引用。
+> **拷出项目升级**:① `CLAUDE.md` 改名 `AGENTS.md`(内容原样搬,不改一字)→ 原位新建一行指针 `CLAUDE.md`(拷 `templates/CLAUDE.md`);② `Agent.md` 改名 `ARCHITECTURE.md`;③ 复核残留 `grep -rn 'CLAUDE\.md\|Agent\.md' <项目根> --include='*.md'`,应只剩指针文件自身与 CHANGELOG 历史条目。
+
+- **装载入口从 `CLAUDE.md` 换成开放标准 `AGENTS.md`**:此前只认 `AGENTS.md` 的工具(Codex CLI / Gemini CLI / Aider / Zed 等)完全装载不到总线规则,开工护栏与状态分写在那些会话里**静默失效**——而并行多会话正是本方法论的核心场景,厂商锁在这里杀伤面比单会话大一个量级
+- **`CLAUDE.md` 降级为一行指针**(兼容只认此名的工具):🔴 不复制内容(复制 = 自造 lessons 第 1 条 SSOT 腐烂);🔴 不用符号链接(Windows 上 git 默认 `core.symlinks=false`,clone 出来静默退化成文本文件)
+- **`Agent.md` → `ARCHITECTURE.md`**:原名与标准 `AGENTS.md` 仅差一个 S、语义却相反(前者按需读 / 后者自动装载),是长期的人机双向误判源
+- **白捡标准的层叠语义**:向上收集沿途所有 `AGENTS.md` 合并、就近优先 → §8.5「分层 `AGENTS.md`」不必自己定义优先级,根写全局 / 子仓写局部,根文件因此能保持精简
+- **明确拒绝 `AGENTS.override.md` 类本地覆盖**(SKILL §3):装载入口装的是红线与护栏,允许不进 git 的覆盖 = 给绕过护栏开后门,reviewer 与 pre-commit 都看不见
+- 顺手修一处既有漂移:SKILL §7 原写「红线……写进 `Agent.md`」,而红线实际单点在装载入口 §3,改为「单点写进根 `AGENTS.md` §3」
+- 同步范围:SKILL(§3 布局图 + 装载约定段 / §4 / §7 / §8.1 / §8.2 / §8.5 / §9 模板索引)、双语 README 文件树、`templates/` 与 `example/` 全部交叉引用;**5 个脚本零改动**(本来就不引用这两个文件名)
+
+## v1.10 — 2026-08-08
+
+> 主题:协调层布局可搬迁(治 §8.5 接管存量项目的 `scripts/` 撞车)。**非 breaking:默认布局路径一字未改,已落地项目只换脚本即可。**
+> **拷出项目升级**:`scripts/` 下 5 个 `.sh` 整文件替换;`SOLOBATON.md` 加「协调层布局」一行。
+
+- **5 个脚本改为自定位协调层根**:此前一律写死 `ROOT=$(dirname $0)/..`(= 假设"脚本必须在根下一层"),现改为**向上最近的含 `pm/NOW.md` 的目录**(上探 4 层,探不到退回旧假设)。于是 `scripts/` 整树可以原样搬到 `pm/scripts/`,脚本零改动
+- **脚本间互调改走 `SDIR`(本脚本目录)**:`verify-status.sh` / `live-status.sh` / `drift-check.sh` / `live-config.sh` 的调用与"未配置"提示、`bus-baseline.json` 与 `.last-green-*` 的落点,全部随脚本目录走——不再写死 `scripts/`。同伴脚本约定为"与 bus-check 同目录"
+- **pre-commit 闸② 两种布局都认**:`scripts/bus-check.sh` 与 `pm/scripts/bus-check.sh` 依次探测,提示里回显实际路径;子仓仍按"无 `pm/NOW.md` 即跳过"自动放过
+- bus-check 表头加打 `(协调层脚本: <SDIR>/)`:根解析错了(嵌套项目 / 骨架没建)一眼看得见,不静默假绿
+- **SKILL §3 新增「布局二选一」表**:默认(根上 `scripts/`,§8 从零起项目用)/ 紧凑(`pm/scripts/` + `pm/指挥台.md` + `pm/SOLOBATON.md`,项目根只多 `pm/` 一个目录,§8.5 接管存量项目用);🔴 一个项目只选一种、路径统一填实,混写 = 自造 SSOT 腐烂;并点明 `CLAUDE.md` 与 `.claude/agents/` 是工具装载约定、永远在根、与布局无关
+- **§8.5 增第 5 步**:接管存量项目默认走紧凑布局,列出需改调用路径的 6 个文档 + `grep` 复核命令(存量项目根几乎必有自己的 `scripts/`,协调层混进去会和它的构建/部署脚本搅在一起)
+- `SOLOBATON.md` 增「协调层布局」标记行(规则⑨ 单点事实:布局是哪种,单点可查);README 双语同步接管段
+- 实测覆盖:两种布局各跑 bus-check(工作区根解析 / 子仓自动发现 / 提示路径回显)、pre-commit 闸②(干净放行 + 腐烂拦截)、`verify-status --run` 标记落点、从子仓 cwd 调用、无骨架兜底
+
 ## v1.9 — 2026-08-01
 
 > 评估(第三版)回灌:消灭「常驻红字」(D2)——红字 = 真有事,是腐烂检测全部价值所在;太吵会瞎,和太松会漏同罪。

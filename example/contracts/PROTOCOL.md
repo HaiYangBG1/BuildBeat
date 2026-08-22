@@ -17,7 +17,7 @@
 | `POST /api/entries` | 记一笔:`{amount, category, note?, ts}` → 201 | `amount` 一律**整数分**,前端负责展示为元 |
 | `GET /api/entries?month=YYYY-MM` | 当月流水,按 `ts` 倒序 | 分页二期再说 |
 | `GET /api/reports/monthly?month=YYYY-MM` | `{total, byCategory:[{category,sum}]}` | **按自然月**汇总(拍板 2026-06-12);空月返回 `{total:0, byCategory:[]}`,**不 404** |
-| 鉴权 | 单用户:`Authorization: Bearer <token>` | token 位置见 `Agent.md` §凭据 |
+| 鉴权 | 单用户:`Authorization: Bearer <token>` | token 位置见 `ARCHITECTURE.md` §凭据 |
 | 错误 | `{error:{code,message}}` + 4xx/5xx | code 枚举:`INVALID_MONTH` / `UNAUTHORIZED` |
 
 ## 2. 🔴 当前关键对齐点(开工前各域必须一致)

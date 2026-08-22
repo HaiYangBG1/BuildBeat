@@ -1,6 +1,7 @@
 # SOLOBATON.md — 本项目的协作骨架版本标记
 
 **本项目使用 Solobaton `v<X.Y>`**(<yyyy-mm-dd> 拷入)
+**协调层布局:`<默认|紧凑>`**(默认 = 脚本在 `scripts/`;紧凑 = 在 `pm/scripts/`,见上游 SKILL §3)
 来源:<https://github.com/HaiYangBG1/solobaton>
 
 ## 升级
