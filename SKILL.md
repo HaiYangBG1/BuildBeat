@@ -35,8 +35,9 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 
 ```
 <项目根>/                      ← meta 仓(协调层,独立 git;代码各在自己的子仓)
-├── CLAUDE.md                  # 会话路由 + 总线规则(每个会话自动装载)
-├── Agent.md                   # 全栈总图:架构/基础设施/凭据位置(只标不写值)/子项目索引
+├── AGENTS.md                  # 会话路由 + 总线规则 + 红线(开放标准,每个会话自动装载)
+├── CLAUDE.md                  # 一行指针 → AGENTS.md(兼容只认此名的工具;🔴 不复制内容)
+├── ARCHITECTURE.md            # 全栈总图:架构/基础设施/凭据位置(只标不写值)/子项目索引(按需读,不自动装载)
 ├── 指挥台.md                   # 给人看的一页:怎么开每个会话、编排循环
 ├── contracts/PROTOCOL.md      # 跨边界契约唯一入口(快照+变更记录)
 ├── design/design_N期/          # 设计稿(每期一目录,必含可渲染 HTML 入口)
@@ -53,10 +54,22 @@ description: Solobaton —— 人在回路·Builder 协作总线:一个 Builder 
 ├── scripts/verify-status.sh   # 工程层验证能力(模板含参考实现,改 SUITES 即接入;--run 真跑并记「上次全绿」)
 ├── scripts/drift-check.sh     # 生产漂移检测:平台侧 env 指纹+镜像tag↔git vs 基线(见模板)
 ├── scripts/design-preview.sh  # Gate2 真渲染(见模板)
-└── <代码子仓们>/               # 各自独立 git + AGENTS.md/CLAUDE.md + CHANGELOG.md
+└── <代码子仓们>/               # 各自独立 git + 该仓自己的 AGENTS.md(只写本仓局部细节)+ CHANGELOG.md
 ```
 
-## 4. 总线十条规则(写进项目 CLAUDE.md,模板已含)
+**布局二选一(脚本自定位,无需改脚本):** 上面 5 个脚本都向上找「含 `pm/NOW.md` 的目录」当协调层根,不假设自己在哪一层,所以 `scripts/` 整树可以原样搬走。
+
+| 布局 | 协调层落点 | 用在 |
+|---|---|---|
+| **默认** | `scripts/` + `pm/` + `contracts/` 直接在根 | §8 从零 bootstrap(项目根就是 meta 仓,根上本来没别的东西) |
+| **紧凑** | `pm/scripts/*.sh` + `pm/指挥台.md` + `pm/SOLOBATON.md`,根上只多 `pm/` 一个目录 | §8.5 接管存量项目(存量根几乎必有自己的 `scripts/`,协调层混进去会和它的构建/部署脚本搅在一起,Solobaton 的边界从此说不清) |
+
+> 🔴 **一个项目只选一种,并把所有文档里的调用路径统一填成实际那种。** 两种混着写 = 自己造一次 SSOT 腐烂(与规则① 入口唯一 同源)。选了哪种记在 `SOLOBATON.md` 里(单点)。
+> 搬不动的东西与布局无关:`AGENTS.md`(+ `CLAUDE.md` 指针)与 `.claude/agents/` 是工具装载约定,永远在项目根。
+>
+> 🔴 **装载入口走开放标准 `AGENTS.md`,不绑厂商**(教训 15)。标准语义 = 会话从被编辑文件所在目录**向上收集沿途所有 `AGENTS.md` 合并、离得最近的优先**,所以「根写全局、子仓写局部」是白捡的层叠能力,不用自己发明。只认 `CLAUDE.md` 的工具靠根上一份**一行指针**兼容(内容单点在 `AGENTS.md`,复制过去 = 自造 SSOT 腐烂;也别用符号链接,Windows 上 git 默认 `core.symlinks=false` 会静默退化成文本文件)。同理**不要**引入 gitignore 的本地覆盖文件(如 `AGENTS.override.md`):本文件装的是红线与护栏,允许不进 git 的本地覆盖 = 给绕过护栏开后门,reviewer 与 pre-commit 都看不见。
+
+## 4. 总线十条规则(写进项目根 AGENTS.md,模板已含)
 
 1. **唯一看板指针**:入口永远是 `pm/NOW.md` → 当期看板;换期只改 NOW 一处,**看板文件名不得写死进任何别的文档**。
 2. **契约落盘不喊话**:跨边界接口先改 `contracts/PROTOCOL.md` 再动代码;收到对方的协议声明**独立核查再信**(实测/读代码/查部署配置),不照单全收。
@@ -85,7 +98,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 - **拍板仪式**:用户每拍一锤 → 产品域**先**在 `decisions.md` 落一行(决策+回写落点)→ 再分发回写各 SSOT。
 - **换期压缩仪式**:当期 看板/需求/todo/验收清单 `git mv` 进 `pm/archive/<期>/`;status 全文快照入 archive、live 文件截断只留「基线+最近一条+归档指针」;NOW 流水清零;核对证据产物已在 `archive/<期>/evidence/`、无散落临时文件。**NOW 长肥 = 腐烂开端**——bus-check 的「协调层腐烂检测」会在 NOW 长肥 / 旧看板滞留 / status 超长时开工红字报警(仪式没有护栏 = 没有仪式)。换期同时做**回灌一问**:本期踩到 Solobaton 没覆盖的新坑了吗?有 → 回上游 lessons.md 登记(见项目根 `SOLOBATON.md`)——没有回灌,N 个项目的坑不会变成组织资产,只会各踩各的。
 
-## 7. 红线(每个会话受约束,写进 Agent.md)
+## 7. 红线(每个会话受约束,单点写进根 AGENTS.md §3)
 
 1. **凭据不入 git、不出本机**:文档只标位置不写值;本地 .env 必须 gitignore + 600 权限;Bootstrap 默认装 gitleaks pre-commit 闸(`scripts/pre-commit.sh`),报警即拦——红线不能只靠自觉(lessons 第 10 条)。
 2. **不 `git add -A`**:多会话共编,只 stage 自己域的具体文件;同持多仓时按仓分别提交。
@@ -107,7 +120,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 |---|---|---|
 | 几个仓 / 部署单元 | 找各级 `.git`、Dockerfile / compose / CI / 部署配置 | 仅 1 仓 → 结合问题 A 判断是否劝退(§0) |
 | 部署平台、有无 CLI | 认平台配置文件;`command -v` 试探平台 CLI | 有 → 实装 `live-status.sh` + `live-config.sh` 并打漂移基线;无 → 留桩,bus-check 会打"未配置"提示 |
-| 有无 UI | 前端依赖(package.json 等)/ HTML / 客户端工程 | 无 UI → 删 CLAUDE.md §1.5、Gate2 降为规格确认、reviewer 清单删第 5/6 条 |
+| 有无 UI | 前端依赖(package.json 等)/ HTML / 客户端工程 | 无 UI → 删 AGENTS.md §1.5、Gate2 降为规格确认、reviewer 清单删第 5/6 条 |
 | 契约边界 | 读跨服务调用代码(HTTP client / API 路由),**自己起草**边界清单 | 草稿填 PROTOCOL.md §1 并标「待确认」;单仓内部接口走共享类型/schema,不进 PROTOCOL |
 | 项目名 / 技术栈 | README / 包管理文件 | 填模板各处 <占位符> |
 
@@ -127,11 +140,11 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 ```
 - [ ] 1. 拷贝 templates/ 整树(`cp -R templates/. <新项目根>/`,`/.` 结尾才带上隐藏的 `.claude/`);**全部 <占位符> 按自查+确认结论填好,交付物里不得残留任何 <占位符>**;按有无 UI 删/留相关段落;`SOLOBATON.md` 填上拷入的版本号(对照上游 CHANGELOG 最新版)
 - [ ] 2. meta 仓 git init + 远端;代码子仓各自独立 git;meta 仓 .gitignore 排除子仓目录与一切 *.env(拷 `templates/gitignore.template` 改名 `.gitignore`,替换子仓名)
-- [ ] 3. 域表按问题 B/C 落 CLAUDE.md §1 路由表(cwd / 可写 / 只读边界)
+- [ ] 3. 域表按问题 B/C 落根 AGENTS.md §1 路由表(cwd / 可写 / 只读边界)
 - [ ] 4. 按自查结果接"线上实况"与漂移基线:实装则 `bash scripts/drift-check.sh --update-baseline` 打首版基线;无平台则留桩;有测试命令则改 `scripts/verify-status.sh` 的 SUITES 接入(工程层验证能力,bus-check 会打;没有测试就留占位符,如实红字)
 - [ ] 5. 第一期立项:pm/NOW.md 填当前期与轨道 → 建 <一期>-看板.md → decisions.md 第一行记「Bootstrap 结论」(自查+确认:域表/轨道/平台/UI 取舍——本项目第一次拍板)
 - [ ] 6. 跑 `bash scripts/bus-check.sh` 自检骨架(输出齐全、无报错),把输出贴给用户过目
-- [ ] 7. 装机器闸(**默认,非可选**):meta 仓与各代码子仓逐仓 `cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`(gitleaks 拦凭据 + meta 仓 bus-check --strict 拦腐烂/幽灵 hash);`command -v gitleaks` 查无则提醒用户安装,并记入收尾报告
+- [ ] 7. 装机器闸(**默认,非可选**):meta 仓与各代码子仓逐仓 `cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`(紧凑布局下拷贝源为 `pm/scripts/pre-commit.sh`)(gitleaks 拦凭据 + meta 仓 bus-check --strict 拦腐烂/幽灵 hash);`command -v gitleaks` 查无则提醒用户安装,并记入收尾报告
 - [ ] 8. (可选)装 Stop hook 自动 push 已 commit 内容(secret 闸已在第 7 步默认上;要更稳可在 push 前再跑一道 `gitleaks dir <仓根>`)
 - [ ] 9. 收尾报告一屏:生成了什么 / 按自查+确认做了哪些取舍(含默认值项)/ 下一步开哪个会话、说哪句话(参照 指挥台.md)
 ```
@@ -146,20 +159,25 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 - [ ] 1. 摸底(全自查,不问人):规模(文件/行数)、模块依赖、测试现状(几个测试/能不能跑/跑多久)、
         危险区(被广泛依赖、一改炸全站的模块)、分支状态(落后多少/几个长命分支)→ 摸底报告一屏给用户
 - [ ] 2. 划绞杀者边界(用户拍板):「新地盘」(新功能/新模块)走全套总线;「老地盘」只维护、改动一律重轨。
-        边界写进 CLAUDE.md §1 与 PROTOCOL——同一项目里两种速度,不是折中成一种。
+        边界写进根 AGENTS.md §1 与 PROTOCOL——同一项目里两种速度,不是折中成一种。
         只问两个人话问题:「这项目还要长期投入吗?」「哪块最怕改坏?」(危险区,人比代码清楚)
 - [ ] 3. 第 0 期 = 补最小验证套件(强制,不做业务需求):核心链路 E2E 起步 + 接 scripts/verify-status.sh。
         没有这一步,证据分级给不出 L3,后面所有 Gate 都在空转
-- [ ] 4. 产出分层 CLAUDE.md:根一份(路由 + 新旧边界)+ 各业务模块一份(模块地图,给 AI 会话降理解成本)
-- [ ] 5. 之后按 §8.2 步骤 2-9 走(骨架/机器闸/第一期立项);一期起步的优先级:补测试 > 机械重构 > 新功能
+- [ ] 4. 产出分层 AGENTS.md:根一份(路由 + 新旧边界)+ 各业务模块一份(模块地图,给 AI 会话降理解成本)。
+        靠标准的「向上合并、就近优先」层叠:改哪个模块只额外装载哪份,根文件因此能保持精简
+- [ ] 5. 骨架用**紧凑布局**(§3):`templates/scripts/` 整树拷成 `pm/scripts/`,`指挥台.md` 与 `SOLOBATON.md` 拷进 `pm/`。
+        脚本自定位不用改;要改的是文档里的调用路径——`AGENTS.md`、`pm/NOW.md`、`指挥台.md`、`pm/当期看板.md`、`contracts/PROTOCOL.md`、`ARCHITECTURE.md` 六处,
+        改完 `grep -rn 'scripts/' <项目根> --include='*.md'` 复核:只该剩 `pm/scripts/` 与项目自己的 `scripts/`
+- [ ] 6. 之后按 §8.2 步骤 2-9 走(骨架/机器闸/第一期立项);一期起步的优先级:补测试 > 机械重构 > 新功能
 ```
 
 ## 9. 模板索引(templates/,直接拷贝后改占位符)
 
 | 模板 | 用途 |
 |---|---|
-| [templates/CLAUDE.md](templates/CLAUDE.md) | 工作区路由 + 十条规则(每会话自动装载) |
-| [templates/Agent.md](templates/Agent.md) | 全栈总图骨架(架构/基础设施/凭据位置/红线) |
+| [templates/AGENTS.md](templates/AGENTS.md) | 工作区路由 + 十条规则 + 红线(开放标准,每会话自动装载) |
+| [templates/CLAUDE.md](templates/CLAUDE.md) | 一行指针 → `AGENTS.md`(兼容只认此名的工具;🔴 不复制内容) |
+| [templates/ARCHITECTURE.md](templates/ARCHITECTURE.md) | 全栈总图骨架(架构/基础设施/凭据位置/子项目索引) |
 | [templates/指挥台.md](templates/指挥台.md) | 给人看的一页操作卡 |
 | [templates/pm/NOW.md](templates/pm/NOW.md) | 薄指针 + 换期压缩仪式 checklist |
 | [templates/pm/当期看板.md](templates/pm/当期看板.md) | 阶段门/分工/挂账骨架 |
@@ -174,7 +192,9 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 | [templates/scripts/design-preview.sh](templates/scripts/design-preview.sh) | Gate2 真渲染静态服务 |
 | [templates/scripts/verify-status.sh](templates/scripts/verify-status.sh) | 工程层验证能力参考实现(SUITES 表 + `--run` 记「上次全绿」标记;L3 证据兜底) |
 | [templates/gitignore.template](templates/gitignore.template) | meta 仓 .gitignore 模板(排除子仓与 *.env;拷入后改名) |
-| [templates/SOLOBATON.md](templates/SOLOBATON.md) | 版本标记 + 升级路径 + 回灌通道(拷入后填版本号) |
+| [templates/SOLOBATON.md](templates/SOLOBATON.md) | 版本标记 + 布局标记 + 升级路径 + 回灌通道(拷入后填) |
+
+> 5 个 `.sh` 自己定位协调层根(向上找 `pm/NOW.md`),整树搬到 `pm/scripts/` 即得 §3 紧凑布局,脚本本身不用改。同伴脚本(`live-status.sh` / `live-config.sh`)要和它们放同一目录。
 
 ## 10. 反模式与实战教训
 

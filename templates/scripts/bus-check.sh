@@ -6,17 +6,22 @@
 # --strict:机器闸模式 —— 确凿检出「协调层腐烂 / 幽灵 hash / 生产漂移」任一即 exit 1(挂 pre-commit/CI 用,见 pre-commit.sh)。
 #   只对确凿检出翻脸;「无法判定 / 未配置 / 跳过」不拦,不给流水线添堵。不带 --strict 仍恒 exit 0,只当仪表盘。
 #
-# 项目接入点(可选):
-#   1) SUBREPOS 数组留空 = 自动发现一/二级目录下的独立 git 子仓;也可手工列死。
-#   2) 线上实况:提供 scripts/live-status.sh(自行调用部署平台 CLI,每行输出「名称<TAB或空格>版本」),
+# 项目接入点(可选;下列同伴脚本一律**放在本脚本同一目录**,本脚本按 SDIR 找它们):
+#   1) SUBREPOS 数组留空 = 自动发现协调层根下一/二级目录里的独立 git 子仓;也可手工列死。
+#   2) 线上实况:提供 live-status.sh(自行调用部署平台 CLI,每行输出「名称<TAB或空格>版本」),
 #      本脚本存在即调用、不存在则提示。跳过:BUS_CHECK_NO_LIVE=1
 #      离线/弱网:BUS_CHECK_NO_FETCH=1 跳过 meta 仓与子仓的 git fetch(只看本地已知状态)
-#   3) 生产漂移检测:提供 scripts/drift-check.sh + scripts/live-config.sh(见模板),
+#   3) 生产漂移检测:提供 drift-check.sh + live-config.sh(见模板),
 #      本脚本存在即调用;`--update-baseline` 会透传给它(部署/改 env 后刷基线)。
-#   4) 工程层验证能力:改 scripts/verify-status.sh(模板含参考实现)的 SUITES 接入测试命令,
+#   4) 工程层验证能力:改 verify-status.sh(模板含参考实现)的 SUITES 接入测试命令,
 #      本脚本存在即调用 —— 证据分级 L3(自动化测试)靠它兜底;`--run` 真跑并记「上次全绿」。
 set -uo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# 协调层根 = 向上最近的含 pm/NOW.md 的目录;SDIR = 本脚本目录(相对根),脚本间互调都走它。
+# 故本脚本放 <根>/scripts/ 或 <根>/pm/scripts/ 均可(紧凑布局见 SKILL §3),不假设固定深度。
+_sd="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$_sd"; for _ in 1 2 3 4; do [ -f "$ROOT/pm/NOW.md" ] && break; ROOT="$(dirname "$ROOT")"; done
+[ -f "$ROOT/pm/NOW.md" ] || ROOT="$(cd "$_sd/.." && pwd)"   # 探测不到(骨架还没建) → 退回旧假设:脚本在 <根>/scripts/
+SDIR="${_sd#"$ROOT"/}"; [ "$SDIR" = "$_sd" ] && SDIR="."
 cd "$ROOT" || exit 1
 DRIFT_MODE=""; STRICT=0; STRICT_HITS=""   # STRICT_HITS 累计确凿检出项;--strict 下非空 = exit 1
 for arg in "$@"; do
@@ -29,7 +34,7 @@ done
 SUBREPOS=()   # 留空自动发现;或写死:SUBREPOS=("仓1" "目录/仓2")
 
 echo "════════ 协作总线 开工同步 (bus-check) ════════"
-echo "▸ 工作区: $ROOT"
+echo "▸ 工作区: $ROOT   (协调层脚本: $SDIR/)"   # 打印解析结果:根认错了(嵌套项目/骨架没建)一眼能看出,不静默
 echo ""
 
 # 1) meta 仓是否落后远端
@@ -86,7 +91,7 @@ done
 if [ "$gate_checked" = 0 ]; then
   echo "  (没有可检查的 git 仓 —— 无法判定)"
 elif [ -n "$gate_missing" ]; then
-  echo "  ⚠️  未装 pre-commit 闸:${gate_missing# } —— 每仓装一次(装法见 scripts/pre-commit.sh 头部注释)"
+  echo "  ⚠️  未装 pre-commit 闸:${gate_missing# } —— 每仓装一次(装法见 $SDIR/pre-commit.sh 头部注释)"
 else
   echo "  ✅ meta 仓与全部子仓均已装 pre-commit 闸"
 fi
@@ -143,10 +148,10 @@ echo ""
 
 # 2.7) 工程层验证能力(证据分级 L3「自动化测试」的前提是项目有能跑的测试;测试跑不动是比 NOW 长肥更重的腐烂)
 echo "── 工程层验证能力 ──"
-if [ -f scripts/verify-status.sh ]; then
-  bash scripts/verify-status.sh 2>/dev/null | sed 's/^/  /' || echo "  (verify-status.sh 执行失败)"
+if [ -f "$SDIR/verify-status.sh" ]; then
+  bash "$SDIR/verify-status.sh" 2>/dev/null | sed 's/^/  /' || echo "  (verify-status.sh 执行失败)"
 else
-  echo "  ⚠️  未配置 scripts/verify-status.sh —— 项目验证能力未知,L3 级证据无从谈起(接入:每行输出「套件名 测试命令 上次全绿时间」)"
+  echo "  ⚠️  未配置 $SDIR/verify-status.sh —— 项目验证能力未知,L3 级证据无从谈起(接入:每行输出「套件名 测试命令 上次全绿时间」)"
 fi
 echo ""
 
@@ -227,20 +232,20 @@ echo ""
 echo "── 线上实况 ──"
 if [ "${BUS_CHECK_NO_LIVE:-0}" = "1" ]; then
   echo "  (BUS_CHECK_NO_LIVE=1 跳过;线上版本以重跑本脚本为准)"
-elif [ -x scripts/live-status.sh ] || [ -f scripts/live-status.sh ]; then
-  bash scripts/live-status.sh 2>/dev/null | sed 's/^/  /' || echo "  (live-status.sh 执行失败 —— 检查部署平台 CLI 凭据/网络)"
+elif [ -f "$SDIR/live-status.sh" ]; then
+  bash "$SDIR/live-status.sh" 2>/dev/null | sed 's/^/  /' || echo "  (live-status.sh 执行失败 —— 检查部署平台 CLI 凭据/网络)"
 else
-  echo "  (未配置 scripts/live-status.sh —— 接入部署平台 CLI 后,每行输出「服务名 版本」即可;在此之前别引用任何文档里的\"当前版本\")"
+  echo "  (未配置 $SDIR/live-status.sh —— 接入部署平台 CLI 后,每行输出「服务名 版本」即可;在此之前别引用任何文档里的\"当前版本\")"
 fi
 echo ""
 
 # 7.5) 生产漂移检测(平台侧 env/secret 指纹 + 镜像tag↔git vs scripts/bus-baseline.json)
 echo "── 生产漂移检测 ──"
-if [ -f scripts/drift-check.sh ]; then
-  bash scripts/drift-check.sh $DRIFT_MODE; drc=$?
+if [ -f "$SDIR/drift-check.sh" ]; then
+  bash "$SDIR/drift-check.sh" $DRIFT_MODE; drc=$?
   [ "$drc" = 2 ] && STRICT_HITS="$STRICT_HITS 生产漂移"   # drift-check 约定:exit 2 = 确凿检出漂移
 else
-  echo "  (未配置 scripts/drift-check.sh —— 拷模板 + 接 live-config.sh 后,可检出「配置被改没部署 / 线上镜像 git 里找不到」类漂移)"
+  echo "  (未配置 $SDIR/drift-check.sh —— 拷模板 + 接 live-config.sh 后,可检出「配置被改没部署 / 线上镜像 git 里找不到」类漂移)"
 fi
 echo ""
 
