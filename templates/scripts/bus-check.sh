@@ -63,7 +63,9 @@ fi
 echo ""
 echo "── 子仓 ⇄ 远端 ──"
 for r in "${SUBREPOS[@]:-}"; do
-  [ -n "$r" ] && [ -d "$r/.git" ] || continue
+  if [ -z "$r" ] || [ ! -d "$r/.git" ]; then
+    continue
+  fi
   [ "${BUS_CHECK_NO_FETCH:-0}" = "1" ] || git -C "$r" fetch --quiet 2>/dev/null || true
   if git -C "$r" rev-parse '@{u}' >/dev/null 2>&1; then
     ahead=$(git -C "$r" rev-list --count '@{u}..HEAD' 2>/dev/null || echo "?")
@@ -209,7 +211,9 @@ if [ -d pm/status ]; then
   for h in $HASHES; do
     total=$((total+1)); found=0
     for r in . "${SUBREPOS[@]:-}"; do
-      [ -n "$r" ] && [ -d "$r" ] || continue
+      if [ -z "$r" ] || [ ! -d "$r" ]; then
+        continue
+      fi
       git -C "$r" cat-file -t "$h" >/dev/null 2>&1 && { found=1; break; }
     done
     [ "$found" = 1 ] || { echo "  ⚠️  $h —— meta 仓与全部子仓查无此号(幽灵 hash:臆造/被重置/躺工作树没提交;若刚换机器,先 git pull 复核)"; ghost=1; }
