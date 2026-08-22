@@ -32,7 +32,7 @@
 **③ 交接靠 commit + 落盘** —— 工作包完成或到真实阻塞点 → 状态行带**交付候选/报告** commit hash,下游读 repo 即知进度;hash 不是 status 行自身 commit(禁止自引用)。原子 commit 可以多次,但不为每个 commit 单独收尾和打断人;尚无新候选就写已核基线 hash +「无新候选」,不得编 hash。
 **④ 开工护栏** —— 开工先 `bash scripts/bus-check.sh` + `git pull`;**部署/改契约/migration 等不可逆动作前再跑一次**;pre-commit 挂 `bus-check --strict` 机器闸(检出腐烂/幽灵 hash 即拦 commit,见 `scripts/pre-commit.sh`)。
 **⑤ 三轨制** —— 快轨(小改:直接改+核查门)/ 标准轨(单功能全流程)/ 重轨(契约变更/大改:+`pm/changes/` 提案+多 agent 评审);NOW 标本期轨道。工作包默认取一条可独立验收的纵向结果或下一个 Gate/里程碑候选,不按文件、commit 或验收条目拆会话。
-**⑥ 核查门(风险批次 + 里程碑候选)** —— 轻量机器闸每次提交都跑,受影响自动化测试按变更批次跑,里程碑候选跑全量并留 L3 证据;完整 reviewer 绑定一个里程碑候选 hash 集,核「实现↔设计↔契约↔需求」一次。任务中只有冻结契约对外语义、鉴权/租户/Secret/fail-closed、持久化键空间或不可逆外部副作用变化才做 `risk-delta` 定向核;文件数、草稿演进、归档/status 回写与普通 P2 不触发完整核查。候选 hash 未变且机器证据仍绿 → 合并前复用原结论;变化只核 delta。P0/P1 阻塞,P2 默认挂账;首轮报告保留原文,后续只追加 closure 表。**完成 = hash + 可核验证据**;标准轨最低 L3,重轨与上线必须 L4,L1 只作补充定位。
+**⑥ 核查门(review-ready + 一次候选核查)** —— 轻量机器闸每次提交都跑,受影响自动化测试按变更批次跑。**首次 milestone reviewer 只能在 review-ready 后启动**:工作包内实现与写者自查已完成;所有候选仓 `HEAD=candidate` 且工作树干净;受影响/全量 L3 与真渲染证据已绿;没有已知待修项或计划中的 candidate 修改。此前发现的鉴权/租户/Secret/fail-closed/持久化等实现问题统一记入实现语义清单并先自行收敛,**不得边改 candidate 边开 reviewer**;只有要修改已冻结对外契约或产生不可逆外部副作用才 `STOP_NOW`,批准后按一个风险批次做 `risk-delta`。默认每个工作包、每道 Gate 只启动 **1 次 milestone**;P0/P1 全部修完后再做 **1 次合并 closure**,P2 不复核。reviewer 返回前 candidate 若变化,原审查立即标 `SUPERSEDED`,不得把写者自发现的连续修补包装成 delta 链;重新满足 review-ready 后才启动替代 milestone。已完成 milestone 后出现新的高风险语义变化才核 `risk-delta`;同一 candidate 且机器证据仍绿直接复用。首轮报告保留原文,closure 只追加表。**完成 = hash + 可核验证据**;标准轨最低 L3,重轨与上线必须 L4,L1 只作补充定位。
 **⑦ 变更提案 + 状态分写** —— 跨域变更走 `pm/changes/` delta 提案;**各域只写自己的 `pm/status/<域>.md`**,别人只读。状态按工作包/里程碑批量更新,不为每个子产物另起一次交接。
 **⑧ 视觉问题带图对比** —— 提 UI bug / 判设计符合性必附『实现截图 ⟷ 设计稿截图』并排 + 标注差异点;纯文字不算证据。
 **⑨ 单点事实** —— 线上版本只信 `bus-check` 实查(任何文档不写"当前线上 vX",契约快照版本仅 `PROTOCOL.md` 头部);每个收敛后的**真实决策包**只在 `pm/decisions.md` 记一行并回写落点,验收条目/推导结论/部分对话进度不单独记拍板;换期必跑压缩仪式(NOW 底部 checklist),**NOW 永远是薄指针、禁堆流水**。
@@ -60,4 +60,4 @@
 2. **不 `git add -A`**:只 stage 自己域的具体文件;同持多仓按仓分别提交。
 3. **不未授权部署**、不 force-push、不 `--amend`、不 `--no-verify`。
 4. **每次部署完必更对应仓 `CHANGELOG.md`**;长连接服务部署带优雅下线(<PreStop/drain 机制>)。
-5. **写者≠审者**:里程碑候选与高风险语义 delta 必过独立 reviewer;同一候选 hash 复用结论,不重复全审。
+5. **写者≠审者**:review-ready 的里程碑候选必过独立 reviewer;写者自发现问题先收敛,不把未稳定候选反复送审。同一 candidate 复用结论,P0/P1 默认合并修复后只做一次 closure。
