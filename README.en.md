@@ -18,17 +18,19 @@
 - **One session does all the work**: the longer it runs, the more scattered its attention (context rot); hit the context ceiling and forced compression forgets what mattered; tasks queue up single-file because parallel work would collide.
 - **You are the sync layer**: copy-pasting between sessions, while agents stall mid-task waiting for you to supply context.
 
-**And once you do open multiple sessions (Claude Code / Cursor / etc.), five new problems hit:**
+**And once you do open multiple sessions (Claude Code / Cursor / etc.), seven new problems hit:**
 
 | Pain | Typical symptom |
 |---|---|
 | **Information gaps** | Session A doesn't know B already changed the API, and builds against the old version |
 | **Human message bus** | You shuttle "backend said… frontend beware…" between sessions; you are the bottleneck |
 | **Fake done / missed checks** | A session says "done" without verifying; acceptance relies on your eyeballs and always misses |
+| **Premature hand-back** | A session ships one document or subtask and returns the baton; safe in-scope work waits until you say "continue" again |
+| **Approval fatigue** | Fourteen acceptance checks become fourteen separate decisions; every draft edit interrupts you until real Gates disappear in confirmation noise |
 | **Doc rot** | "Current version / current progress" written in five docs, three of them contradicting each other |
 | **Rework spiral** | You approve a static design mock, see the real implementation, reverse yourself, and a whole UI layer gets redone |
 
-The bus's answer: **information moves through files, not through your mouth; "done" requires evidence; decision points require a human; facts that rot live in exactly one place.** Once context is externalized into files, **every session becomes disposable** — crashed, full, closed? Open a new one, run the kickoff script, and it's back at full strength. That is what makes you unafraid to run N sessions.
+The bus's answer: **information moves through files, not through your mouth; "done" requires evidence; execution keeps moving inside a user-level work package; approvals are reserved for real forks and Gates; facts that rot live in exactly one place.** Once context is externalized into files, **every session becomes disposable** — crashed, full, closed? Open a new one, run the kickoff script, and it's back at full strength. That is what makes you unafraid to run N sessions.
 
 > Jargon warning: "bus / SSOT / Gate / domain" can be confusing at first sight — §9 has a plain-language glossary.
 
@@ -61,11 +63,11 @@ Say you're building a "web expense tracker": one frontend repo, one backend repo
 1. **Scaffold (once)**: say "Use Solobaton to scaffold collaboration for my project." It discovers the two repos, notices there's a UI, and asks only three things: long-term? just you? default Product/Fullstack/Testing split? You answer, nod at the summary screen, done.
 2. **Daily work**: open three sessions, one per domain. **In each session's first message, assign the role**:
    - To **Product**: "You are Product — you break down requirements, keep the board, log decisions. Break down the 'monthly report' feature." → It writes the spec, updates the board, waits for your call (⛔Gate1)
-   - To **Fullstack**: "You are Fullstack — you implement and ship. 'Monthly report' on the board is yours, go." → It runs bus-check to sync up, reads board and contract, implements, leaves a commit hash + evidence
+   - To **Fullstack**: "You are Fullstack — you implement and ship. 'Monthly report' on the board is yours, go." → It runs bus-check to sync up, claims one work package spanning related subtasks, keeps implementing within scope, then leaves a commit hash + evidence
    - To **Testing**: "You are Testing — you verify and find faults. Accept 'monthly report'." → It runs E2E, walks the UI against design screenshots, files bugs with side-by-side images
 
    After that, no more role-setting — just say "go / X on the board is yours / accept X".
-3. **You only make the calls**: spec, design (approved only after clicking a real rendered prototype), merge, release — four gates need your nod, and every decision is logged automatically. Information flows through files; **you are not the messenger, and you never fear closing a session**.
+3. **You only make real calls**: spec, design (approved only after clicking a real rendered prototype), merge, release — four gates need your nod. Reversible pre-freeze choices arrive as one packet of 2–5 real forks; derived constraints and status bookkeeping do not interrupt you. Each settled packet becomes one ledger row. Information flows through files; **you are not the messenger, and you do not have to keep saying “continue.”**
 
 > The full file snapshot of this fictional project after one iteration lives in [`example/`](example/) — see exactly what every template looks like once filled in.
 
@@ -75,6 +77,8 @@ Say you're building a "web expense tracker": one frontend repo, one backend repo
 2. **Human at the Gate** — spec / design / merge / release are four decision points that a human must approve, **never auto-crossed**. The human is metronome and judge, not messenger.
 3. **File bus** — all hand-offs go through repo files: `NOW.md` (pointer) → board → contract → per-domain status. Any session picks up its own context at kickoff; you never relay.
 4. **Evidence-based done** — any claim of "done" must carry a commit hash + verifiable evidence (test command / `file:line` / live check / screenshot). **No evidence = not done.**
+
+Requirement IDs, acceptance checks, and commits can stay fine-grained, but a session claims one user-level work package (`objective / in_scope / terminal_condition`). Documents, reviewer returns, and status writes are events inside that package; while safe in-scope work remains, the session keeps going.
 
 ## 4. What it looks like running
 
@@ -86,6 +90,8 @@ flowchart LR
     Verify -->|"Gate3 you approve merge"| Deploy["deploy"]
     Deploy -->|"Gate4 you approve release"| PM
 ```
+
+The baton comes back only when the package is complete with evidence, a genuine human-only blocker appears, or you explicitly asked for a checkpoint. Approval has three levels: `STOP_NOW` (crossing a Gate, scope, freeze, irreversible-action, or risk boundary), `BATCH_AT_GATE` (reversible choices collected for one Gate packet), and `NO_APPROVAL` (facts, derived constraints, status/archive work, and ordinary P2 items handled autonomously).
 
 Day to day you say three sentences: "go", "X on the board is yours", "accept X". Every session starts by running `bus-check.sh` — one screen showing: current iteration, contract version, last three decisions, per-domain progress, sub-repo sync, **actual live version** (queried from the platform, never trusted from docs), **production drift** (platform-side env fingerprints / image tag ↔ git vs. baseline). Sample output (excerpt, translated — the script currently prints Chinese; project setup in [`example/`](example/)):
 
@@ -125,9 +131,10 @@ Contract snapshot corresponds to: v0.2.0 (released 2026-06-20)
 ▸ Kickoff: ① git pull (incl. sub-repos)  ② read NOW → board → contract → latest decisions  ③ confirm nothing in your domain is stale  ④ rerun this script before irreversible actions (deploy / contract / migration)
 ```
 
-## 5. The four mechanisms worth stealing
+## 5. The five mechanisms worth stealing
 
-- **Single source of truth (rule ⑨)**: live version, human decisions, iteration switch — the three fastest-rotting facts each have exactly one place of record/query; everywhere else holds pointers. A decision lands in `decisions.md` first, then fans out; unfinished write-backs stay visible as debt.
+- **Work packages + approval tiers**: fine-grained requirements retain traceability while execution continues toward one user-level result; sub-artifacts never trigger hand-back. Only authorization/freeze/irreversibility boundaries interrupt immediately, reversible forks batch at a Gate, and derived work proceeds autonomously.
+- **Single source of truth (rule ⑨)**: live version, settled decision packets, iteration switch — the three fastest-rotting facts each have exactly one place of record/query; everywhere else holds pointers. A settled packet lands in `decisions.md` once, then fans out; partial conversation progress stays out of the permanent ledger.
 - **Gate2 real-render approval (rule ⑩)**: design sign-off must happen on a **clickable prototype in a browser** — static mocks and screenshots don't count. Tuition paid for this rule: a redesign shipped and was overturned within 2 days, entirely because approval had been given on static mocks.
 - **Iteration-switch compression ritual**: every iteration ends with forced archiving of the board, truncation of status files, and a reset of NOW; evidence artifacts (walkthrough shots / E2E reports) are written into `pm/archive/<iteration>/evidence/` the moment they're produced — nothing left to move at switch time. Without this ritual, coordination docs turn into an unread scroll within three weeks — so bus-check ships a **coordination-layer rot check**: a bloated NOW, a stale board lingering in pm/, or an oversized status file triggers red warnings at kickoff (a ritual without a guardrail is no ritual at all). The red warnings can also become a gate: bus-check additionally verifies that every commit hash in status files actually exists in git (a **ghost hash** is an imagined "done"), and in `--strict` mode any confirmed rot / ghost hash / drift exits non-zero — `scripts/pre-commit.sh` hooks this into every commit by default, with gitleaks in the same gate to block credentials. Rules enforced by machines, not by goodwill.
 - **Production drift detection**: platform-side env/secrets and images live outside git; one console edit creates a second source of truth. Fingerprint them (🔴 sha256 fingerprints only, never values) and anchor image tags to git tags; bus-check compares against the baseline at every kickoff and prints red warnings — surfacing "config changed but never redeployed" and "live image not found in git" before you touch anything.
@@ -137,8 +144,8 @@ Contract snapshot corresponds to: v0.2.0 (released 2026-06-20)
 ```
 solobaton/
 ├── SKILL.md       # methodology body for agents: domain model / ten rules / 4 gates + 3 tracks /
-│                  #   three rituals / red lines / guided bootstrap (inspect → few questions → generate)
-├── lessons.md     # 16 anti-patterns (symptom → root cause → cure), every one happened for real
+│                  #   work packages + approval tiers / three rituals / red lines / guided bootstrap
+├── lessons.md     # 17 anti-patterns (symptom → root cause → cure), every one happened for real
 ├── README.md      # Chinese intro (this file's original)
 ├── README.en.md   # this file
 ├── CHANGELOG.md   # version history
@@ -170,13 +177,13 @@ solobaton/
 |---|---|---|
 | ① | Single board pointer | The entry is always NOW.md; switching iterations edits one place; board filenames never hard-coded elsewhere |
 | ② | Contracts land in files, not in chat | Change PROTOCOL.md before code; independently verify the other side's protocol claims before trusting |
-| ③ | Hand-offs ride on commits | Status lines carry hashes; downstream reads the repo to know progress |
+| ③ | Hand-offs ride on commits | Update status with hashes at package completion or a real blocker; atomic commits do not each interrupt the human |
 | ④ | Kickoff guard | Run bus-check at kickoff; **run it again before any irreversible action**; hook `--strict` into pre-commit as a gate |
-| ⑤ | Three tracks | Fast / standard / heavy — don't kill a chicken with a cleaver |
+| ⑤ | Three tracks | Fast / standard / heavy; size work packages by vertical outcome, not by file |
 | ⑥ | Review gate | Machine gates stay continuous; high-risk deltas get scoped review; each milestone candidate gets one full review |
-| ⑦ | Proposals + split status | Cross-domain changes go through delta proposals; each domain writes only its own status file |
+| ⑦ | Proposals + split status | Cross-domain changes use delta proposals; each domain writes its own status, batched by work package |
 | ⑧ | Visual issues need images | UI bugs require implementation-vs-design screenshots side by side; words alone aren't evidence |
-| ⑨ | Single source of truth | Live version only by live query; decisions only in decisions.md; iteration switch requires compression |
+| ⑨ | Single source of truth | Live version only by live query; each settled decision packet is logged once; iteration switch requires compression |
 | ⑩ | Gate2 real render | Design approval happens on a clickable prototype; static mocks don't count |
 
 ## 9. Plain-language glossary
@@ -191,11 +198,14 @@ solobaton/
 | SSOT (Single Source of Truth) | A fact is recorded in exactly one place; everywhere else points to it — prevents contradictory copies |
 | Gate (the four Gates) | Checkpoints — spec / design / merge / release — that a human must approve; AI may not auto-cross |
 | Three tracks | Process weight matched to change size: fast (small fix) / standard (one feature) / heavy (contract-touching) — small changes never ride the heavy process |
+| Work package | The user-level result one session owns, with objective / in_scope / terminal_condition; it may span multiple IDs, documents, and commits |
+| Approval tiers | STOP_NOW / BATCH_AT_GATE / NO_APPROVAL: only true boundary crossings or irreversible actions interrupt immediately |
+| Decision packet | Two to five independent human forks presented together; acceptance checks and derived constraints do not masquerade as separate decisions |
 | Review gate | Machine checks run on every commit; only high-risk semantics get delta review; one stable milestone hash set gets one full 4-way review and reuses that result while unchanged |
 | Writer ≠ reviewer | The session that wrote the code must not be the one reviewing it — self-review always passes |
 | Evidence-based done | "Done" requires commit hash + verifiable evidence (test command / file:line / screenshot), otherwise not done |
 | Human in the loop | Key decisions require a human; no fully automatic closed loop |
-| Decision / decision log | You make the call; the log (pm/decisions.md) is the single ledger where every call is recorded |
+| Decision / decision log | You settle a real decision packet; the log (pm/decisions.md) records that result once, not partial conversation progress |
 | Iteration / switch | An iteration ≈ a sprint; switching = closing this one and opening the next, always with archiving and compression |
 | Compression ritual | The fixed steps at iteration switch — archive docs, truncate status files — so coordination docs never rot |
 | Kickoff guard | The script you must run before working (bus-check.sh): one screen of progress / contract / decisions / live status |
