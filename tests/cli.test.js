@@ -90,7 +90,7 @@ function writeManifest(root, overrides = {}) {
     JSON.stringify({
       schemaVersion: 1,
       scaffoldVersion: "v1.16",
-      cliVersion: "1.16.0",
+      cliVersion: CLI_VERSION,
       layout: "default",
       installedAt: "2026-08-22T00:00:00.000Z",
       files: {

@@ -1,16 +1,18 @@
 # Solobaton CLI lifecycle contract
 
-Status: **CLI v0 preview** · Node.js 20+ · zero third-party runtime dependencies.
+Status: **CLI v0 read-only preview** · distributed as `solobaton@1.16.1` · Node.js 20+ · zero third-party runtime dependencies.
 
 The CLI does not replace `SKILL.md`. The Skill tells an AI session how to operate the delivery protocol; the CLI provides deterministic inspection and, in later versions, safe scaffold lifecycle operations.
 
 ## v0 command boundary
 
 ```bash
-node bin/solobaton.js doctor /path/to/project
-node bin/solobaton.js init /path/to/project --dry-run
-node bin/solobaton.js adopt /path/to/project --dry-run
+npx --yes solobaton@1.16.1 doctor /path/to/project
+npx --yes solobaton@1.16.1 init /path/to/project --dry-run
+npx --yes solobaton@1.16.1 adopt /path/to/project --dry-run
 ```
+
+A repository checkout may replace `npx --yes solobaton@1.16.1` with `node bin/solobaton.js`.
 
 - `doctor` reads an existing project and reports installation state, layout, version marker, required files, unresolved canonical placeholders, hooks, and capability dependencies.
 - `init --dry-run` inspects a new-project target and emits the default-layout installation plan.
@@ -26,6 +28,19 @@ Exit codes:
 | `0` | The inspection/plan completed and has no blocker-level finding |
 | `1` | The command completed, but the project has an error or lifecycle blocker |
 | `2` | Usage error or a command/write phase that v0 intentionally does not support |
+
+## CLI package lifecycle is not project lifecycle
+
+The public npm package gives the executable a conventional, reversible distribution path:
+
+| Intent | Command | Project effect |
+|---|---|---|
+| Reproducible one-off run | `npx --yes solobaton@1.16.1 doctor <project>` | Read-only inspection; no persistent global CLI installation |
+| Install a pinned global CLI | `npm install --global solobaton@1.16.1` | Installs only the package and executable |
+| Update the global CLI | `npm install --global solobaton@latest` | Replaces only the globally installed package |
+| Remove the global CLI | `npm uninstall --global solobaton` | Removes only the global package and executable |
+
+Package-manager operations never create, update, or remove a project's scaffold. The similarly named `solobaton upgrade` and `solobaton uninstall` commands are a separate project lifecycle and remain disabled in CLI v0. Removing an `npx` cache is also outside Solobaton's project lifecycle.
 
 ## Skill and CLI responsibilities
 
@@ -59,7 +74,7 @@ A write-capable release must create `.solobaton/manifest.json`. Schema 1 is rese
 {
   "schemaVersion": 1,
   "scaffoldVersion": "v1.16",
-  "cliVersion": "1.16.0",
+  "cliVersion": "1.16.1",
   "layout": "default",
   "installedAt": "2026-08-22T00:00:00.000Z",
   "files": {
@@ -119,4 +134,4 @@ No command may initialize Git, add a remote, commit, push, install a package glo
 - JSON output contains paths, counts, capability/version metadata, finding codes, and one bounded project-name candidate from `package.json`, the first README heading, or the directory name. It does not emit arbitrary source contents, dependency values, environment values, or secrets.
 - Command availability checks execute only fixed `--version`/read-only Git configuration calls with no shell interpolation.
 
-Package publication is a separate release action. Until an npm release is independently verified, documentation must use the repository-local `node bin/solobaton.js` command and must not claim that `npx solobaton` is available.
+Package publication remains a separate release action. Every published version must be tied to one immutable Git tag, pass the repository and packed-artifact checks, be read back from the official registry, and pass a clean-directory install plus executable smoke test. See [`RELEASING.md`](RELEASING.md). Documentation must not claim that a new `npx` version is available before those registry checks pass.

@@ -34,6 +34,7 @@ CRITICAL_TEMPLATE_FILES = (
 CRITICAL_CLI_FILES = (
     "bin/solobaton.js",
     "docs/CLI.md",
+    "docs/RELEASING.md",
     "package-lock.json",
     "package.json",
     "src/cli.js",
@@ -188,14 +189,22 @@ def check_cli_package() -> list[str]:
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
     version = package.get("version", "")
-    version_match = re.fullmatch(r"(\d+)\.(\d+)\.\d+", version)
-    latest_match = re.search(r"^## v(\d+)\.(\d+)", changelog, re.MULTILINE)
+    version_match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+    latest_match = re.search(
+        r"^## v(\d+)\.(\d+)(?:\.(\d+))?", changelog, re.MULTILINE
+    )
     if version_match is None:
         errors.append("package.json: version must use three-part SemVer")
-    elif latest_match is None or version_match.groups()[:2] != latest_match.groups():
-        errors.append(
-            "package.json: major/minor version does not match the latest changelog release"
+    elif latest_match is None:
+        errors.append("CHANGELOG.md: latest release heading is missing")
+    else:
+        latest_version = ".".join(
+            (latest_match.group(1), latest_match.group(2), latest_match.group(3) or "0")
         )
+        if version != latest_version:
+            errors.append(
+                "package.json: version does not match the latest changelog release"
+            )
 
     if lock.get("version") != version:
         errors.append("package-lock.json: root version does not match package.json")
@@ -207,6 +216,33 @@ def check_cli_package() -> list[str]:
             errors.append(f"package.json: published files must include {required}")
     if package.get("engines", {}).get("node") != ">=20":
         errors.append("package.json: supported Node floor must stay explicit at >=20")
+    publish_config = package.get("publishConfig", {})
+    if publish_config.get("registry") != "https://registry.npmjs.org/":
+        errors.append("package.json: publishConfig must pin the official npm registry")
+    if publish_config.get("access") != "public":
+        errors.append("package.json: publishConfig must keep the package public")
+    prepublish = package.get("scripts", {}).get("prepublishOnly", "")
+    for required in ("npm test", "npm run check:docs", "npm run pack:check"):
+        if required not in prepublish:
+            errors.append(f"package.json: prepublishOnly must include {required}")
+
+    package_spec = f"solobaton@{version}"
+    distribution_docs = ("README.md", "README.en.md", "docs/CLI.md")
+    for relative in distribution_docs:
+        content = (ROOT / relative).read_text(encoding="utf-8")
+        if package_spec not in content:
+            errors.append(f"{relative}: missing current package spec {package_spec}")
+    cli_contract = (ROOT / "docs/CLI.md").read_text(encoding="utf-8")
+    if f'"cliVersion": "{version}"' not in cli_contract:
+        errors.append("docs/CLI.md: manifest example CLI version is stale")
+
+    stale_distribution_claims = {
+        "README.md": "尚未发布 npm",
+        "README.en.md": "not published to npm yet",
+    }
+    for relative, stale_claim in stale_distribution_claims.items():
+        if stale_claim in (ROOT / relative).read_text(encoding="utf-8"):
+            errors.append(f"{relative}: stale npm publication claim remains")
     if not ((ROOT / "bin/solobaton.js").stat().st_mode & 0o111):
         errors.append("bin/solobaton.js: executable bit is missing")
     return errors

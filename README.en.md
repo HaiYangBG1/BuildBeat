@@ -44,17 +44,26 @@ It inspects the code and configuration first, identifying repositories, deploy u
 
 > Do not apply the new-project template directly to a large existing codebase. Use the **brownfield takeover ritual** in `SKILL.md` §8.5: survey the system, draw the old/new boundary, establish minimum verification, and use the compact `pm/scripts/` layout so Solobaton does not collide with the project's own `scripts/` directory.
 
-### CLI v0 preview: inspect first, write nothing
+### CLI v0: distributed through npm, still read-only for projects
 
-v1.16 adds a zero-third-party-runtime-dependency CLI for Node.js 20+. This release turns deterministic project inspection and lifecycle planning into a machine interface; it is not published to npm yet and does not write an installation:
+v1.16 adds a zero-third-party-runtime-dependency CLI for Node.js 20+. Starting with `solobaton@1.16.1`, the CLI is formally distributed through npm. Pin the version for reproducible one-off checks:
 
 ```bash
-node bin/solobaton.js doctor /path/to/project
-node bin/solobaton.js init /path/to/project --dry-run
-node bin/solobaton.js adopt /path/to/project --dry-run --json
+npx --yes solobaton@1.16.1 doctor /path/to/project
+npx --yes solobaton@1.16.1 init /path/to/project --dry-run
+npx --yes solobaton@1.16.1 adopt /path/to/project --dry-run --json
 ```
 
-`doctor` checks an existing scaffold's layout, version, critical files, placeholders, hook, and dependency degradation. `init/adopt --dry-run` plan the default or compact layout. Omitting `--dry-run` is explicitly rejected without creating any file. The CLI does not replace the Skill's code-aware reasoning, minimal questions, or confirmation screen; see [`docs/CLI.md`](docs/CLI.md) for the complete boundary. Do not advertise `npx solobaton` until npm publication has been independently verified.
+For regular use, manage an explicit global CLI installation:
+
+```bash
+npm install --global solobaton@1.16.1  # install a pinned version
+solobaton doctor /path/to/project
+npm install --global solobaton@latest  # update the CLI package
+npm uninstall --global solobaton       # remove the global CLI
+```
+
+These install, update, and removal commands manage only the **CLI package and the `solobaton` executable**. They never create, upgrade, or delete a project's collaboration scaffold. `doctor` checks an existing scaffold's layout, version, critical files, placeholders, hook, and dependency degradation. `init/adopt --dry-run` plan the default or compact layout. Omitting `--dry-run` is explicitly rejected without creating any file, and `solobaton upgrade/uninstall` remain disabled. The CLI does not replace the Skill's code-aware reasoning, minimal questions, or confirmation screen; see [`docs/CLI.md`](docs/CLI.md) for the complete boundary. A source checkout can still use `node bin/solobaton.js ...`.
 
 ### Manual installation
 
@@ -197,7 +206,7 @@ The compact brownfield layout moves the scripts, operator card, and version mark
 | Production-config drift | `jq`, a SHA tool, project `live-config.sh` | Explicitly skipped; no production-state conclusion |
 | Live-version query | project `live-status.sh` and platform CLI | Explicitly unconfigured; documentation is not treated as live truth |
 | L3 test evidence | real `SUITES` in project `verify-status.sh` | Reports unconfigured; cannot claim automation is green |
-| CLI v0 inspection/planning | Node.js 20+ and this source checkout | Fall back to the Skill/manual path; write, upgrade, and uninstall are not enabled yet |
+| CLI v0 inspection/planning | Node.js 20+, the npm registry, or this source checkout | Fall back to the Skill/manual path; project write, upgrade, and uninstall are not enabled yet |
 
 ## Continue reading
 
@@ -205,6 +214,7 @@ The compact brownfield layout moves the scripts, operator card, and version mark
 - [`example/`](example/): the full file snapshot of a fictional project after one iteration;
 - [`lessons.md`](lessons.md): real anti-patterns, root causes, and fixes;
 - [`docs/CLI.md`](docs/CLI.md): lifecycle, file ownership, manifest, and safe upgrade/uninstall contract;
+- [`docs/RELEASING.md`](docs/RELEASING.md): npm release Gates, verification, and the Trusted Publishing migration;
 - [`CHANGELOG.md`](CHANGELOG.md): version history and upgrade instructions for copied projects.
 
 ## Contributing

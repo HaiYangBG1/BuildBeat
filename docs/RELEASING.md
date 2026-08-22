@@ -1,0 +1,70 @@
+# CLI package release runbook
+
+This runbook governs the public npm package. It does not authorize project-scaffold writes, a Git merge, or a production rollout. Each state transition still requires its own human Gate.
+
+## Release invariants
+
+1. One npm version maps to one immutable annotated Git tag and one exact source commit. Never move a published version's tag.
+2. `CLI_VERSION` comes from `package.json`; the scaffold version is its major/minor pair. A CLI patch release such as `1.16.1` does not invent a scaffold upgrade beyond `v1.16`.
+3. Publish only from a clean worktree whose `HEAD`, tag target, tested commit, and packed artifact all match.
+4. `publishConfig.registry` stays pinned to `https://registry.npmjs.org/`; a developer's mirror configuration must not redirect a public release.
+5. A successful `npm publish` response is not enough. Registry metadata, tarball contents, an isolated install, the executable version, and a read-only command must be checked independently.
+6. `npm install/update/uninstall` manage the CLI package only. They must never be described as project-scaffold `init/upgrade/uninstall` support.
+
+## Candidate checks
+
+Run from the exact release candidate:
+
+```bash
+npm ci --ignore-scripts --no-audit --no-fund
+bash -n templates/scripts/*.sh tests/*.sh
+shellcheck -x templates/scripts/*.sh tests/*.sh
+actionlint
+bash tests/check-docs.sh
+bash tests/test-scripts.sh
+npm test
+npm publish --dry-run --access public --registry=https://registry.npmjs.org/
+gitleaks git --no-banner --redact --no-color
+git diff --check
+```
+
+Before pushing a tag, confirm that the package name/version is absent from the official registry and that the candidate commit's `main` CI is green. An `E404` only proves point-in-time absence; it does not reserve the name.
+
+## First public package
+
+The first package must be created by an npm account protected by 2FA, or by another npm-supported initial-publication credential. Use the official web login rather than copying a token into the repository:
+
+```bash
+npm login --auth-type=web --registry=https://registry.npmjs.org/
+npm whoami --registry=https://registry.npmjs.org/
+npm publish --access public --registry=https://registry.npmjs.org/
+```
+
+The npm documentation requires 2FA or an allowed granular token for package publication. Solobaton's initial release uses interactive 2FA; no long-lived publish token belongs in Git, shell history, logs, or a chat transcript. See npm's guides for [unscoped public packages](https://docs.npmjs.com/creating-and-publishing-unscoped-public-packages/) and [publishing 2FA requirements](https://docs.npmjs.com/requiring-2fa-for-package-publishing-and-settings-modification/).
+
+## Independent readback
+
+After publication, query the public registry explicitly and install into a new temporary prefix:
+
+```bash
+npm view solobaton@1.16.1 name version dist-tags.latest \
+  --registry=https://registry.npmjs.org/
+
+release_probe="$(mktemp -d)"
+npm install --prefix "$release_probe" solobaton@1.16.1 \
+  --registry=https://registry.npmjs.org/ --ignore-scripts --no-audit --no-fund
+node "$release_probe/node_modules/solobaton/bin/solobaton.js" --version
+node "$release_probe/node_modules/solobaton/bin/solobaton.js" doctor . --json
+```
+
+The expected version is exact. `doctor` may correctly return exit 1 for a directory without an installed scaffold; the acceptance condition is valid bounded JSON and zero project writes, not a forced green diagnosis.
+
+Only after this readback should the matching GitHub Release be published and documentation treat the npm version as independently verified.
+
+## Future releases: Trusted Publishing
+
+After the package exists, configure npm Trusted Publishing for this public repository and a dedicated `.github/workflows/publish.yml`. The workflow must use a GitHub-hosted runner, Node 24, a current npm CLI that supports OIDC, `contents: read`, and `id-token: write`; it must re-run the candidate checks and verify that the release tag equals `v${package.version}` before `npm publish`.
+
+Trusted Publishing removes the long-lived write token and automatically emits provenance for supported public GitHub repositories. Configure the exact owner, repository, workflow filename, allowed `npm publish` action, and—if used—the GitHub environment on npmjs.com. See npm's [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) and [provenance](https://docs.npmjs.com/generating-provenance-statements/) documentation.
+
+The first manually published version is not retroactively provenance-backed. Record that evidence boundary in its GitHub Release instead of implying otherwise.
