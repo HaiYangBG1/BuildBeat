@@ -98,6 +98,7 @@ CRITICAL_GOVERNANCE_FILES = (
     "CONTRIBUTING.md",
     "SECURITY.md",
     "docs/CHECKS.md",
+    "docs/CAPABILITY-MATRIX.md",
     "docs/CLI-STRATEGY-2026-08.md",
     "docs/EXECUTION-PLAN.md",
     "docs/LEGACY-V1.16-MIGRATION.md",
@@ -105,6 +106,7 @@ CRITICAL_GOVERNANCE_FILES = (
     "docs/PHASE2-PILOT-PREFLIGHT-2026-08-25.md",
     "docs/PHASE2-PILOT-2026-08-25.md",
     "docs/PHASE2-BUILDBEAT-PILOT-2026-08-25.md",
+    "docs/PHASE4-STABILITY-AUDIT-2026-08-25.md",
     "docs/ROADMAP.md",
     "docs/CLI-PILOT-2026-08-23.md",
 )
@@ -249,6 +251,12 @@ def check_readme_shape() -> list[str]:
         (
             "目前刻意不作为可用入口展示",
             "deliberately not presented as an active entry point yet",
+        ),
+        ("BuildBeat 能力矩阵", "BuildBeat capability matrix"),
+        ("真实版本增量试点", "genuine version-increment pilot"),
+        (
+            "本地源码候选已含 Wave 1/2",
+            "the local source candidate includes Waves 1/2",
         ),
     )
     for zh_positioning, en_positioning in required_positioning_pairs:
@@ -438,6 +446,15 @@ def check_repository_governance() -> list[str]:
     if private_report_url not in security:
         errors.append("SECURITY.md: private vulnerability-reporting URL is missing")
 
+    for forbidden in (
+        "team/TEAM.md",
+        "team/APPROVALS.md",
+        "templates/team/TEAM.md",
+        "templates/team/APPROVALS.md",
+    ):
+        if (ROOT / forbidden).exists():
+            errors.append(f"{forbidden}: deleted team-management scope must not return")
+
     runbook = (ROOT / "docs/RELEASING.md").read_text(encoding="utf-8")
     for fragment in (
         "Protect release tags",
@@ -487,6 +504,8 @@ def check_cli_package() -> list[str]:
             errors.append(f"package.json: published files must include {required}")
     if package.get("engines", {}).get("node") != ">=20":
         errors.append("package.json: supported Node floor must stay explicit at >=20")
+    if package.get("dependencies") not in (None, {}):
+        errors.append("package.json: BuildBeat must keep zero third-party runtime dependencies")
     if package.get("description") != (
         "BuildBeat: a Git-based, human-gated engineering delivery protocol for humans and AI sessions."
     ):
@@ -632,7 +651,8 @@ def check_execution_contracts() -> list[str]:
             "WP3.3 多仓漂移（源码候选完成）",
             "WP3.4 边界报告完善（源码候选完成）",
             "WP4.1 示例全貌与 legacy 迁移（完成）",
-            "下一本地实现项是 WP4.2 能力矩阵/文档终校",
+            "WP4.2 能力矩阵、双语终校与硬门槛（完成）",
+            "下一项是需人工决策的 WP4.3",
             "buildbeat@buildbeat-plugins",
             "PHASE1-PILOT-2026-08-24.md",
             "PHASE2-PILOT-2026-08-25.md",
@@ -677,6 +697,17 @@ def check_execution_contracts() -> list[str]:
             "69d6e8358f7fda03225c090d99b5647cae152183",
             "6b32c53e4fd750770690a0bbe796638314cb792a",
         ),
+        "docs/CAPABILITY-MATRIX.md": (
+            "三组生命周期入口",
+            "Skill-only / 手工路径",
+            "已发布 `solobaton@1.16.3`",
+            "Skill-only → CLI `doctor`",
+            "CLI `init/adopt` → Skill-only",
+            "CLI `upgrade` → Skill-only",
+            "Published npm v0",
+            "Local source candidate",
+            "Project runtime",
+        ),
         "docs/LEGACY-V1.16-MIGRATION.md": (
             "A. 继续 legacy 手工维护",
             "B. 受控重建 schema 2 基线",
@@ -690,6 +721,9 @@ def check_execution_contracts() -> list[str]:
             "[`EXECUTION-PLAN.md`](EXECUTION-PLAN.md)",
             "一个 Builder 对一个工作包端到端负责",
             "Phase 3 源码范围闭合",
+            "WP4.1–WP4.2",
+            "下一项是须人工拍板的 WP4.3",
+            "12. [ ] 人工决定 WP4.3",
         ),
         "SKILL.md": (
             "一个或多个端到端 Builder",
@@ -708,6 +742,7 @@ def check_execution_contracts() -> list[str]:
             "buildbeat-multirepo-map:v1",
             "检查结果怎么读",
             "coverage.complete=false",
+            "docs/CAPABILITY-MATRIX.md",
         ),
         "templates/指挥台.md": (
             "检查结果怎么读",
@@ -810,6 +845,7 @@ def check_execution_contracts() -> list[str]:
             "registered code/level pairs",
             "plugin-marketplace.test.sh",
             "isolated config/cache directories",
+            "both interoperability directions",
         ),
         ".claude-plugin/marketplace.json": (
             '"name": "buildbeat-plugins"',
@@ -970,6 +1006,36 @@ def check_example_manifest() -> list[str]:
     return errors
 
 
+def check_phase4_audit() -> list[str]:
+    errors: list[str] = []
+    relative = "docs/PHASE4-STABILITY-AUDIT-2026-08-25.md"
+    audit = (ROOT / relative).read_text(encoding="utf-8")
+    statuses: dict[int, str] = {}
+    for gate in range(1, 13):
+        match = re.search(
+            rf"^\| {gate} \| `\[([x ])\]` \|",
+            audit,
+            re.MULTILINE,
+        )
+        if match is None:
+            errors.append(f"{relative}: missing unique checkbox row for roadmap gate {gate}")
+            continue
+        statuses[gate] = match.group(1)
+
+    for gate in range(1, 13):
+        if gate in statuses and statuses[gate] != (" " if gate == 11 else "x"):
+            errors.append(f"{relative}: roadmap gate {gate} has an unexpected status")
+    for fragment in (
+        "12 条中 11 条达到当前源码候选口径",
+        "未查询 npm/GitHub 可变远端状态",
+        "真实版本增量 upgrade 试点",
+        "不授权任何外部动作",
+    ):
+        if fragment not in audit:
+            errors.append(f"{relative}: missing hard-gate evidence boundary {fragment}")
+    return errors
+
+
 def check_publish_workflow() -> list[str]:
     errors: list[str] = []
     relative = ".github/workflows/publish.yml"
@@ -1036,6 +1102,7 @@ def main() -> int:
     errors.extend(check_execution_contracts())
     errors.extend(check_example_version())
     errors.extend(check_example_manifest())
+    errors.extend(check_phase4_audit())
     errors.extend(check_publish_workflow())
     errors.extend(check_workflow_action_pins())
     errors.extend(check_repository_governance())
@@ -1048,7 +1115,7 @@ def main() -> int:
 
     print(
         f"Documentation checks passed: {len(paths)} Markdown files, "
-        "relative links, bilingual README shape, frontmatter, critical files, example manifest hashes, CLI package metadata, and repository governance."
+        "relative links, bilingual README shape, frontmatter, critical files, example manifest hashes, phase-4 hard-gate status, CLI package metadata, and repository governance."
     )
     return 0
 

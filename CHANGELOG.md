@@ -23,6 +23,9 @@
 - **WP4.1 新协议教学全貌**：`example/` 在保留已完成一期四个 `passed` live Gate 的同时，单独给出 `pending/passed/blocked/n/a` 四态语法；新增 schema 2 合成教学 manifest，由文档检查精确锁定 8 个声明路径的 policy 和当前字节 hash。该 manifest 明示不是已发布 v1.16 写入证据、健康 CLI 安装或真实项目可复制基线
 - **WP4.1 legacy 迁移边界**：新增 `docs/LEGACY-V1.16-MIGRATION.md`，默认路径是按所有权继续手工维护；只在明确批准后才可于专用 Git 分支移出旧冲突路径、重走当前源码候选 `adopt`、回灌 project-owned 事实并审查合并。手写/复制/重命名 manifest、混合 namespace、破坏性 reset 和把基线当成 Gate/部署证据均禁止
 - **WP4.1 本地门禁**：Node `55/55`（其中 CLI `50/50`）、Shell `221/221`、Skill-only、Claude plugin 隔离安装 `7/7`、107 份 Markdown 契约检查、76 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；未执行真实项目迁移、push、tag、GitHub Release、npm publish 或远端改名
+- **WP4.2 能力矩阵与双语终校**：新增 `docs/CAPABILITY-MATRIX.md`，把可用面固定为检查 `doctor`、脚手架 `init/adopt`、机械升级 `upgrade` 三组生命周期入口，并逐项区分 Skill-only、已发布 `solobaton@1.16.3` 只读 v0 与当前本地源码候选；中英 README 同步 Phase 3 范围、真实试点缺口、示例边界和能力矩阵入口
+- **WP4.2 双向互操作**：Skill-only 手工项目可由源码 CLI `doctor` 保守识别并明确返回 `manifest.missing`；CLI 真实 `init` 的一次性项目经 Skill 渲染后，在屏蔽 Node/CLI 的环境中仍可运行项目本地 strict 检查。该回归只证明结构兼容，不把沙箱结果外推为真实项目升级或 npm 可用性
+- **WP4.2 硬门槛归档与本地门禁**：`docs/PHASE4-STABILITY-AUDIT-2026-08-25.md` 对演进书§15 逐条归档，12 条中 11 条达到本地源码候选口径；第 11 条仍缺真实版本增量 upgrade 和 WP3.3/WP3.4 真实环境刷新。Node `55/55`、Shell `221/221`、Skill-only + CLI/Skill 双向互操作、Claude plugin `7/7`、109 份 Markdown 契约检查、78 文件 pack dry-run及全部静态检查通过；未查询 npm/GitHub 可变远端状态，未执行 push、tag、Release、publish、部署或远端改名
 - **仓库安全基线**：新增 npm/GitHub Actions Dependabot 周检、JavaScript/TypeScript CodeQL、SECURITY/贡献/行为规范、CODEOWNERS、Issue/PR 模板；CI 中第三方 Action 改为不可变完整 commit SHA
 - **发布引用保护**：GitHub 服务端 `Protect release tags` ruleset 覆盖 `refs/tags/v*`，禁止更新和删除已创建的发布 tag，且无绕过角色；发布 runbook 增加回读步骤
 - **CLI v0 真实试点**：使用官方 npm registry 的 `solobaton@1.16.3` 对三个存量项目运行只读 `doctor` 和 `adopt --dry-run`；Git 可见状态前后一致，并正确区分未安装、旧版已安装和部分安装状态

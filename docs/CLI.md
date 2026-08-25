@@ -4,6 +4,8 @@ Status: **current published CLI v0 remains read-only in the independently verifi
 
 The CLI does not replace `SKILL.md`. The Skill owns code-aware reasoning, minimal questions, project semantics, and human Gates. The CLI owns deterministic inspection, scaffold mechanics, manifest/hash bookkeeping, and bounded mechanical upgrade in the current source candidate. Synchronous file-bus checks remain authoritative in the project-local scripts specified by [`CHECKS.md`](CHECKS.md).
 
+The bilingual [`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) is the compact authority for what Skill-only, published npm v0, and this local source candidate can each do. Command details and safety semantics remain authoritative in this document.
+
 ## Command boundary and phased availability
 
 The currently published v0 boundary is:

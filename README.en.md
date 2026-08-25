@@ -56,7 +56,7 @@ This repository now contains a standalone Claude Code marketplace package. Once 
 
 After the candidate reaches the GitHub default branch, the first line still uses the current repository address, `/plugin marketplace add HaiYangBG1/solobaton`; renaming the remote repository is a separate external action. The plugin carries the Skill, templates, example, and reference documentation without exposing the npm CLI's top-level `bin/` to Claude Code. Project writes remain bounded by the current CLI distribution state, its confirmation screen, and human Gates. See [`plugins/buildbeat/README.md`](plugins/buildbeat/README.md) for the packaging boundary.
 
-### CLI: npm v0 remains read-only; the local source candidate is in Wave 2
+### CLI: npm v0 remains read-only; the local source candidate includes Waves 1/2
 
 v1.16 adds a zero-third-party-runtime-dependency CLI for Node.js 20+. Starting with `solobaton@1.16.1`, the CLI is formally distributed through npm. That package name is BuildBeat's legacy distribution ID: the unscoped `buildbeat` name is already owned by another project, so this repository will not claim it. Published-v0 examples continue to use `solobaton@latest` rather than pretending that the unpublished BuildBeat command is already available:
 
@@ -78,7 +78,7 @@ npm uninstall --global solobaton       # remove the global CLI
 
 These install, update, and removal commands manage only the **legacy CLI package and its `solobaton` executable**. They never create, upgrade, or delete a project's collaboration scaffold. `doctor` checks an existing scaffold's layout, version, critical files, placeholders, hook, and dependency degradation. `init/adopt --dry-run` plan the default or compact layout. Omitting `--dry-run` is explicitly rejected without creating any file, and `solobaton upgrade/uninstall` remain disabled. The source candidate's canonical command is `buildbeat doctor`, with local entry point `node bin/buildbeat.js ...`; `bin/solobaton.js` remains only as a compatibility alias. See [`docs/CLI.md`](docs/CLI.md) for the complete contract.
 
-Phases 0–2 now have a local source baseline commit, `b062f25`, which has not been pushed or released. In addition to bounded Wave 1 `init/adopt` writes, the current checkout implements WP3.1's schema-2-only mechanical `upgrade`: within one major version it uses manifest hashes to replace unchanged managed files, any unresolved conflict keeps the transaction at zero writes, `--force` still cannot overwrite project-owned content or unsafe paths, and a major transition separately requires `--major`. This implementation has passed disposable Git-sandbox regressions, but it has not completed an independent real-project pilot and is not in npm. The earlier WP2.7 legacy and WP2.8 BuildBeat canonical pilots remain evidence only for their respective local boundaries.
+Phases 0–2 now have a local source baseline commit, `b062f25`, which has not been pushed or released. Beyond bounded Wave 1 `init/adopt` writes, the current checkout completes the Phase 3 source scope: schema-2-only mechanical `upgrade`, stronger Gate/evidence joins, multi-repository drift, and scan-boundary reporting. Within one major version, `upgrade` uses manifest hashes to replace unchanged managed files; any unresolved conflict keeps the transaction at zero writes, `--force` still cannot overwrite project-owned content or unsafe paths, and a major transition separately requires `--major`. These increments have passed disposable Git/filesystem-sandbox regressions, but a genuine version-increment upgrade pilot and refreshed WP3.3/WP3.4 real-environment evidence remain open, and none of this is in npm. The earlier WP2.7 legacy and WP2.8 BuildBeat canonical pilots remain evidence only for their respective local boundaries.
 
 Copied v1.16 legacy projects must not hand-author, copy, or rename a manifest to fabricate schema 2 ownership. Continue with manual CHANGELOG-based maintenance by default; if mechanical upgrades are genuinely required, use the [v1.16 legacy migration guide](docs/LEGACY-V1.16-MIGRATION.md) to rebuild the baseline under review on a dedicated Git branch.
 
@@ -235,23 +235,27 @@ The compact brownfield layout moves the scripts, operator card, and version mark
 | Production-config drift | `jq`, a SHA tool, project `live-config.sh` | Explicitly skipped; no production-state conclusion |
 | Live-version query | project `live-status.sh` and platform CLI | Explicitly unconfigured; documentation is not treated as live truth |
 | L3 test evidence | real `SUITES` in project `verify-status.sh` | Reports unconfigured; cannot claim automation is green |
-| CLI inspection/scaffolding/mechanical upgrade | Node.js 20+, the npm registry, or this source checkout | Published npm v0 remains read-only; the local source implements Wave 1 writes and WP3.1 schema 2 mechanical upgrade, but upgrade has no independent real-project pilot and is unpushed/unreleased; project uninstall remains frozen, and the Skill/manual equivalent stays supported |
+| CLI inspection/scaffolding/mechanical upgrade | Node.js 20+, the npm registry, or this source checkout | Published npm v0 remains read-only; the local source implements Wave 1 writes plus the Phase 3 schema 2 mechanical upgrade/checking enhancements, but upgrade has no independent genuine version-increment pilot and is unpushed/unreleased; project uninstall remains frozen, and the Skill/manual equivalent stays supported |
+
+Skill-only, the published npm v0, and the current local source candidate are three different availability surfaces; `doctor`, `init/adopt`, and `upgrade` also own different responsibilities. See the bilingual [BuildBeat capability matrix](docs/CAPABILITY-MATRIX.md) for the full split and bidirectional interoperability evidence.
 
 ## Continue reading
 
 - [`SKILL.md`](SKILL.md): the single complete entry point for the methodology and bootstrap;
-- [`example/`](example/): the full file snapshot of a fictional project after one iteration;
+- [`example/`](example/): the protocol teaching snapshot of a fictional project after one completed iteration (executable scripts still reference the template SSOT);
 - [`lessons.md`](lessons.md): real anti-patterns, root causes, and fixes;
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): the new product direction, design principles, and the CLI execution amendment effective on 2026-08-24;
 - [`docs/EXECUTION-PLAN.md`](docs/EXECUTION-PLAN.md): the current phased work packages, dependencies, acceptance criteria, and frozen boundaries;
 - [`docs/CLI-STRATEGY-2026-08.md`](docs/CLI-STRATEGY-2026-08.md): the official-source CLI comparison and its evidence limits;
 - [`docs/CHECKS.md`](docs/CHECKS.md): file-bus invariants, Gate/evidence tokens, finding codes, and strict-mode semantics;
 - [`docs/CLI.md`](docs/CLI.md): command boundaries, file ownership, manifest, mechanical upgrade, and manual-removal contract;
+- [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md): bilingual capability and interoperability mapping across Skill-only, published npm v0, and the local source candidate;
 - [`docs/LEGACY-V1.16-MIGRATION.md`](docs/LEGACY-V1.16-MIGRATION.md): safe paths for a copied v1.16 project to remain manually managed or rebuild a schema 2 baseline under review (Chinese);
 - [`docs/CLI-PILOT-2026-08-23.md`](docs/CLI-PILOT-2026-08-23.md): read-only CLI v0 evidence from three real brownfield projects and the write-boundary decision;
 - [`docs/PHASE1-PILOT-2026-08-24.md`](docs/PHASE1-PILOT-2026-08-24.md): the read-only Phase 1 file-bus pilot across the example, an active multi-repo projection, and a real single-repo code tree;
 - [`docs/PHASE2-PILOT-2026-08-25.md`](docs/PHASE2-PILOT-2026-08-25.md): the three real-directory Wave 1 write paths, Tide preservation hashes, UI-detection feedback, and final local Git/hook/hash evidence;
 - [`docs/PHASE2-BUILDBEAT-PILOT-2026-08-25.md`](docs/PHASE2-BUILDBEAT-PILOT-2026-08-25.md): the fresh BuildBeat canonical namespace regression, Tide preservation recheck, and Gate3 closure evidence;
+- [`docs/PHASE4-STABILITY-AUDIT-2026-08-25.md`](docs/PHASE4-STABILITY-AUDIT-2026-08-25.md): the status, evidence boundary, and still-open release blocker for all 12 roadmap §15 hard gates (Chinese);
 - [`docs/RELEASING.md`](docs/RELEASING.md): npm release Gates, verification, and the Trusted Publishing migration;
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): contribution, verification, and pull-request boundaries;
 - [`SECURITY.md`](SECURITY.md): supported versions and the private vulnerability-reporting channel;

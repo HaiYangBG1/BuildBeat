@@ -181,7 +181,7 @@ contracts / decisions / status / evidence
 
 ### 3.2 当前 CLI 状态
 
-已独立验证并发布的 CLI v0 只承担检查和只读规划，`init/adopt` 必须带 `--dry-run`，所有项目写入 fail-closed。Phase 0–2 已形成本地基线 `b062f25`：Wave 1 `init/adopt`、manifest schema 2、Confirmed STACK 漂移检查和 marketplace plugin 均完成沙箱验证，Wave 1 另有 BuildBeat canonical 真实目录与 Gate3 证据。当前未发布 checkout 已完成 WP3.1–WP3.4：schema 2 机械 `upgrade`、Gate/证据强关联、多仓版本 join 与扫描边界报告均通过 disposable Git/文件系统沙箱；WP4.1 另补齐了新协议教学全貌与 v1.16 legacy 迁移指南。bundle 仍为 `v1.16`，所以这些源码/文档候选不是已发布行为，真实旧版本到新 bundle 的独立升级试点也尚未发生。项目 `uninstall`、`diff`、工作流命令扩张与三方合并引擎继续冻结。Skill 仍承担项目语义和人工 Gate。
+已独立验证并发布的 CLI v0 只承担检查和只读规划，`init/adopt` 必须带 `--dry-run`，所有项目写入 fail-closed。Phase 0–2 已形成本地基线 `b062f25`：Wave 1 `init/adopt`、manifest schema 2、Confirmed STACK 漂移检查和 marketplace plugin 均完成沙箱验证，Wave 1 另有 BuildBeat canonical 真实目录与 Gate3 证据。当前未发布 checkout 已完成 WP3.1–WP3.4：schema 2 机械 `upgrade`、Gate/证据强关联、多仓版本 join 与扫描边界报告均通过 disposable Git/文件系统沙箱；WP4.1–WP4.2 又补齐了新协议教学全貌、v1.16 legacy 迁移指南、Skill-only/CLI 能力矩阵、双向互操作回归和双语终校。bundle 仍为 `v1.16`，所以这些源码/文档候选不是已发布行为，真实旧版本到新 bundle 的独立升级试点也尚未发生。项目 `uninstall`、`diff`、工作流命令扩张与三方合并引擎继续冻结。Skill 仍承担项目语义和人工 Gate。
 
 ### 3.3 主要缺口
 
@@ -189,7 +189,6 @@ contracts / decisions / status / evidence
 |---|---|
 | Phase 3 仍缺真实项目刷新证据 | Gate/多仓/扫描边界目前是源码与 disposable fixture 候选，不能外推为任一真实项目当前一致 |
 | 机械升级缺真实版本增量证据 | 当前 bundle 与真实 schema 2 安装同为 `v1.16`，沙箱矩阵不能外推为真实升级试点或发布就绪 |
-| Skill-only / CLI 能力矩阵与双语终校未完成 | 当前能力分散在 README、SKILL、CLI 合同与执行计划，对外发布前还需一张权威对照与双语一致性收口 |
 | 发布序列尚未拍板 | v1.17–v1.20 分段还是合并候选会影响 tag、release note 与 registry 回读顺序，但不阻塞本地源码继续演进 |
 | 外部分发仍是旧 namespace | npm/GitHub 远端名、稳定版本序列和 registry 回读尚未完成 BuildBeat 发布收口 |
 
@@ -694,7 +693,7 @@ CLI 侧：
 
 **目标**：在 Wave 1 的 schema 2 基线上补齐有边界的机械升级，并完善多仓和 Gate 检查，不扩张工作流命令面。
 
-当前进度：WP3.1–WP3.4 的机械 upgrade、Gate/证据强关联、多仓漂移与扫描边界报告源码及 disposable Git 沙箱候选已完成，Phase 3 源码范围闭合；WP4.1 示例全貌与 legacy 迁移指南也已完成，下一本地实现项是 WP4.2 能力矩阵与文档终校。真实版本增量 upgrade 试点保留为发布前独立证据闸。
+当前进度：WP3.1–WP3.4 的机械 upgrade、Gate/证据强关联、多仓漂移与扫描边界报告源码及 disposable Git 沙箱候选已完成，Phase 3 源码范围闭合；WP4.1–WP4.2 的示例/迁移、能力矩阵、双语终校与硬门槛归档也已完成。下一项 WP4.3 涉及外部分发标识，等待人工决策；真实版本增量 upgrade 试点保留为发布前独立证据闸。
 
 交付：
 
@@ -723,7 +722,7 @@ CLI 侧：
 
 品牌名已在 2026-08-25 拍板；远端仓库、npm 包和发布动作不阻塞 Phase 0–3，也不由本地改名自动授权。
 
-当前进度：WP4.1 已以合成、hash 可校验但明确不可复制的 schema 2 教学 manifest 补齐 `example/`，并用集中指南区分“legacy 继续手工维护”与“经批准在专用分支重建基线”。下一项是 WP4.2；本收口没有执行真实项目升级或任何外部分发。
+当前进度：WP4.1 已以合成、hash 可校验但明确不可复制的 schema 2 教学 manifest 补齐 `example/`，并用集中指南区分“legacy 继续手工维护”与“经批准在专用分支重建基线”；WP4.2 已完成能力矩阵、双语终校、双向互操作回归与§15 硬门槛归档。下一项是须人工拍板的 WP4.3；本收口没有执行真实项目升级或任何外部分发。
 
 ---
 
@@ -815,6 +814,8 @@ CLI 侧：
 11. 真实项目试点通过，而不仅是模板测试通过；
 12. README、SKILL、AGENTS、示例和 CLI 帮助不存在相互矛盾的定位。
 
+2026-08-25 的 WP4.2 逐条归档见 [`PHASE4-STABILITY-AUDIT-2026-08-25.md`](PHASE4-STABILITY-AUDIT-2026-08-25.md)。当前只有 11/12 达到本地源码候选口径：第 11 条仍缺真实版本增量 upgrade 与 WP3.3/WP3.4 真实环境刷新，所以本文不宣称新版协议已稳定发布或写入式 CLI 已在 npm 可用。
+
 ---
 
 ## 16. 当前明确删除、暂缓与待决事项
@@ -850,17 +851,18 @@ CLI 侧：
 
 ## 17. 下一步执行清单
 
-1. 用本文替换旧《演进规划书》；
-2. 更新 README 中英文定位，去除“团队激活”和 `emit` 等旧方向；
-3. 为执行同步不变量建立独立设计说明和测试用例；
-4. 改造 `SKILL.md` 与 `AGENTS.md` 的开工/收工协议；
-5. 先增强 `bus-check`、`verify-status`，再增加新的模板；
-6. 建立 Skill-only compatibility test；
-7. 建立 CLI/Skill interoperability test；
-8. 在执行同步稳定后实现 Bootstrap/Adopt 的安全写入；
-9. 再加入可选 standards 与 ADR；
-10. 最后完成 schema 2 机械升级和多仓增强；项目卸载继续走手册；
-11. BuildBeat 本地 namespace 迁移完成后，外部包名、仓库名与发布迁移必须另立 Gate。
+1. [x] 用本文替换旧《演进规划书》；
+2. [x] 更新 README 中英文定位，去除“团队激活”和 `emit` 等旧方向；
+3. [x] 为执行同步不变量建立独立设计说明和测试用例；
+4. [x] 改造 `SKILL.md` 与 `AGENTS.md` 的开工/收工协议；
+5. [x] 增强 `bus-check`、`verify-status`，再增加新的模板；
+6. [x] 建立 Skill-only compatibility test；
+7. [x] 建立 CLI/Skill 双向 interoperability test；
+8. [x] 在执行同步稳定后实现 Bootstrap/Adopt 的安全写入；
+9. [x] 加入可选 standards 与 ADR；
+10. [x] 完成 schema 2 机械升级和多仓增强的本地源码候选；项目卸载继续走手册，真实版本增量 upgrade 仍是独立发布门槛；
+11. [x] 完成 BuildBeat 本地 namespace、能力矩阵、双语文档与硬门槛归档；
+12. [ ] 人工决定 WP4.3 外部包名与仓库名策略；远端改名、push、tag、GitHub Release、npm publish 与发布迁移仍须另立 Gate 和逐项授权。
 
 ---
 

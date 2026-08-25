@@ -54,7 +54,7 @@ BuildBeat 把这些问题收敛成四个支柱：
 
 候选合并到 GitHub 默认分支后，第一条仍使用当前仓库地址 `/plugin marketplace add HaiYangBG1/solobaton`；远端仓库改名是独立外部动作。插件只携带 Skill、模板、示例和参考文档，不把 npm CLI 的顶层 `bin/` 暴露进 Claude Code；是否对项目执行写入仍受当前 CLI 发布状态、确认屏和人工 Gate 约束。完整打包边界见 [`plugins/buildbeat/README.md`](plugins/buildbeat/README.md)。
 
-### CLI：npm v0 仍只读，本地源码候选进入 Wave 2
+### CLI：npm v0 仍只读，本地源码候选已含 Wave 1/2
 
 v1.16 新增零第三方运行时依赖的 Node.js 20+ CLI；从 `solobaton@1.16.1` 起通过 npm 正式分发。该 npm 包名是 BuildBeat 的 legacy distribution ID：未加 scope 的 `buildbeat` 已被其他项目占用，本仓不会冒用。面向已发布 v0 的执行示例继续使用 `solobaton@latest`，避免把尚未发布的 BuildBeat 命令写成可用事实：
 
@@ -76,7 +76,7 @@ npm uninstall --global solobaton       # 移除全局 CLI
 
 这里的安装、更新、移除只管理 **legacy CLI 包和 `solobaton` 可执行文件**，不会创建、升级或删除项目里的协作骨架。`doctor` 检查已有骨架的布局、版本、关键文件、占位符、Hook 与依赖降级；`init/adopt --dry-run` 分别规划默认/紧凑布局。省略 `--dry-run` 会明确拒绝且不创建任何文件，`solobaton upgrade/uninstall` 仍未开放。当前源码候选的 canonical 命令是 `buildbeat doctor`，本地入口为 `node bin/buildbeat.js ...`；`bin/solobaton.js` 只保留为兼容别名。完整契约见 [`docs/CLI.md`](docs/CLI.md)。
 
-Phase 0–2 已形成本地源仓基线提交 `b062f25`，但未推送、未发布。当前 checkout 在 Wave 1 `init/adopt` 受控写入之外，又实现了 WP3.1 的 schema-2-only 机械 `upgrade`：同 major 按 manifest/hash 替换未改的 managed 文件，冲突默认零写，`--force` 也永不覆盖 project-owned 内容或不安全路径；跨 major 另需 `--major`。该升级实现已通过一次性 Git 沙箱回归，尚未完成独立真实项目试点，也未进入 npm。WP2.7 legacy namespace 与 WP2.8 BuildBeat canonical namespace 的既有试点仍只证明各自当时的本地边界。
+Phase 0–2 已形成本地源仓基线提交 `b062f25`，但未推送、未发布。当前 checkout 在 Wave 1 `init/adopt` 受控写入之外，已完成 Phase 3 源码范围：schema-2-only 机械 `upgrade`、Gate/证据强关联、多仓漂移与扫描边界报告。`upgrade` 同 major 按 manifest/hash 替换未改的 managed 文件，冲突默认零写，`--force` 也永不覆盖 project-owned 内容或不安全路径；跨 major 另需 `--major`。这些增量已通过一次性 Git/文件系统沙箱回归，但真实版本增量 upgrade 与 WP3.3/WP3.4 真实环境刷新尚未完成，也未进入 npm。WP2.7 legacy namespace 与 WP2.8 BuildBeat canonical namespace 的既有试点仍只证明各自当时的本地边界。
 
 已拷出的 v1.16 legacy 项目不得手写、复制或重命名 manifest 来伪造 schema 2 所有权。默认继续按 CHANGELOG 手工维护；如果确需进入机械升级，按 [v1.16 legacy 迁移指南](docs/LEGACY-V1.16-MIGRATION.md) 在专用 Git 分支受控重建基线。
 
@@ -233,23 +233,27 @@ flowchart LR
 | 生产配置漂移 | `jq`、SHA 工具、项目 `live-config.sh` | 明确跳过，不能外推生产状态 |
 | 线上版本查询 | 项目 `live-status.sh` 和平台 CLI | 明确未配置，不引用文档版本冒充线上事实 |
 | L3 测试证据 | 项目填写 `verify-status.sh` 的 `SUITES` | 只能报告未配置，不能声称自动化测试已绿 |
-| CLI 检查/脚手架/机械升级 | Node.js 20+、npm registry 或本仓库源码 | npm 已发布 v0 仍只读；本地源码已实现 Wave 1 写入和 WP3.1 schema 2 机械升级，但升级尚无独立真实项目试点、未推送、未发布；项目 uninstall 继续冻结，Skill/手动等价路径始终保留 |
+| CLI 检查/脚手架/机械升级 | Node.js 20+、npm registry 或本仓库源码 | npm 已发布 v0 仍只读；本地源码已实现 Wave 1 写入与 Phase 3 schema 2 机械升级/检查增强，但升级尚无独立真实版本增量试点、未推送、未发布；项目 uninstall 继续冻结，Skill/手动等价路径始终保留 |
+
+Skill-only、已发布 npm v0 和当前本地源码候选是三个不同可用面；`doctor`、`init/adopt`、`upgrade` 也不承担相同责任。完整对照和双向互操作证据见 [BuildBeat 能力矩阵](docs/CAPABILITY-MATRIX.md)。
 
 ## 继续阅读
 
 - [`SKILL.md`](SKILL.md)：方法论与 Bootstrap 的唯一完整入口；
-- [`example/`](example/)：虚构「简账」项目跑完一期后的完整文件快照；
+- [`example/`](example/)：虚构「简账」项目一期收尾的协议教学快照（可执行脚本仍引用模板 SSOT）；
 - [`lessons.md`](lessons.md)：真实反模式、根因与解法；
 - [`docs/ROADMAP.md`](docs/ROADMAP.md)：新版产品方向、设计原则与 2026-08-24 生效的 CLI 执行修订；
 - [`docs/EXECUTION-PLAN.md`](docs/EXECUTION-PLAN.md)：当前分阶段工作包、依赖、验收和冻结边界；
 - [`docs/CLI-STRATEGY-2026-08.md`](docs/CLI-STRATEGY-2026-08.md)：基于官方来源的 CLI 策略对照与证据边界；
 - [`docs/CHECKS.md`](docs/CHECKS.md)：文件总线不变量、Gate/证据令牌、finding code 与严格模式规格；
 - [`docs/CLI.md`](docs/CLI.md)：CLI 命令边界、文件所有权、manifest、机械升级和手动移除合同；
+- [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md)：Skill-only、已发布 npm v0 与本地源码候选的双语能力/互操作对照；
 - [`docs/LEGACY-V1.16-MIGRATION.md`](docs/LEGACY-V1.16-MIGRATION.md)：v1.16 拷出项目继续手工维护或受控重建 schema 2 基线的安全路径；
 - [`docs/CLI-PILOT-2026-08-23.md`](docs/CLI-PILOT-2026-08-23.md)：三个真实存量项目的 CLI v0 只读试点与写入边界决策；
 - [`docs/PHASE1-PILOT-2026-08-24.md`](docs/PHASE1-PILOT-2026-08-24.md)：Phase 1 文件总线在 example、活跃多仓投影和真实单仓代码树上的只读试点；
 - [`docs/PHASE2-PILOT-2026-08-25.md`](docs/PHASE2-PILOT-2026-08-25.md)：Wave 1 三条真实目录写路径、Tide 保护摘要、UI 探测反馈与最终本地 Git/Hook/hash 证据；
 - [`docs/PHASE2-BUILDBEAT-PILOT-2026-08-25.md`](docs/PHASE2-BUILDBEAT-PILOT-2026-08-25.md)：BuildBeat canonical namespace 的新真实目录回归、Tide 保护复核与 Gate3 关闭证据；
+- [`docs/PHASE4-STABILITY-AUDIT-2026-08-25.md`](docs/PHASE4-STABILITY-AUDIT-2026-08-25.md)：演进书 §15 的 12 条硬门槛现状、证据边界与未关闭发布阻塞；
 - [`docs/RELEASING.md`](docs/RELEASING.md)：npm 发布 Gate、验证与 Trusted Publishing 迁移；
 - [`CONTRIBUTING.md`](CONTRIBUTING.md)：贡献、验证和 PR 边界；
 - [`SECURITY.md`](SECURITY.md)：支持版本与私密漏洞报告通道；

@@ -295,6 +295,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 > 5 个 `.sh` 自己定位协调层根(向上找 `pm/NOW.md`),整树搬到 `pm/scripts/` 即得 §3 紧凑布局,脚本本身不用改。同伴脚本(`live-status.sh` / `live-config.sh`)要和它们放同一目录。
 >
 > 仓库级 CLI 的命令、exit code、schema 1 兼容/三策略 schema 2 文件所有权、机械 upgrade 与手动移除边界见 [docs/CLI.md](docs/CLI.md)。CLI 与 Skill 共用同一协议,但职责不同:Skill 做代码级理解与人 Gate,CLI 只做确定性生命周期机械动作;项目 `uninstall` 命令继续冻结。
+> Skill-only / 已发布 npm v0 / 当前本地源码候选的可用面、CLI 三组生命周期入口和双向互操作证据见 [docs/CAPABILITY-MATRIX.md](docs/CAPABILITY-MATRIX.md)。
 > legacy v1.16 项目的所有权分类、受控 rebaseline 步骤、回退和证据边界见 [docs/LEGACY-V1.16-MIGRATION.md](docs/LEGACY-V1.16-MIGRATION.md)。
 
 ## 10. 反模式与实战教训
