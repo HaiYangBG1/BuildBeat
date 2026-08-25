@@ -77,7 +77,7 @@ npm uninstall --global @haiyangbg/buildbeat       # 只移除全局 CLI 包
 
 包管理器的安装、更新、移除只管理 **CLI 包和可执行文件**，不会创建、升级或删除项目里的协作骨架。`doctor` 只读检查；`init/adopt` 必须先看完整计划，并在无 blocker、干净 Git 和明确确认后才写入；`upgrade` 只接受 canonical schema 2 基线，按 manifest/hash 做机械升级，冲突时零写。`diff/uninstall` 与工作流命令扩张继续冻结。canonical 命令是 `buildbeat`；`solobaton` executable 只保留兼容别名。完整契约见 [`docs/CLI.md`](docs/CLI.md)。
 
-`1.21.0` 在已验证的 `1.20.0` 生命周期上新增统一域回复格式：收口时按「已做 → 未做 → 下一步」输出，证据紧跟对应的已做事项；CLI 命令和安全边界不扩张。`--force` 仍永不覆盖 project-owned 内容或不安全路径，跨 major 另需 `--major`。源码 checkout、Git tag 和 npm artifact 是不同证据面，发布状态与真实试点边界必须以 [`docs/RELEASING.md`](docs/RELEASING.md) 和对应 GitHub Release/registry 回读为准。
+`1.21.0` 已独立验证发布，并在 `1.20.0` 生命周期上新增统一域回复格式：收口时按「已做 → 未做 → 下一步」输出，证据紧跟对应的已做事项；CLI 命令和安全边界不扩张。`--force` 仍永不覆盖 project-owned 内容或不安全路径，跨 major 另需 `--major`。源码 checkout、Git tag 和 npm artifact 是不同证据面，精确发布证据见 [`docs/V1.21-RELEASE-EVIDENCE-2026-08-25.md`](docs/V1.21-RELEASE-EVIDENCE-2026-08-25.md)。
 
 已拷出的 v1.16 legacy 项目不得手写、复制或重命名 manifest 来伪造 schema 2 所有权。默认继续按 CHANGELOG 手工维护；如果确需进入机械升级，按 [v1.16 legacy 迁移指南](docs/LEGACY-V1.16-MIGRATION.md) 在专用 Git 分支受控重建基线。
 
@@ -236,9 +236,9 @@ flowchart LR
 | 生产配置漂移 | `jq`、SHA 工具、项目 `live-config.sh` | 明确跳过，不能外推生产状态 |
 | 线上版本查询 | 项目 `live-status.sh` 和平台 CLI | 明确未配置，不引用文档版本冒充线上事实 |
 | L3 测试证据 | 项目填写 `verify-status.sh` 的 `SUITES` | 只能报告未配置，不能声称自动化测试已绿 |
-| CLI 检查/脚手架/机械升级 | Node.js 20+、npm registry 或本仓库源码 | legacy npm v0 仍只读；scoped BuildBeat 1.20 已完成真实 schema 2 版本增量试点，registry artifact 是否可用仍须独立回读；项目 uninstall 继续冻结，Skill/手动等价路径始终保留 |
+| CLI 检查/脚手架/机械升级 | Node.js 20+、npm registry 或本仓库源码 | legacy npm v0 仍只读；scoped BuildBeat 1.21 已独立验证，真实 schema 2 版本增量试点仍由 v1.20 证据支撑；项目 uninstall 继续冻结，Skill/手动等价路径始终保留 |
 
-Skill-only、legacy npm v0 和 scoped BuildBeat 1.20 是三个不同可用面；源码 checkout、registry artifact 与真实项目也必须分别核验。`doctor`、`init/adopt`、`upgrade` 不承担相同责任。完整对照见 [BuildBeat 能力矩阵](docs/CAPABILITY-MATRIX.md)，真实版本增量证据见 [v1.20 试点记录](docs/PHASE4-V1.20-PILOT-2026-08-25.md)。
+Skill-only、legacy npm v0 和 scoped BuildBeat 1.21 是三个不同可用面；源码 checkout、registry artifact 与真实项目也必须分别核验。`doctor`、`init/adopt`、`upgrade` 不承担相同责任。完整对照见 [BuildBeat 能力矩阵](docs/CAPABILITY-MATRIX.md)，真实版本增量证据见 [v1.20 试点记录](docs/PHASE4-V1.20-PILOT-2026-08-25.md)。
 
 ## 继续阅读
 
@@ -250,7 +250,7 @@ Skill-only、legacy npm v0 和 scoped BuildBeat 1.20 是三个不同可用面；
 - [`docs/CLI-STRATEGY-2026-08.md`](docs/CLI-STRATEGY-2026-08.md)：基于官方来源的 CLI 策略对照与证据边界；
 - [`docs/CHECKS.md`](docs/CHECKS.md)：文件总线不变量、Gate/证据令牌、finding code 与严格模式规格；
 - [`docs/CLI.md`](docs/CLI.md)：CLI 命令边界、文件所有权、manifest、机械升级和手动移除合同；
-- [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md)：Skill-only、legacy npm v0 与 scoped BuildBeat 1.20 的双语能力/互操作对照；
+- [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md)：Skill-only、legacy npm v0 与 scoped BuildBeat 1.21 的双语能力/互操作对照；
 - [`docs/LEGACY-V1.16-MIGRATION.md`](docs/LEGACY-V1.16-MIGRATION.md)：v1.16 拷出项目继续手工维护或受控重建 schema 2 基线的安全路径；
 - [`docs/CLI-PILOT-2026-08-23.md`](docs/CLI-PILOT-2026-08-23.md)：三个真实存量项目的 CLI v0 只读试点与写入边界决策；
 - [`docs/PHASE1-PILOT-2026-08-24.md`](docs/PHASE1-PILOT-2026-08-24.md)：Phase 1 文件总线在 example、活跃多仓投影和真实单仓代码树上的只读试点；

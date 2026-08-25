@@ -1,10 +1,10 @@
 # BuildBeat CLI lifecycle contract
 
-Status: **BuildBeat `1.21.0` scoped-distribution candidate** · canonical package `@haiyangbg/buildbeat` · canonical executable `buildbeat` · legacy package `solobaton@1.16.3` remains the independently verified read-only v0 · Node.js 20+ · zero third-party runtime dependencies. The 1.21 candidate keeps the verified 1.20 lifecycle command and safety boundaries, and adds the standard domain-response contract to the Skill and managed scaffold. The genuine lifecycle version-increment pilot remains archived in [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md), while exact 1.21 registry publication is separately gated by [`RELEASING.md`](RELEASING.md).
+Status: **BuildBeat `1.21.0` independently verified scoped distribution** · canonical package `@haiyangbg/buildbeat` · canonical executable `buildbeat` · legacy package `solobaton@1.16.3` remains the independently verified read-only v0 · Node.js 20+ · zero third-party runtime dependencies. The 1.21 release keeps the verified 1.20 lifecycle command and safety boundaries, and adds the standard domain-response contract to the Skill and managed scaffold. The genuine lifecycle version-increment pilot remains archived in [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md); exact 1.21 registry and supply-chain evidence is archived in [`V1.21-RELEASE-EVIDENCE-2026-08-25.md`](V1.21-RELEASE-EVIDENCE-2026-08-25.md).
 
-The CLI does not replace `SKILL.md`. The Skill owns code-aware reasoning, minimal questions, project semantics, and human Gates. The CLI owns deterministic inspection, scaffold mechanics, manifest/hash bookkeeping, and bounded mechanical upgrade in the current source candidate. Synchronous file-bus checks remain authoritative in the project-local scripts specified by [`CHECKS.md`](CHECKS.md).
+The CLI does not replace `SKILL.md`. The Skill owns code-aware reasoning, minimal questions, project semantics, and human Gates. The CLI owns deterministic inspection, scaffold mechanics, manifest/hash bookkeeping, and bounded mechanical upgrade in the current scoped distribution. Synchronous file-bus checks remain authoritative in the project-local scripts specified by [`CHECKS.md`](CHECKS.md).
 
-The bilingual [`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) is the compact authority for what Skill-only, the legacy npm v0, and BuildBeat 1.20 can each do. Command details and safety semantics remain authoritative in this document.
+The bilingual [`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) is the compact authority for what Skill-only, the legacy npm v0, and BuildBeat 1.21 can each do. Command details and safety semantics remain authoritative in this document.
 
 ## Command boundary and phased availability
 
