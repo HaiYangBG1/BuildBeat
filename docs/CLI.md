@@ -1,6 +1,6 @@
 # BuildBeat CLI lifecycle contract
 
-Status: **BuildBeat `1.20.0` scoped-distribution candidate** · canonical package `@haiyangbg/buildbeat` · canonical executable `buildbeat` · legacy package `solobaton@1.16.3` remains the independently verified read-only v0 · Node.js 20+ · zero third-party runtime dependencies. The 1.20 candidate merges Phase 0–3, including bounded `init/adopt` writes and schema-2-only mechanical `upgrade`; the genuine version-increment pilot is archived in [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md), while exact registry publication remains separately gated by [`RELEASING.md`](RELEASING.md).
+Status: **BuildBeat `1.21.0` scoped-distribution candidate** · canonical package `@haiyangbg/buildbeat` · canonical executable `buildbeat` · legacy package `solobaton@1.16.3` remains the independently verified read-only v0 · Node.js 20+ · zero third-party runtime dependencies. The 1.21 candidate keeps the verified 1.20 lifecycle command and safety boundaries, and adds the standard domain-response contract to the Skill and managed scaffold. The genuine lifecycle version-increment pilot remains archived in [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md), while exact 1.21 registry publication is separately gated by [`RELEASING.md`](RELEASING.md).
 
 The CLI does not replace `SKILL.md`. The Skill owns code-aware reasoning, minimal questions, project semantics, and human Gates. The CLI owns deterministic inspection, scaffold mechanics, manifest/hash bookkeeping, and bounded mechanical upgrade in the current source candidate. Synchronous file-bus checks remain authoritative in the project-local scripts specified by [`CHECKS.md`](CHECKS.md).
 
@@ -46,7 +46,7 @@ The target command whitelist is intentionally small:
 | Milestone | Enabled main commands | Boundary |
 |---|---|---|
 | legacy `solobaton@1.16.3` | `doctor`, `init --dry-run`, `adopt --dry-run`, `version` | independently verified read-only v0; deprecated distribution ID after scoped migration |
-| BuildBeat `1.20.0` | `doctor`, `init`, `adopt`, `upgrade`, `version` | merged Phase 0–3 command set; writes remain bounded by the transaction and human-Gate contracts below |
+| BuildBeat `1.21.0` | `doctor`, `init`, `adopt`, `upgrade`, `version` | unchanged Phase 0–3 command set; writes remain bounded by the transaction and human-Gate contracts below |
 
 `help`, `--help`, and `--version` are meta entry points. `diff` and `uninstall` stay reserved and return `command_not_available`; `gate`, `adr`, `standards`, `check`, and other workflow commands are outside the approved CLI scope. HELP text and regression tests must lock this boundary.
 
@@ -127,8 +127,8 @@ Schema 2 is the first write-capable shape targeted by Wave 1:
 ```json
 {
   "schemaVersion": 2,
-  "scaffoldVersion": "v1.20",
-  "cliVersion": "1.20.0",
+  "scaffoldVersion": "v1.21",
+  "cliVersion": "1.21.0",
   "layout": "default",
   "installedAt": "2026-08-24T00:00:00.000Z",
   "files": {

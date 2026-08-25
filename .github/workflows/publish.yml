@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Exact annotated release tag, for example v1.20.0
+        description: Exact annotated release tag, for example v1.21.0
         required: true
         type: string
 
