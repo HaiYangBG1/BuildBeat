@@ -694,7 +694,7 @@ CLI 侧：
 
 **目标**：在 Wave 1 的 schema 2 基线上补齐有边界的机械升级，并完善多仓和 Gate 检查，不扩张工作流命令面。
 
-当前进度：WP3.1 机械 upgrade 与 WP3.2 Gate/证据强关联的源码及 disposable Git 沙箱候选已完成；WP3.3 多仓漂移是下一实现项。真实版本增量 upgrade 试点保留为发布前独立证据闸。
+当前进度：WP3.1 机械 upgrade、WP3.2 Gate/证据强关联与 WP3.3 多仓漂移的源码及 disposable Git 沙箱候选已完成；WP3.4 边界报告是下一实现项。真实版本增量 upgrade 试点保留为发布前独立证据闸。
 
 交付：
 

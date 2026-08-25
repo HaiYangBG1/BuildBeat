@@ -25,9 +25,9 @@ npm run pack:check
 The runner validates JSON syntax, registered code/level pairs, stable unique code order, exact summary counts, relative safe paths, coverage reasons, and strict blocking. The fixture set covers healthy legacy boards, broken NOW pointers, completed work without evidence, Gate reason/traceability/protocol failures, positive UI versus Gate2 `n/a`, exact decision-row lookup, valid and misplaced completed evidence, ghost hashes, stale live boards, truncated reference scans, legal partial presence plus valid/Draft/invalid optional standards, matching/conflicting/unverified STACK baselines, legal/illegal ADR Status, and broken ADR supersession. The remaining dynamic scenarios cover:
 
 - clean and bloated coordination state;
-- the teaching example's 11 intentional ghost hashes while its optional standards/ADR remain structurally clean and its omitted code repositories keep STACK observation explicitly unverified;
+- the teaching example's 11 intentional ghost hashes while its optional standards/ADR remain structurally clean and its omitted code repositories stay explicit in STACK and multi-repository coverage;
 - ghost hashes, including URL false positives and mixed URL/hash segments;
-- automatic discovery of a sub-repository whose name contains spaces;
+- automatic discovery of sub-repositories whose names contain spaces, plus runtime-generated nested Git repositories for mapped version agreement, definite CHANGELOG/contract/deployment drift, and an unmapped-repository `sync.unverified` boundary;
 - per-domain status write boundaries and the iteration-ritual exception;
 - bulk staging and its explicit override;
 - provider-side contract reminders without client-consumer noise;

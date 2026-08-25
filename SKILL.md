@@ -72,6 +72,8 @@ description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工�
 > 搬不动的东西与布局无关:`AGENTS.md`(+ `CLAUDE.md` 指针)与 `.claude/agents/` 是工具装载约定,永远在项目根。
 >
 > 🔴 **装载入口走开放标准 `AGENTS.md`,不绑厂商**(教训 15)。标准语义 = 会话从被编辑文件所在目录**向上收集沿途所有 `AGENTS.md` 合并、离得最近的优先**,所以「根写全局、子仓写局部」是白捡的层叠能力,不用自己发明。只认 `CLAUDE.md` 的工具靠根上一份**一行指针**兼容(内容单点在 `AGENTS.md`,复制过去 = 自造 SSOT 腐烂;也别用符号链接,Windows 上 git 默认 `core.symlinks=false` 会静默退化成文本文件)。同理**不要**引入 gitignore 的本地覆盖文件(如 `AGENTS.override.md`):本文件装的是红线与护栏,允许不进 git 的本地覆盖 = 给绕过护栏开后门,reviewer 与 pre-commit 都看不见。
+>
+> 多仓项目在 `contracts/PROTOCOL.md` 维护唯一 `buildbeat-multirepo-map:v1`:逐仓绑定 `repo`、含契约快照版本的 `contract` 文件和 `bus-baseline.json` app（无部署显式 `n/a`）。`bus-check` 只比较这组显式来源；缺仓/缺来源保留 `sync.unverified`，确定版本矛盾才报 `sync.multirepo_drift`，不从目录名或自然语言猜。
 
 ## 4. 总线十条规则(写进项目根 AGENTS.md,模板已含)
 
@@ -258,7 +260,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 | [templates/pm/status/README.md](templates/pm/status/README.md) | 状态分写约定 + 域文件模板 |
 | [templates/pm/changes/README.md](templates/pm/changes/README.md) | 重轨变更 delta 提案流程 + 模板 |
 | [templates/pm/adr/README.md](templates/pm/adr/README.md) / [ADR 模板](templates/pm/adr/ADR-0000-template.md) | 可选 ADR 判据、四态 Status 与替代链;默认不生成 |
-| [templates/contracts/PROTOCOL.md](templates/contracts/PROTOCOL.md) | 契约唯一入口骨架 |
+| [templates/contracts/PROTOCOL.md](templates/contracts/PROTOCOL.md) | 契约唯一入口骨架 + 多仓版本事实来源 map |
 | [templates/standards/STACK.md](templates/standards/STACK.md) / [CODE](templates/standards/CODE.md) / [REVIEW](templates/standards/REVIEW.md) / [DESIGN](templates/standards/DESIGN.md) | 可选 project-owned 规范;缺失跳过,Draft 显式待确认,Confirmed STACK 比对 v1 可核对基线,DESIGN 仅 UI 项目 |
 | [templates/.claude/agents/reviewer.md](templates/.claude/agents/reviewer.md) | 只读核查门 subagent(`milestone` / `risk-delta` / `closure`) |
 | [templates/scripts/bus-check.sh](templates/scripts/bus-check.sh) | 开工护栏(含 live-status 钩子、子仓同步、最近拍板、幽灵 hash 核验、STACK/生产漂移检测集成;`--strict` 机器闸模式) |

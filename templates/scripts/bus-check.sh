@@ -61,6 +61,7 @@ finding_rank() {
     sync.now_bloated) echo 10 ;;
     sync.ghost_hash) echo 20 ;;
     sync.production_drift) echo 30 ;;
+    sync.multirepo_drift) echo 35 ;;
     sync.l3_stale) echo 40 ;;
     sync.l3_unconfigured) echo 50 ;;
     sync.scan_truncated) echo 60 ;;
@@ -229,6 +230,336 @@ detect_ui_signal() {
     esac
   done < "$ui_files"
   return 1
+}
+
+is_release_version_token() {
+  case "$1" in
+    *$'\n'*|*$'\r'*|*$'\t'*) return 1 ;;
+  esac
+  [ "${#1}" -le 100 ] || return 1
+  printf '%s\n' "$1" \
+    | grep -Eq '^[vV]?[0-9]+(\.[0-9]+){1,2}(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+}
+
+normalize_release_version() {
+  normalized_version="$1"
+  case "$normalized_version" in
+    v*|V*) normalized_version="${normalized_version#?}" ;;
+  esac
+  printf '%s\n' "$normalized_version"
+}
+
+# The first non-Unreleased H2 heading is the only CHANGELOG version source.
+# Free-form production notes remain visible to people but are not guessed into
+# a version; projects can adopt a canonical release heading to close coverage.
+read_changelog_head_version() {
+  changelog_path="$1"
+  changelog_heading="$(awk '
+    /^##[[:space:]]+/ {
+      lower=tolower($0)
+      if (lower !~ /unreleased/) { print; exit }
+    }
+  ' "$changelog_path" 2>/dev/null || true)"
+  [ -n "$changelog_heading" ] || return 1
+  changelog_version="$(printf '%s\n' "$changelog_heading" \
+    | sed -E 's/^##[[:space:]]+//; s/[[:space:]].*$//; s/^\[//; s/\]$//')"
+  is_release_version_token "$changelog_version" || return 1
+  printf '%s\n' "$changelog_version"
+}
+
+# A mapped contract file must expose exactly one canonical snapshot line and a
+# single backticked release token. This validates linkage, not contract truth.
+read_contract_snapshot_version() {
+  contract_path="$1"
+  contract_lines="$(grep -E '契约快照对应版本' "$contract_path" 2>/dev/null || true)"
+  contract_count="$(printf '%s\n' "$contract_lines" | awk 'NF { n++ } END { print n+0 }')"
+  [ "$contract_count" -eq 1 ] || return 1
+  # shellcheck disable=SC2016 # backticks are literal Markdown delimiters
+  contract_version="$(printf '%s\n' "$contract_lines" \
+    | sed -nE 's/.*契约快照对应版本[^`]*`([^`]*)`.*/\1/p')"
+  [ -n "$contract_version" ] || return 1
+  is_release_version_token "$contract_version" || return 1
+  printf '%s\n' "$contract_version"
+}
+
+multirepo_map_value_safe() {
+  map_value="$1"; map_value_max="$2"
+  case "$map_value" in
+    *$'\n'*|*$'\r'*|*$'\t'*) return 1 ;;
+  esac
+  [ -n "$map_value" ] && [ "${#map_value}" -le "$map_value_max" ] \
+    && ! printf '%s\n' "$map_value" | grep -Eq '[|`"\\]|<[^>]*>'
+}
+
+multirepo_repo_path_safe() {
+  multirepo_map_value_safe "$1" 200 || return 1
+  ! printf '%s\n' "$1" \
+    | grep -Eq '(^/|/$|(^|/)\.\.?(/|$)|//)'
+}
+
+# Cross-check only explicitly joined sources. contracts/PROTOCOL.md owns the
+# expected repo inventory and source map; implicit directory/prose inference
+# would turn unrelated version domains into false drift.
+check_multirepo_drift() {
+  multirepo_map_path="contracts/PROTOCOL.md"
+  multirepo_map_raw="$BUS_TMP/multirepo.map.raw"
+  multirepo_records="$BUS_TMP/multirepo.records"
+  multirepo_expected="$BUS_TMP/multirepo.expected"
+  multirepo_discovered="$BUS_TMP/multirepo.discovered"
+  : > "$multirepo_map_raw"
+  : > "$multirepo_records"
+  : > "$multirepo_expected"
+  : > "$multirepo_discovered"
+
+  for multirepo_item in "${SUBREPOS[@]:-}"; do
+    [ -n "$multirepo_item" ] || continue
+    printf '%s\n' "${multirepo_item#./}" >> "$multirepo_discovered"
+  done
+  LC_ALL=C sort -u "$multirepo_discovered" -o "$multirepo_discovered"
+
+  multirepo_map_real="$(realpath "$multirepo_map_path" 2>/dev/null || true)"
+  multirepo_map_unsafe=0
+  if [ ! -f "$multirepo_map_path" ] || [ -L "$multirepo_map_path" ] || [ -z "$multirepo_map_real" ]; then
+    multirepo_map_unsafe=1
+  else
+    case "$multirepo_map_real" in
+      "$ROOT_PHYS"/*) ;;
+      *) multirepo_map_unsafe=1 ;;
+    esac
+  fi
+  if [ "$multirepo_map_unsafe" -eq 1 ]; then
+    if [ ! -s "$multirepo_discovered" ]; then
+      echo "  · 未发现子仓;多仓漂移检查不适用"
+      return
+    fi
+    while IFS= read -r multirepo_repo; do
+      echo "  ⚠️  $multirepo_repo 未在可读契约 map 中登记 —— 多仓版本关系未核验"
+      add_finding "sync.unverified" "unverified" "Discovered repo=$multirepo_repo has no readable buildbeat-multirepo-map:v1 source." "$multirepo_repo"
+    done < "$multirepo_discovered"
+    return
+  fi
+
+  multirepo_marker_count="$(grep -c '^<!-- buildbeat-multirepo-map:v1$' "$multirepo_map_path" 2>/dev/null || true)"
+  if [ "$multirepo_marker_count" -eq 0 ]; then
+    if [ ! -s "$multirepo_discovered" ]; then
+      echo "  · 未发现子仓;未配置多仓 map 不产生 finding"
+      return
+    fi
+    while IFS= read -r multirepo_repo; do
+      echo "  ⚠️  $multirepo_repo 未在 buildbeat-multirepo-map:v1 登记"
+      add_finding "sync.unverified" "unverified" "Discovered repo=$multirepo_repo is absent from buildbeat-multirepo-map:v1." "$multirepo_repo"
+    done < "$multirepo_discovered"
+    return
+  fi
+
+  multirepo_map_invalid=0
+  if ! awk '
+    $0 == "<!-- buildbeat-multirepo-map:v1" {
+      starts++
+      if (inside) bad=1
+      inside=1
+      next
+    }
+    inside && $0 == "-->" {
+      closes++
+      inside=0
+      next
+    }
+    inside { print }
+    END {
+      if (starts != 1 || closes != 1 || inside || bad) exit 2
+    }
+  ' "$multirepo_map_path" > "$multirepo_map_raw"; then
+    multirepo_map_invalid=1
+  fi
+
+  while IFS= read -r multirepo_line || [ -n "$multirepo_line" ]; do
+    multirepo_line="${multirepo_line%$'\r'}"
+    [ -n "$multirepo_line" ] || continue
+    if ! printf '%s\n' "$multirepo_line" \
+        | grep -Eq '^repo=[^|]+\|contract=[^|]+\|deployment=[^|]+$'; then
+      multirepo_map_invalid=1
+      continue
+    fi
+    IFS='|' read -r multirepo_repo_field multirepo_contract_field multirepo_deployment_field <<< "$multirepo_line"
+    multirepo_repo="${multirepo_repo_field#repo=}"
+    multirepo_contract="${multirepo_contract_field#contract=}"
+    multirepo_deployment="${multirepo_deployment_field#deployment=}"
+    multirepo_repo_trimmed="$(printf '%s' "$multirepo_repo" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+    multirepo_contract_trimmed="$(printf '%s' "$multirepo_contract" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+    multirepo_deployment_trimmed="$(printf '%s' "$multirepo_deployment" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+    if [ "$multirepo_repo" != "$multirepo_repo_trimmed" ] \
+        || [ "$multirepo_contract" != "$multirepo_contract_trimmed" ] \
+        || [ "$multirepo_deployment" != "$multirepo_deployment_trimmed" ] \
+        || ! multirepo_repo_path_safe "$multirepo_repo" \
+        || ! multirepo_map_value_safe "$multirepo_contract" 240 \
+        || ! printf '%s\n' "$multirepo_contract" | grep -Eq '^contracts/[^/].*\.md$' \
+        || ! multirepo_map_value_safe "$multirepo_deployment" 100; then
+      multirepo_map_invalid=1
+      continue
+    fi
+    printf '%s\t%s\t%s\n' "$multirepo_repo" "$multirepo_contract" "$multirepo_deployment" >> "$multirepo_records"
+    printf '%s\n' "$multirepo_repo" >> "$multirepo_expected"
+  done < "$multirepo_map_raw"
+
+  multirepo_record_count="$(awk 'NF { n++ } END { print n+0 }' "$multirepo_records")"
+  multirepo_duplicate="$(LC_ALL=C sort "$multirepo_expected" | uniq -d | head -1)"
+  if [ "$multirepo_record_count" -eq 0 ] || [ -n "$multirepo_duplicate" ]; then
+    multirepo_map_invalid=1
+  fi
+  LC_ALL=C sort -u "$multirepo_expected" -o "$multirepo_expected"
+
+  if [ "$multirepo_map_invalid" -eq 1 ]; then
+    echo "  ⚠️  $multirepo_map_path 的 buildbeat-multirepo-map:v1 缺失、重复或格式无效"
+    add_finding "sync.unverified" "unverified" "The buildbeat-multirepo-map:v1 source is missing, duplicated, empty, or malformed." "$multirepo_map_path"
+    while IFS= read -r multirepo_repo; do
+      add_finding "sync.unverified" "unverified" "Discovered repo=$multirepo_repo could not be joined because the multi-repo map is invalid." "$multirepo_repo"
+    done < "$multirepo_discovered"
+    return
+  fi
+
+  while IFS= read -r multirepo_repo; do
+    grep -Fxq "$multirepo_repo" "$multirepo_expected" && continue
+    echo "  ⚠️  $multirepo_repo 已发现但未在 buildbeat-multirepo-map:v1 登记"
+    add_finding "sync.unverified" "unverified" "Discovered repo=$multirepo_repo is absent from buildbeat-multirepo-map:v1." "$multirepo_repo"
+  done < "$multirepo_discovered"
+
+  while IFS=$'\t' read -r multirepo_repo multirepo_contract multirepo_deployment; do
+    [ -n "$multirepo_repo" ] || continue
+    multirepo_changelog="$multirepo_repo/CHANGELOG.md"
+    multirepo_issue=0
+    multirepo_drift=0
+    multirepo_changelog_ok=0
+    multirepo_contract_ok=0
+    multirepo_deployment_ok=0
+    multirepo_changelog_version=""
+    multirepo_contract_version=""
+    multirepo_deployment_version=""
+
+    if ! grep -Fxq "$multirepo_repo" "$multirepo_discovered"; then
+      echo "  ⚠️  $multirepo_repo 在 map 中登记,但未被既有 SUBREPOS 深度发现"
+      add_finding "sync.unverified" "unverified" "Expected repo=$multirepo_repo was not observed by the bounded SUBREPOS discovery." "$multirepo_repo"
+      continue
+    fi
+
+    multirepo_repo_real="$(realpath "$multirepo_repo" 2>/dev/null || true)"
+    if [ -L "$multirepo_repo" ] || [ -z "$multirepo_repo_real" ]; then
+      echo "  ⚠️  $multirepo_repo 不是可安全扫描的 regular 子仓目录"
+      add_finding "sync.unverified" "unverified" "Expected repo=$multirepo_repo is a symlink or cannot be resolved safely." "$multirepo_repo"
+      continue
+    fi
+    case "$multirepo_repo_real" in
+      "$ROOT_PHYS"/*) ;;
+      *)
+        echo "  ⚠️  $multirepo_repo 解析到协调根之外"
+        add_finding "sync.unverified" "unverified" "Expected repo=$multirepo_repo resolves outside the coordination root." "$multirepo_repo"
+        continue
+        ;;
+    esac
+
+    if [ ! -f "$multirepo_changelog" ] || [ -L "$multirepo_changelog" ]; then
+      echo "  ⚠️  $multirepo_repo 缺少可读 regular CHANGELOG.md"
+      add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo has no readable regular CHANGELOG.md version source." "$multirepo_changelog"
+      multirepo_issue=1
+    else
+      multirepo_changelog_version="$(read_changelog_head_version "$multirepo_changelog" || true)"
+      if [ -z "$multirepo_changelog_version" ]; then
+        echo "  ⚠️  $multirepo_changelog 的首个已发布 H2 不是可核对版本"
+        add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo CHANGELOG head has no parseable released version token." "$multirepo_changelog"
+        multirepo_issue=1
+      else
+        multirepo_changelog_ok=1
+      fi
+    fi
+
+    multirepo_contract_rc=0
+    validate_reference "$multirepo_contract" "$multirepo_map_path" || multirepo_contract_rc=$?
+    if [ "$multirepo_contract_rc" -ne 0 ]; then
+      echo "  ⚠️  $multirepo_repo 的契约版本来源不可读:$multirepo_contract"
+      add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo contract version source is not a readable in-root file: $multirepo_contract." "$multirepo_contract"
+      multirepo_issue=1
+    else
+      multirepo_contract_version="$(read_contract_snapshot_version "$multirepo_contract" || true)"
+      if [ -z "$multirepo_contract_version" ]; then
+        echo "  ⚠️  $multirepo_contract 缺少唯一可解析的契约快照版本"
+        add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo contract source has no unique parseable snapshot version." "$multirepo_contract"
+        multirepo_issue=1
+      else
+        multirepo_contract_ok=1
+      fi
+    fi
+
+    multirepo_baseline="$SDIR/bus-baseline.json"
+    if [ "$multirepo_deployment" != "n/a" ]; then
+      multirepo_baseline_real="$(realpath "$multirepo_baseline" 2>/dev/null || true)"
+      if ! command -v jq >/dev/null 2>&1; then
+        echo "  ⚠️  $multirepo_repo 的部署基线需 jq 才能核对"
+        add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo deployment source requires jq: $multirepo_baseline#apps.$multirepo_deployment.imageTag." "$multirepo_baseline"
+        multirepo_issue=1
+      elif [ ! -f "$multirepo_baseline" ] || [ -L "$multirepo_baseline" ] \
+          || [ -z "$multirepo_baseline_real" ]; then
+        echo "  ⚠️  $multirepo_repo 的部署基线不可读:$multirepo_baseline"
+        add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo deployment baseline is missing or not a regular file: $multirepo_baseline." "$multirepo_baseline"
+        multirepo_issue=1
+      else
+        case "$multirepo_baseline_real" in
+          "$ROOT_PHYS"/*)
+            multirepo_deployment_version="$(jq -er --arg app "$multirepo_deployment" \
+              '.apps[$app].imageTag | select(type == "string" and length > 0)' \
+              "$multirepo_baseline" 2>/dev/null || true)"
+            if [ -z "$multirepo_deployment_version" ] || ! is_release_version_token "$multirepo_deployment_version"; then
+              echo "  ⚠️  $multirepo_baseline#apps.$multirepo_deployment.imageTag 缺少可核对版本"
+              add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo deployment baseline has no parseable imageTag at apps.$multirepo_deployment." "$multirepo_baseline"
+              multirepo_issue=1
+            else
+              multirepo_deployment_ok=1
+            fi
+            ;;
+          *)
+            echo "  ⚠️  $multirepo_repo 的部署基线解析到协调根之外"
+            add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo deployment baseline resolves outside the coordination root." "$multirepo_baseline"
+            multirepo_issue=1
+            ;;
+        esac
+      fi
+    fi
+
+    if [ "$multirepo_changelog_ok" -eq 1 ] && [ "$multirepo_contract_ok" -eq 1 ]; then
+      multirepo_changelog_normalized="$(normalize_release_version "$multirepo_changelog_version")"
+      multirepo_contract_normalized="$(normalize_release_version "$multirepo_contract_version")"
+      [ "$multirepo_changelog_normalized" = "$multirepo_contract_normalized" ] || multirepo_drift=1
+    fi
+    if [ "$multirepo_deployment" != "n/a" ] \
+        && [ "$multirepo_deployment_ok" -eq 1 ] \
+        && [ "$multirepo_changelog_ok" -eq 1 ]; then
+      multirepo_deployment_normalized="$(normalize_release_version "$multirepo_deployment_version")"
+      multirepo_changelog_normalized="$(normalize_release_version "$multirepo_changelog_version")"
+      [ "$multirepo_deployment_normalized" = "$multirepo_changelog_normalized" ] || multirepo_drift=1
+    fi
+    if [ "$multirepo_deployment" != "n/a" ] \
+        && [ "$multirepo_deployment_ok" -eq 1 ] \
+        && [ "$multirepo_contract_ok" -eq 1 ]; then
+      multirepo_deployment_normalized="$(normalize_release_version "$multirepo_deployment_version")"
+      multirepo_contract_normalized="$(normalize_release_version "$multirepo_contract_version")"
+      [ "$multirepo_deployment_normalized" = "$multirepo_contract_normalized" ] || multirepo_drift=1
+    fi
+
+    if [ "$multirepo_drift" -eq 1 ]; then
+      multirepo_changelog_fact="${multirepo_changelog_version:-unverified}"
+      multirepo_contract_fact="${multirepo_contract_version:-unverified}"
+      multirepo_deployment_fact="n/a"
+      [ "$multirepo_deployment" = "n/a" ] \
+        || multirepo_deployment_fact="$multirepo_baseline#apps.$multirepo_deployment.imageTag=${multirepo_deployment_version:-unverified}"
+      echo "  ⚠️  $multirepo_repo 版本漂移: $multirepo_changelog=$multirepo_changelog_fact ↔ $multirepo_contract=$multirepo_contract_fact ↔ $multirepo_deployment_fact"
+      add_finding "sync.multirepo_drift" "conflict" "Version sources disagree for repo=$multirepo_repo: $multirepo_changelog=$multirepo_changelog_fact; $multirepo_contract=$multirepo_contract_fact; $multirepo_deployment_fact." "$multirepo_changelog"
+    elif [ "$multirepo_issue" -eq 0 ]; then
+      if [ "$multirepo_deployment" = "n/a" ]; then
+        echo "  ✅ $multirepo_repo 多仓版本一致: CHANGELOG.md ↔ $multirepo_contract (deployment=n/a)"
+      else
+        echo "  ✅ $multirepo_repo 多仓版本一致: CHANGELOG.md ↔ $multirepo_contract ↔ $multirepo_baseline#apps.$multirepo_deployment.imageTag"
+      fi
+    fi
+  done < "$multirepo_records"
 }
 
 check_stack_drift() {
@@ -599,6 +930,12 @@ for r in "${SUBREPOS[@]:-}"; do
     printf "  ·  %-32s (无上游)\n" "${r#./}"
   fi
 done
+echo ""
+
+# 1.6) Multi-repo version/contract/deployment joins. Only explicit map rows can
+# establish equality; every missing/unmapped source remains visible as unverified.
+echo "── 多仓版本 / 契约 / 部署基线 ──"
+check_multirepo_drift
 echo ""
 
 # 1.7) 机器闸自检(一道闸的强度不超过守闸规则的强度 —— 用在跑的闸守新闸;.git/hooks 不进版本控制,克隆后闸不存在)

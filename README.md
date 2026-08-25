@@ -149,6 +149,7 @@ bash scripts/design-preview.sh 1          # 有 UI 时，Gate2 前打开真实�
 - **单点事实**：`NOW.md` 只做薄指针，契约、决策、状态和线上查询各有唯一入口。
 - **review-ready 核查门**：候选稳定、工作树干净、L3 证据已绿且没有已知待修项后，才启动一次独立 milestone reviewer。
 - **机器护栏**：`bus-check --strict`、pre-commit、gitleaks 和项目测试把确定性规则变成可执行检查。
+- **多仓漂移**：多仓项目在契约入口显式绑定各子仓 CHANGELOG、契约版本来源和本地部署基线 app；确定不一致才阻塞，缺仓或缺来源保持 unverified，不猜自然语言。
 - **可选规范与 ADR**：STACK/CODE/REVIEW/DESIGN 默认不生成；存在时检查三行声明、Rule ID 和 Draft/Confirmed 状态。Confirmed STACK 还只读比对显式基线与 Node、lockfile、Docker FROM 事实，无法覆盖时保持 unverified。长期难回退决定才建 ADR，并校验 Status 与 Superseded 链。
 - **生产状态证据**：项目接入 `live-status.sh` / `live-config.sh` 后，可检查部署平台配置与基线的漂移；它不自动证明运行中容器已经加载最新配置。
 - **存量接管**：先建立系统边界和最小验证能力，再把新地盘纳入完整总线，避免直接重写未知遗留行为。

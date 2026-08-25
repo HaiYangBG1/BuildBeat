@@ -288,6 +288,7 @@ registry = {
     "sync.now_bloated": "conflict",
     "sync.ghost_hash": "conflict",
     "sync.production_drift": "conflict",
+    "sync.multirepo_drift": "conflict",
     "sync.l3_stale": "warning",
     "sync.l3_unconfigured": "unverified",
     "sync.scan_truncated": "unverified",
@@ -399,11 +400,18 @@ assert not any(
     for item in report["findings"]
 )
 assert sum(item["code"] == "stack.unverified" for item in report["findings"]) == 1
+missing_repos = {
+    item["path"]
+    for item in report["findings"]
+    if item["code"] == "sync.unverified"
+    and item["message"].startswith("Expected repo=")
+}
+assert missing_repos == {"jz-web", "jz-api"}, missing_repos
 PY
 then
   fail "teaching example optional standards or ADR failed structural validation"
 fi
-pass "teaching example optional standards and ADR are structurally clean"
+pass "teaching example keeps optional standards/ADR clean and missing subrepos explicit"
 
 new_project default
 printf '%s\n' extra-1 extra-2 extra-3 >> "$PROJECT/pm/NOW.md"
@@ -487,6 +495,96 @@ git -C "$PROJECT/service one" commit -qm "service baseline"
 run_bus "$PROJECT" scripts/bus-check.sh --strict
 expect_status 0 "sub-repository names with spaces do not break automatic discovery"
 expect_contains "service one" "automatic discovery reports a sub-repository whose name contains spaces"
+
+# WP3.3 uses real nested Git repositories created at runtime because fixture
+# directories cannot check in another repository's .git metadata.
+new_project default
+mkdir -p "$PROJECT/service-one" "$PROJECT/service two"
+cat > "$PROJECT/service-one/CHANGELOG.md" <<'EOF'
+# Changelog
+
+## Unreleased
+
+## [1.2.3] - 2026-08-25
+EOF
+cat > "$PROJECT/service two/CHANGELOG.md" <<'EOF'
+# Changelog
+
+## [2.0.0] - 2026-08-25
+EOF
+for multirepo_fixture_repo in "service-one" "service two"; do
+  git -C "$PROJECT/$multirepo_fixture_repo" init -q
+  git -C "$PROJECT/$multirepo_fixture_repo" config user.name "BuildBeat Tests"
+  git -C "$PROJECT/$multirepo_fixture_repo" config user.email "tests@example.invalid"
+  git -C "$PROJECT/$multirepo_fixture_repo" add CHANGELOG.md
+  git -C "$PROJECT/$multirepo_fixture_repo" commit -qm "release baseline"
+done
+cat > "$PROJECT/contracts/PROTOCOL.md" <<'EOF'
+# Contract
+
+**契约快照对应版本:`v1.2.3`**
+
+<!-- buildbeat-multirepo-map:v1
+repo=service-one|contract=contracts/PROTOCOL.md|deployment=web
+repo=service two|contract=contracts/service-two.md|deployment=api
+-->
+EOF
+cat > "$PROJECT/contracts/service-two.md" <<'EOF'
+# Service two contract
+
+**契约快照对应版本:`2.0.0`**
+EOF
+cat > "$PROJECT/scripts/bus-baseline.json" <<'EOF'
+{
+  "apps": {
+    "web": {"imageTag": "v1.2.3", "perKeyFp": {}},
+    "api": {"imageTag": "2.0.0", "perKeyFp": {}}
+  }
+}
+EOF
+run_bus "$PROJECT" scripts/bus-check.sh --strict
+expect_status 0 "mapped multi-repository version sources pass strict when all facts agree"
+expect_contains "service-one 多仓版本一致" "multi-repository match names the first repository"
+expect_contains "service two 多仓版本一致" "multi-repository match preserves repository names with spaces"
+
+cat > "$PROJECT/scripts/bus-baseline.json" <<'EOF'
+{
+  "apps": {
+    "web": {"imageTag": "v1.2.3", "perKeyFp": {}},
+    "api": {"imageTag": "2.0.1", "perKeyFp": {}}
+  }
+}
+EOF
+run_bus_json "$PROJECT" scripts/bus-check.sh
+expect_status 1 "a definite multi-repository version mismatch blocks strict mode"
+expect_contains '"code":"sync.multirepo_drift"' "multi-repository mismatch uses the registered conflict code"
+expect_contains '"path":"service two/CHANGELOG.md"' "multi-repository mismatch points at the exact repository file"
+expect_contains 'contracts/service-two.md=2.0.0' "multi-repository mismatch names the contract fact source"
+expect_contains 'scripts/bus-baseline.json#apps.api.imageTag=2.0.1' "multi-repository mismatch names the deployment-baseline fact source"
+
+cat > "$PROJECT/scripts/bus-baseline.json" <<'EOF'
+{
+  "apps": {
+    "web": {"imageTag": "v1.2.3", "perKeyFp": {}},
+    "api": {"imageTag": "2.0.0", "perKeyFp": {}}
+  }
+}
+EOF
+mkdir -p "$PROJECT/service-extra"
+cat > "$PROJECT/service-extra/CHANGELOG.md" <<'EOF'
+# Changelog
+
+## [1.0.0] - 2026-08-25
+EOF
+git -C "$PROJECT/service-extra" init -q
+git -C "$PROJECT/service-extra" config user.name "BuildBeat Tests"
+git -C "$PROJECT/service-extra" config user.email "tests@example.invalid"
+git -C "$PROJECT/service-extra" add CHANGELOG.md
+git -C "$PROJECT/service-extra" commit -qm "unmapped baseline"
+run_bus_json "$PROJECT" scripts/bus-check.sh
+expect_status 0 "an unmapped discovered repository stays non-blocking and unverified"
+expect_contains 'Discovered repo=service-extra is absent from buildbeat-multirepo-map:v1.' "unmapped repository remains explicit in coverage"
+expect_contains '"path":"service-extra"' "unmapped repository finding keeps a precise relative path"
 
 new_project default
 printf '%s\n' '# product status' > "$PROJECT/pm/status/product.md"

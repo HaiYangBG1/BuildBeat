@@ -587,11 +587,12 @@ def check_execution_contracts() -> list[str]:
             "`git.not_initialized`",
         ),
         "docs/CHECKS.md": (
-            "Status: **Phase 3 WP3.2 implementation baseline**",
+            "Status: **Phase 3 WP3.3 implementation baseline**",
             "INV-1",
             "INV-8",
             "`confirmed`",
             "`unverified`",
+            "`sync.multirepo_drift`",
             "`gate.na_without_reason`",
             "`gate.na_inconsistent`",
             "`gate.invalid`",
@@ -610,6 +611,7 @@ def check_execution_contracts() -> list[str]:
             "`bus-check --format=json`",
             "Exit behavior:",
             "latest three dated rows",
+            "buildbeat-multirepo-map:v1",
         ),
         "docs/EXECUTION-PLAN.md": (
             "按 schema 分开的 policy 校验集合",
@@ -621,7 +623,8 @@ def check_execution_contracts() -> list[str]:
             "WP2.1–WP2.8 已完成本地闭环",
             "WP2.6 分发补强（候选完成）",
             "WP3.2 Gate/证据强关联（源码候选完成）",
-            "下一实现项是 WP3.3 多仓漂移",
+            "WP3.3 多仓漂移（源码候选完成）",
+            "下一实现项是 WP3.4 边界报告",
             "buildbeat@buildbeat-plugins",
             "PHASE1-PILOT-2026-08-24.md",
             "PHASE2-PILOT-2026-08-25.md",
@@ -685,12 +688,14 @@ def check_execution_contracts() -> list[str]:
             "`--yes` 只复用这次确认",
             "schema 2 机械 upgrade",
             "`pm/decisions.md:<行号>`",
+            "buildbeat-multirepo-map:v1",
         ),
         "templates/AGENTS.md": (
             "Builder 端到端负责",
             "不是人类岗位或审批链",
             "开工/收工护栏",
             "standards/DESIGN.md",
+            "buildbeat-multirepo-map:v1",
         ),
         "templates/pm/当期看板.md": (
             "- **证据**:",
@@ -703,10 +708,15 @@ def check_execution_contracts() -> list[str]:
         "templates/pm/NOW.md": (
             "`contracts/PROTOCOL.md`",
         ),
+        "templates/contracts/PROTOCOL.md": (
+            "buildbeat-multirepo-map:v1",
+            "repo=<代码子仓1>|contract=contracts/PROTOCOL.md|deployment=<bus-baseline.json app 名或 n/a>",
+        ),
         "templates/scripts/bus-check.sh": (
             "--format=json",
             'add_finding "gate.na_without_reason"',
             'add_finding "gate.na_inconsistent"',
+            'add_finding "sync.multirepo_drift"',
             'add_finding "evidence.missing"',
             'add_finding "evidence.outside_archive"',
             'add_finding "sync.scan_truncated"',
@@ -723,6 +733,7 @@ def check_execution_contracts() -> list[str]:
             "OUTPUT_SCHEMA_VERSION = 2",
             "MANIFEST_SCHEMA_VERSION = 2",
             'GITIGNORE_BEGIN_MARKER = "# >>> buildbeat managed >>>"',
+            '"<bus-baseline.json app 名或 n/a>"',
             'LEGACY_GITIGNORE_BEGIN_MARKER = "# >>> solobaton managed >>>"',
         ),
         "src/cli.js": (

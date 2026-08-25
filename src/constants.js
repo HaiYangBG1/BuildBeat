@@ -107,6 +107,8 @@ export const RENDER_REQUIRED_PLACEHOLDERS = {
     "<项目名>",
     "<vX.Y.Z>",
     "<上线日期>",
+    "<代码子仓1>",
+    "<bus-baseline.json app 名或 n/a>",
     "<边界A:服务X ↔ 服务Y>",
     "<对齐点>",
     "<怎么核的:实测命令/代码行/配置查询>",

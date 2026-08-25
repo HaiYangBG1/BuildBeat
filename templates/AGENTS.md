@@ -36,7 +36,7 @@
 **⑥ 核查门(review-ready + 一次候选核查)** —— 轻量机器闸每次提交都跑,受影响自动化测试按变更批次跑。**首次 milestone reviewer 只能在 review-ready 后启动**:工作包内实现与写者自查已完成;所有候选仓 `HEAD=candidate` 且工作树干净;受影响/全量 L3 与真渲染证据已绿;没有已知待修项或计划中的 candidate 修改。此前发现的鉴权/租户/Secret/fail-closed/持久化等实现问题统一记入实现语义清单并先自行收敛,**不得边改 candidate 边开 reviewer**;只有要修改已冻结对外契约或产生不可逆外部副作用才 `STOP_NOW`,批准后按一个风险批次做 `risk-delta`。默认每个工作包、每道 Gate 只启动 **1 次 milestone**;P0/P1 全部修完后再做 **1 次合并 closure**,P2 不复核。reviewer 返回前 candidate 若变化,原审查立即标 `SUPERSEDED`,不得把写者自发现的连续修补包装成 delta 链;重新满足 review-ready 后才启动替代 milestone。已完成 milestone 后出现新的高风险语义变化才核 `risk-delta`;同一 candidate 且机器证据仍绿直接复用。首轮报告保留原文,closure 只追加表。**完成 = hash + 可核验证据**;标准轨最低 L3,重轨与上线必须 L4,L1 只作补充定位。
 **⑦ 变更提案 + 状态分写** —— 跨工作包/共享边界变更走 `pm/changes/` delta 提案;**各 AI 视角只写自己的 `pm/status/{视角}.md`**,别人只读。状态按工作包/里程碑批量更新,不为每个子产物另起一次交接。
 **⑧ 视觉问题带图对比** —— 提 UI bug / 判设计符合性必附『实现截图 ⟷ 设计稿截图』并排 + 标注差异点;纯文字不算证据。
-**⑨ 单点事实** —— 线上版本只信 `bus-check` 实查(任何文档不写"当前线上 vX",契约快照版本仅 `PROTOCOL.md` 头部);每个收敛后的**真实决策包**只在 `pm/decisions.md` 记一行并回写落点,验收条目/推导结论/部分对话进度不单独记拍板;换期必跑压缩仪式(NOW 底部 checklist),**NOW 永远是薄指针、禁堆流水**。
+**⑨ 单点事实** —— 线上版本只信 `bus-check` 实查(任何文档不写"当前线上 vX",契约快照版本仅 `PROTOCOL.md` 头部);多仓项目的 repo/契约/本地部署基线 app 关系只写在 `PROTOCOL.md` 的 `buildbeat-multirepo-map:v1`,不从自然语言猜;每个收敛后的**真实决策包**只在 `pm/decisions.md` 记一行并回写落点,验收条目/推导结论/部分对话进度不单独记拍板;换期必跑压缩仪式(NOW 底部 checklist),**NOW 永远是薄指针、禁堆流水**。
 **⑩ Gate2 真渲染拍板** —— 设计拍板对象必须是真渲染可点原型(`bash scripts/design-preview.sh <期号>`);静态稿/截图只作参考。终签同样含真渲染走查。
 
 > **元原则:能实查的不问人** —— 查代码 / 配置 / 部署平台能得到的事实,不拿去问用户、不信文档、不信上游转述(规则⑨与②的推广)。

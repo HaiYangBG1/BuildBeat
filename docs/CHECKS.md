@@ -1,6 +1,6 @@
 # BuildBeat file-bus check specification
 
-Status: **Phase 3 WP3.2 implementation baseline** · normative bus-check schema: `1` · Phase 0–2 are committed locally in `b062f25`, while the current source checkout and legacy `solobaton@1.16.3` package metadata remain unpushed/unpublished and make no v1.18/v1.19/v1.20 release claim. CLI output/manifest schema 2 and the WP3.1 mechanical-upgrade candidate are specified separately in [`CLI.md`](CLI.md); neither changes this bus-check schema.
+Status: **Phase 3 WP3.3 implementation baseline** · normative bus-check schema: `1` · Phase 0–2 are committed locally in `b062f25`, while the current source checkout and legacy `solobaton@1.16.3` package metadata remain unpushed/unpublished and make no v1.18/v1.19/v1.20 release claim. CLI output/manifest schema 2 and the WP3.1 mechanical-upgrade candidate are specified separately in [`CLI.md`](CLI.md); neither changes this bus-check schema.
 
 This document is the single semantic source for `templates/scripts/bus-check.sh` and the same-directory scripts it orchestrates. It defines what a result means, not merely how output is colored. `SKILL.md`, board templates, fixtures, and script tests must use the same tokens and finding codes.
 
@@ -128,7 +128,26 @@ Observed and declared non-empty sets must match exactly. A declared `n/a` plus a
 
 The check is report-only: it never edits STACK, version files, package manifests, lockfiles, or Dockerfiles. Findings name dimensions but do not echo raw source/config values into JSON. Matching only confirms these three observed dimensions inside the scanned regular-file scope; it says nothing about frameworks, databases, deployment health, CI, licensing, remote repositories not present below the root, or semantic compatibility.
 
-### 3.6 Optional ADRs
+### 3.6 Explicit multi-repository version joins
+
+Multi-repository drift is checked only through one explicit project-owned map in `contracts/PROTOCOL.md`; directory names, architecture prose, package metadata, and live output are never guessed into version equality:
+
+```md
+<!-- buildbeat-multirepo-map:v1
+repo=service-web|contract=contracts/PROTOCOL.md|deployment=web
+repo=service-api|contract=contracts/api.md|deployment=n/a
+-->
+```
+
+Each non-empty row has exactly `repo=<path>|contract=<path>|deployment=<app-or-n/a>` with no surrounding whitespace. `repo` is a safe coordination-root-relative path expected to match the existing `SUBREPOS` discovery (independent Git repositories one or two levels below the root). `contract` is a safe `contracts/**/*.md` path containing exactly one `契约快照对应版本` line with one backticked release token. `deployment` is either an app key in the same-directory `bus-baseline.json` used by `drift-check.sh`, or the exact value `n/a` when that repository has no deployment source.
+
+The repository version comes only from the first non-`Unreleased` H2 in `<repo>/CHANGELOG.md`. Accepted headings are Keep-a-Changelog forms such as `## [1.2.3] - 2026-08-25` or `## v1.2`; accepted source tokens have two or three numeric components plus optional SemVer prerelease/build suffixes. One leading `v`/`V` is ignored for equality. Free-form release prose, package versions, Git tags, commit hashes, and a later convenient heading are not substituted for an invalid head source.
+
+For each mapped repository, every successfully observed source is compared pairwise. A definite mismatch emits `sync.multirepo_drift` at `conflict` and identifies the repository, `CHANGELOG.md`, mapped contract file, and `bus-baseline.json#apps.<app>.imageTag` fact source. A missing/unreadable/symlinked/out-of-root repository or source, invalid/duplicate/empty map, unparseable version, missing `jq`, missing app, missing deployment baseline, mapped repository outside the bounded discovery, or discovered repository absent from the map emits `sync.unverified`. A definite mismatch and an incomplete third source may emit both.
+
+No discovered repositories plus no map is a legal zero-finding state. A present map is the expected inventory, so a mapped-but-undiscovered repository remains explicitly unverified even when no nested repository was found. `deployment=n/a` compares CHANGELOG and contract only. This check is read-only and compares a local deployment baseline; it does not query production or prove that the baseline is current. `live-status.sh` and `drift-check.sh` retain those separate authority boundaries.
+
+### 3.7 Optional ADRs
 
 ADR files are named `pm/adr/ADR-NNNN-*.md`. The directory and all ADR files are optional; absence emits no ADR finding. Every present ADR contains exactly one canonical status line:
 
@@ -184,6 +203,7 @@ The initial registry is:
 | `sync.now_bloated` | `conflict` | NOW/status live coordination layer exceeds the configured rot limits | legacy behavior; code in Phase 1 |
 | `sync.ghost_hash` | `conflict` | a canonical status hash cannot resolve in any known repo | legacy behavior; code in Phase 1 |
 | `sync.production_drift` | `conflict` | configured drift adapter confirms a changed production fact | legacy behavior; code in Phase 1 |
+| `sync.multirepo_drift` | `conflict` | explicitly mapped CHANGELOG, contract, and/or deployment-baseline versions disagree | Phase 3 / WP3.3 |
 | `sync.l3_stale` | `warning` | configured suite evidence is absent, unreadable, or older than `BUS_L3_MAX_AGE_DAYS` (default `7`) | Phase 1 |
 | `sync.l3_unconfigured` | `unverified` | no real L3 suite is configured | Phase 1 |
 | `sync.scan_truncated` | `unverified` | size, depth, permission, or symlink boundary leaves relevant scope unchecked | Phase 1 fixture; full advice in Phase 3 |
@@ -261,11 +281,11 @@ Exit behavior:
 
 ## 7. Current versus planned implementation
 
-The current worktree candidate implements Phase 1, the Phase 2-A structural checks, and WP2.5 STACK observation from one finding collection: human rendering, schema 1 JSON, strict blocking, canonical Gate/evidence parsing, scoped reference scanning, L3 machine findings, explicit incomplete coverage, the three legacy strict checks, optional standards metadata/Rule-ID validation, exact Node/lockfile/Docker baseline comparison, and ADR status/supersession integrity. Default human and JSON report modes still return exit 0 after producing a trustworthy report; `--strict` returns exit 1 only for `conflict` or `error`.
+The current worktree candidate implements Phase 1, the Phase 2-A structural checks, WP2.5 STACK observation, WP3.2 Gate/evidence joins, and WP3.3 explicit multi-repository version joins from one finding collection: human rendering, schema 1 JSON, strict blocking, canonical Gate/evidence parsing, scoped reference scanning, L3 machine findings, explicit incomplete coverage, the three legacy strict checks, optional standards metadata/Rule-ID validation, exact Node/lockfile/Docker baseline comparison, ADR status/supersession integrity, and mapped CHANGELOG/contract/deployment-baseline comparison. Default human and JSON report modes still return exit 0 after producing a trustworthy report; `--strict` returns exit 1 only for `conflict` or `error`.
 
-Fixtures now execute both renderings. They compare finding codes, registered levels, counts, relative paths, coverage reasons, and strict status; retained human text assertions protect operator-facing compatibility. Matching, definite-conflict, and missing-observation STACK fixtures lock the WP2.5 result boundary. WP1.6 has also completed the example, active multi-repo projection, and real single-repo code-tree projection documented in [`PHASE1-PILOT-2026-08-24.md`](PHASE1-PILOT-2026-08-24.md). This closes the source/test/read-only-pilot candidate only: without separate release authorization and installed-project migration evidence, it remains an Unreleased candidate rather than v1.18 or installed-project behavior.
+Fixtures now execute both renderings. They compare finding codes, registered levels, counts, relative paths, coverage reasons, and strict status; retained human text assertions protect operator-facing compatibility. Matching, definite-conflict, and missing-observation STACK fixtures lock the WP2.5 result boundary. Runtime-generated nested Git repositories cover WP3.3 matching, definite drift, spaces in repository paths, and unmapped coverage without checking nested `.git` metadata into this source repository. WP1.6 has also completed the earlier example, active multi-repo projection, and real single-repo code-tree projection documented in [`PHASE1-PILOT-2026-08-24.md`](PHASE1-PILOT-2026-08-24.md). Current WP3.3 evidence remains a disposable local fixture, not a refreshed real-project pilot. Without separate release authorization and installed-project migration evidence, this remains an Unreleased candidate rather than released behavior.
 
-WP2.5 does not extend beyond its three explicit regular-file dimensions. Phase 3 remains responsible for deeper multi-repository drift, semantic Gate-to-decision line matching, and fuller permission/symlink boundary reporting. A green STACK comparison cannot be extrapolated into those scopes.
+WP2.5 does not extend beyond its three explicit regular-file dimensions. WP3.2 and WP3.3 add their separately mapped scopes, but a green STACK or multi-repository comparison still cannot be extrapolated into deployment health, semantic contract correctness, human approval, or unobserved permission/symlink scope. WP3.4 remains responsible for the consolidated boundary/response guide.
 
 ## 8. Three retained compatibility files
 

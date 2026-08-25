@@ -8,6 +8,12 @@
 **契约快照对应版本:`<vX.Y.Z>`**(<上线日期>)。
 > 🔴 **线上实况唯一查询口 = `bash scripts/bus-check.sh`**;本行只标「本快照写就时对应的版本」,其它文档一律不写「当前线上 vX」(规则⑨)。
 
+> 多仓项目逐仓填写下面的显式来源 map；单仓项目删除整个 block。`contract` 指向含唯一「契约快照对应版本」行的仓库相对 Markdown，`deployment` 填 `scripts/bus-baseline.json` 的 app key；确认无部署填 `n/a`。不要靠目录名或自然语言猜版本关系。
+
+<!-- buildbeat-multirepo-map:v1
+repo=<代码子仓1>|contract=contracts/PROTOCOL.md|deployment=<bus-baseline.json app 名或 n/a>
+-->
+
 ---
 
 ## 1. 当前契约快照
