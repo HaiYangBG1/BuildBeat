@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "buildbeat",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "displayName": "BuildBeat",
   "description": "File-first, human-gated engineering delivery for one or more end-to-end Builders and their AI coding sessions.",
   "author": {

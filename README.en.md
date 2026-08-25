@@ -128,6 +128,8 @@ You are the Fullstack perspective for the current work package. Own implementati
 You are the Testing perspective for the current work package. Own black-box acceptance, E2E, and evidence. Verify the current candidate.
 ```
 
+Every perspective closes its user-facing response as **Done → Not done → Next**. Done contains only functional or business outcomes, and evidence stays directly under the completed outcome it supports. Not done names the remaining outcome and its reason. A completed perspective says who takes the next baton and what they own; an incomplete perspective says who must provide or confirm what. If it can continue safely on its own, it keeps working instead of inventing a handoff or help request. See [`templates/指挥台.md`](templates/%E6%8C%87%E6%8C%A5%E5%8F%B0.md) for the full template.
+
 At the start of every session, synchronize the repository and run the guardrail:
 
 ```bash

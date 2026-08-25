@@ -113,7 +113,7 @@ plugins = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 matching = [item for item in plugins if item.get("id") == "buildbeat@buildbeat-plugins"]
 assert len(matching) == 1
 plugin = matching[0]
-assert plugin.get("version") == "0.2.0"
+assert plugin.get("version") == "0.2.1"
 assert plugin.get("scope") == "user"
 assert plugin.get("enabled") is True
 

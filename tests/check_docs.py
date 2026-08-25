@@ -259,6 +259,10 @@ def check_readme_shape() -> list[str]:
             "scoped BuildBeat 包承载完整有界生命周期",
             "the scoped BuildBeat package carries the bounded lifecycle",
         ),
+        (
+            "证据紧跟对应的已做事项",
+            "evidence stays directly under the completed outcome it supports",
+        ),
     )
     for zh_positioning, en_positioning in required_positioning_pairs:
         if zh_positioning not in zh:
@@ -777,6 +781,8 @@ def check_execution_contracts() -> list[str]:
             "开工同步(7 步)",
             "执行中同步(5 守则)",
             "收工同步(7 步)",
+            "### 6.4 域回复格式",
+            "我继续做，暂不交棒",
             "可选规范默认不生成",
             "历史债务与接管边界",
             "pendingPlaceholders",
@@ -789,6 +795,8 @@ def check_execution_contracts() -> list[str]:
             "docs/CAPABILITY-MATRIX.md",
         ),
         "templates/指挥台.md": (
+            "## 域回复怎么写",
+            "共同证据",
             "检查结果怎么读",
             "reason=limit|symlink|permission",
             "coverage.complete=false",
@@ -797,6 +805,8 @@ def check_execution_contracts() -> list[str]:
             "Builder 端到端负责",
             "不是人类岗位或审批链",
             "开工/收工护栏",
+            "**域回复格式**",
+            "下一棒是",
             "standards/DESIGN.md",
             "buildbeat-multirepo-map:v1",
         ),
@@ -897,7 +907,7 @@ def check_execution_contracts() -> list[str]:
         ),
         "plugins/buildbeat/.claude-plugin/plugin.json": (
             '"name": "buildbeat"',
-            '"version": "0.2.0"',
+            '"version": "0.2.1"',
             '"repository": "https://github.com/HaiYangBG1/BuildBeat"',
             "claude-code-plugin-manifest.json",
         ),
@@ -916,6 +926,12 @@ def check_execution_contracts() -> list[str]:
             "- Gate3: blocked",
             "- Gate4: n/a",
             "Manifest 的教学边界",
+            "## 域回复示例",
+            "下一棒是测试视角",
+        ),
+        "lessons.md": (
+            "## 19. 域回复各说各话",
+            "已做 → 未做 → 下一步",
         ),
     }
     for relative, fragments in contracts.items():
