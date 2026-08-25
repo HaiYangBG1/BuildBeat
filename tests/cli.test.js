@@ -12,6 +12,7 @@ import {
   rmSync,
   statSync,
   symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import os from "node:os";
@@ -610,7 +611,7 @@ test("symlinked planned parents and gitignore hosts are refused without traversa
   assert.ok(parentPlan.blockers.some((item) => item.code === "files.collide"));
   assert.equal(listRelative(outside).length, 0);
 
-  rmSync(path.join(target, "pm"));
+  unlinkSync(path.join(target, "pm"));
   writeFileSync(path.join(outside, "host-ignore"), "# outside\n");
   symlinkSync(path.join(outside, "host-ignore"), path.join(target, ".gitignore"));
   const ignoreResult = await invoke(["init", target, "--yes", "--json"]);

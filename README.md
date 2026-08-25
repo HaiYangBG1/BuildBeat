@@ -77,7 +77,7 @@ npm uninstall --global @haiyangbg/buildbeat       # 只移除全局 CLI 包
 
 包管理器的安装、更新、移除只管理 **CLI 包和可执行文件**，不会创建、升级或删除项目里的协作骨架。`doctor` 只读检查；`init/adopt` 必须先看完整计划，并在无 blocker、干净 Git 和明确确认后才写入；`upgrade` 只接受 canonical schema 2 基线，按 manifest/hash 做机械升级，冲突时零写。`diff/uninstall` 与工作流命令扩张继续冻结。canonical 命令是 `buildbeat`；`solobaton` executable 只保留兼容别名。完整契约见 [`docs/CLI.md`](docs/CLI.md)。
 
-`1.20.0` 是 Phase 0–3 的合并版本：包含 Wave 1 `init/adopt` 受控写入、schema-2-only `upgrade`、Gate/证据强关联、多仓漂移与扫描边界报告。`--force` 也永不覆盖 project-owned 内容或不安全路径；跨 major 另需 `--major`。源码 checkout、Git tag 和 npm artifact 仍是不同证据面，发布状态与真实试点边界必须以 [`docs/RELEASING.md`](docs/RELEASING.md) 和对应 GitHub Release/registry 回读为准。
+`1.21.0` 在已验证的 `1.20.0` 生命周期上新增统一域回复格式：收口时按「已做 → 未做 → 下一步」输出，证据紧跟对应的已做事项；CLI 命令和安全边界不扩张。`--force` 仍永不覆盖 project-owned 内容或不安全路径，跨 major 另需 `--major`。源码 checkout、Git tag 和 npm artifact 是不同证据面，发布状态与真实试点边界必须以 [`docs/RELEASING.md`](docs/RELEASING.md) 和对应 GitHub Release/registry 回读为准。
 
 已拷出的 v1.16 legacy 项目不得手写、复制或重命名 manifest 来伪造 schema 2 所有权。默认继续按 CHANGELOG 手工维护；如果确需进入机械升级，按 [v1.16 legacy 迁移指南](docs/LEGACY-V1.16-MIGRATION.md) 在专用 Git 分支受控重建基线。
 
@@ -125,6 +125,8 @@ chmod +x .git/hooks/pre-commit
 ```text
 你是当前工作包的测试视角，负责黑盒验收、E2E 和证据。验收当前候选。
 ```
+
+每个视角面向人收口时统一按「已做 → 未做 → 下一步」回复:`已做`只写功能/业务结果,证据紧跟对应的已做事项;`未做`写清事项和原因;本域完成就说下一棒是谁、接什么,未完成就说需要谁提供或确认什么。自己能继续就不交棒、不伪求助。完整模板见 [`templates/指挥台.md`](templates/%E6%8C%87%E6%8C%A5%E5%8F%B0.md)。
 
 每个会话开工先同步代码，再运行护栏：
 

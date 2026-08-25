@@ -79,7 +79,7 @@ npm uninstall --global @haiyangbg/buildbeat       # remove only the global CLI p
 
 Package-manager install, update, and removal operations manage only the **CLI package and executables**; they never create, upgrade, or delete a project's scaffold. `doctor` is read-only. `init/adopt` show the complete plan and write only after clean-Git, collision, blocker, and confirmation checks. `upgrade` accepts only a canonical schema 2 baseline and performs manifest/hash-based mechanical changes with zero writes on unresolved conflict. `diff/uninstall` and workflow-command expansion remain frozen. `buildbeat` is canonical; the `solobaton` executable remains only as a compatibility alias. See [`docs/CLI.md`](docs/CLI.md) for the complete contract.
 
-`1.20.0` is the merged Phase 0–3 version: bounded Wave 1 `init/adopt` writes, schema-2-only `upgrade`, stronger Gate/evidence joins, multi-repository drift, and scan-boundary reporting. `--force` still cannot overwrite project-owned content or unsafe paths, and a major transition separately requires `--major`. A source checkout, Git tag, and npm artifact remain different evidence surfaces; use [`docs/RELEASING.md`](docs/RELEASING.md) plus the matching GitHub Release and registry readback for release and pilot status.
+`1.21.0` adds a standard domain-response format on top of the verified `1.20.0` lifecycle: close out with Done → Not done → Next, and keep evidence directly under the completed outcome it supports. CLI commands and safety boundaries do not expand. `--force` still cannot overwrite project-owned content or unsafe paths, and a major transition separately requires `--major`. A source checkout, Git tag, and npm artifact remain different evidence surfaces; use [`docs/RELEASING.md`](docs/RELEASING.md) plus the matching GitHub Release and registry readback for release and pilot status.
 
 Copied v1.16 legacy projects must not hand-author, copy, or rename a manifest to fabricate schema 2 ownership. Continue with manual CHANGELOG-based maintenance by default; if mechanical upgrades are genuinely required, use the [v1.16 legacy migration guide](docs/LEGACY-V1.16-MIGRATION.md) to rebuild the baseline under review on a dedicated Git branch.
 
@@ -127,6 +127,8 @@ You are the Fullstack perspective for the current work package. Own implementati
 ```text
 You are the Testing perspective for the current work package. Own black-box acceptance, E2E, and evidence. Verify the current candidate.
 ```
+
+Every perspective closes its user-facing response as **Done → Not done → Next**. Done contains only functional or business outcomes, and evidence stays directly under the completed outcome it supports. Not done names the remaining outcome and its reason. A completed perspective says who takes the next baton and what they own; an incomplete perspective says who must provide or confirm what. If it can continue safely on its own, it keeps working instead of inventing a handoff or help request. See [`templates/指挥台.md`](templates/%E6%8C%87%E6%8C%A5%E5%8F%B0.md) for the full template.
 
 At the start of every session, synchronize the repository and run the guardrail:
 
