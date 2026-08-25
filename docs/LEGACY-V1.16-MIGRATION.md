@@ -10,7 +10,7 @@
 | 已确认要让后续版本进入机械 `upgrade` | **B. 受控重建 schema 2 基线** | 专用 Git 分支上重走 `adopt`，审查后才合并 |
 | 已有 CLI 真实写入的有效 schema 2 manifest | 不属本页 | 待有更新且已验证的 bundle 时才可按 [`CLI.md`](CLI.md) 运行 `upgrade` |
 
-已发布的 `solobaton@1.16.3` v0 仍只读。当前源码候选虽然已有受控 `init/adopt` 和 schema-2-only `upgrade`，但尚未推送、未发布，也没有“真实旧 schema 2 版本 → 新 bundle”的独立项目试点。
+已发布的 `solobaton@1.16.3` v0 仍只读。scoped BuildBeat `1.20.0` 已完成“真实旧 schema 2 版本 → 新 bundle”的独立项目试点，见 [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md)；但该试点不把没有真实 manifest 的 v1.16 legacy 项目自动变成可升级项目，registry artifact 也仍须独立回读。
 
 ## 红线：不猜历史所有权
 
@@ -40,7 +40,7 @@
 
 1. 确认目标仓已有可回退的 clean commit，新建专用迁移分支；记录旧 marker、布局、协调文件、脚本改写、`.gitignore` 片段、Hook 链和未验证范围。
 2. 将旧协调层的规划目标路径从原位移出，保留在 Git 历史或明确备份位置。`.gitignore` 只在 marker 唯一且边界可确认时移除旧的 BuildBeat/Solobaton 片段，逐字节保留片段外内容；marker 重复/不完整就停下人工核对。把这些变更形成一个单独可审查、worktree clean 的 checkpoint；不删业务代码，不清空未知目录。
-3. 仅从已锁定的当前源码候选运行 `node <verified-buildbeat-checkout>/bin/buildbeat.js adopt <project-root> --dry-run --json`，复核 layout、全部 collision/blocker、Git 状态、`.gitignore` 与 `pendingPlaceholders`。不将 `npx solobaton@latest` 当成可写命令。
+3. 仅从已锁定的 BuildBeat checkout 运行 `node <verified-buildbeat-checkout>/bin/buildbeat.js adopt <project-root> --dry-run --json`；若 scoped registry artifact 已独立回读，也可锁定 `@haiyangbg/buildbeat` 的精确版本。复核 layout、全部 collision/blocker、Git 状态、`.gitignore` 与 `pendingPlaceholders`。不将 `npx solobaton@latest` 当成可写命令。
 4. 同一屏计划获明确确认且 dry-run 无 blocker 后，才在该分支执行交互 apply；非交互 `--yes` 只能复用这次确认。CLI 最后写入 schema 2 manifest，不安装 Hook，不跨 Gate。
 5. 从迁移前 checkpoint 人工回灌项目事实、契约、决策、status、已配置测试和必要的自定义脚本。被项目改写的 `replace-if-unmodified` 文件以后可能进入冲突报告，这是正常的所有权保护。
 6. 可选 standards/ADR 按需手工恢复；填完 `pendingPlaceholders`，配置真实 `verify-status.sh` 与保留既有链的 pre-commit Hook。

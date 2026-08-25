@@ -454,10 +454,14 @@ printf '%s\n' '- root marker: `BUILDBEAT.md`' '- status family: `status/*.md`' >
 run_bus "$PROJECT" scripts/bus-check.sh --strict
 expect_status 0 "scoped references accept an existing root fallback and ignore wildcard prose"
 # shellcheck disable=SC2016 # backticks are literal Markdown delimiters
-printf '%s\n' '- unsafe traversal: `../contracts/PROTOCOL.md`' >> "$PROJECT/pm/NOW.md"
+printf '%s\n' '- safe source-relative link: `../contracts/PROTOCOL.md`' >> "$PROJECT/pm/NOW.md"
 run_bus "$PROJECT" scripts/bus-check.sh --strict
-expect_status 1 "scoped references reject traversal syntax even when its target exists"
-expect_contains "../contracts/PROTOCOL.md" "traversal failure reports the unsafe scoped token"
+expect_status 0 "scoped legacy prose accepts source-relative parent segments that resolve inside the root"
+# shellcheck disable=SC2016 # backticks are literal Markdown delimiters
+printf '%s\n' '- unsafe root escape: `../../outside.md`' >> "$PROJECT/pm/NOW.md"
+run_bus "$PROJECT" scripts/bus-check.sh --strict
+expect_status 1 "scoped references reject parent traversal that resolves outside the root"
+expect_contains "../../outside.md" "root-escape failure reports the unsafe scoped token"
 
 new_project default
 cat > "$PROJECT/pm/decisions.md" <<'EOF'

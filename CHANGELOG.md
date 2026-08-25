@@ -4,9 +4,21 @@
 
 ## Unreleased
 
+## v1.20.0 — 2026-08-25
+
+> 主题：把 Phase 0–3 合并为 BuildBeat 首个 scoped 正式候选，canonical 分发迁移到 `@haiyangbg/buildbeat` 与 `HaiYangBG1/BuildBeat`；旧 `solobaton` 包冻结为只读兼容入口。
+> **拷出项目升级**：真实 schema 2 v1.16 安装可先运行 `buildbeat upgrade --dry-run`，无 blocker 后再机械升级到 v1.20；legacy/无 manifest 项目继续走手工迁移指南。`--force` 不覆盖 project-owned，项目 uninstall 仍不开放。
+> **发布状态**：本条随不可变候选进入 tag；只有官方 registry 的 scoped artifact、SLSA provenance、签名、隔离安装、README 与 GitHub Release 全部回读后，才能补记为已验证发布。
+
+- **WP4.3 scoped 分发决策**：用户拍板立即迁移到 `@haiyangbg/buildbeat` 和 `HaiYangBG1/BuildBeat`；不冒用已被占用的 unscoped `buildbeat`。canonical executable 保持 `buildbeat`，`solobaton` 只保留包内兼容别名
+- **版本序列合并**：未对外发布的 v1.17/v1.18/v1.19 不伪造成中间 artifact；当前 Phase 0–3 统一进入 `1.20.0`，scaffold version 从 v1.16 形成真实增量到 v1.20
+- **legacy 包退场策略**：新 scoped artifact 与迁移回读全绿后，`solobaton@*` 只做 deprecation 提示，不 unpublish、不获得写入/upgrade 能力，避免破坏既有只读安装
+- **Claude plugin 迁移**：仓库入口更新为 `HaiYangBG1/BuildBeat`，插件版本升至 `0.2.0` 以刷新分发缓存；npm CLI `bin/` 仍不进入插件包
+- **真实 v1.20 升级试点**：在专用分支将真实 schema 2 项目从 scaffold `v1.16` / CLI `1.16.3` 升至 `v1.20` / `1.20.0`；默认 dry-run 对四个改写文件零写阻断，force 后人工回灌项目事实，project-owned 零 diff，doctor 0/0、strict exit 0、提交后 dry-run up-to-date，目标仓 clean 且无 remote
+- **真实多仓刷新与兼容修复**：当前检查器在真实四子仓协调层投影中发现 legacy prose 根内 `../` 误判；现只对 scoped prose 允许 realpath 留在根内的 source-relative link，canonical Gate/evidence 仍禁 traversal，根外逃逸回归继续阻断。Shell 回归增至 `222/222`；最终刷新精确保留业务仓真实 `lessons.md` 断链、未登记 map 与适配器/远端/live unverified，不冒充全绿
 - **品牌正式定名 BuildBeat**：2026-08-25 用户拍板产品名为 BuildBeat；canonical CLI/Skill/Claude plugin 标识统一为 `buildbeat` / `buildbeat@buildbeat-plugins`，新骨架入口改为 `BUILDBEAT.md`
 - **canonical namespace 迁移**：新写入只生成 `.buildbeat/manifest.json`、BuildBeat `.gitignore` marker 与 `buildbeat-stack-baseline:v1`；doctor/bus-check 继续读取旧 `SOLOBATON.md`、`.solobaton/manifest.json`、marker 与 STACK 基线，双 manifest 或混合安装 fail-closed
-- **legacy 分发兼容**：已发布 npm 包 `solobaton` 暂作为 BuildBeat 的 legacy distribution ID，并同时暴露 canonical `buildbeat` 与兼容 `solobaton` executable；未加 scope 的 `buildbeat` 包名已被其他项目占用，scoped package、GitHub 仓库改名、tag、Release 与 npm publish 均未获授权
+- **legacy 分发兼容**：已发布 npm 包 `solobaton` 保留为 BuildBeat 的 legacy read-only distribution ID，并同时暴露 canonical `buildbeat` 与兼容 `solobaton` executable；未加 scope 的 `buildbeat` 包名已被其他项目占用，用户已批准迁移 scoped package 和新仓库名，远端完成状态仍逐项回读
 - **改名证据边界**：WP2.7 三条真实目录试点及其 hash 保持为 legacy namespace 历史证据；WP2.8 已用全新的隔离目录完成 BuildBeat canonical init/adopt/Skill-only 回归，二者不混写、不互相外推
 - **新版方向与执行基线入库**：新增 `docs/ROADMAP.md`、`docs/EXECUTION-PLAN.md` 与官方来源可复核的 CLI 策略对照；产品方向由路线图承载，当前交付范围与依赖顺序由执行计划 v3 承载
 - **CLI 选择性解冻决策**：未来只开放 `init/adopt` 哑脚手架写入与 manifest/hash 驱动的机械 `upgrade`；三方合并、项目 uninstall 引擎、`gate/adr/standards/check` 命令扩张继续冻结，语义渲染和冲突合并归 AI 会话/Skill
@@ -29,7 +41,7 @@
 - **仓库安全基线**：新增 npm/GitHub Actions Dependabot 周检、JavaScript/TypeScript CodeQL、SECURITY/贡献/行为规范、CODEOWNERS、Issue/PR 模板；CI 中第三方 Action 改为不可变完整 commit SHA
 - **发布引用保护**：GitHub 服务端 `Protect release tags` ruleset 覆盖 `refs/tags/v*`，禁止更新和删除已创建的发布 tag，且无绕过角色；发布 runbook 增加回读步骤
 - **CLI v0 真实试点**：使用官方 npm registry 的 `solobaton@1.16.3` 对三个存量项目运行只读 `doctor` 和 `adopt --dry-run`；Git 可见状态前后一致，并正确区分未安装、旧版已安装和部分安装状态
-- **当前能力边界不冒进**：已独立验证的 npm `solobaton@1.16.3` 仍对所有项目写入 fail-closed；Phase 0–2 已按用户授权形成本地基线提交 `b062f25`，当前 checkout 的 Wave 2 `upgrade` 只有 disposable Git 沙箱证据。bundle 仍为 `v1.16`，因此尚无“真实旧 schema 2 安装 → 新 bundle”的独立项目试点；源仓未推送、未发布
+- **当前能力边界不冒进**：已独立验证的 npm `solobaton@1.16.3` 仍对所有项目写入 fail-closed；scoped `1.20.0` 源码候选已完成真实旧 schema 2 → 新 bundle 试点，但源码/项目证据不替代 registry artifact、provenance、签名、隔离安装与 GitHub Release 回读
 - **产品扩张边界**：多人账号/权限/组织管理和遥测/效能评分/指标仪表盘明确为当前非目标；CLI 不采集或上传项目使用数据，未来若扩展须独立立项并审查数据口径、隐私和权限治理
 - **不变量与输出合同落地**：`docs/CHECKS.md` 冻结八条文件总线不变量、Gate/证据令牌、五级结论、finding code 命名空间、JSON 外形和严格模式退出语义；`bus-check --format=json` 已由同一 finding 集合渲染，默认人类报告保持 exit 0，strict 只拦 `conflict/error`
 - **Phase 1 执行同步**：`SKILL.md` 与 AGENTS/status 模板固化开工 7 步、执行中 5 守则、收工 7 步；看板模板和教学沙盘新增四行 canonical Gate 状态与完成工作包 `**证据**:` 令牌
@@ -43,7 +55,7 @@
 - **Phase 2-B Wave 1 源码候选**：`init/adopt` 已实现“完整计划 → 交互确认或显式 `--yes` → 受控写入”；默认/紧凑布局均排除 optional standards/ADR，并只渲染项目名、日期、骨架版本、布局与紧凑脚本路径，剩余语义占位符结构化返回给 Skill
 - **Phase 2-B STACK 漂移候选**：Confirmed STACK 新增 `buildbeat-stack-baseline:v1` 精确集合并只读兼容旧 `solobaton-stack-baseline:v1`；`bus-check` 比对 `.nvmrc` / `package.json#engines.node`、npm/pnpm/yarn/bun lockfile 种类与 Dockerfile FROM，确定矛盾进 `stack.drift` conflict，缺源/解析/权限/符号链接/截断边界进 `stack.unverified`；不猜自然语言、不回显原始值、不修改项目文件，matching/conflict/unverified 三类 fixture 已将 Shell 回归扩至 `166/166`
 - **Phase 2-B Claude 插件分发候选**：新增 `buildbeat-plugins` marketplace 与独立 `buildbeat` 插件 `0.1.0`；插件以 marketplace 内相对符号链接复用 canonical SKILL/templates/docs/example，安装缓存解引用为自包含副本，并刻意排除 npm CLI 顶层 `bin/`。隔离配置回归覆盖严格校验、marketplace 添加、插件安装/启用、缓存同源与二次校验；CI 无 Claude CLI 时只证明静态打包，不冒充安装证据
-- **分发入口证据边界**：中英 README 首屏加入本地 Claude plugin 候选路径及合并后 GitHub marketplace 路径；WP2.8 已关闭，但 `npx --yes --package=solobaton@latest buildbeat init my-project` 仍刻意不作为当前入口，须等稳定候选进入远端默认分支、获得发布授权并完成官方 registry 回读后再激活
+- **分发入口证据边界**：中英 README 首屏加入 Claude plugin 与 scoped npm 路径；legacy `solobaton@latest` 不再承载写入入口，`npx --yes --package=@haiyangbg/buildbeat@latest buildbeat init my-project` 只有在 scoped artifact 完成官方 registry 回读后才宣称可用
 - **WP2.7 安全前置**：新增 `standards-partial` fixture，证明仅启用 Confirmed CODE/REVIEW 时缺失 STACK/DESIGN 合法，Shell 回归增至 `176/176`；只读 dry-run 排除 partial 且碰撞的 `chickAI` 与 dirty legacy 安装的 `底座` 作为 Wave 1 adopt 目标
 - **WP2.7 真实目录本地写入**：获用户点名后，分别保留 init dry-run 零写、交互拒绝零写、default init apply、Tide compact adopt 与 Skill-only 手动 Bootstrap 证据；三个实际骨架完成项目语义渲染，验证套件及离线 `bus-check --strict` exit 0，可选 standards/ADR 均未被为了全绿而生成
 - **存量保护证据**：Tide 接管前后原 83 个文件的聚合 SHA-256 完全一致；剥离唯一 managed fragment 后，原 `.gitignore` 的 173 字节与 SHA-256 完全一致。没有运行构建、浏览器加载、发布或部署，静态保护证据不得外推为业务验证

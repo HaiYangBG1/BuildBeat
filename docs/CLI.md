@@ -1,32 +1,33 @@
 # BuildBeat CLI lifecycle contract
 
-Status: **current published CLI v0 remains read-only in the independently verified npm distribution** · product name `BuildBeat` · legacy npm package/version field `solobaton@1.16.3` · latest independently verified npm distribution `solobaton@1.16.3` · Node.js 20+ · zero third-party runtime dependencies. Phase 0–2 now have the local source baseline commit `b062f25`; it has not been pushed or published. The current checkout additionally contains the WP3.1 mechanical-upgrade source candidate, disposable Git-sandbox regressions, and WP4.1's legacy migration guide. It has no independent real-project upgrade pilot yet, because the bundled scaffold is still `v1.16` and genuine Phase 2 schema 2 installs are already `v1.16`. Tags, releases, publishing, remote rename, and a future scoped-package decision remain unapproved.
+Status: **BuildBeat `1.20.0` scoped-distribution candidate** · canonical package `@haiyangbg/buildbeat` · canonical executable `buildbeat` · legacy package `solobaton@1.16.3` remains the independently verified read-only v0 · Node.js 20+ · zero third-party runtime dependencies. The 1.20 candidate merges Phase 0–3, including bounded `init/adopt` writes and schema-2-only mechanical `upgrade`; the genuine version-increment pilot is archived in [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md), while exact registry publication remains separately gated by [`RELEASING.md`](RELEASING.md).
 
 The CLI does not replace `SKILL.md`. The Skill owns code-aware reasoning, minimal questions, project semantics, and human Gates. The CLI owns deterministic inspection, scaffold mechanics, manifest/hash bookkeeping, and bounded mechanical upgrade in the current source candidate. Synchronous file-bus checks remain authoritative in the project-local scripts specified by [`CHECKS.md`](CHECKS.md).
 
-The bilingual [`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) is the compact authority for what Skill-only, published npm v0, and this local source candidate can each do. Command details and safety semantics remain authoritative in this document.
+The bilingual [`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) is the compact authority for what Skill-only, the legacy npm v0, and BuildBeat 1.20 can each do. Command details and safety semantics remain authoritative in this document.
 
 ## Command boundary and phased availability
 
-The currently published v0 boundary is:
+The canonical scoped-package commands are:
 
 ```bash
-npm view solobaton@latest version
-npx --yes solobaton@latest doctor /path/to/project
-npx --yes solobaton@latest init /path/to/project --dry-run
-npx --yes solobaton@latest adopt /path/to/project --dry-run
+npm view @haiyangbg/buildbeat@latest version
+npx --yes --package=@haiyangbg/buildbeat@latest buildbeat doctor /path/to/project
+npx --yes --package=@haiyangbg/buildbeat@latest buildbeat init /path/to/project --dry-run
+npx --yes --package=@haiyangbg/buildbeat@latest buildbeat adopt /path/to/project --dry-run
+npx --yes --package=@haiyangbg/buildbeat@latest buildbeat upgrade /path/to/project --dry-run
 ```
 
-Record the version returned by `npm view` and substitute that exact version for `@latest` when the invocation must be reproducible. These commands address the already-published legacy package. A repository checkout uses the canonical `node bin/buildbeat.js` entry point (for example, `buildbeat doctor` after linking/installing the source); `node bin/solobaton.js` remains a compatibility alias. Source commands run the checked-out version and must still be evaluated separately from npm distribution evidence.
+Record the version returned by `npm view` and substitute that exact version for `@latest` when the invocation must be reproducible. Before registry publication is independently verified, the same lifecycle can only be evaluated from a locked repository checkout via `node bin/buildbeat.js`; `node bin/solobaton.js` remains a compatibility alias. The old `solobaton@latest` package remains frozen on read-only v0 and is not the write-capable distribution.
 
 - `doctor` reads an existing project and reports installation state, layout, version marker, required files, unresolved canonical placeholders, hooks, and capability dependencies.
-- `init --dry-run` inspects a new-project target and emits the default-layout installation plan.
-- `adopt --dry-run` inspects a brownfield target and emits the compact-layout takeover plan.
+- `init/adopt --dry-run` inspect a target and emit the complete default/compact plan with zero writes.
+- `init/adopt` without `--dry-run` apply only after all blockers are absent and interactive confirmation or explicit `--yes` is present.
+- `upgrade --dry-run` plans a schema-2-only mechanical version transition; apply is fail-closed on unresolved conflict.
 - `--json` returns a versioned JSON document for agents and CI.
-- v0 never writes project files. Omitting `--dry-run` from `init` or `adopt` exits with code 2 and `write_phase_not_available`.
-- `diff`, `upgrade`, and `uninstall` are reserved names. They remain disabled in v0.
+- `diff` and `uninstall` remain reserved and disabled. Workflow commands remain in Skill/project scripts.
 
-The current source candidate is evaluated separately from that registry evidence:
+The locked-checkout equivalent is:
 
 ```bash
 node bin/buildbeat.js init /path/to/project --dry-run --json
@@ -36,19 +37,16 @@ node bin/buildbeat.js upgrade /path/to/project --dry-run --json
 node bin/buildbeat.js upgrade /path/to/project          # apply only when the complete plan is ready
 ```
 
-In this source candidate, `init/adopt` apply the bounded Wave 1 transaction specified below. `--yes` skips only the prompt; `--dry-run --yes` is invalid. If no interactive terminal is available, an apply call without `--yes` returns `confirmation_required` and performs zero writes. `upgrade` follows the separate Wave 2 contract below: `--dry-run` emits the full mechanical plan, while an invocation without `--dry-run` writes only when every prerequisite and ownership check is ready. It has no `--yes`; naming the write command is the explicit apply request, and `--force`/`--major` acknowledge only their documented narrow boundaries. JSON apply keeps the machine result on stdout and prints the pre-write human plan on stderr.
+`--yes` skips only the `init/adopt` prompt; `--dry-run --yes` is invalid. If no interactive terminal is available, an apply call without `--yes` returns `confirmation_required` and performs zero writes. `upgrade` has no `--yes`; naming the write command is the explicit apply request, and `--force`/`--major` acknowledge only their documented narrow boundaries. JSON apply keeps the machine result on stdout and prints the pre-write human plan on stderr.
 
-Wave 1 now has bounded local BuildBeat real-directory, Git, hook, evidence-commit, and Gate3 closure recorded in [`PHASE2-BUILDBEAT-PILOT-2026-08-25.md`](PHASE2-BUILDBEAT-PILOT-2026-08-25.md). Wave 2 currently has disposable Git-sandbox evidence only. Neither is npm-distribution or release evidence.
+Wave 1 has bounded BuildBeat real-directory, Git, hook, evidence-commit, and Gate3 closure in [`PHASE2-BUILDBEAT-PILOT-2026-08-25.md`](PHASE2-BUILDBEAT-PILOT-2026-08-25.md). The `v1.16 → v1.20` schema 2 upgrade and real multi-repository refresh are archived in [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md). None of these project tests substitute for npm artifact verification.
 
 The target command whitelist is intentionally small:
 
 | Milestone | Enabled main commands | Boundary |
 |---|---|---|
-| current v0 through Phase 2-A | `doctor`, `init --dry-run`, `adopt --dry-run`, `version` | read-only; optional template libraries do not change the write boundary |
-| local Phase 0–2 baseline `b062f25` | `doctor`, `init`, `adopt`, `version` | Wave 1 writes implemented, sandbox-tested, locally piloted, and committed locally; not pushed or released |
-| current WP3.1 source candidate | `doctor`, `init`, `adopt`, `upgrade`, `version` | Wave 2 mechanical upgrade implemented and sandbox-tested; no genuine newer-scaffold real-project pilot, push, or release |
-| v1.19 target, after Wave 1 acceptance | `doctor`, `init`, `adopt`, `version` | `init/adopt` may write; dry-run remains available |
-| v1.20 target, after Wave 2 acceptance | `doctor`, `init`, `adopt`, `upgrade`, `version` | `upgrade` is mechanical and schema-2-only |
+| legacy `solobaton@1.16.3` | `doctor`, `init --dry-run`, `adopt --dry-run`, `version` | independently verified read-only v0; deprecated distribution ID after scoped migration |
+| BuildBeat `1.20.0` | `doctor`, `init`, `adopt`, `upgrade`, `version` | merged Phase 0–3 command set; writes remain bounded by the transaction and human-Gate contracts below |
 
 `help`, `--help`, and `--version` are meta entry points. `diff` and `uninstall` stay reserved and return `command_not_available`; `gate`, `adr`, `standards`, `check`, and other workflow commands are outside the approved CLI scope. HELP text and regression tests must lock this boundary.
 
@@ -66,12 +64,12 @@ The public npm package gives the executable a conventional, reversible distribut
 
 | Intent | Command | Project effect |
 |---|---|---|
-| Current one-off run | `npx --yes solobaton@latest doctor <project>` | Read-only inspection using the registry's current release; no persistent global CLI installation |
-| Resolve an exact version | `npm view solobaton@latest version` | Records the version to substitute for `@latest` in a reproducible invocation |
-| Install or update the global CLI | `npm install --global solobaton@latest` | Replaces only the globally installed package and executable |
-| Remove the global CLI | `npm uninstall --global solobaton` | Removes only the global package and executable |
+| Current one-off run | `npx --yes --package=@haiyangbg/buildbeat@latest buildbeat doctor <project>` | Runs the registry version without a persistent global installation |
+| Resolve an exact version | `npm view @haiyangbg/buildbeat@latest version` | Records the version to substitute for `@latest` in a reproducible invocation |
+| Install or update the global CLI | `npm install --global @haiyangbg/buildbeat@latest` | Replaces only the globally installed package and executables |
+| Remove the global CLI | `npm uninstall --global @haiyangbg/buildbeat` | Removes only the global package and executables |
 
-Package-manager operations never create, update, or remove a project's scaffold. The canonical `buildbeat upgrade` and `buildbeat uninstall` commands—and their legacy `solobaton` aliases—are a separate project lifecycle and remain disabled in CLI v0. Removing an `npx` cache is also outside BuildBeat's project lifecycle.
+Package-manager operations never create, update, or remove a project's scaffold. `buildbeat upgrade` is a separate schema-2-only project lifecycle; `buildbeat uninstall` and its legacy alias remain disabled. Removing an `npx` cache is also outside BuildBeat's project lifecycle.
 
 ## Skill and CLI responsibilities
 
@@ -129,8 +127,8 @@ Schema 2 is the first write-capable shape targeted by Wave 1:
 ```json
 {
   "schemaVersion": 2,
-  "scaffoldVersion": "v1.19",
-  "cliVersion": "1.19.0",
+  "scaffoldVersion": "v1.20",
+  "cliVersion": "1.20.0",
   "layout": "default",
   "installedAt": "2026-08-24T00:00:00.000Z",
   "files": {
@@ -173,7 +171,7 @@ Schema 2 integration rules:
 3. `baselineSha256` covers the exact UTF-8 fragment bytes from the first byte of `beginMarker` through the final line ending after `endMarker`. A changed fragment is a conflict; `--force` may replace only that fragment, never the rest of `.gitignore`.
 4. The manifest is written last. If it is absent after an interrupted write, later commands classify the target as partial/mixed and refuse to infer ownership.
 
-## Scaffold write transaction (Wave 1 local source baseline)
+## Scaffold write transaction (Wave 1 / BuildBeat 1.20)
 
 A write-capable `init` or `adopt` must:
 
@@ -194,9 +192,9 @@ In-process rollback is mandatory. On any failure before manifest completion, rem
 
 No command may initialize Git, add a remote, commit, push, install a package globally, or cross a human Gate without separate explicit authority.
 
-## Mechanical upgrade source candidate and manual removal
+## Mechanical upgrade and manual removal
 
-The current source candidate implements `buildbeat upgrade [path] [--dry-run] [--json] [--force] [--major]`; the old executable remains only a compatibility alias. It is available only for one canonical BuildBeat installation, a valid canonical schema 2 manifest, and a clean target-root Git worktree. Schema 1, a missing/invalid/legacy manifest, a legacy marker namespace, or a mixed/partial installation is blocked; follow the [v1.16 legacy migration guide](LEGACY-V1.16-MIGRATION.md) for the manual-maintenance or explicitly approved re-baselining path instead of inferring ownership.
+BuildBeat 1.20 implements `buildbeat upgrade [path] [--dry-run] [--json] [--force] [--major]`; the old executable remains only a compatibility alias. It is available only for one canonical BuildBeat installation, a valid canonical schema 2 manifest, and a clean target-root Git worktree. Schema 1, a missing/invalid/legacy manifest, a legacy marker namespace, or a mixed/partial installation is blocked; follow the [v1.16 legacy migration guide](LEGACY-V1.16-MIGRATION.md) for the manual-maintenance or explicitly approved re-baselining path instead of inferring ownership.
 
 The JSON plan contains only bounded metadata: version-gate state, paths, policies, actions, SHA-256 values, blockers, warnings, and conflict eligibility/resolution. It never returns template or project file contents. Any unresolved conflict keeps apply mode at zero writes. A ready apply rechecks every expected hash or absence before mutation, prints the plan, updates the manifest last, and performs in-process byte/mode rollback on failure.
 
@@ -227,7 +225,7 @@ There is no project `uninstall` engine in the approved command set. `buildbeat u
 
 ## Security and privacy boundary
 
-- Published v0 is read-only. The local Wave 1 baseline and Wave 2 source candidate perform only the documented local writes, and neither path makes a network request. Wave 1/2 mechanics use only bundled templates and local Git/filesystem facts; package-manager download or publication is outside the project-lifecycle command.
+- The legacy npm v0 is read-only. BuildBeat 1.20 Wave 1/2 commands perform only the documented local writes and make no network request. Lifecycle mechanics use only bundled templates and local Git/filesystem facts; package-manager download or publication is outside the project-lifecycle command.
 - Project scans stop at four directory levels or 5,000 entries, skip common build/vendor directories, and never follow symlinks.
 - JSON output contains paths, counts, capability/version metadata, finding codes, bounded placeholder tokens, and one bounded project-name candidate from `package.json`, the first README heading, or the directory name. It does not emit arbitrary source contents, dependency values, environment values, or secrets.
 - Command availability and worktree checks execute only fixed `--version` or read-only Git calls with argument arrays and no shell interpolation.

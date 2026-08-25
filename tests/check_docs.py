@@ -47,6 +47,7 @@ CRITICAL_CLI_FILES = (
     "bin/buildbeat.js",
     "bin/solobaton.js",
     "docs/CLI.md",
+    "docs/PHASE4-V1.20-PILOT-2026-08-25.md",
     "example/.buildbeat/manifest.json",
     "docs/RELEASING.md",
     "package-lock.json",
@@ -243,20 +244,20 @@ def check_readme_shape() -> list[str]:
         ("面向人和 AI 会话", "for humans and AI sessions"),
         ("端到端工作包", "End-to-end work packages"),
         ("不是人类岗位接力", "not mandatory human-role handoffs"),
-        ("Claude Code 插件：本地源码候选", "Claude Code plugin: local source candidate"),
+        ("Claude Code 插件：BuildBeat 仓库", "Claude Code plugin: BuildBeat repository"),
         (
             "/plugin install buildbeat@buildbeat-plugins",
             "/plugin install buildbeat@buildbeat-plugins",
         ),
         (
-            "目前刻意不作为可用入口展示",
-            "deliberately not presented as an active entry point yet",
+            "旧 `solobaton@latest` 固定在 legacy v0 只读能力",
+            "The old `solobaton@latest` package stays on the legacy read-only v0 capability",
         ),
         ("BuildBeat 能力矩阵", "BuildBeat capability matrix"),
-        ("真实版本增量试点", "genuine version-increment pilot"),
+        ("真实 schema 2 版本增量试点", "genuine schema 2 version-increment pilot"),
         (
-            "本地源码候选已含 Wave 1/2",
-            "the local source candidate includes Waves 1/2",
+            "scoped BuildBeat 包承载完整有界生命周期",
+            "the scoped BuildBeat package carries the bounded lifecycle",
         ),
     )
     for zh_positioning, en_positioning in required_positioning_pairs:
@@ -441,7 +442,7 @@ def check_repository_governance() -> list[str]:
     security_path = ROOT / "SECURITY.md"
     security = security_path.read_text(encoding="utf-8") if security_path.is_file() else ""
     private_report_url = (
-        "https://github.com/HaiYangBG1/solobaton/security/advisories/new"
+        "https://github.com/HaiYangBG1/BuildBeat/security/advisories/new"
     )
     if private_report_url not in security:
         errors.append("SECURITY.md: private vulnerability-reporting URL is missing")
@@ -494,6 +495,13 @@ def check_cli_package() -> list[str]:
 
     if lock.get("version") != version:
         errors.append("package-lock.json: root version does not match package.json")
+    if package.get("name") != "@haiyangbg/buildbeat":
+        errors.append("package.json: canonical scoped package name is stale")
+    if lock.get("name") != "@haiyangbg/buildbeat":
+        errors.append("package-lock.json: canonical scoped package name is stale")
+    root_lock = lock.get("packages", {}).get("", {})
+    if root_lock.get("name") != package.get("name") or root_lock.get("version") != version:
+        errors.append("package-lock.json: root package identity does not match package.json")
     if package.get("bin", {}).get("buildbeat") != "bin/buildbeat.js":
         errors.append("package.json: buildbeat bin entry must point to bin/buildbeat.js")
     if package.get("bin", {}).get("solobaton") != "bin/solobaton.js":
@@ -534,31 +542,35 @@ def check_cli_package() -> list[str]:
 
     release_guide = (ROOT / "docs/RELEASING.md").read_text(encoding="utf-8")
     verified_match = re.search(
-        r"latest independently verified npm distribution `solobaton@(\d+\.\d+\.\d+)`",
+        r"latest independently verified BuildBeat npm distribution `@haiyangbg/buildbeat@(\d+\.\d+\.\d+)`",
         release_guide,
     )
+    verified_pending = (
+        "latest independently verified BuildBeat npm distribution: "
+        "**pending first scoped publication**"
+    ) in release_guide
     verified_version = verified_match.group(1) if verified_match else ""
-    if verified_match is None:
+    if verified_match is None and not verified_pending:
         errors.append(
-            "docs/RELEASING.md: latest independently verified npm distribution is missing"
+            "docs/RELEASING.md: scoped distribution evidence state is missing"
         )
-    elif version_match is not None:
+    elif verified_match is not None and version_match is not None:
         verified_parts = tuple(int(part) for part in verified_version.split("."))
         source_parts = tuple(int(part) for part in version.split("."))
         if verified_parts > source_parts:
             errors.append(
                 "docs/RELEASING.md: verified npm distribution cannot exceed source package version"
             )
-    if f"source package version `solobaton@{version}`" not in release_guide:
+    if f"source package version `@haiyangbg/buildbeat@{version}`" not in release_guide:
         errors.append("docs/RELEASING.md: source package version evidence is stale")
 
     distribution_docs = ("README.md", "README.en.md", "docs/CLI.md")
     for relative in distribution_docs:
         content = (ROOT / relative).read_text(encoding="utf-8")
         required_commands = (
-            "npm view solobaton@latest version",
-            "npx --yes solobaton@latest",
-            "npm install --global solobaton@latest",
+            "npm view @haiyangbg/buildbeat@latest version",
+            "npx --yes --package=@haiyangbg/buildbeat@latest buildbeat",
+            "npm install --global @haiyangbg/buildbeat@latest",
         )
         for command in required_commands:
             if command not in content:
@@ -568,7 +580,7 @@ def check_cli_package() -> list[str]:
         if "buildbeat doctor" not in content:
             errors.append(f"{relative}: missing canonical BuildBeat executable command")
         hard_coded_command = re.search(
-            r"(?:npx --yes|npm install --global)\s+solobaton@\d+\.\d+\.\d+",
+            r"(?:--package=|--global\s+)@haiyangbg/buildbeat@\d+\.\d+\.\d+",
             content,
         )
         if hard_coded_command is not None:
@@ -599,7 +611,7 @@ def check_execution_contracts() -> list[str]:
     errors: list[str] = []
     contracts = {
         "docs/CLI.md": (
-            "current published CLI v0 remains read-only",
+            "legacy package `solobaton@1.16.3` remains the independently verified read-only v0",
             "`diff` and `uninstall` stay reserved",
             '"schemaVersion": 2',
             '"beginMarker": "# >>> buildbeat managed >>>"',
@@ -609,7 +621,7 @@ def check_execution_contracts() -> list[str]:
             "`git.not_initialized`",
         ),
         "docs/CHECKS.md": (
-            "Status: **Phase 3 WP3.4 implementation baseline**",
+            "Status: **BuildBeat 1.20 / WP3.4 implementation baseline**",
             "INV-1",
             "INV-8",
             "`confirmed`",
@@ -643,20 +655,21 @@ def check_execution_contracts() -> list[str]:
             "不得把该策略迁移延后到 Wave 2",
             "本阶段不得再次迁移 policy",
             "`git.not_initialized`",
-            "不自动授权 tag、GitHub Release 或 npm publish",
+            "每一步仍以独立远端回读为完成条件",
             "WP1.1–WP1.6 已完成",
-            "WP2.1–WP2.8 已完成本地闭环",
+            "WP0.1–WP4.2 已完成",
             "WP2.6 分发补强（候选完成）",
             "WP3.2 Gate/证据强关联（源码候选完成）",
             "WP3.3 多仓漂移（源码候选完成）",
             "WP3.4 边界报告完善（源码候选完成）",
             "WP4.1 示例全貌与 legacy 迁移（完成）",
             "WP4.2 能力矩阵、双语终校与硬门槛（完成）",
-            "下一项是需人工决策的 WP4.3",
+            "WP4.3 scoped 分发迁移（执行中）",
             "buildbeat@buildbeat-plugins",
             "PHASE1-PILOT-2026-08-24.md",
             "PHASE2-PILOT-2026-08-25.md",
             "PHASE2-BUILDBEAT-PILOT-2026-08-25.md",
+            "PHASE4-V1.20-PILOT-2026-08-25.md",
         ),
         "docs/PHASE1-PILOT-2026-08-24.md": (
             "source_state_unchanged",
@@ -697,15 +710,26 @@ def check_execution_contracts() -> list[str]:
             "69d6e8358f7fda03225c090d99b5647cae152183",
             "6b32c53e4fd750770690a0bbe796638314cb792a",
         ),
+        "docs/PHASE4-V1.20-PILOT-2026-08-25.md": (
+            "a136ff6f33d5814d36593f85a3b9ec2f1e223827",
+            "schema `2`，scaffold `v1.16`，CLI `1.16.3`",
+            "scaffold `v1.20` / CLI `1.20.0`",
+            "`main...HEAD` 的 diff 行数为 `0`",
+            "Shell 套件为 `222/222`",
+            "`pm/NOW.md` 引用根内不存在的 `lessons.md`",
+            "原仓零写入、零 stage、零 commit",
+            "不可外推",
+        ),
         "docs/CAPABILITY-MATRIX.md": (
             "三组生命周期入口",
             "Skill-only / 手工路径",
-            "已发布 `solobaton@1.16.3`",
+            "legacy `solobaton@1.16.3`",
+            "BuildBeat `@haiyangbg/buildbeat@1.20.0`",
             "Skill-only → CLI `doctor`",
             "CLI `init/adopt` → Skill-only",
             "CLI `upgrade` → Skill-only",
-            "Published npm v0",
-            "Local source candidate",
+            "Legacy npm v0",
+            "BuildBeat 1.20",
             "Project runtime",
         ),
         "docs/LEGACY-V1.16-MIGRATION.md": (
@@ -720,10 +744,10 @@ def check_execution_contracts() -> list[str]:
             "2026-08-24 执行修订（生效）",
             "[`EXECUTION-PLAN.md`](EXECUTION-PLAN.md)",
             "一个 Builder 对一个工作包端到端负责",
-            "Phase 3 源码范围闭合",
+            "真实 schema 2 `v1.16 → v1.20` upgrade",
             "WP4.1–WP4.2",
-            "下一项是须人工拍板的 WP4.3",
-            "12. [ ] 人工决定 WP4.3",
+            "WP4.3 已决定 scoped package + 新仓库名并进入外部分发执行",
+            "13. [ ] 逐项完成远端改名",
         ),
         "SKILL.md": (
             "一个或多个端到端 Builder",
@@ -853,7 +877,8 @@ def check_execution_contracts() -> list[str]:
         ),
         "plugins/buildbeat/.claude-plugin/plugin.json": (
             '"name": "buildbeat"',
-            '"version": "0.1.0"',
+            '"version": "0.2.0"',
+            '"repository": "https://github.com/HaiYangBG1/BuildBeat"',
             "claude-code-plugin-manifest.json",
         ),
         "plugins/buildbeat/README.md": (
@@ -1023,13 +1048,13 @@ def check_phase4_audit() -> list[str]:
         statuses[gate] = match.group(1)
 
     for gate in range(1, 13):
-        if gate in statuses and statuses[gate] != (" " if gate == 11 else "x"):
+        if gate in statuses and statuses[gate] != "x":
             errors.append(f"{relative}: roadmap gate {gate} has an unexpected status")
     for fragment in (
-        "12 条中 11 条达到当前源码候选口径",
-        "未查询 npm/GitHub 可变远端状态",
-        "真实版本增量 upgrade 试点",
-        "不授权任何外部动作",
+        "12 条已达到源码/真实试点候选口径",
+        "scoped npm artifact 已可用",
+        "真实 schema 2 `v1.16 → v1.20` upgrade",
+        "只有完成上节每项远端回读后",
     ):
         if fragment not in audit:
             errors.append(f"{relative}: missing hard-gate evidence boundary {fragment}")
@@ -1057,6 +1082,8 @@ def check_publish_workflow() -> list[str]:
         "dist.attestations.url",
         "https://slsa.dev/provenance/v1",
         "npm audit signatures",
+        '@haiyangbg/buildbeat',
+        'encoded_package="${package_name/\\//%2f}"',
     )
     for fragment in required_fragments:
         if fragment not in workflow:
@@ -1076,6 +1103,7 @@ def check_publish_workflow() -> list[str]:
 
     helper_fragments = (
         'official_registry="https://registry.npmjs.org/"',
+        'BUILDBEAT_PACKAGE_NAME:-@haiyangbg/buildbeat',
         "registry_integrity",
         'npm publish "$candidate_tarball" --access public',
         '[[ "$existing_integrity" == "$candidate_integrity" ]]',

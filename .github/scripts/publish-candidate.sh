@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-package_name="solobaton"
+package_name="${BUILDBEAT_PACKAGE_NAME:-@haiyangbg/buildbeat}"
 official_registry="https://registry.npmjs.org/"
 package_version="${BUILDBEAT_PACKAGE_VERSION:-${SOLOBATON_PACKAGE_VERSION:-}}"
 candidate_integrity="${BUILDBEAT_CANDIDATE_INTEGRITY:-${SOLOBATON_CANDIDATE_INTEGRITY:-}}"
@@ -11,6 +11,10 @@ reconcile_delay_seconds="${BUILDBEAT_RECONCILE_DELAY_SECONDS:-${SOLOBATON_RECONC
 
 if [[ "${NPM_CONFIG_REGISTRY:-}" != "$official_registry" ]]; then
   echo "NPM_CONFIG_REGISTRY must be pinned to $official_registry" >&2
+  exit 2
+fi
+if [[ "$package_name" != "@haiyangbg/buildbeat" ]]; then
+  echo "BUILDBEAT_PACKAGE_NAME must be @haiyangbg/buildbeat." >&2
   exit 2
 fi
 if [[ ! "$package_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then

@@ -1,6 +1,6 @@
 # BuildBeat 能力矩阵 / Capability Matrix
 
-> 状态：Phase 4 / WP4.2 本地源码候选（2026-08-25）。本页同时区分 Skill-only、已发布 npm v0 和当前未发布源码；不将其中任一列外推为远端包、真实项目或生产环境的当前状态。
+> 状态：Phase 4 / WP4.3 scoped 分发迁移合同（2026-08-25）。本页同时区分 Skill-only、legacy npm v0 和 BuildBeat 1.20；源码、registry artifact 与真实项目证据仍分别核验。
 
 ## 1. 三组生命周期入口
 
@@ -16,7 +16,7 @@ WP4.2 所说的“CLI 三命令”按职责分成三组，不是把 `version` �
 
 ## 2. 可用面与权威边界
 
-| 能力 | Skill-only / 手工路径 | 已发布 `solobaton@1.16.3` | 当前本地源码候选 | 权威与边界 |
+| 能力 | Skill-only / 手工路径 | legacy `solobaton@1.16.3` | BuildBeat `@haiyangbg/buildbeat@1.20.0` | 权威与边界 |
 |---|---|---|---|---|
 | 理解新/存量项目，只问剩余问题 | 完整；读代码/配置后做 Bootstrap/Adopt | 不提供语义判断 | 不提供语义判断，只输出有界事实/问题 | Skill 与当前 AI 会话承担语义，CLI 不内置模型 |
 | 安装与能力体检 | 读文件并运行项目脚本 | `doctor` 只读可用 | `doctor` 只读可用 | `doctor` 是 CLI 体检；同步检查唯一权威仍是项目 `bus-check` |
@@ -27,7 +27,7 @@ WP4.2 所说的“CLI 三命令”按职责分成三组，不是把 `version` �
 | 同步/Gate/证据/多仓/STACK 检查 | 项目内 `bus-check --format=json --strict` 可独立运行 | 不复制脚本 finding | 不复制脚本 finding | `docs/CHECKS.md` + 项目脚本是唯一同步检查权威；覆盖不完必须显示 unverified |
 | schema 2 生命周期基线 | Skill-only 不需 manifest，也不手写伪造 | 只读识别历史 manifest | `init/adopt` 成功交易最后写入 | manifest 只是所有权/hash 基线，不是项目事实数据库 |
 | 拷出/legacy 项目升级 | 按 CHANGELOG 和 policy 手工语义合并 | `upgrade` 未开放 | 无真实 schema 2 基线必须 blocked | 不手写/复制/改名 manifest；见 `LEGACY-V1.16-MIGRATION.md` |
-| schema 2 机械升级 | Skill 处理机械冲突后的语义合并 | 未开放 | 已实现；同 major 按 hash，跨 major 需 `--major`，`--force` 不碰 project-owned | 只有 disposable Git 沙箱证据；真实版本增量试点未完成 |
+| schema 2 机械升级 | Skill 处理机械冲突后的语义合并 | 未开放 | 已实现；同 major 按 hash，跨 major 需 `--major`，`--force` 不碰 project-owned | 真实版本增量试点与发布证据分别归档，不以模板测试代替 |
 | Git 初始化、Hook、commit/push/deploy/publish | 经明确授权后人/会话按项目边界执行 | 不执行 | 不执行 | 生命周期 CLI 不扩张任何外部权限；发布另走 `RELEASING.md` |
 
 ## 3. 双向互操作结论
@@ -36,15 +36,15 @@ WP4.2 所说的“CLI 三命令”按职责分成三组，不是把 `version` �
 |---|---|---|---|
 | Skill-only → CLI `doctor` | 可保守识别；无 manifest 显式 `manifest.missing`，不猜所有权 | `tests/skill-only.test.sh` 自动回归 | 不因 doctor 可读就获得机械 upgrade |
 | CLI `init/adopt` → Skill-only | 项目仍是普通 Git 文件/脚本；屏蔽 Node/CLI 后可继续维护并 strict 检查 | 自动互操作回归 + WP2.8 本地真实目录试点 | 不证明业务测试、Gate 或线上状态 |
-| CLI `upgrade` → Skill-only | 升级后仍使用同一文件协议；冲突交给 Skill 语义合并 | disposable 升级沙箱 + 通用 Skill-only 回归 | 尚无真实旧 bundle → 新 bundle 项目试点 |
+| CLI `upgrade` → Skill-only | 升级后仍使用同一文件协议；冲突交给 Skill 语义合并 | disposable 升级沙箱 + BuildBeat 1.20 真实版本增量试点 | 不证明未观测的业务、线上或生产状态 |
 | legacy v1.16 → schema 2 | 默认继续手工维护；经批准才在专用分支重建基线 | 指南和静态契约已闭合 | 没有执行真实 legacy 迁移 |
 
 ## 4. Distribution status / 分发状态
 
 - **Skill-only:** first-class and complete for protocol semantics; it does not need a lifecycle manifest or a runtime CLI.
-- **Published npm v0:** use the legacy `solobaton@latest` distribution only for `doctor`, `init/adopt --dry-run`, and version inspection. Project writes and `upgrade` are unavailable.
-- **Local source candidate:** canonical `buildbeat` supports bounded `init/adopt` writes and schema-2-only mechanical `upgrade`, with the limitations above. It is not published and has no genuine version-increment upgrade pilot.
+- **Legacy npm v0:** `solobaton@latest` is frozen on `doctor`, `init/adopt --dry-run`, and version inspection, then deprecated toward the scoped package. Project writes and `upgrade` remain unavailable there.
+- **BuildBeat 1.20:** `@haiyangbg/buildbeat` is the canonical scoped distribution for bounded `init/adopt` writes and schema-2-only mechanical `upgrade`. Registry availability, provenance, and exact artifact identity must be read back independently.
 - **Claude Code plugin:** the local marketplace candidate distributes the canonical Skill/templates/docs, not the top-level npm CLI `bin/`; installation evidence does not authorize project writes or npm publication.
 - **Project runtime:** after scaffolding, the Git files and project-local scripts remain independently usable. BuildBeat has no account service, telemetry, remote project database, or agent runtime.
 
-Release readiness is tracked separately in [`PHASE4-STABILITY-AUDIT-2026-08-25.md`](PHASE4-STABILITY-AUDIT-2026-08-25.md). Command details remain authoritative in [`CLI.md`](CLI.md); legacy migration uses [`LEGACY-V1.16-MIGRATION.md`](LEGACY-V1.16-MIGRATION.md).
+The real version-increment and multi-repository evidence is archived in [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md); release readiness is tracked separately in [`PHASE4-STABILITY-AUDIT-2026-08-25.md`](PHASE4-STABILITY-AUDIT-2026-08-25.md). Command details remain authoritative in [`CLI.md`](CLI.md); legacy migration uses [`LEGACY-V1.16-MIGRATION.md`](LEGACY-V1.16-MIGRATION.md).

@@ -1,15 +1,15 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "buildbeat",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "BuildBeat",
   "description": "File-first, human-gated engineering delivery for one or more end-to-end Builders and their AI coding sessions.",
   "author": {
     "name": "HaiYangBG",
     "url": "https://github.com/HaiYangBG1"
   },
-  "homepage": "https://github.com/HaiYangBG1/solobaton",
-  "repository": "https://github.com/HaiYangBG1/solobaton",
+  "homepage": "https://github.com/HaiYangBG1/BuildBeat",
+  "repository": "https://github.com/HaiYangBG1/BuildBeat",
   "license": "MIT",
   "keywords": [
     "ai-coding",

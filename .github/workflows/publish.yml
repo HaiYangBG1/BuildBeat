@@ -1,15 +1,18 @@
-name: Publish BuildBeat legacy npm package
+name: Publish BuildBeat scoped npm package
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Exact annotated release tag, for example v1.17.0
+        description: Exact annotated release tag, for example v1.20.0
         required: true
         type: string
 
 permissions:
   contents: read
+
+env:
+  BUILDBEAT_PACKAGE_NAME: "@haiyangbg/buildbeat"
 
 concurrency:
   group: npm-publish-${{ inputs.tag }}
@@ -63,6 +66,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$(git rev-parse refs/remotes/origin/main)"
 
           package_version="$(node -p "require('./package.json').version")"
+          test "$(node -p "require('./package.json').name")" = "$BUILDBEAT_PACKAGE_NAME"
           test "$RELEASE_TAG" = "v$package_version"
           test -z "$(git status --porcelain=v1)"
 
@@ -136,17 +140,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          package_name="$(node -p "require('./package.json').name")"
           package_version="$(node -p "require('./package.json').version")"
+          test "$package_name" = "$BUILDBEAT_PACKAGE_NAME"
           test "$RELEASE_TAG" = "v$package_version"
           candidate_dir="$RUNNER_TEMP/buildbeat-verify-candidate"
           mkdir -p "$candidate_dir"
           pack_json="$(npm pack --json --pack-destination "$candidate_dir")"
           candidate_integrity="$(node -e 'const value=JSON.parse(process.argv[1]); if (!Array.isArray(value) || value.length !== 1) process.exit(1); process.stdout.write(value[0].integrity)' "$pack_json")"
           for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24; do
-            published_version="$(npm view "solobaton@$package_version" version 2>/dev/null || true)"
-            published_integrity="$(npm view "solobaton@$package_version" dist.integrity 2>/dev/null || true)"
+            published_version="$(npm view "$package_name@$package_version" version 2>/dev/null || true)"
+            published_integrity="$(npm view "$package_name@$package_version" dist.integrity 2>/dev/null || true)"
             if [[ "$published_version" = "$package_version" && "$published_integrity" = "$candidate_integrity" ]]; then
-              printf 'Verified exact solobaton@%s artifact on the official registry.\n' "$published_version"
+              printf 'Verified exact %s@%s artifact on the official registry.\n' "$package_name" "$published_version"
               exit 0
             fi
             if [[ -n "$published_integrity" && "$published_integrity" != "$candidate_integrity" ]]; then
@@ -163,14 +169,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          package_name="$(node -p "require('./package.json').name")"
           package_version="$(node -p "require('./package.json').version")"
-          expected_url="https://registry.npmjs.org/-/npm/v1/attestations/solobaton@$package_version"
+          encoded_package="${package_name/\//%2f}"
+          expected_url="https://registry.npmjs.org/-/npm/v1/attestations/$encoded_package@$package_version"
           expected_predicate="https://slsa.dev/provenance/v1"
           for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24; do
-            attestation_url="$(npm view "solobaton@$package_version" dist.attestations.url 2>/dev/null || true)"
-            predicate_type="$(npm view "solobaton@$package_version" dist.attestations.provenance.predicateType 2>/dev/null || true)"
+            attestation_url="$(npm view "$package_name@$package_version" dist.attestations.url 2>/dev/null || true)"
+            predicate_type="$(npm view "$package_name@$package_version" dist.attestations.provenance.predicateType 2>/dev/null || true)"
             if [[ "$attestation_url" = "$expected_url" && "$predicate_type" = "$expected_predicate" ]]; then
-              printf 'Verified provenance metadata for solobaton@%s.\n' "$package_version"
+              printf 'Verified provenance metadata for %s@%s.\n' "$package_name" "$package_version"
               exit 0
             fi
             printf 'Provenance readback attempt %s is not complete yet.\n' "$attempt"
@@ -183,12 +191,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          package_name="$(node -p "require('./package.json').name")"
           package_version="$(node -p "require('./package.json').version")"
           release_probe="$(mktemp -d)"
-          npm install --prefix "$release_probe" "solobaton@$package_version" \
+          npm install --prefix "$release_probe" "$package_name@$package_version" \
             --registry=https://registry.npmjs.org/ --ignore-scripts --no-audit --no-fund
-          test "$(node "$release_probe/node_modules/solobaton/bin/buildbeat.js" --version)" = "$package_version"
-          test "$(node "$release_probe/node_modules/solobaton/bin/solobaton.js" --version)" = "$package_version"
+          package_dir="$release_probe/node_modules/$package_name"
+          test "$(node "$package_dir/bin/buildbeat.js" --version)" = "$package_version"
+          test "$(node "$package_dir/bin/solobaton.js" --version)" = "$package_version"
           (
             cd "$release_probe"
             npm audit signatures --registry=https://registry.npmjs.org/

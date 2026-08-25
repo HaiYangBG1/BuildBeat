@@ -136,7 +136,7 @@ resolve_hash() {
 # 5=permission boundary. Callers keep 4/5 unverified rather than calling them
 # missing, valid, or contradictory.
 validate_reference() {
-  ref="$1"; source_path="$2"
+  ref="$1"; source_path="$2"; allow_source_relative="${3:-0}"
   case "$ref" in
     http://*|https://*) return 2 ;;
   esac
@@ -150,7 +150,10 @@ validate_reference() {
   ref="$(printf '%s' "$ref" | sed -E 's/:[0-9]+$//')"
   case "$ref" in
     ""|*$'\n'*|*$'\r'*|*$'\t'*|*"<"*|*"\\"*|*"*"*|*"?"*|*"["*|*"]"*|*"|"*) return 3 ;;
-    /*|../*|*/../*|*/..|./*|*/./*) return 1 ;;
+    /*) return 1 ;;
+    ../*|*/../*|*/..|./*|*/./*)
+      [ "$allow_source_relative" = "1" ] || return 1
+      ;;
   esac
   [ "${#ref}" -le 240 ] || return 3
   case "$ref" in
@@ -1441,7 +1444,7 @@ for ref_source in pm/NOW.md "$board_path" pm/decisions.md; do
   while IFS= read -r scoped_ref; do
     [ -n "$scoped_ref" ] || continue
     ref_rc=0
-    validate_reference "$scoped_ref" "$ref_source" || ref_rc=$?
+    validate_reference "$scoped_ref" "$ref_source" 1 || ref_rc=$?
     [ "$ref_rc" -ne 3 ] || continue
     ref_scanned=$((ref_scanned + 1))
     if [ "$ref_scanned" -gt "$ref_limit" ]; then

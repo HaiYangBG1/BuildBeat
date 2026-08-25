@@ -1,6 +1,6 @@
 # BuildBeat file-bus check specification
 
-Status: **Phase 3 WP3.4 implementation baseline** · normative bus-check schema: `1` · Phase 0–2 are committed locally in `b062f25`, while the current source checkout and legacy `solobaton@1.16.3` package metadata remain unpushed/unpublished and make no v1.18/v1.19/v1.20 release claim. CLI output/manifest schema 2 and the WP3.1 mechanical-upgrade candidate are specified separately in [`CLI.md`](CLI.md); neither changes this bus-check schema.
+Status: **BuildBeat 1.20 / WP3.4 implementation baseline** · normative bus-check schema: `1` · canonical scoped package metadata is `@haiyangbg/buildbeat@1.20.0`; legacy `solobaton@1.16.3` remains the read-only v0 distribution. CLI output/manifest schema 2 and mechanical upgrade are specified separately in [`CLI.md`](CLI.md); the genuine version-increment and real multi-repository refresh evidence is archived in [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md). None of those facts changes this bus-check schema or proves registry publication.
 
 This document is the single semantic source for `templates/scripts/bus-check.sh` and the same-directory scripts it orchestrates. It defines what a result means, not merely how output is colored. `SKILL.md`, board templates, fixtures, and script tests must use the same tokens and finding codes.
 
@@ -83,7 +83,7 @@ Paths must not be absolute, contain traversal segments, or resolve through a sym
 
 Phase 1 checks Markdown links and backticked `.md` paths in `pm/NOW.md`, the current board, and the latest three dated rows of `pm/decisions.md`. It also checks paths/hashes on canonical Gate and evidence lines. The three-row decision window keeps the live synchronization guard from retroactively blocking on historical paths that were intentionally archived; the full repository linker remains a separate source-checkout gate in `tests/check_docs.py`.
 
-Canonical Gate/evidence paths are repository-root relative. For scoped legacy prose, the scanner accepts an existing source-file-relative path first, then an existing repository-root path (and bare contract filenames under `contracts/`). Absolute paths, traversal segments, paths that resolve outside the root, wildcards/placeholders, overlong table fragments, and prose-only tokens are never treated as valid local evidence. Wildcards/placeholders/prose are ignored rather than mislabeled as broken regular-file references; a real path-shaped token that stays in scope but does not resolve emits `ref.broken`.
+Canonical Gate/evidence paths are repository-root relative and may not contain traversal segments. For scoped legacy prose, the scanner accepts an existing source-file-relative path first, including `../` or `./` segments only when the resolved regular file remains inside the coordination root, then an existing repository-root path (and bare contract filenames under `contracts/`). Absolute paths, paths that resolve outside the root, wildcards/placeholders, overlong table fragments, and prose-only tokens are never treated as valid local evidence. Wildcards/placeholders/prose are ignored rather than mislabeled as broken regular-file references; a real path-shaped token that stays in scope but does not resolve emits `ref.broken`.
 
 ### 3.4 Optional standards
 

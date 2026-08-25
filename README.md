@@ -42,53 +42,54 @@ BuildBeat 把这些问题收敛成四个支柱：
 
 > 已经存在大量代码的项目不要直接套新项目模板。使用 `SKILL.md` §8.5 的**存量接管仪式**：先摸底、划新旧边界、补最小验证能力，再采用 `pm/scripts/` 紧凑布局，避免撞上原项目自己的 `scripts/`。
 
-### Claude Code 插件：本地源码候选
+### Claude Code 插件：BuildBeat 仓库
 
-本仓现在提供独立的 Claude Code marketplace 包，安装后以 `/buildbeat:buildbeat` 路由同一份 canonical [`SKILL.md`](SKILL.md)。当前本地源码候选可从 checkout 隔离试用：
+本仓提供独立的 Claude Code marketplace 包，安装后以 `/buildbeat:buildbeat` 路由同一份 canonical [`SKILL.md`](SKILL.md)。可从本地 checkout 隔离安装：
 
 ```text
-/plugin marketplace add /absolute/path/to/solobaton
+/plugin marketplace add /absolute/path/to/BuildBeat
 /plugin install buildbeat@buildbeat-plugins
 /buildbeat:buildbeat
 ```
 
-候选合并到 GitHub 默认分支后，第一条仍使用当前仓库地址 `/plugin marketplace add HaiYangBG1/solobaton`；远端仓库改名是独立外部动作。插件只携带 Skill、模板、示例和参考文档，不把 npm CLI 的顶层 `bin/` 暴露进 Claude Code；是否对项目执行写入仍受当前 CLI 发布状态、确认屏和人工 Gate 约束。完整打包边界见 [`plugins/buildbeat/README.md`](plugins/buildbeat/README.md)。
+从 GitHub 安装时使用 `/plugin marketplace add HaiYangBG1/BuildBeat`。插件只携带 Skill、模板、示例和参考文档，不把 npm CLI 的顶层 `bin/` 暴露进 Claude Code；是否对项目执行写入仍受 CLI 版本、确认屏和人工 Gate 约束。完整打包边界见 [`plugins/buildbeat/README.md`](plugins/buildbeat/README.md)。
 
-### CLI：npm v0 仍只读，本地源码候选已含 Wave 1/2
+### CLI：scoped BuildBeat 包承载完整有界生命周期
 
-v1.16 新增零第三方运行时依赖的 Node.js 20+ CLI；从 `solobaton@1.16.1` 起通过 npm 正式分发。该 npm 包名是 BuildBeat 的 legacy distribution ID：未加 scope 的 `buildbeat` 已被其他项目占用，本仓不会冒用。面向已发布 v0 的执行示例继续使用 `solobaton@latest`，避免把尚未发布的 BuildBeat 命令写成可用事实：
+canonical npm 分发标识是 `@haiyangbg/buildbeat`；未加 scope 的 `buildbeat` 已被其他项目占用，本仓不会冒用。使用前先从官方 registry 回读 `@latest` 的精确版本；需要复现时，把后续命令中的 `@latest` 换成已记录版本：
 
 ```bash
-npm view solobaton@latest version  # 需要复现时，先记录这个精确版本并用它替换 @latest
-npx --yes solobaton@latest doctor /path/to/project
-npx --yes solobaton@latest init /path/to/project --dry-run
-npx --yes solobaton@latest adopt /path/to/project --dry-run --json
+npm view @haiyangbg/buildbeat@latest version
+npx --yes --package=@haiyangbg/buildbeat@latest buildbeat doctor /path/to/project
+npx --yes --package=@haiyangbg/buildbeat@latest buildbeat init /path/to/project --dry-run
+npx --yes --package=@haiyangbg/buildbeat@latest buildbeat adopt /path/to/project --dry-run --json
+npx --yes --package=@haiyangbg/buildbeat@latest buildbeat upgrade /path/to/project --dry-run --json
 ```
 
 需要长期使用时，可以显式管理全局 CLI：
 
 ```bash
-npm install --global solobaton@latest  # 安装 registry 当前版本
-solobaton doctor /path/to/project
-npm install --global solobaton@latest  # 更新 CLI 包
-npm uninstall --global solobaton       # 移除全局 CLI
+npm install --global @haiyangbg/buildbeat@latest
+buildbeat doctor /path/to/project
+npm install --global @haiyangbg/buildbeat@latest  # 更新 CLI 包
+npm uninstall --global @haiyangbg/buildbeat       # 只移除全局 CLI 包
 ```
 
-这里的安装、更新、移除只管理 **legacy CLI 包和 `solobaton` 可执行文件**，不会创建、升级或删除项目里的协作骨架。`doctor` 检查已有骨架的布局、版本、关键文件、占位符、Hook 与依赖降级；`init/adopt --dry-run` 分别规划默认/紧凑布局。省略 `--dry-run` 会明确拒绝且不创建任何文件，`solobaton upgrade/uninstall` 仍未开放。当前源码候选的 canonical 命令是 `buildbeat doctor`，本地入口为 `node bin/buildbeat.js ...`；`bin/solobaton.js` 只保留为兼容别名。完整契约见 [`docs/CLI.md`](docs/CLI.md)。
+包管理器的安装、更新、移除只管理 **CLI 包和可执行文件**，不会创建、升级或删除项目里的协作骨架。`doctor` 只读检查；`init/adopt` 必须先看完整计划，并在无 blocker、干净 Git 和明确确认后才写入；`upgrade` 只接受 canonical schema 2 基线，按 manifest/hash 做机械升级，冲突时零写。`diff/uninstall` 与工作流命令扩张继续冻结。canonical 命令是 `buildbeat`；`solobaton` executable 只保留兼容别名。完整契约见 [`docs/CLI.md`](docs/CLI.md)。
 
-Phase 0–2 已形成本地源仓基线提交 `b062f25`，但未推送、未发布。当前 checkout 在 Wave 1 `init/adopt` 受控写入之外，已完成 Phase 3 源码范围：schema-2-only 机械 `upgrade`、Gate/证据强关联、多仓漂移与扫描边界报告。`upgrade` 同 major 按 manifest/hash 替换未改的 managed 文件，冲突默认零写，`--force` 也永不覆盖 project-owned 内容或不安全路径；跨 major 另需 `--major`。这些增量已通过一次性 Git/文件系统沙箱回归，但真实版本增量 upgrade 与 WP3.3/WP3.4 真实环境刷新尚未完成，也未进入 npm。WP2.7 legacy namespace 与 WP2.8 BuildBeat canonical namespace 的既有试点仍只证明各自当时的本地边界。
+`1.20.0` 是 Phase 0–3 的合并版本：包含 Wave 1 `init/adopt` 受控写入、schema-2-only `upgrade`、Gate/证据强关联、多仓漂移与扫描边界报告。`--force` 也永不覆盖 project-owned 内容或不安全路径；跨 major 另需 `--major`。源码 checkout、Git tag 和 npm artifact 仍是不同证据面，发布状态与真实试点边界必须以 [`docs/RELEASING.md`](docs/RELEASING.md) 和对应 GitHub Release/registry 回读为准。
 
 已拷出的 v1.16 legacy 项目不得手写、复制或重命名 manifest 来伪造 schema 2 所有权。默认继续按 CHANGELOG 手工维护；如果确需进入机械升级，按 [v1.16 legacy 迁移指南](docs/LEGACY-V1.16-MIGRATION.md) 在专用 Git 分支受控重建基线。
 
-> 因此，写入式首屏命令 `npx --yes --package=solobaton@latest buildbeat init my-project` 目前刻意不作为可用入口展示；仍须稳定候选进入远端默认分支、获得发布授权并完成官方 registry 回读后才会激活。
+旧 `solobaton@latest` 固定在 legacy v0 只读能力，并迁移提示到本 scoped package；它不会获得新的项目写入或升级能力。写入式首屏命令必须使用 `@haiyangbg/buildbeat`，并且仍先展示计划、受 Git/碰撞/所有权检查约束，不能跨人工 Gate。
 
 ### 手动安装
 
 只建议在你已经理解模板含义时使用：
 
 ```bash
-git clone https://github.com/HaiYangBG1/solobaton.git
-rsync -a --exclude '/standards/' --exclude '/pm/adr/' "solobaton/templates/" /path/to/new-project/
+git clone https://github.com/HaiYangBG1/BuildBeat.git
+rsync -a --exclude '/standards/' --exclude '/pm/adr/' "BuildBeat/templates/" /path/to/new-project/
 cd /path/to/new-project
 ```
 
@@ -233,9 +234,9 @@ flowchart LR
 | 生产配置漂移 | `jq`、SHA 工具、项目 `live-config.sh` | 明确跳过，不能外推生产状态 |
 | 线上版本查询 | 项目 `live-status.sh` 和平台 CLI | 明确未配置，不引用文档版本冒充线上事实 |
 | L3 测试证据 | 项目填写 `verify-status.sh` 的 `SUITES` | 只能报告未配置，不能声称自动化测试已绿 |
-| CLI 检查/脚手架/机械升级 | Node.js 20+、npm registry 或本仓库源码 | npm 已发布 v0 仍只读；本地源码已实现 Wave 1 写入与 Phase 3 schema 2 机械升级/检查增强，但升级尚无独立真实版本增量试点、未推送、未发布；项目 uninstall 继续冻结，Skill/手动等价路径始终保留 |
+| CLI 检查/脚手架/机械升级 | Node.js 20+、npm registry 或本仓库源码 | legacy npm v0 仍只读；scoped BuildBeat 1.20 已完成真实 schema 2 版本增量试点，registry artifact 是否可用仍须独立回读；项目 uninstall 继续冻结，Skill/手动等价路径始终保留 |
 
-Skill-only、已发布 npm v0 和当前本地源码候选是三个不同可用面；`doctor`、`init/adopt`、`upgrade` 也不承担相同责任。完整对照和双向互操作证据见 [BuildBeat 能力矩阵](docs/CAPABILITY-MATRIX.md)。
+Skill-only、legacy npm v0 和 scoped BuildBeat 1.20 是三个不同可用面；源码 checkout、registry artifact 与真实项目也必须分别核验。`doctor`、`init/adopt`、`upgrade` 不承担相同责任。完整对照见 [BuildBeat 能力矩阵](docs/CAPABILITY-MATRIX.md)，真实版本增量证据见 [v1.20 试点记录](docs/PHASE4-V1.20-PILOT-2026-08-25.md)。
 
 ## 继续阅读
 
@@ -247,12 +248,13 @@ Skill-only、已发布 npm v0 和当前本地源码候选是三个不同可用�
 - [`docs/CLI-STRATEGY-2026-08.md`](docs/CLI-STRATEGY-2026-08.md)：基于官方来源的 CLI 策略对照与证据边界；
 - [`docs/CHECKS.md`](docs/CHECKS.md)：文件总线不变量、Gate/证据令牌、finding code 与严格模式规格；
 - [`docs/CLI.md`](docs/CLI.md)：CLI 命令边界、文件所有权、manifest、机械升级和手动移除合同；
-- [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md)：Skill-only、已发布 npm v0 与本地源码候选的双语能力/互操作对照；
+- [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md)：Skill-only、legacy npm v0 与 scoped BuildBeat 1.20 的双语能力/互操作对照；
 - [`docs/LEGACY-V1.16-MIGRATION.md`](docs/LEGACY-V1.16-MIGRATION.md)：v1.16 拷出项目继续手工维护或受控重建 schema 2 基线的安全路径；
 - [`docs/CLI-PILOT-2026-08-23.md`](docs/CLI-PILOT-2026-08-23.md)：三个真实存量项目的 CLI v0 只读试点与写入边界决策；
 - [`docs/PHASE1-PILOT-2026-08-24.md`](docs/PHASE1-PILOT-2026-08-24.md)：Phase 1 文件总线在 example、活跃多仓投影和真实单仓代码树上的只读试点；
 - [`docs/PHASE2-PILOT-2026-08-25.md`](docs/PHASE2-PILOT-2026-08-25.md)：Wave 1 三条真实目录写路径、Tide 保护摘要、UI 探测反馈与最终本地 Git/Hook/hash 证据；
 - [`docs/PHASE2-BUILDBEAT-PILOT-2026-08-25.md`](docs/PHASE2-BUILDBEAT-PILOT-2026-08-25.md)：BuildBeat canonical namespace 的新真实目录回归、Tide 保护复核与 Gate3 关闭证据；
+- [`docs/PHASE4-V1.20-PILOT-2026-08-25.md`](docs/PHASE4-V1.20-PILOT-2026-08-25.md)：schema 2 真实版本增量升级、项目所有权保护与真实多仓只读刷新证据；
 - [`docs/PHASE4-STABILITY-AUDIT-2026-08-25.md`](docs/PHASE4-STABILITY-AUDIT-2026-08-25.md)：演进书 §15 的 12 条硬门槛现状、证据边界与未关闭发布阻塞；
 - [`docs/RELEASING.md`](docs/RELEASING.md)：npm 发布 Gate、验证与 Trusted Publishing 迁移；
 - [`CONTRIBUTING.md`](CONTRIBUTING.md)：贡献、验证和 PR 边界；

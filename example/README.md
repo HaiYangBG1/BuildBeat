@@ -2,7 +2,7 @@
 
 > 这里的协议骨架文件展示 `templates/` 对应模板**填好项目事实之后的样子**，status/evidence 则是虚构一期的教学产物；沙盘也刻意启用了可选 standards 与一个 ADR，用来展示“默认不生成、选择后由项目拥有”的完成态。
 > 🔴 项目、数据、人物、决策全部虚构(已脱敏);commit hash 均为示意值——真项目里 hash 必须真实可查(`git cat-file -t <hash>`,见 [lessons.md](../lessons.md) 第 11 条)。
-> [`.buildbeat/manifest.json`](.buildbeat/manifest.json) 是 schema 2 的**合成教学快照**：其 baseline hash 会由本仓机器检查锁定到当前示例字节，但它不证明已发布的 v1.16 CLI 写过这些文件，也不是可复制到真实项目的受管基线。
+> [`.buildbeat/manifest.json`](.buildbeat/manifest.json) 是 schema 2 的**合成教学快照**：其 baseline hash 会由本仓机器检查锁定到当前示例字节，但它不证明 npm artifact 或真实 CLI 写过这些文件，也不是可复制到真实项目的受管基线。
 
 ## 沙盘设定
 

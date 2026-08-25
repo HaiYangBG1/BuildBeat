@@ -1,6 +1,6 @@
 {
-  "name": "solobaton",
-  "version": "1.16.3",
+  "name": "@haiyangbg/buildbeat",
+  "version": "1.20.0",
   "description": "BuildBeat: a Git-based, human-gated engineering delivery protocol for humans and AI sessions.",
   "type": "module",
   "bin": {
@@ -34,11 +34,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/HaiYangBG1/solobaton.git"
+    "url": "git+https://github.com/HaiYangBG1/BuildBeat.git"
   },
-  "homepage": "https://github.com/HaiYangBG1/solobaton#readme",
+  "homepage": "https://github.com/HaiYangBG1/BuildBeat#readme",
   "bugs": {
-    "url": "https://github.com/HaiYangBG1/solobaton/issues"
+    "url": "https://github.com/HaiYangBG1/BuildBeat/issues"
   },
   "publishConfig": {
     "access": "public",

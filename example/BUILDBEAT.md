@@ -1,16 +1,16 @@
 # BUILDBEAT.md — 本项目的协作骨架版本标记
 
-**本项目使用 BuildBeat `v1.16`**(2026-06-10 初次拷入;2026-08-22 升级;2026-08-25 品牌 marker 迁移,沙盘示意)
+**本项目使用 BuildBeat `v1.20`**(2026-06-10 初次拷入;2026-08-22 升级;2026-08-25 scoped 分发迁移,沙盘示意)
 **协调层布局:`默认`**(脚本在 `scripts/`;简账是从零起的项目,根上本来没别的东西 —— 接管存量项目才用紧凑布局)
-来源:<https://github.com/HaiYangBG1/solobaton>
+来源:<https://github.com/HaiYangBG1/BuildBeat>
 
 ## 升级
 
-对照上游 [CHANGELOG.md](https://github.com/HaiYangBG1/solobaton/blob/main/CHANGELOG.md),从本文件记录的版本**往后**逐版看「拷出项目升级」标注的文件,同步后更新上面的版本行。拿不准就让 AI 会话对比上游 `templates/` 与本项目对应文件的差异。
+对照上游 [CHANGELOG.md](https://github.com/HaiYangBG1/BuildBeat/blob/main/CHANGELOG.md),从本文件记录的版本**往后**逐版看「拷出项目升级」标注的文件,同步后更新上面的版本行。拿不准就让 AI 会话对比上游 `templates/` 与本项目对应文件的差异。
 
 ## 教学 manifest
 
-`.buildbeat/manifest.json` 是为本仓文档回归维护的 schema 2 合成快照，它的 hash 锁定当前示例字节。它不证明已发布 v1.16 CLI 完成过写入，不是真实项目的安装证据，也不得作为 legacy 项目的复制/重命名来源。真实迁移见 [v1.16 legacy 迁移指南](../docs/LEGACY-V1.16-MIGRATION.md)。
+`.buildbeat/manifest.json` 是为本仓文档回归维护的 schema 2 合成快照，它的 hash 锁定当前示例字节。它不证明 npm artifact 或真实 CLI 完成过写入，不是真实项目的安装证据，也不得作为 legacy 项目的复制/重命名来源。真实迁移见 [v1.16 legacy 迁移指南](../docs/LEGACY-V1.16-MIGRATION.md)。
 
 ## 回灌(比升级更重要)
 
