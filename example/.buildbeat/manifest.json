@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 2,
+  "scaffoldVersion": "v1.16",
+  "cliVersion": "1.16.3",
+  "layout": "default",
+  "installedAt": "2026-08-25T00:00:00.000Z",
+  "files": {
+    "AGENTS.md": {
+      "policy": "replace-if-unmodified",
+      "baselineSha256": "b88c3a8f2763933ab7f3c2ebf983fb41f0b2fd4fe878983b94832774854d0e0d"
+    },
+    "ARCHITECTURE.md": {
+      "policy": "project-owned",
+      "baselineSha256": "4c9149a3af00c62f7b588501cf6325aea5be9e96051021c5cffc36d7c5d119b6"
+    },
+    "BUILDBEAT.md": {
+      "policy": "replace-if-unmodified",
+      "baselineSha256": "d21851923f98c84fa3cc2199bf849b3adeb1e138e8fd004a3467270acc048e82"
+    },
+    "CLAUDE.md": {
+      "policy": "replace-if-unmodified",
+      "baselineSha256": "1947d9d2c20ce3ede4e24d4f28cedbde0298af53ab5b0e212163d966d28a7a0b"
+    },
+    "contracts/PROTOCOL.md": {
+      "policy": "project-owned",
+      "baselineSha256": "3c970768bed43fa42e4397e703bec4ecedff3a61509d3abcc7ad707e91df8eff"
+    },
+    "pm/NOW.md": {
+      "policy": "project-owned",
+      "baselineSha256": "e0404e1202d9f290d7c97273fc618b7f99f4448a7587898e06500fa0b5c72698"
+    },
+    "pm/decisions.md": {
+      "policy": "project-owned",
+      "baselineSha256": "fff21c36afbdd83132365f0657f54bca9efc5f1a7380c9478e0145ddbd0c8b60"
+    },
+    "pm/一期-看板.md": {
+      "policy": "project-owned",
+      "baselineSha256": "2b74f8a02d0cbdd5710300b2b2a99b101f5e336680edfbd8e30c2c37b542d0b8"
+    }
+  },
+  "integrations": {
+    "gitignore": null,
+    "hooks": null
+  }
+}

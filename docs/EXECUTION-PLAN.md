@@ -4,13 +4,13 @@
 > 基线日期：2026-08-24
 > 上游文档：[`ROADMAP.md`](ROADMAP.md)（下称“演进书”）；竞品调研见 [`CLI-STRATEGY-2026-08.md`](CLI-STRATEGY-2026-08.md)
 > 基线代码：`solobaton@1.16.3`（npm 已发布，Git tag `v1.16.3`）
-> 实施状态（更新于 2026-08-25）：**WP0.1–WP0.5、WP1.1–WP1.6 与 WP2.1–WP2.8 已完成本地闭环并由本地源仓基线 `b062f25` 保全；WP3.1–WP3.4 已完成源码和 disposable Git 沙箱候选，Phase 3 源码范围闭合，真实版本增量 upgrade 试点待办**。三个 BuildBeat Wave 1 试点最终关闭 HEAD 为 `4ea29a94a3a29fa905ae99662359ec561298135d`、`69d6e8358f7fda03225c090d99b5647cae152183`、`6b32c53e4fd750770690a0bbe796638314cb792a`；它们均 clean、无 remote。旧名试点继续只作为 legacy 兼容历史证据。当前 package metadata 仍为 `1.16.3`，全部后续源码均未推送、未发布，不等于 v1.17/v1.18/v1.19/v1.20 已打 tag、已创建 GitHub Release 或已发布 npm；Claude plugin 只在隔离配置完成本地安装验证。
+> 实施状态（更新于 2026-08-25）：**WP0.1–WP0.5、WP1.1–WP1.6 与 WP2.1–WP2.8 已完成本地闭环并由本地源仓基线 `b062f25` 保全；WP3.1–WP3.4 已完成源码和 disposable Git 沙箱候选，Phase 3 源码范围闭合；WP4.1 的示例全貌与 legacy 迁移指南已完成，下一本地实现项是 WP4.2**。真实版本增量 upgrade 试点仍待办。三个 BuildBeat Wave 1 试点最终关闭 HEAD 为 `4ea29a94a3a29fa905ae99662359ec561298135d`、`69d6e8358f7fda03225c090d99b5647cae152183`、`6b32c53e4fd750770690a0bbe796638314cb792a`；它们均 clean、无 remote。旧名试点继续只作为 legacy 兼容历史证据。当前 package metadata 仍为 `1.16.3`，全部后续源码均未推送、未发布，不等于 v1.17/v1.18/v1.19/v1.20 已打 tag、已创建 GitHub Release 或已发布 npm；Claude plugin 只在隔离配置完成本地安装验证。
 >
 > **决策链（2026-08-24）**：
 > ① 先拍板"CLI 全冻结于 v0 只读"；
 > ② 经对 Spec Kit / OpenSpec / BMAD 官方能力的限定范围调研（结论：CLI 分发/更新有明确价值，命令面并不相同；所核对页面未记录三方合并），修订为**选择性解冻**；
 > ③ 最终边界：解冻 **Wave 1（init/adopt 真写入）** 与 **Wave 2（机械 upgrade）**；三方合并、uninstall 引擎、CLI 命令面扩张（gate/adr/standards/check）**继续冻结**。
-> 原待拍板决策 D1（双实现权威）按"bus-check 唯一同步权威"执行；D3（写入事实注入）的"哑脚手架 + AI 渲染"已通过旧名与 BuildBeat canonical 两轮真实目录本地 Git/Hook/hash 验证。WP2.8 Gate3 已确认；WP3.1–WP3.4 源码候选完成后，下一本地实现项是 WP4.1 示例/迁移指南，真实版本增量 upgrade 试点与发布序列仍是独立证据闸。
+> 原待拍板决策 D1（双实现权威）按"bus-check 唯一同步权威"执行；D3（写入事实注入）的"哑脚手架 + AI 渲染"已通过旧名与 BuildBeat canonical 两轮真实目录本地 Git/Hook/hash 验证。WP2.8 Gate3 已确认；WP3.1–WP3.4 源码候选和 WP4.1 示例/迁移指南已完成，下一本地实现项是 WP4.2 能力矩阵/文档终校；真实版本增量 upgrade 试点与发布序列仍是独立证据闸。
 
 ---
 
@@ -371,9 +371,18 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 
 | WP | 内容 |
 |---|---|
-| WP4.1 | `example/` 换新协议全貌（standards + ADR + Gate 四态 + 证据行 + manifest）；legacy 项目迁移指南一页（v1.16 拷出项目 → 新版协议 + 建基线路径） |
+| WP4.1（完成） | `example/` 换新协议全貌（standards + ADR + Gate 四态 + 证据行 + manifest）；legacy 项目迁移指南一页（v1.16 拷出项目 → 新版协议 + 建基线路径） |
 | WP4.2 | 能力矩阵定稿（Skill-only ⟷ CLI 三命令）；双语文档终校；演进书 §15 硬门槛按修订后逐条打勾存档 |
 | WP4.3 | 外部分发迁移决策：legacy npm 包/仓库地址是长期保留，还是迁移到 scoped package/新仓库名；任何动作均独立验收重定向与 Trusted Publishing |
+
+### WP4.1 示例全貌与 legacy 迁移（完成）
+
+- `example/` 保留已完成一期的四个 `passed` live Gate，在 README 单独给出 `pending/passed/blocked/n/a` 四态语法，避免一份看板出现重复权威行；standards、ADR、完成工作包证据行与归档 evidence 继续作为已填完快照。
+- 新增 `example/.buildbeat/manifest.json` schema 2 合成教学快照：8 个声明路径的 policy/hash 与当前字节由 `check_docs.py` 强关联；该文件明示不是已发布 v1.16 写入证据、健康 CLI 安装或可复制基线。scripts/指挥台/Hook 仍引用上游 SSOT，optional 与业务记录不进 manifest。
+- `docs/LEGACY-V1.16-MIGRATION.md` 集中冻结两条路：默认继续按所有权手工维护；只在明确批准后于专用 Git 分支重走 `adopt` 建立真实 schema 2 基线。手写/复制/重命名 manifest、破坏性 reset、混合 namespace 和把基线当成 Gate/部署证据均被明确禁止。
+- README 中英入口与 SKILL 接管仪式已链接该指南；本工作包不执行真实项目迁移、push、tag、Release、npm publish 或远端改名。
+
+**候选验收**：Node `55/55`、Shell `221/221`、Skill-only、Claude plugin `7/7`、107 份 Markdown 契约检查、76 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；该证据只覆盖本地源码/文档候选和一次性沙箱。
 
 ---
 
@@ -432,9 +441,10 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 11. [x] **Phase 3 / WP3.2 源码候选**：Gate2 n/a 与正向 UI 信号、passed 决策精确行、evidence 归档位置三个强关联规则及 fixtures 已闭环；warning 不扩张 strict 或 human Gate 权限。
 12. [x] **Phase 3 / WP3.3 源码候选**：显式多仓 map、CHANGELOG/契约/部署基线交叉比对、确定 drift conflict 与缺失范围 unverified 已由 runtime nested-Git fixture 闭环；尚未形成真实项目通过证据。
 13. [x] **Phase 3 / WP3.4 源码候选**：limit/symlink/permission 统一为精确 `sync.scan_truncated` unverified，证据边界不误报缺失；SKILL/指挥台五级处置页与三类回归已闭环。
-14. [ ] **下一开工：Phase 4 / WP4.1**：把 `example/` 补成新协议全貌，并新增 v1.16 legacy 拷出项目到新版协议/基线的迁移指南；不执行发布或真实项目升级。
+14. [x] **Phase 4 / WP4.1**：`example/` 已补齐四态语法与 schema 2 合成教学 manifest，v1.16 legacy 拷出项目的手工维护/受控建基线路径已集中成指南；未执行发布或真实项目升级。
+15. [ ] **下一开工：Phase 4 / WP4.2**：定稿 Skill-only ↔ CLI 三命令能力矩阵，终校双语文档，并按修订后演进书§15 硬门槛逐条留档；不执行外部分发。
 
-Phase 0–2 已由 `b062f25` 本地提交保全，WP3.1–WP3.3 分别由 `a378b2f`、`168dfd3`、`7f4cf08` 形成后续本地源码候选，WP3.4 当前候选继续在其上演进。BuildBeat Wave 1 新真实目录试点与 Gate3 已完成，Wave 2 目前只有 disposable Git 沙箱证据。任何远端 push、tag、远端改名、GitHub Release 或 npm publish 继续等待独立授权。
+Phase 0–2 已由 `b062f25` 本地提交保全，WP3.1–WP3.4 分别由 `a378b2f`、`168dfd3`、`7f4cf08`、`f02686f` 形成后续本地源码候选，WP4.1 在其上形成最新本地文档候选。BuildBeat Wave 1 新真实目录试点与 Gate3 已完成，Wave 2 目前只有 disposable Git 沙箱证据。任何远端 push、tag、远端改名、GitHub Release 或 npm publish 继续等待独立授权。
 
 ---
 

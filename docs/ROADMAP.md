@@ -181,7 +181,7 @@ contracts / decisions / status / evidence
 
 ### 3.2 当前 CLI 状态
 
-已独立验证并发布的 CLI v0 只承担检查和只读规划，`init/adopt` 必须带 `--dry-run`，所有项目写入 fail-closed。Phase 0–2 已形成本地基线 `b062f25`：Wave 1 `init/adopt`、manifest schema 2、Confirmed STACK 漂移检查和 marketplace plugin 均完成沙箱验证，Wave 1 另有 BuildBeat canonical 真实目录与 Gate3 证据。当前未发布 checkout 已完成 WP3.1–WP3.4：schema 2 机械 `upgrade`、Gate/证据强关联、多仓版本 join 与扫描边界报告均通过 disposable Git/文件系统沙箱；bundle 仍为 `v1.16`，所以这些源码候选不是已发布行为，真实旧版本到新 bundle 的独立升级试点也尚未发生。项目 `uninstall`、`diff`、工作流命令扩张与三方合并引擎继续冻结。Skill 仍承担项目语义和人工 Gate。
+已独立验证并发布的 CLI v0 只承担检查和只读规划，`init/adopt` 必须带 `--dry-run`，所有项目写入 fail-closed。Phase 0–2 已形成本地基线 `b062f25`：Wave 1 `init/adopt`、manifest schema 2、Confirmed STACK 漂移检查和 marketplace plugin 均完成沙箱验证，Wave 1 另有 BuildBeat canonical 真实目录与 Gate3 证据。当前未发布 checkout 已完成 WP3.1–WP3.4：schema 2 机械 `upgrade`、Gate/证据强关联、多仓版本 join 与扫描边界报告均通过 disposable Git/文件系统沙箱；WP4.1 另补齐了新协议教学全貌与 v1.16 legacy 迁移指南。bundle 仍为 `v1.16`，所以这些源码/文档候选不是已发布行为，真实旧版本到新 bundle 的独立升级试点也尚未发生。项目 `uninstall`、`diff`、工作流命令扩张与三方合并引擎继续冻结。Skill 仍承担项目语义和人工 Gate。
 
 ### 3.3 主要缺口
 
@@ -189,7 +189,7 @@ contracts / decisions / status / evidence
 |---|---|
 | Phase 3 仍缺真实项目刷新证据 | Gate/多仓/扫描边界目前是源码与 disposable fixture 候选，不能外推为任一真实项目当前一致 |
 | 机械升级缺真实版本增量证据 | 当前 bundle 与真实 schema 2 安装同为 `v1.16`，沙箱矩阵不能外推为真实升级试点或发布就绪 |
-| 示例全貌与 legacy 迁移指南未完成 | 拷出项目还缺一条从 v1.16 手册时代到新协议/基线的集中可执行路径 |
+| Skill-only / CLI 能力矩阵与双语终校未完成 | 当前能力分散在 README、SKILL、CLI 合同与执行计划，对外发布前还需一张权威对照与双语一致性收口 |
 | 发布序列尚未拍板 | v1.17–v1.20 分段还是合并候选会影响 tag、release note 与 registry 回读顺序，但不阻塞本地源码继续演进 |
 | 外部分发仍是旧 namespace | npm/GitHub 远端名、稳定版本序列和 registry 回读尚未完成 BuildBeat 发布收口 |
 
@@ -694,7 +694,7 @@ CLI 侧：
 
 **目标**：在 Wave 1 的 schema 2 基线上补齐有边界的机械升级，并完善多仓和 Gate 检查，不扩张工作流命令面。
 
-当前进度：WP3.1–WP3.4 的机械 upgrade、Gate/证据强关联、多仓漂移与扫描边界报告源码及 disposable Git 沙箱候选已完成，Phase 3 源码范围闭合；下一本地实现项是 WP4.1 示例全貌与 legacy 迁移指南。真实版本增量 upgrade 试点保留为发布前独立证据闸。
+当前进度：WP3.1–WP3.4 的机械 upgrade、Gate/证据强关联、多仓漂移与扫描边界报告源码及 disposable Git 沙箱候选已完成，Phase 3 源码范围闭合；WP4.1 示例全貌与 legacy 迁移指南也已完成，下一本地实现项是 WP4.2 能力矩阵与文档终校。真实版本增量 upgrade 试点保留为发布前独立证据闸。
 
 交付：
 
@@ -722,6 +722,8 @@ CLI 侧：
 - 完成 BuildBeat 外部分发标识决策：继续沿用 legacy `solobaton` 包/仓库地址，或另行批准 scoped package 与远端改名。
 
 品牌名已在 2026-08-25 拍板；远端仓库、npm 包和发布动作不阻塞 Phase 0–3，也不由本地改名自动授权。
+
+当前进度：WP4.1 已以合成、hash 可校验但明确不可复制的 schema 2 教学 manifest 补齐 `example/`，并用集中指南区分“legacy 继续手工维护”与“经批准在专用分支重建基线”。下一项是 WP4.2；本收口没有执行真实项目升级或任何外部分发。
 
 ---
 

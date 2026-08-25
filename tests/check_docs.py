@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import subprocess
@@ -46,6 +47,7 @@ CRITICAL_CLI_FILES = (
     "bin/buildbeat.js",
     "bin/solobaton.js",
     "docs/CLI.md",
+    "example/.buildbeat/manifest.json",
     "docs/RELEASING.md",
     "package-lock.json",
     "package.json",
@@ -98,6 +100,7 @@ CRITICAL_GOVERNANCE_FILES = (
     "docs/CHECKS.md",
     "docs/CLI-STRATEGY-2026-08.md",
     "docs/EXECUTION-PLAN.md",
+    "docs/LEGACY-V1.16-MIGRATION.md",
     "docs/PHASE1-PILOT-2026-08-24.md",
     "docs/PHASE2-PILOT-PREFLIGHT-2026-08-25.md",
     "docs/PHASE2-PILOT-2026-08-25.md",
@@ -628,7 +631,8 @@ def check_execution_contracts() -> list[str]:
             "WP3.2 Gate/证据强关联（源码候选完成）",
             "WP3.3 多仓漂移（源码候选完成）",
             "WP3.4 边界报告完善（源码候选完成）",
-            "下一本地实现项是 WP4.1 示例/迁移指南",
+            "WP4.1 示例全貌与 legacy 迁移（完成）",
+            "下一本地实现项是 WP4.2 能力矩阵/文档终校",
             "buildbeat@buildbeat-plugins",
             "PHASE1-PILOT-2026-08-24.md",
             "PHASE2-PILOT-2026-08-25.md",
@@ -672,6 +676,14 @@ def check_execution_contracts() -> list[str]:
             "4ea29a94a3a29fa905ae99662359ec561298135d",
             "69d6e8358f7fda03225c090d99b5647cae152183",
             "6b32c53e4fd750770690a0bbe796638314cb792a",
+        ),
+        "docs/LEGACY-V1.16-MIGRATION.md": (
+            "A. 继续 legacy 手工维护",
+            "B. 受控重建 schema 2 基线",
+            "不得手写 manifest",
+            "example/.buildbeat/manifest.json",
+            "本流程不授权部署、push、tag、GitHub Release、npm publish 或远端改名",
+            "不用破坏性 reset",
         ),
         "docs/ROADMAP.md": (
             "2026-08-24 执行修订（生效）",
@@ -817,6 +829,13 @@ def check_execution_contracts() -> list[str]:
             "- Gate4: passed",
             "- **证据**:",
         ),
+        "example/README.md": (
+            "- Gate1: pending",
+            "- Gate2: passed",
+            "- Gate3: blocked",
+            "- Gate4: n/a",
+            "Manifest 的教学边界",
+        ),
     }
     for relative, fragments in contracts.items():
         content = (ROOT / relative).read_text(encoding="utf-8")
@@ -857,6 +876,98 @@ def check_example_version() -> list[str]:
             f"{example_match.group(1)} does not match latest changelog {latest_match.group(1)}"
         ]
     return []
+
+
+def check_example_manifest() -> list[str]:
+    errors: list[str] = []
+    relative = "example/.buildbeat/manifest.json"
+    path = ROOT / relative
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return [f"{relative}: invalid JSON: {error}"]
+
+    expected_top_level = {
+        "schemaVersion",
+        "scaffoldVersion",
+        "cliVersion",
+        "layout",
+        "installedAt",
+        "files",
+        "integrations",
+    }
+    if set(manifest) != expected_top_level:
+        errors.append(f"{relative}: top-level fields do not match schema 2")
+
+    package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+    cli_version = package.get("version")
+    scaffold_version = (
+        f"v{'.'.join(cli_version.split('.')[:2])}"
+        if isinstance(cli_version, str) and re.fullmatch(r"\d+\.\d+\.\d+", cli_version)
+        else None
+    )
+    if manifest.get("schemaVersion") != 2:
+        errors.append(f"{relative}: teaching manifest must use schema 2")
+    if manifest.get("cliVersion") != cli_version:
+        errors.append(f"{relative}: cliVersion must match package.json")
+    if manifest.get("scaffoldVersion") != scaffold_version:
+        errors.append(f"{relative}: scaffoldVersion must match the source bundle")
+    if manifest.get("layout") != "default":
+        errors.append(f"{relative}: teaching snapshot must use default layout")
+    if re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z",
+        str(manifest.get("installedAt", "")),
+    ) is None:
+        errors.append(f"{relative}: installedAt must be a canonical UTC timestamp")
+
+    marker = (ROOT / "example/BUILDBEAT.md").read_text(encoding="utf-8")
+    marker_match = re.search(r"本项目使用 BuildBeat `(v\d+\.\d+)`", marker)
+    if marker_match is None or marker_match.group(1) != manifest.get("scaffoldVersion"):
+        errors.append(f"{relative}: scaffoldVersion must match example/BUILDBEAT.md")
+
+    expected_files = {
+        "AGENTS.md": "replace-if-unmodified",
+        "ARCHITECTURE.md": "project-owned",
+        "BUILDBEAT.md": "replace-if-unmodified",
+        "CLAUDE.md": "replace-if-unmodified",
+        "contracts/PROTOCOL.md": "project-owned",
+        "pm/NOW.md": "project-owned",
+        "pm/decisions.md": "project-owned",
+        "pm/一期-看板.md": "project-owned",
+    }
+    files = manifest.get("files")
+    if not isinstance(files, dict):
+        errors.append(f"{relative}: files must be an object")
+        files = {}
+    if set(files) != set(expected_files):
+        errors.append(f"{relative}: teaching inventory must contain the documented 8 paths")
+    for project_relative, policy in expected_files.items():
+        record = files.get(project_relative)
+        if not isinstance(record, dict) or set(record) != {"policy", "baselineSha256"}:
+            errors.append(f"{relative}: invalid file record for {project_relative}")
+            continue
+        if record.get("policy") != policy:
+            errors.append(f"{relative}: wrong policy for {project_relative}")
+        target = ROOT / "example" / project_relative
+        if not target.is_file() or target.is_symlink():
+            errors.append(f"{relative}: baseline target must be a regular file: {project_relative}")
+            continue
+        actual_hash = hashlib.sha256(target.read_bytes()).hexdigest()
+        if record.get("baselineSha256") != actual_hash:
+            errors.append(f"{relative}: stale baselineSha256 for {project_relative}")
+
+    if manifest.get("integrations") != {"gitignore": None, "hooks": None}:
+        errors.append(f"{relative}: teaching integrations must keep gitignore/hooks null")
+
+    readme = (ROOT / "example/README.md").read_text(encoding="utf-8")
+    for fragment in (
+        "合成教学快照",
+        "不得复制本 manifest",
+        "这不是可用 `doctor` 证明健康的完整 CLI 安装",
+    ):
+        if fragment not in readme:
+            errors.append(f"example/README.md: missing manifest evidence boundary {fragment}")
+    return errors
 
 
 def check_publish_workflow() -> list[str]:
@@ -924,6 +1035,7 @@ def main() -> int:
     errors.extend(check_cli_package())
     errors.extend(check_execution_contracts())
     errors.extend(check_example_version())
+    errors.extend(check_example_manifest())
     errors.extend(check_publish_workflow())
     errors.extend(check_workflow_action_pins())
     errors.extend(check_repository_governance())
@@ -936,7 +1048,7 @@ def main() -> int:
 
     print(
         f"Documentation checks passed: {len(paths)} Markdown files, "
-        "relative links, bilingual README shape, frontmatter, critical files, CLI package metadata, and repository governance."
+        "relative links, bilingual README shape, frontmatter, critical files, example manifest hashes, CLI package metadata, and repository governance."
     )
     return 0
 

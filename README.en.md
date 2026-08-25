@@ -80,6 +80,8 @@ These install, update, and removal commands manage only the **legacy CLI package
 
 Phases 0–2 now have a local source baseline commit, `b062f25`, which has not been pushed or released. In addition to bounded Wave 1 `init/adopt` writes, the current checkout implements WP3.1's schema-2-only mechanical `upgrade`: within one major version it uses manifest hashes to replace unchanged managed files, any unresolved conflict keeps the transaction at zero writes, `--force` still cannot overwrite project-owned content or unsafe paths, and a major transition separately requires `--major`. This implementation has passed disposable Git-sandbox regressions, but it has not completed an independent real-project pilot and is not in npm. The earlier WP2.7 legacy and WP2.8 BuildBeat canonical pilots remain evidence only for their respective local boundaries.
 
+Copied v1.16 legacy projects must not hand-author, copy, or rename a manifest to fabricate schema 2 ownership. Continue with manual CHANGELOG-based maintenance by default; if mechanical upgrades are genuinely required, use the [v1.16 legacy migration guide](docs/LEGACY-V1.16-MIGRATION.md) to rebuild the baseline under review on a dedicated Git branch.
+
 > The write-enabled first-screen command `npx --yes --package=solobaton@latest buildbeat init my-project` is deliberately not presented as an active entry point yet. A stable candidate must still reach the remote default branch, receive explicit release authorization, and pass official-registry readback.
 
 ### Manual installation
@@ -245,6 +247,7 @@ The compact brownfield layout moves the scripts, operator card, and version mark
 - [`docs/CLI-STRATEGY-2026-08.md`](docs/CLI-STRATEGY-2026-08.md): the official-source CLI comparison and its evidence limits;
 - [`docs/CHECKS.md`](docs/CHECKS.md): file-bus invariants, Gate/evidence tokens, finding codes, and strict-mode semantics;
 - [`docs/CLI.md`](docs/CLI.md): command boundaries, file ownership, manifest, mechanical upgrade, and manual-removal contract;
+- [`docs/LEGACY-V1.16-MIGRATION.md`](docs/LEGACY-V1.16-MIGRATION.md): safe paths for a copied v1.16 project to remain manually managed or rebuild a schema 2 baseline under review (Chinese);
 - [`docs/CLI-PILOT-2026-08-23.md`](docs/CLI-PILOT-2026-08-23.md): read-only CLI v0 evidence from three real brownfield projects and the write-boundary decision;
 - [`docs/PHASE1-PILOT-2026-08-24.md`](docs/PHASE1-PILOT-2026-08-24.md): the read-only Phase 1 file-bus pilot across the example, an active multi-repo projection, and a real single-repo code tree;
 - [`docs/PHASE2-PILOT-2026-08-25.md`](docs/PHASE2-PILOT-2026-08-25.md): the three real-directory Wave 1 write paths, Tide preservation hashes, UI-detection feedback, and final local Git/hook/hash evidence;

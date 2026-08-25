@@ -78,6 +78,8 @@ npm uninstall --global solobaton       # 移除全局 CLI
 
 Phase 0–2 已形成本地源仓基线提交 `b062f25`，但未推送、未发布。当前 checkout 在 Wave 1 `init/adopt` 受控写入之外，又实现了 WP3.1 的 schema-2-only 机械 `upgrade`：同 major 按 manifest/hash 替换未改的 managed 文件，冲突默认零写，`--force` 也永不覆盖 project-owned 内容或不安全路径；跨 major 另需 `--major`。该升级实现已通过一次性 Git 沙箱回归，尚未完成独立真实项目试点，也未进入 npm。WP2.7 legacy namespace 与 WP2.8 BuildBeat canonical namespace 的既有试点仍只证明各自当时的本地边界。
 
+已拷出的 v1.16 legacy 项目不得手写、复制或重命名 manifest 来伪造 schema 2 所有权。默认继续按 CHANGELOG 手工维护；如果确需进入机械升级，按 [v1.16 legacy 迁移指南](docs/LEGACY-V1.16-MIGRATION.md) 在专用 Git 分支受控重建基线。
+
 > 因此，写入式首屏命令 `npx --yes --package=solobaton@latest buildbeat init my-project` 目前刻意不作为可用入口展示；仍须稳定候选进入远端默认分支、获得发布授权并完成官方 registry 回读后才会激活。
 
 ### 手动安装
@@ -243,6 +245,7 @@ flowchart LR
 - [`docs/CLI-STRATEGY-2026-08.md`](docs/CLI-STRATEGY-2026-08.md)：基于官方来源的 CLI 策略对照与证据边界；
 - [`docs/CHECKS.md`](docs/CHECKS.md)：文件总线不变量、Gate/证据令牌、finding code 与严格模式规格；
 - [`docs/CLI.md`](docs/CLI.md)：CLI 命令边界、文件所有权、manifest、机械升级和手动移除合同；
+- [`docs/LEGACY-V1.16-MIGRATION.md`](docs/LEGACY-V1.16-MIGRATION.md)：v1.16 拷出项目继续手工维护或受控重建 schema 2 基线的安全路径；
 - [`docs/CLI-PILOT-2026-08-23.md`](docs/CLI-PILOT-2026-08-23.md)：三个真实存量项目的 CLI v0 只读试点与写入边界决策；
 - [`docs/PHASE1-PILOT-2026-08-24.md`](docs/PHASE1-PILOT-2026-08-24.md)：Phase 1 文件总线在 example、活跃多仓投影和真实单仓代码树上的只读试点；
 - [`docs/PHASE2-PILOT-2026-08-25.md`](docs/PHASE2-PILOT-2026-08-25.md)：Wave 1 三条真实目录写路径、Tide 保护摘要、UI 探测反馈与最终本地 Git/Hook/hash 证据；

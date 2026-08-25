@@ -2,6 +2,7 @@
 
 > 这里的每个文件,都是 `templates/` 对应模板**填好占位符之后的样子**；沙盘也刻意启用了可选 standards 与一个 ADR，用来展示“默认不生成、选择后由项目拥有”的完成态。
 > 🔴 项目、数据、人物、决策全部虚构(已脱敏);commit hash 均为示意值——真项目里 hash 必须真实可查(`git cat-file -t <hash>`,见 [lessons.md](../lessons.md) 第 11 条)。
+> [`.buildbeat/manifest.json`](.buildbeat/manifest.json) 是 schema 2 的**合成教学快照**：其 baseline hash 会由本仓机器检查锁定到当前示例字节，但它不证明已发布的 v1.16 CLI 写过这些文件，也不是可复制到真实项目的受管基线。
 
 ## 沙盘设定
 
@@ -21,6 +22,27 @@
 7. [AGENTS.md](AGENTS.md) / [ARCHITECTURE.md](ARCHITECTURE.md) —— 路由表和全栈总图填好后的样子(根上另有 [CLAUDE.md](CLAUDE.md),只是指向 `AGENTS.md` 的一行指针)
 8. [standards/](standards/) —— 已确认的 STACK/CODE/REVIEW/DESIGN；普通项目可以完全没有此目录
 9. [pm/adr/](pm/adr/) —— 长期技术决定与替代链；普通拍板仍只进 decisions.md
+10. [.buildbeat/manifest.json](.buildbeat/manifest.json) —— schema 2 字段、所有权策略与 baseline hash 的教学快照
+
+## Gate 四态怎么写
+
+`pm/一期-看板.md` 是已完成一期的 live 快照，因此四行都是 `passed`。下面只是语法对照，不要再追加到同一份看板：
+
+```md
+- Gate1: pending
+- Gate2: passed | 决策: `pm/decisions.md:16` | 证据: `pm/archive/一期/evidence/gate2.md`
+- Gate3: blocked | 理由: `实现候选尚有 P1 待修`
+- Gate4: n/a | 理由: `本工作包无部署或生产发布交付`
+```
+
+`n/a` 必须同行带非占位的 `理由:`；`passed` 应同行指向已存在的决策表行或归档证据。`blocked` 也应说明真实阻塞，不把“还没做”包装成审批。
+
+## Manifest 的教学边界
+
+- `files` 只记录这份合成快照声明的 8 个基线路径；当前文档字节与 `baselineSha256` 一致，是为了防止教材漂移，不是为 legacy 项目追认历史所有权。
+- 可选 `standards/`、`pm/adr/`、业务 status 与 evidence 是基线后的 project-owned 教学内容，不进 manifest。
+- 为避免复制可执行 SSOT，沙盘仍从上游引用 scripts/指挥台/Hook；所以这不是可用 `doctor` 证明健康的完整 CLI 安装。
+- 真实 v1.16 拷出项目必须按 [legacy 迁移指南](../docs/LEGACY-V1.16-MIGRATION.md) 处理；不得复制本 manifest、重命名 `.solobaton` 文件，或把当前已改过的文件 hash 伪装成安装基线。
 
 ## 拿它练手(公司内训用法)
 

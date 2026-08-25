@@ -8,6 +8,10 @@
 
 对照上游 [CHANGELOG.md](https://github.com/HaiYangBG1/solobaton/blob/main/CHANGELOG.md),从本文件记录的版本**往后**逐版看「拷出项目升级」标注的文件,同步后更新上面的版本行。拿不准就让 AI 会话对比上游 `templates/` 与本项目对应文件的差异。
 
+## 教学 manifest
+
+`.buildbeat/manifest.json` 是为本仓文档回归维护的 schema 2 合成快照，它的 hash 锁定当前示例字节。它不证明已发布 v1.16 CLI 完成过写入，不是真实项目的安装证据，也不得作为 legacy 项目的复制/重命名来源。真实迁移见 [v1.16 legacy 迁移指南](../docs/LEGACY-V1.16-MIGRATION.md)。
+
 ## 回灌(比升级更重要)
 
 本项目踩到 BuildBeat **没覆盖的新坑** → 回上游 `lessons.md` 登记一条(症状→根因→解药)。换期压缩仪式 checklist 里有"回灌一问",别跳过。

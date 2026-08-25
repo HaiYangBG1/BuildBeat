@@ -246,6 +246,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 
 > §8 假设从零起步;公司里大多数项目是**存量**的,两类项目的成本结构相反:0→1 的瓶颈是需求不确定,10→N 的瓶颈是**理解成本 ≫ 编写成本**、改坏的损失 ≫ 改对的收益。收到「给现有项目上 BuildBeat」类请求走本节,别拿 §8 硬套;提问三原则(§8)同样适用。
 > 先跑 `node bin/buildbeat.js adopt <项目根> --dry-run --json`:已发布 legacy v0 只给只读计划；当前源码候选在一屏确认后可受控 apply,默认生成紧凑布局并列出/拒绝碰撞。两者都不会判断绞杀者边界、危险区或 L3 是否充分,这些仍按下方仪式核实和拍板；apply 后继续消费 `pendingPlaceholders`,不能把机械落盘当成接管完成。
+> v1.16 拷出项目若没有 CLI 真实写入的 schema 2 manifest，`upgrade` 必须 blocked；不得手写 manifest、复制 `example/.buildbeat/manifest.json`、重命名 `.solobaton` 文件，或用当前文件 hash 伪造安装基线。默认继续手工维护；只在项目所有者明确批准时，按 [v1.16 legacy 迁移指南](docs/LEGACY-V1.16-MIGRATION.md) 在专用 Git 分支重建基线。
 
 ```
 - [ ] 1. 摸底(全自查,不问人):规模(文件/行数)、模块依赖、测试现状(几个测试/能不能跑/跑多久)、
@@ -294,6 +295,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 > 5 个 `.sh` 自己定位协调层根(向上找 `pm/NOW.md`),整树搬到 `pm/scripts/` 即得 §3 紧凑布局,脚本本身不用改。同伴脚本(`live-status.sh` / `live-config.sh`)要和它们放同一目录。
 >
 > 仓库级 CLI 的命令、exit code、schema 1 兼容/三策略 schema 2 文件所有权、机械 upgrade 与手动移除边界见 [docs/CLI.md](docs/CLI.md)。CLI 与 Skill 共用同一协议,但职责不同:Skill 做代码级理解与人 Gate,CLI 只做确定性生命周期机械动作;项目 `uninstall` 命令继续冻结。
+> legacy v1.16 项目的所有权分类、受控 rebaseline 步骤、回退和证据边界见 [docs/LEGACY-V1.16-MIGRATION.md](docs/LEGACY-V1.16-MIGRATION.md)。
 
 ## 10. 反模式与实战教训
 
