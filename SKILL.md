@@ -196,7 +196,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 > 🔴 收到「搭骨架 / 用 BuildBeat 起项目」类请求时,流程 = **先自查代码 → 只问查不到的 → 一屏确认 → 生成**;不许直接拷模板留 `<占位符>` 让用户手改,也**不许把看代码就能搞清的事拿去问用户**。
 > **提问三原则:① 能从代码/配置查到的不问;② 问就问不懂技术的人也能答的话**(话术不出现"仓/部署单元/契约/CLI"这类词,能给选项就不开放问);**③ 合并一次问完(常规 3 问,查到有 UI 时 +1),不连环追问**。有 AskUserQuestion 类工具就用,没有就在对话里问;用户说「你定 / 随便」就取默认值,并在收尾报告标注。
 >
-> **CLI 是确定性机械层,不是 Bootstrap 替身。** 旧 npm 包 `solobaton` 已发布的 v0 仍只读；当前未发布源码候选可先运行 `node bin/buildbeat.js init <项目根> --dry-run --json`,存量项目改用 `adopt ... --dry-run --json`。旧 `bin/solobaton.js` 只作为迁移别名保留。把仓/部署标记/UI/测试/碰撞结果作为自查证据,随后仍要读代码、只问剩余问题并做一屏确认。只有同一屏已获用户确认且 dry-run 无 blocker,才可用源码候选去掉 `--dry-run` 交互写入；非交互时 `--yes` 只复用这次确认,不能绕过碰撞/脏 Git/路径检查。CLI 只填确定项,必须继续按输出的 `pendingPlaceholders` 完成语义渲染；不得声称它已初始化 Git、安装 Hook、跨 Gate 或发布 npm。
+> **CLI 是确定性机械层,不是 Bootstrap 替身。** Canonical npm 入口已发布为 `@haiyangbg/buildbeat@latest`；先运行 `npx --yes --package=@haiyangbg/buildbeat@latest buildbeat init <项目根> --dry-run --json`,存量项目改用 `adopt ... --dry-run --json`。旧 npm 包 `solobaton` 已 deprecate 且仍只读；新包内的 `solobaton` executable 只作为迁移别名保留。把仓/部署标记/UI/测试/碰撞结果作为自查证据,随后仍要读代码、只问剩余问题并做一屏确认。只有同一屏已获用户确认且 dry-run 无 blocker,才可去掉 `--dry-run` 交互写入；非交互时 `--yes` 只复用这次确认,不能绕过碰撞/脏 Git/路径检查。CLI 只填确定项,必须继续按输出的 `pendingPlaceholders` 完成语义渲染；不得声称它已初始化 Git、安装 Hook、跨 Gate 或替业务项目批准发布。
 
 ### 8.1 先自查,后提问
 
