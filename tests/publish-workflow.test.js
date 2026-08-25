@@ -19,12 +19,12 @@ const CANDIDATE_INTEGRITY = `sha512-${"A".repeat(86)}==`;
 const DIFFERENT_INTEGRITY = `sha512-${"B".repeat(86)}==`;
 
 function fixture(t, { views, publishStatus }) {
-  const root = mkdtempSync(path.join(os.tmpdir(), "solobaton-publish-test-"));
+  const root = mkdtempSync(path.join(os.tmpdir(), "buildbeat-publish-test-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
 
   const bin = path.join(root, "bin");
   const state = path.join(root, "state");
-  const tarball = path.join(root, "solobaton-1.16.2.tgz");
+  const tarball = path.join(root, "haiyangbg-buildbeat-1.20.0.tgz");
   mkdirSync(bin);
   mkdirSync(state);
   writeFileSync(tarball, "reviewed candidate\n");
@@ -74,11 +74,12 @@ esac
       NPM_CONFIG_REGISTRY: "https://registry.npmjs.org/",
       MOCK_STATE_DIR: state,
       MOCK_PUBLISH_STATUS: String(publishStatus),
-      SOLOBATON_PACKAGE_VERSION: "1.16.2",
-      SOLOBATON_CANDIDATE_INTEGRITY: CANDIDATE_INTEGRITY,
-      SOLOBATON_CANDIDATE_TARBALL: tarball,
-      SOLOBATON_RECONCILE_ATTEMPTS: "3",
-      SOLOBATON_RECONCILE_DELAY_SECONDS: "0",
+      BUILDBEAT_PACKAGE_NAME: "@haiyangbg/buildbeat",
+      BUILDBEAT_PACKAGE_VERSION: "1.20.0",
+      BUILDBEAT_CANDIDATE_INTEGRITY: CANDIDATE_INTEGRITY,
+      BUILDBEAT_CANDIDATE_TARBALL: tarball,
+      BUILDBEAT_RECONCILE_ATTEMPTS: "3",
+      BUILDBEAT_RECONCILE_DELAY_SECONDS: "0",
     },
   });
   const publishCalls = () => readFileSync(path.join(state, "publish-calls"), "utf8");
@@ -89,7 +90,7 @@ test("publishes an absent version", (t) => {
   const mock = fixture(t, { views: ["__EMPTY__"], publishStatus: 0 });
   const result = mock.run();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(mock.publishCalls(), /publish .*solobaton-1\.16\.2\.tgz --access public/);
+  assert.match(mock.publishCalls(), /publish .*haiyangbg-buildbeat-1\.20\.0\.tgz --access public/);
 });
 
 test("accepts an existing version only when integrity matches exactly", (t) => {

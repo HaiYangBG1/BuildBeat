@@ -12,11 +12,19 @@ import { fileURLToPath } from "node:url";
 
 import {
   FILE_POLICIES,
+  GITIGNORE_BEGIN_MARKER,
+  GITIGNORE_END_MARKER,
+  GITIGNORE_MARKER_PAIRS,
   IGNORED_SCAN_DIRECTORIES,
+  LEGACY_MANIFEST_PATH,
+  LEGACY_MARKER_FILE,
   MANIFEST_PATH,
-  MANIFEST_SCHEMA_VERSION,
+  MANIFEST_PATHS,
+  MARKER_FILE,
+  OPTIONAL_TEMPLATE_PREFIXES,
   RENDER_REQUIRED_PLACEHOLDERS,
   SCRIPT_NAMES,
+  SUPPORTED_MANIFEST_SCHEMA_VERSIONS,
   filePolicy,
 } from "./constants.js";
 
@@ -36,7 +44,20 @@ const MANIFEST_TOP_LEVEL_KEYS = new Set([
 ]);
 const MANIFEST_FILE_KEYS = new Set(["policy", "baselineSha256"]);
 const MANIFEST_INTEGRATION_KEYS = ["gitignore", "hooks"];
-const MANIFEST_POLICIES = new Set(Object.values(FILE_POLICIES));
+const MANIFEST_GITIGNORE_KEYS = new Set([
+  "path",
+  "beginMarker",
+  "endMarker",
+  "baselineSha256",
+]);
+const MANIFEST_POLICIES = {
+  1: new Set(Object.values(FILE_POLICIES)),
+  2: new Set([
+    FILE_POLICIES.REPLACE_IF_UNMODIFIED,
+    FILE_POLICIES.PROJECT_OWNED,
+    FILE_POLICIES.MERGE_ONLY,
+  ]),
+};
 
 function posixPath(value) {
   return value.split(path.sep).join("/");
@@ -118,7 +139,7 @@ function isSafeManifestPath(target, value) {
   return true;
 }
 
-function validateManifest(data, target) {
+export function validateManifest(data, target) {
   const issues = [];
   const seen = new Set();
   const addIssue = (code, message) => {
@@ -136,12 +157,16 @@ function validateManifest(data, target) {
     addIssue("manifest.invalid_schema_version", "Manifest schemaVersion must be an integer.");
     return issues;
   }
-  if (data.schemaVersion !== MANIFEST_SCHEMA_VERSION) {
+  if (!SUPPORTED_MANIFEST_SCHEMA_VERSIONS.includes(data.schemaVersion)) {
     return issues;
   }
+  const schemaVersion = data.schemaVersion;
 
   if (Object.keys(data).some((key) => !MANIFEST_TOP_LEVEL_KEYS.has(key))) {
-    addIssue("manifest.unknown_field", "Manifest contains a field not defined by schema 1.");
+    addIssue(
+      "manifest.unknown_field",
+      `Manifest contains a field not defined by schema ${schemaVersion}.`,
+    );
   }
   if (typeof data.scaffoldVersion !== "string" || !/^v\d+\.\d+(?:\.\d+)?$/.test(data.scaffoldVersion)) {
     addIssue("manifest.invalid_scaffold_version", "Manifest scaffoldVersion is missing or invalid.");
@@ -170,6 +195,15 @@ function validateManifest(data, target) {
           "Manifest file paths must be normalized repository-relative paths without symlink traversal.",
         );
       }
+      if (
+        schemaVersion === 2 &&
+        [...MANIFEST_PATHS, ".gitignore", "gitignore.template"].includes(filename)
+      ) {
+        addIssue(
+          "manifest.reserved_file_path",
+          "Schema 2 files must exclude the manifest, source-only ignore template, and .gitignore host.",
+        );
+      }
       if (!isPlainObject(record)) {
         addIssue("manifest.invalid_file_record", "Each manifest file entry must be an object record.");
         continue;
@@ -177,7 +211,7 @@ function validateManifest(data, target) {
       if (Object.keys(record).some((key) => !MANIFEST_FILE_KEYS.has(key))) {
         addIssue("manifest.invalid_file_record", "Manifest file entries contain only policy and baselineSha256.");
       }
-      if (!MANIFEST_POLICIES.has(record.policy)) {
+      if (!MANIFEST_POLICIES[schemaVersion].has(record.policy)) {
         addIssue("manifest.invalid_file_policy", "Manifest file policy is missing or unsupported.");
       }
       if (typeof record.baselineSha256 !== "string" || !/^[0-9a-f]{64}$/.test(record.baselineSha256)) {
@@ -200,14 +234,67 @@ function validateManifest(data, target) {
     ) {
       addIssue(
         "manifest.invalid_integrations",
-        "Schema 1 integrations must contain exactly gitignore and hooks.",
+        `Schema ${schemaVersion} integrations must contain exactly gitignore and hooks.`,
       );
     }
-    if (MANIFEST_INTEGRATION_KEYS.some((key) => data.integrations[key] !== null)) {
-      addIssue(
-        "manifest.invalid_integration_record",
-        "Schema 1 integration records must be null until a write-capable schema defines them.",
-      );
+    if (schemaVersion === 1) {
+      if (MANIFEST_INTEGRATION_KEYS.some((key) => data.integrations[key] !== null)) {
+        addIssue(
+          "manifest.invalid_integration_record",
+          "Schema 1 integration records must be null until a write-capable schema defines them.",
+        );
+      }
+    } else {
+      if (data.integrations.hooks !== null) {
+        addIssue(
+          "manifest.invalid_integration_record",
+          "Schema 2 hooks must remain null; hook installation is a manual Skill step.",
+        );
+      }
+      const gitignore = data.integrations.gitignore;
+      if (gitignore !== null) {
+        if (!isPlainObject(gitignore)) {
+          addIssue(
+            "manifest.invalid_gitignore_integration",
+            "Schema 2 gitignore integration must be null or an object record.",
+          );
+        } else {
+          const keys = Object.keys(gitignore);
+          if (
+            keys.length !== MANIFEST_GITIGNORE_KEYS.size ||
+            keys.some((key) => !MANIFEST_GITIGNORE_KEYS.has(key))
+          ) {
+            addIssue(
+              "manifest.invalid_gitignore_integration",
+              "Schema 2 gitignore integration must contain exactly path, beginMarker, endMarker, and baselineSha256.",
+            );
+          }
+          if (gitignore.path !== ".gitignore" || !isSafeManifestPath(target, gitignore.path)) {
+            addIssue(
+              "manifest.invalid_gitignore_path",
+              "Schema 2 gitignore integration path must be the safe .gitignore host path.",
+            );
+          }
+          if (!GITIGNORE_MARKER_PAIRS.some(
+            ([beginMarker, endMarker]) =>
+              gitignore.beginMarker === beginMarker && gitignore.endMarker === endMarker,
+          )) {
+            addIssue(
+              "manifest.invalid_gitignore_markers",
+              "Schema 2 gitignore integration must use one complete BuildBeat or legacy Solobaton marker pair.",
+            );
+          }
+          if (
+            typeof gitignore.baselineSha256 !== "string" ||
+            !/^[0-9a-f]{64}$/.test(gitignore.baselineSha256)
+          ) {
+            addIssue(
+              "manifest.invalid_gitignore_hash",
+              "Schema 2 gitignore baselineSha256 must be exactly 64 lowercase hexadecimal characters.",
+            );
+          }
+        }
+      }
     }
   }
 
@@ -279,7 +366,7 @@ export function templateTarget(templatePath, layout) {
     if (templatePath.startsWith("scripts/")) {
       return `pm/${templatePath}`;
     }
-    if (templatePath === "SOLOBATON.md" || templatePath === "指挥台.md") {
+    if (templatePath === "BUILDBEAT.md" || templatePath === "指挥台.md") {
       return `pm/${templatePath}`;
     }
   }
@@ -287,11 +374,16 @@ export function templateTarget(templatePath, layout) {
 }
 
 export function plannedFiles(layout) {
-  return listTemplateFiles().map((templatePath) => ({
-    template: templatePath,
-    target: templateTarget(templatePath, layout),
-    policy: filePolicy(templatePath),
-  }));
+  return listTemplateFiles()
+    .filter(
+      (templatePath) =>
+        !OPTIONAL_TEMPLATE_PREFIXES.some((prefix) => templatePath.startsWith(prefix)),
+    )
+    .map((templatePath) => ({
+      template: templatePath,
+      target: templateTarget(templatePath, layout),
+      policy: filePolicy(templatePath),
+    }));
 }
 
 function detectPlaceholders(target, layout) {
@@ -318,44 +410,60 @@ function parseVersion(markerPath) {
   if (text === null) {
     return null;
   }
-  const match = text.match(/本项目使用 Solobaton `(v\d+\.\d+(?:\.\d+)?)`/);
+  const match = text.match(/本项目使用 (?:BuildBeat|Solobaton) `(v\d+\.\d+(?:\.\d+)?)`/);
   return match ? match[1] : null;
 }
 
 function detectInstallation(target) {
-  const defaultMarker = path.join(target, "SOLOBATON.md");
-  const compactMarker = path.join(target, "pm", "SOLOBATON.md");
+  const markers = [
+    { layout: "default", namespace: "buildbeat", relative: MARKER_FILE },
+    { layout: "compact", namespace: "buildbeat", relative: `pm/${MARKER_FILE}` },
+    { layout: "default", namespace: "solobaton", relative: LEGACY_MARKER_FILE },
+    { layout: "compact", namespace: "solobaton", relative: `pm/${LEGACY_MARKER_FILE}` },
+  ];
+  const presentMarkers = markers.filter((item) => existsSync(path.join(target, item.relative)));
   const defaultEvidence =
-    existsSync(defaultMarker) || existsSync(path.join(target, "scripts", "bus-check.sh"));
+    presentMarkers.some((item) => item.layout === "default") ||
+    existsSync(path.join(target, "scripts", "bus-check.sh"));
   const compactEvidence =
-    existsSync(compactMarker) || existsSync(path.join(target, "pm", "scripts", "bus-check.sh"));
+    presentMarkers.some((item) => item.layout === "compact") ||
+    existsSync(path.join(target, "pm", "scripts", "bus-check.sh"));
 
-  if (defaultEvidence && compactEvidence) {
-    return { state: "mixed", layout: null, version: null };
+  if ((defaultEvidence && compactEvidence) || presentMarkers.length > 1) {
+    return { state: "mixed", layout: null, version: null, namespace: null, markerPath: null };
   }
-  if (existsSync(defaultMarker)) {
-    return { state: "installed", layout: "default", version: parseVersion(defaultMarker) };
-  }
-  if (existsSync(compactMarker)) {
-    return { state: "installed", layout: "compact", version: parseVersion(compactMarker) };
+  if (presentMarkers.length === 1) {
+    const marker = presentMarkers[0];
+    return {
+      state: "installed",
+      layout: marker.layout,
+      version: parseVersion(path.join(target, marker.relative)),
+      namespace: marker.namespace,
+      markerPath: marker.relative,
+    };
   }
   if (defaultEvidence) {
-    return { state: "partial", layout: "default", version: null };
+    return { state: "partial", layout: "default", version: null, namespace: null, markerPath: null };
   }
   if (compactEvidence) {
-    return { state: "partial", layout: "compact", version: null };
+    return { state: "partial", layout: "compact", version: null, namespace: null, markerPath: null };
   }
-  return { state: "not-installed", layout: null, version: null };
+  return { state: "not-installed", layout: null, version: null, namespace: null, markerPath: null };
 }
 
 function inspectManifest(target) {
-  const filename = path.join(target, MANIFEST_PATH);
-  if (!existsSync(filename)) {
+  const presentPaths = MANIFEST_PATHS.filter((relative) => existsSync(path.join(target, relative)));
+  if (presentPaths.length === 0) {
     return { state: "missing", path: MANIFEST_PATH };
   }
+  if (presentPaths.length > 1) {
+    return { state: "ambiguous", path: MANIFEST_PATH, paths: presentPaths };
+  }
+  const relativePath = presentPaths[0];
+  const filename = path.join(target, relativePath);
   const text = safeReadText(filename);
   if (text === null) {
-    return { state: "invalid", path: MANIFEST_PATH, reason: "unreadable" };
+    return { state: "invalid", path: relativePath, reason: "unreadable" };
   }
   try {
     const data = JSON.parse(text);
@@ -363,7 +471,8 @@ function inspectManifest(target) {
     const validationIssues = validateManifest(data, target);
     return {
       state: "present",
-      path: MANIFEST_PATH,
+      path: relativePath,
+      namespace: relativePath === LEGACY_MANIFEST_PATH ? "solobaton" : "buildbeat",
       schemaVersion: Number.isInteger(root.schemaVersion) ? root.schemaVersion : null,
       scaffoldVersion:
         typeof root.scaffoldVersion === "string" ? safeLabel(root.scaffoldVersion).slice(0, 40) : null,
@@ -373,7 +482,7 @@ function inspectManifest(target) {
       validationIssues,
     };
   } catch {
-    return { state: "invalid", path: MANIFEST_PATH, reason: "invalid-json" };
+    return { state: "invalid", path: relativePath, reason: "invalid-json" };
   }
 }
 
@@ -429,6 +538,42 @@ function inferProjectName(target, files) {
   return { value: safeLabel(path.basename(target)), source: "directory-name" };
 }
 
+function browserExtensionHasUi(target, files) {
+  const uiKeys = [
+    "action",
+    "browser_action",
+    "content_scripts",
+    "options_page",
+    "options_ui",
+    "page_action",
+    "side_panel",
+  ];
+
+  for (const filename of files.filter(
+    (item) => path.basename(item).toLowerCase() === "manifest.json",
+  )) {
+    const text = safeReadText(path.join(target, filename));
+    if (text === null) {
+      continue;
+    }
+    try {
+      const data = JSON.parse(text);
+      if (
+        data &&
+        typeof data === "object" &&
+        !Array.isArray(data) &&
+        [2, 3].includes(data.manifest_version) &&
+        uiKeys.some((key) => Object.hasOwn(data, key))
+      ) {
+        return true;
+      }
+    } catch {
+      // A malformed or unrelated manifest is not a trustworthy UI signal.
+    }
+  }
+  return false;
+}
+
 function packageSignals(target, files) {
   const uiPackages = new Set([
     "@angular/core",
@@ -440,7 +585,9 @@ function packageSignals(target, files) {
     "vite",
     "vue",
   ]);
-  let hasUi = files.some((filename) => /(?:^|\/)index\.html$/i.test(filename));
+  let hasUi =
+    files.some((filename) => /(?:^|\/)index\.html$/i.test(filename)) ||
+    browserExtensionHasUi(target, files);
   let hasTests = files.some((filename) =>
     /(?:^|\/)(?:test|tests|spec)(?:\/|$)|\.(?:test|spec)\.[^.\/]+$/i.test(filename),
   );
@@ -528,6 +675,87 @@ function executableStatus(target, layout) {
   return { checked: true, missing, nonExecutable };
 }
 
+function gitWorktreeStatus(target, hasGit) {
+  if (!hasGit) {
+    return { state: "not-initialized", changes: 0 };
+  }
+  const result = spawnSync(
+    "git",
+    ["-C", target, "status", "--porcelain=v1", "--untracked-files=all"],
+    {
+      encoding: "utf8",
+      shell: false,
+      timeout: 5000,
+    },
+  );
+  if (result.error || result.status !== 0) {
+    return { state: "unavailable", changes: 0 };
+  }
+  const changes = result.stdout
+    .split(/\r?\n/)
+    .filter((line) => line.length > 0)
+    .length;
+  return { state: changes === 0 ? "clean" : "dirty", changes };
+}
+
+function countOccurrences(text, token) {
+  let count = 0;
+  let offset = 0;
+  while (true) {
+    const index = text.indexOf(token, offset);
+    if (index === -1) {
+      return count;
+    }
+    count += 1;
+    offset = index + token.length;
+  }
+}
+
+function gitignoreStatus(target) {
+  const filename = path.join(target, ".gitignore");
+  if (!existsSync(filename)) {
+    return { state: "missing", beginMarkers: 0, endMarkers: 0 };
+  }
+  try {
+    const stat = lstatSync(filename);
+    if (!stat.isFile() || stat.isSymbolicLink()) {
+      return { state: "unsafe", beginMarkers: 0, endMarkers: 0 };
+    }
+    const text = readFileSync(filename, "utf8");
+    const beginMarkers = GITIGNORE_MARKER_PAIRS.reduce(
+      (count, [beginMarker]) => count + countOccurrences(text, beginMarker),
+      0,
+    );
+    const endMarkers = GITIGNORE_MARKER_PAIRS.reduce(
+      (count, [, endMarker]) => count + countOccurrences(text, endMarker),
+      0,
+    );
+    return { state: "present", beginMarkers, endMarkers };
+  } catch {
+    return { state: "unsafe", beginMarkers: 0, endMarkers: 0 };
+  }
+}
+
+function plannedPathCollision(target, item) {
+  const segments = item.target.split("/");
+  let current = target;
+  for (const segment of segments.slice(0, -1)) {
+    current = path.join(current, segment);
+    if (!existsSync(current)) {
+      break;
+    }
+    try {
+      const stat = lstatSync(current);
+      if (!stat.isDirectory() || stat.isSymbolicLink()) {
+        return true;
+      }
+    } catch {
+      return true;
+    }
+  }
+  return item.policy !== FILE_POLICIES.MERGE_ONLY && existsSync(path.join(target, item.target));
+}
+
 export function inspectProject(
   targetInput,
   { collisionLayout = "default", includeDependencies = true } = {},
@@ -538,13 +766,21 @@ export function inspectProject(
     return {
       target,
       exists: false,
-      installation: { state: "not-installed", layout: null, version: null },
+      installation: {
+        state: "not-installed",
+        layout: null,
+        version: null,
+        namespace: null,
+        markerPath: null,
+      },
       manifest: { state: "missing", path: MANIFEST_PATH },
       scan: { files: [], directories: [], symlinks: [], warnings: [], entriesSeen: 0, truncated: false },
       repositories: [],
       deploymentMarkers: [],
       projectName: { value: path.basename(target), source: "directory-name" },
       signals: { hasGit: false, hasTests: false, hasUi: false, nonEmpty: false },
+      gitWorktree: { state: "not-initialized", changes: 0 },
+      gitignore: { state: "missing", beginMarkers: 0, endMarkers: 0 },
       collisions: [],
       placeholders: [],
       dependencies: includeDependencies ? dependencyStatus() : null,
@@ -572,7 +808,7 @@ export function inspectProject(
     .sort();
   const signals = packageSignals(target, scan.files);
   const collisions = plannedFiles(collisionLayout)
-    .filter((item) => existsSync(path.join(target, item.target)))
+    .filter((item) => plannedPathCollision(target, item))
     .map((item) => item.target)
     .sort();
   const layoutForInspection = installation.layout || collisionLayout;
@@ -592,6 +828,8 @@ export function inspectProject(
       hasGit,
       nonEmpty: scan.files.length > 0 || scan.directories.some((item) => item !== ".git"),
     },
+    gitWorktree: gitWorktreeStatus(target, hasGit),
+    gitignore: gitignoreStatus(target),
     collisions,
     placeholders: detectPlaceholders(target, layoutForInspection),
     dependencies: includeDependencies ? dependencyStatus() : null,

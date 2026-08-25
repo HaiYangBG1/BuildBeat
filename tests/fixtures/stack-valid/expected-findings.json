@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified",
+    "gate.line_missing"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 0
+  },
+  "legacy": {
+    "strictExit": 0,
+    "contains": [
+      "standards/STACK.md 可核对基线与已扫描仓库事实一致"
+    ],
+    "notContains": [
+      "stack.drift",
+      "stack.unverified"
+    ]
+  }
+}

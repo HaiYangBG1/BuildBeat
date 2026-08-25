@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified",
+    "evidence.outside_archive"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 0
+  },
+  "legacy": {
+    "strictExit": 0,
+    "contains": [
+      "本地证据未落在 pm/archive/<期>/evidence/"
+    ],
+    "notContains": [
+      "已完成但 **证据**"
+    ]
+  }
+}

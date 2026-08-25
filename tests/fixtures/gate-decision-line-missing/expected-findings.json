@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified",
+    "gate.pass_untraceable"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 0
+  },
+  "legacy": {
+    "strictExit": 0,
+    "contains": [
+      "Gate3=passed 的决策引用未指向 pm/decisions.md 有效决策行"
+    ],
+    "notContains": []
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified",
+    "gate.line_missing",
+    "standards.unconfirmed"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 0
+  },
+  "legacy": {
+    "strictExit": 0,
+    "contains": [
+      "standards/STACK.md 仍是 Draft(待确认)"
+    ],
+    "notContains": [
+      "standards.invalid"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified",
+    "gate.line_missing",
+    "stack.drift"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 1
+  },
+  "legacy": {
+    "strictExit": 1,
+    "contains": [
+      "standards/STACK.md 与已扫描仓库事实冲突",
+      "Node constraints, lockfile kinds, Docker FROM images"
+    ],
+    "notContains": [
+      "stack.unverified"
+    ]
+  }
+}

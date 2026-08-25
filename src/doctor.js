@@ -4,9 +4,9 @@ import path from "node:path";
 import {
   CLI_VERSION,
   COMMON_REQUIRED_FILES,
-  MANIFEST_SCHEMA_VERSION,
   OUTPUT_SCHEMA_VERSION,
   SCRIPT_NAMES,
+  SUPPORTED_MANIFEST_SCHEMA_VERSIONS,
 } from "./constants.js";
 import { inspectProject } from "./project.js";
 
@@ -16,11 +16,10 @@ function add(findings, level, code, message, relativePath = null) {
   findings.push({ level, code, message, path: relativePath });
 }
 
-function requiredFiles(layout) {
-  const scriptBase = layout === "compact" ? "pm/scripts" : "scripts";
-  const localFiles = layout === "compact"
-    ? ["pm/SOLOBATON.md", "pm/指挥台.md"]
-    : ["SOLOBATON.md", "指挥台.md"];
+function requiredFiles(installation) {
+  const scriptBase = installation.layout === "compact" ? "pm/scripts" : "scripts";
+  const operatorCard = installation.layout === "compact" ? "pm/指挥台.md" : "指挥台.md";
+  const localFiles = [installation.markerPath, operatorCard].filter(Boolean);
   return [
     ...COMMON_REQUIRED_FILES,
     ...localFiles,
@@ -48,13 +47,13 @@ export function runDoctor(targetInput) {
   if (!inspection.exists) {
     add(findings, "error", "target.not_found", "Target directory does not exist.");
   } else if (installation.state === "not-installed") {
-    add(findings, "error", "install.not_found", "No Solobaton installation was detected.");
+    add(findings, "error", "install.not_found", "No BuildBeat or legacy Solobaton installation was detected.");
   } else if (installation.state === "mixed") {
     add(
       findings,
       "error",
       "install.mixed_layout",
-      "Default and compact layout evidence both exist; ownership is ambiguous.",
+      "Multiple BuildBeat/legacy markers or default/compact layout signals coexist; ownership is ambiguous.",
     );
   } else if (installation.state === "partial") {
     add(
@@ -67,12 +66,21 @@ export function runDoctor(targetInput) {
 
   if (installation.state === "installed") {
     if (!installation.version) {
-      add(findings, "error", "version.unreadable", "SOLOBATON.md has no readable installed version.");
+      add(findings, "error", "version.unreadable", `${installation.markerPath} has no readable installed version.`);
     }
-    for (const relative of requiredFiles(installation.layout)) {
+    for (const relative of requiredFiles(installation)) {
       if (!existsSync(path.join(inspection.target, relative))) {
         add(findings, "error", "file.missing", "Required scaffold file is missing.", relative);
       }
+    }
+    if (installation.namespace === "solobaton") {
+      add(
+        findings,
+        "info",
+        "install.legacy_namespace",
+        "A legacy Solobaton marker was detected; it remains readable, while new scaffolds use BuildBeat identifiers.",
+        installation.markerPath,
+      );
     }
     const verify = verifyStatusHasPlaceholders(inspection.target, installation.layout);
     if (verify.unconfigured) {
@@ -94,12 +102,20 @@ export function runDoctor(targetInput) {
       "This is a legacy/unmanaged installation; safe automated upgrade and uninstall are unavailable.",
       inspection.manifest.path,
     );
+  } else if (inspection.manifest.state === "ambiguous") {
+    add(
+      findings,
+      "error",
+      "manifest.ambiguous",
+      "Both BuildBeat and legacy Solobaton lifecycle manifests exist; ownership is ambiguous.",
+      inspection.manifest.path,
+    );
   } else if (inspection.manifest.state === "invalid") {
     add(findings, "error", "manifest.invalid", "The lifecycle manifest is unreadable or invalid JSON.", inspection.manifest.path);
   } else if (
     inspection.manifest.state === "present" &&
     inspection.manifest.schemaVersion !== null &&
-    inspection.manifest.schemaVersion !== MANIFEST_SCHEMA_VERSION
+    !SUPPORTED_MANIFEST_SCHEMA_VERSIONS.includes(inspection.manifest.schemaVersion)
   ) {
     add(
       findings,
@@ -135,7 +151,7 @@ export function runDoctor(targetInput) {
         findings,
         "error",
         "manifest.version_mismatch",
-        "Manifest scaffoldVersion does not match SOLOBATON.md.",
+        `Manifest scaffoldVersion does not match ${installation.markerPath}.`,
         inspection.manifest.path,
       );
     }
@@ -229,7 +245,7 @@ export function runDoctor(targetInput) {
 
 export function formatDoctor(report) {
   const lines = [
-    "Solobaton doctor",
+    "BuildBeat doctor",
     `Target: ${report.target}`,
     `Installation: ${report.installation.state}${report.installation.layout ? ` (${report.installation.layout})` : ""}${report.installation.version ? ` ${report.installation.version}` : ""}`,
     `Manifest: ${report.manifest.state}`,

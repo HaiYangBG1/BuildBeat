@@ -1,41 +1,42 @@
-# AGENTS.md — <项目名> 工作区 · 会话路由 + 协作总线
+# AGENTS.md — <项目名> 工作区 · 工作包路由 + 协作总线
 
-> 本文件走开放标准 `AGENTS.md`,被工作区下**任意会话**自动装载(Claude Code / Cursor / Codex / Gemini CLI / Aider / Zed 等均认)。目的:每个域的会话开工即知道「我是谁 / 读哪 / 写哪」,不靠人转述上下文。
+> 本文件走开放标准 `AGENTS.md`,被工作区下**任意会话**自动装载(Claude Code / Cursor / Codex / Gemini CLI / Aider / Zed 等均认)。目的:每个会话开工即知道「当前工作包 / AI 视角 / 读哪 / 写哪」,不靠人转述上下文。
 > **层叠规则**(标准语义):会话从被编辑文件所在目录向上收集沿途所有 `AGENTS.md` 合并,**离得越近优先级越高**。所以本文件只写全局的(路由 / 总线规则 / 红线),各代码子仓的局部细节写进**该仓自己的 `AGENTS.md`**,别往上堆。
 > 全栈总图(架构/基础设施/凭据位置)见 `./ARCHITECTURE.md`,按需读、别全文灌(重)。
 > 根目录的 `CLAUDE.md` 只是一行指针(兼容只认该文件名的工具),**内容单点在本文件**,别往那份里复制任何规则。
 
-## 1. 会话路由 —— 开一个会话 = 认领一个域
+## 1. 工作包路由 —— Builder 端到端负责,会话按 AI 视角隔离
 
-| 域 | cwd | 可写(拥有) | 只读 | 开工先读 | 状态写回 |
+> 协作单元是需求/功能工作包。一个 Builder 对工作包的产品判断、实现、测试、合并和发布证据端到端负责;下表只是可调用的 AI 专业视角与文件写边界,不是人类岗位或审批链。多个 Builder 默认认领不同工作包,共享事实仍走 Git 文件总线。
+
+| AI 视角 | cwd | 可写(拥有) | 只读 | 开工先读 | 状态写回 |
 |---|---|---|---|---|---|
 | **产品**(规格/编排) | `pm/` | `pm/**` | 全仓 | `pm/NOW.md` | 当期看板 + `pm/status/产品.md` |
 | **全栈**(实现,含运维) | 工作区根(同持 <N> 个代码仓) | `<代码仓1>/**` + `<代码仓2>/**`(**按仓分别 stage,不 `git add -A`**) | `pm/*` 当期文件、契约 | 各代码仓自己的 `AGENTS.md` + `pm/NOW.md` | `pm/status/全栈.md`(带 hash)+ 各仓 `CHANGELOG.md` + `contracts/PROTOCOL.md` |
 | **测试**(E2E·走查) | `<被测仓>/` | `tests/**` · 视觉基线 · 走查报告 | 实现 + spec + 设计稿 + 契约 | `pm/NOW.md` + `tests/README.md` | `pm/status/测试.md` + 核查门证据(E2E 报告/视觉 diff/对比图,**落 `pm/archive/<期>/evidence/`,换期零搬运**) |
 
-> **设计生成 = 外部工具**(非会话):产品域写 brief(必须要求**单 HTML 可渲染入口 + 关键流可点**)→ 人喂设计工具 → 稿落 `design/design_N期/` → 测试域走查 + 提带图 bug。
-> 🔴 **全栈域合并多角色的补偿控制**:里程碑候选必须由 reviewer subagent(只读,见 `.claude/agents/reviewer.md`)全核 + 测试域独立核两端;实现中出现冻结契约/鉴权/租户/Secret/fail-closed/持久化或不可逆副作用变化时做 `risk-delta` 定向核。写者≠审者不变,但不按每个草稿或小任务重复全审。
-> **开工护栏**:任意域开工**先跑 `bash scripts/bus-check.sh`** + `git pull`。
+> **设计生成 = 外部工具**(非会话):产品视角写 brief(必须要求**单 HTML 可渲染入口 + 关键流可点**)→ 人喂设计工具 → 稿落 `design/design_N期/` → 测试视角走查 + 提带图 bug。
+> 🔴 **同一 Builder 合并多视角的补偿控制**:里程碑候选必须由 reviewer subagent(只读,见 `.claude/agents/reviewer.md`)全核 + 测试视角独立核两端;实现中出现冻结契约/鉴权/租户/Secret/fail-closed/持久化或不可逆副作用变化时做 `risk-delta` 定向核。写者≠审者不变,但不按每个草稿或小任务重复全审。
+> **开工/收工护栏**:任意会话开工**先跑 `bash scripts/bus-check.sh`** + 各仓 `git pull`;收工前回写证据/状态后再跑 `bus-check --strict`,并保留 warning/unverified 边界。
 
-## 1.5 C 端审美红线(出 UI 的会话必读;非 UI 项目可删)
+## 1.5 UI 规范摘要(非 UI 项目可删)
 
-- 禁 AI 套路:默认字体一把梭 / 白底紫渐变 / 千篇一律卡片;延用既定设计语言 + CSS 变量 token,不各页硬编码。
-- 每个可见界面必处理四态:加载 / 空 / 错误 / 移动端。
-- **界面零元注释**:上线的可见界面不得出现给"做的人"看的文字——调试信息、口径/实现解释脚注、字段说明、mock/示意标记、开发者自留注释;确需解释的走设计稿定的 hover/帮助入口。每次上线核查门必查(reviewer 清单第 6 条;出处:solobaton lessons.md 第 14 条)。
-- 交互反馈 < 100ms;关键操作有明确视觉确认。
-- 区分靠结构(形状/版式/图标/留白)不靠艳色。
+> 项目若启用可选规范，完整设计原则、token、组件、交互、状态与可访问性单点见 `standards/DESIGN.md`；本文件只保留开工必读摘要，不复制正文。该文件缺失不报错。
+
+- 延用既定设计语言与 token；每个可见流程处理 loading / empty / error / disabled / 适用的移动端状态，关键操作提供明确且可访问的反馈。
+- 上线界面零调试信息、实现说明、mock 标记或开发者元注释；Gate2 与终签都以真渲染可点结果走查，静态稿或规范数值不能替代。
 
 ## 2. 协作总线十条规则
 
 **① 唯一看板指针** —— 入口永远是 `pm/NOW.md`,它指向当期看板;**换期只改 NOW 一处,看板文件名不得写死进本文件或其它文档**。
 **② 契约落盘不喊话** —— 跨边界接口先改 `contracts/PROTOCOL.md` 再动代码;收到协议声明**独立核查再信**(实测/读代码/查部署配置),不照单全收。
 **③ 交接靠 commit + 落盘** —— 工作包完成或到真实阻塞点 → 状态行带**交付候选/报告** commit hash,下游读 repo 即知进度;hash 不是 status 行自身 commit(禁止自引用)。原子 commit 可以多次,但不为每个 commit 单独收尾和打断人;尚无新候选就写已核基线 hash +「无新候选」,不得编 hash。
-**④ 开工护栏** —— 开工先 `bash scripts/bus-check.sh` + `git pull`;**部署/改契约/migration 等不可逆动作前再跑一次**;pre-commit 挂 `bus-check --strict` 机器闸(检出腐烂/幽灵 hash 即拦 commit,见 `scripts/pre-commit.sh`)。
+**④ 开工 + 收工护栏** —— 开工先 `bash scripts/bus-check.sh` + 各仓 `git pull`;**部署/改契约/migration 等不可逆动作前再跑一次**。收工前跑受影响测试,回写 contracts/decisions/看板/status/证据,再跑 `bus-check --strict`;它的 exit 0 不消除 warning/unverified。pre-commit 挂同一 strict 机器闸(见 `scripts/pre-commit.sh`)。
 **⑤ 三轨制** —— 快轨(小改:直接改+核查门)/ 标准轨(单功能全流程)/ 重轨(契约变更/大改:+`pm/changes/` 提案+多 agent 评审);NOW 标本期轨道。工作包默认取一条可独立验收的纵向结果或下一个 Gate/里程碑候选,不按文件、commit 或验收条目拆会话。
 **⑥ 核查门(review-ready + 一次候选核查)** —— 轻量机器闸每次提交都跑,受影响自动化测试按变更批次跑。**首次 milestone reviewer 只能在 review-ready 后启动**:工作包内实现与写者自查已完成;所有候选仓 `HEAD=candidate` 且工作树干净;受影响/全量 L3 与真渲染证据已绿;没有已知待修项或计划中的 candidate 修改。此前发现的鉴权/租户/Secret/fail-closed/持久化等实现问题统一记入实现语义清单并先自行收敛,**不得边改 candidate 边开 reviewer**;只有要修改已冻结对外契约或产生不可逆外部副作用才 `STOP_NOW`,批准后按一个风险批次做 `risk-delta`。默认每个工作包、每道 Gate 只启动 **1 次 milestone**;P0/P1 全部修完后再做 **1 次合并 closure**,P2 不复核。reviewer 返回前 candidate 若变化,原审查立即标 `SUPERSEDED`,不得把写者自发现的连续修补包装成 delta 链;重新满足 review-ready 后才启动替代 milestone。已完成 milestone 后出现新的高风险语义变化才核 `risk-delta`;同一 candidate 且机器证据仍绿直接复用。首轮报告保留原文,closure 只追加表。**完成 = hash + 可核验证据**;标准轨最低 L3,重轨与上线必须 L4,L1 只作补充定位。
-**⑦ 变更提案 + 状态分写** —— 跨域变更走 `pm/changes/` delta 提案;**各域只写自己的 `pm/status/<域>.md`**,别人只读。状态按工作包/里程碑批量更新,不为每个子产物另起一次交接。
+**⑦ 变更提案 + 状态分写** —— 跨工作包/共享边界变更走 `pm/changes/` delta 提案;**各 AI 视角只写自己的 `pm/status/{视角}.md`**,别人只读。状态按工作包/里程碑批量更新,不为每个子产物另起一次交接。
 **⑧ 视觉问题带图对比** —— 提 UI bug / 判设计符合性必附『实现截图 ⟷ 设计稿截图』并排 + 标注差异点;纯文字不算证据。
-**⑨ 单点事实** —— 线上版本只信 `bus-check` 实查(任何文档不写"当前线上 vX",契约快照版本仅 `PROTOCOL.md` 头部);每个收敛后的**真实决策包**只在 `pm/decisions.md` 记一行并回写落点,验收条目/推导结论/部分对话进度不单独记拍板;换期必跑压缩仪式(NOW 底部 checklist),**NOW 永远是薄指针、禁堆流水**。
+**⑨ 单点事实** —— 线上版本只信 `bus-check` 实查(任何文档不写"当前线上 vX",契约快照版本仅 `PROTOCOL.md` 头部);多仓项目的 repo/契约/本地部署基线 app 关系只写在 `PROTOCOL.md` 的 `buildbeat-multirepo-map:v1`,不从自然语言猜;每个收敛后的**真实决策包**只在 `pm/decisions.md` 记一行并回写落点,验收条目/推导结论/部分对话进度不单独记拍板;换期必跑压缩仪式(NOW 底部 checklist),**NOW 永远是薄指针、禁堆流水**。
 **⑩ Gate2 真渲染拍板** —— 设计拍板对象必须是真渲染可点原型(`bash scripts/design-preview.sh <期号>`);静态稿/截图只作参考。终签同样含真渲染走查。
 
 > **元原则:能实查的不问人** —— 查代码 / 配置 / 部署平台能得到的事实,不拿去问用户、不信文档、不信上游转述(规则⑨与②的推广)。

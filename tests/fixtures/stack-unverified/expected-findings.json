@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified",
+    "gate.line_missing",
+    "stack.unverified"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 0
+  },
+  "legacy": {
+    "strictExit": 0,
+    "contains": [
+      "standards/STACK.md 的漂移检查未完整覆盖"
+    ],
+    "notContains": [
+      "stack.drift"
+    ]
+  }
+}

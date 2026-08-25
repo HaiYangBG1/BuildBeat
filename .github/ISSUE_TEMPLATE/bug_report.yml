@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible Solobaton defect.
+description: Report a reproducible BuildBeat defect.
 title: "[Bug]: "
 labels:
   - bug
@@ -7,14 +7,14 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve Solobaton. Do not include credentials, tokens, private source, or vulnerability details here.
+        Thanks for helping improve BuildBeat. Do not include credentials, tokens, private source, or vulnerability details here.
 
   - type: input
     id: version
     attributes:
-      label: Solobaton version
-      description: Run `solobaton --version`, or provide the source commit.
-      placeholder: 1.16.3 or a commit SHA
+      label: BuildBeat version
+      description: Run `buildbeat --version` (legacy alias: `solobaton --version`), or provide the source commit.
+      placeholder: 1.20.0 or a commit SHA
     validations:
       required: true
 

@@ -1,10 +1,21 @@
-import { CLI_VERSION, OUTPUT_SCHEMA_VERSION, SCAFFOLD_VERSION } from "./constants.js";
+import {
+  CLI_VERSION,
+  MANIFEST_PATH,
+  OUTPUT_SCHEMA_VERSION,
+  SCAFFOLD_VERSION,
+} from "./constants.js";
 import { inspectProject, plannedFiles } from "./project.js";
+import { prepareScaffold } from "./writer.js";
 
-export function buildPlan({ mode, target, layout }) {
+export function buildPlan({ mode, target, layout, preview = true, now = new Date() }) {
   const inspection = inspectProject(target, {
     collisionLayout: layout,
     includeDependencies: false,
+  });
+  const rendered = prepareScaffold({
+    layout,
+    projectName: inspection.projectName.value,
+    now,
   });
   const operations = plannedFiles(layout).map((item) => ({
     action: item.policy === "merge-only" ? "merge" : "seed",
@@ -19,17 +30,24 @@ export function buildPlan({ mode, target, layout }) {
   if (inspection.installation.state === "installed") {
     blockers.push({
       code: "install.already_present",
-      message: "Solobaton is already installed; a future upgrade/adoption path must own this transition.",
+      message: "BuildBeat or a legacy Solobaton scaffold is already installed; a future upgrade/adoption path must own this transition.",
     });
   } else if (inspection.installation.state === "mixed") {
     blockers.push({
       code: "install.mixed_layout",
-      message: "Both layouts are present; reconcile ownership before any lifecycle write.",
+      message: "Multiple BuildBeat/legacy markers or layout signals are present; reconcile ownership before any lifecycle write.",
     });
   } else if (inspection.installation.state === "partial") {
     blockers.push({
       code: "install.partial",
-      message: "A partial installation exists; v0 will not guess which files are user-owned.",
+      message: "A partial installation exists; the CLI will not guess which files are user-owned.",
+    });
+  }
+
+  if (inspection.manifest.state !== "missing") {
+    blockers.push({
+      code: "manifest.already_present",
+      message: "A lifecycle manifest already exists or is unreadable; reconcile it before scaffolding.",
     });
   }
 
@@ -59,9 +77,31 @@ export function buildPlan({ mode, target, layout }) {
     });
   }
   if (inspection.collisions.length > 0) {
-    warnings.push({
+    blockers.push({
       code: "files.collide",
-      message: `${inspection.collisions.length} planned target path(s) already exist; no overwrite decision was made.`,
+      message: `${inspection.collisions.length} planned target path(s) collide; Wave 1 never overwrites project files.`,
+    });
+  }
+  if (inspection.gitWorktree.state === "dirty") {
+    blockers.push({
+      code: "git.dirty",
+      message: `The target-root Git worktree has ${inspection.gitWorktree.changes} visible change(s); commit or otherwise clean it before writing.`,
+    });
+  } else if (inspection.gitWorktree.state === "unavailable") {
+    blockers.push({
+      code: "git.status_unavailable",
+      message: "A root .git entry exists, but the fixed read-only Git status check failed.",
+    });
+  }
+  if (inspection.gitignore.state === "unsafe") {
+    blockers.push({
+      code: "integration.gitignore_unsafe",
+      message: ".gitignore exists but is not a readable regular file.",
+    });
+  } else if (inspection.gitignore.beginMarkers > 0 || inspection.gitignore.endMarkers > 0) {
+    blockers.push({
+      code: "integration.gitignore_fragment_present",
+      message: "BuildBeat or legacy Solobaton fragment markers already exist without schema 2 ownership metadata.",
     });
   }
   if (inspection.scan.truncated) {
@@ -113,7 +153,7 @@ export function buildPlan({ mode, target, layout }) {
     command: mode,
     cliVersion: CLI_VERSION,
     scaffoldVersion: SCAFFOLD_VERSION,
-    preview: true,
+    preview,
     writesPerformed: false,
     target: inspection.target,
     targetExists: inspection.exists,
@@ -130,6 +170,13 @@ export function buildPlan({ mode, target, layout }) {
     },
     operations,
     collisions: inspection.collisions,
+    writtenPaths: [],
+    renderedPlaceholders: rendered.renderedPlaceholders,
+    pendingPlaceholders: rendered.pendingPlaceholders,
+    manifestPath: MANIFEST_PATH,
+    nextAction: mode === "adopt"
+      ? "Continue with SKILL.md §8.5 to verify the brownfield boundary and render project-owned facts."
+      : "Continue with SKILL.md §8 to render project-owned facts and complete Bootstrap.",
     blockers,
     warnings,
     questions,
@@ -139,9 +186,27 @@ export function buildPlan({ mode, target, layout }) {
 }
 
 export function formatPlan(plan) {
+  if (plan.writesPerformed) {
+    const lines = [
+      `BuildBeat ${plan.command} complete`,
+      `Target: ${plan.target}`,
+      `Layout: ${plan.layout}`,
+      `Written paths: ${plan.writtenPaths.length}`,
+      `Manifest: ${plan.manifestPath}`,
+      `Pending placeholder files: ${plan.pendingPlaceholders.length}`,
+    ];
+    if (plan.pendingPlaceholders.length > 0) {
+      lines.push("", "Pending placeholders:");
+      plan.pendingPlaceholders.forEach((item) => {
+        lines.push(`- ${item.path}: ${item.tokens.join(", ")}`);
+      });
+    }
+    lines.push("", plan.nextAction);
+    return lines.join("\n");
+  }
   const lines = [
-    `Solobaton ${plan.command} preview`,
-    `Target: ${plan.target}${plan.targetExists ? "" : " (will be created by a future write-capable version)"}`,
+    `BuildBeat ${plan.command} ${plan.preview ? "dry run" : "write plan"}`,
+    `Target: ${plan.target}${plan.targetExists ? "" : plan.preview ? " (does not exist)" : " (will be created)"}`,
     `Layout: ${plan.layout}`,
     `Detected project: ${plan.detected.projectName.value} (${plan.detected.projectName.source})`,
     `Repositories: ${plan.detected.repositories.length}; deployment markers: ${plan.detected.deploymentMarkers.length}; tests: ${plan.detected.hasTests ? "detected" : "not detected"}; UI: ${plan.detected.hasUi ? "detected" : "not detected"}`,
@@ -157,10 +222,30 @@ export function formatPlan(plan) {
   if (plan.blockers.length > 0 || plan.warnings.length > 0) {
     lines.push("");
   }
+  lines.push("Planned operations:");
+  plan.operations.forEach((operation, index) => {
+    lines.push(
+      `${index + 1}. ${operation.action} ${operation.target} (${operation.policy})${operation.collision ? " [collision]" : ""}`,
+    );
+  });
+  lines.push("", `Deterministic replacements: ${plan.renderedPlaceholders.length}`);
+  plan.renderedPlaceholders.forEach((item) => {
+    lines.push(`- ${item.path}: ${item.token} -> ${item.value}`);
+  });
+  lines.push("", `Pending placeholder files: ${plan.pendingPlaceholders.length}`);
+  plan.pendingPlaceholders.forEach((item) => {
+    lines.push(`- ${item.path}: ${item.tokens.join(", ")}`);
+  });
+  lines.push("");
   lines.push("Remaining human questions:");
   plan.questions.forEach((question, index) => lines.push(`${index + 1}. ${question}`));
   lines.push("", "Proposed sequence:");
   plan.steps.forEach((step, index) => lines.push(`${index + 1}. ${step}`));
-  lines.push("", "No files changed. CLI v0 is preview-only.");
+  lines.push(
+    "",
+    plan.preview
+      ? "No files changed. This was a dry run."
+      : "No files changed yet. Apply only after the confirmation prompt.",
+  );
   return lines.join("\n");
 }

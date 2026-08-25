@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# drift-check.sh —— 生产漂移检测(治「git ≠ 生产」与平台侧 env/secret 漂移,solobaton lessons.md 第 13 条)
+# drift-check.sh —— 生产漂移检测(治「git ≠ 生产」与平台侧 env/secret 漂移,BuildBeat lessons.md 第 13 条)
 # 比对「部署平台当前配置(env 指纹 + 镜像/版本 tag)」vs 基线快照 bus-baseline.json(与本脚本同目录)。
 # 本脚本按自身位置定位协调层根,放 <根>/scripts/ 或 <根>/pm/scripts/ 均可(紧凑布局见 SKILL §3);下文命令示例按默认布局写。
 # ⚠ 能力边界:检测「平台配置 vs 基线」——把"配置被改"暴露出来,逼"改完即确认部署 + 刷基线";

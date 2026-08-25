@@ -1,16 +1,16 @@
-# Solobaton
+# BuildBeat
 
 **简体中文** | [English](README.en.md)
 
-**一个 Builder，一根指挥棒，一支 AI 会话乐团。**
+**让人和 AI 会话围绕同一组项目事实完成交付。**
 
-Solobaton 是一套面向 Solo Builder 的、**file-first、human-gated AI 软件交付协议与脚手架**。它不负责创建 Agent、管理模型或提供运行时编排；它解决的是多个独立 AI 编码会话共同交付项目时的上下文同步、职责边界、契约变更、完成证据和人工授权问题。
+BuildBeat（旧称 Solobaton）是一套面向人和 AI 会话的、**file-first、human-gated 工程交付协议与脚手架**。它通过 Git 中的文件总线、人工 Gate 和可验证证据，让项目在长期迭代、多个仓库和多个 AI 上下文之间保持同步、可控、可核验。它不负责创建 Agent、管理模型、建模团队岗位或提供运行时编排。
 
 > **信息走文件，不走人嘴。完成必须有证据。规格、设计、合并和上线由人拍板。**
 
 需求、看板、契约、决策、状态和验证证据都落在 Git 管理的文件中。会话可以关闭或替换，项目上下文不会跟着聊天窗口消失。
 
-Solobaton 蒸馏自一个持续多期迭代的真实项目：一个人指挥 4 个 AI 会话，维护包含前端、BFF、多个后端服务、网关和审计的产品，并把实际踩过的坑固化为规则、模板和 Shell 护栏。
+BuildBeat 最初蒸馏自一个人指挥 4 个 AI 会话、持续多期交付复杂产品的实践；这说明了方法的来源，不限定使用人数。一个 Builder 可以使用，多个 Builder 也可以共享同一 Git 项目并按需求/工作包分别闭环。
 
 ## 解决什么问题
 
@@ -23,9 +23,9 @@ Solobaton 蒸馏自一个持续多期迭代的真实项目：一个人指挥 4 �
 - 草案中的每个小选择都打断人，真正的阶段 Gate 被确认噪音淹没；
 - 当前进度、线上版本和决策被重复写进多个文档，逐渐互相矛盾。
 
-Solobaton 把这些问题收敛成四个支柱：
+BuildBeat 把这些问题收敛成四个支柱：
 
-1. **独立会话**：默认产品、全栈、测试三个域，各自拥有明确写边界。
+1. **端到端工作包**：一个 Builder 对一个需求/功能工作包的产品判断、实现、测试、合并与发布证据负责；产品、全栈、测试是可调用的 AI 专业视角，不是人类岗位接力。
 2. **文件总线**：`NOW → 看板 → contracts → status`，交接不依赖聊天记忆。
 3. **人在 Gate**：规格、设计、合并、上线四个关键决策不允许自动跨过。
 4. **证据制完成**：完成必须带 commit hash 和可核验证据；无证据，不算完成。
@@ -36,43 +36,64 @@ Solobaton 把这些问题收敛成四个支柱：
 
 把本仓库放到本机任意稳定位置，或放进 AI Coding 工具当前支持的本地 skill 目录。然后让会话读取 [`SKILL.md`](SKILL.md)，并说：
 
-> 用 Solobaton 给我的项目搭协作骨架。
+> 用 BuildBeat 给我的项目搭协作骨架。
 
 它会先自己检查代码和配置，识别仓库数量、部署单元、UI 和契约边界；只问 3–4 个无法从项目中查到的简单问题；给出一屏确认后，再生成已经填好项目事实的骨架并运行自检。
 
 > 已经存在大量代码的项目不要直接套新项目模板。使用 `SKILL.md` §8.5 的**存量接管仪式**：先摸底、划新旧边界、补最小验证能力，再采用 `pm/scripts/` 紧凑布局，避免撞上原项目自己的 `scripts/`。
 
-### CLI v0：npm 正式分发，项目仍只读
+### Claude Code 插件：BuildBeat 仓库
 
-v1.16 新增零第三方运行时依赖的 Node.js 20+ CLI；从 `solobaton@1.16.1` 起通过 npm 正式分发。面向 npm 的执行示例使用 `@latest`，避免不可变的已发布 README 永久锁在上一版：
+本仓提供独立的 Claude Code marketplace 包，安装后以 `/buildbeat:buildbeat` 路由同一份 canonical [`SKILL.md`](SKILL.md)。可从本地 checkout 隔离安装：
+
+```text
+/plugin marketplace add /absolute/path/to/BuildBeat
+/plugin install buildbeat@buildbeat-plugins
+/buildbeat:buildbeat
+```
+
+从 GitHub 安装时使用 `/plugin marketplace add HaiYangBG1/BuildBeat`。插件只携带 Skill、模板、示例和参考文档，不把 npm CLI 的顶层 `bin/` 暴露进 Claude Code；是否对项目执行写入仍受 CLI 版本、确认屏和人工 Gate 约束。完整打包边界见 [`plugins/buildbeat/README.md`](plugins/buildbeat/README.md)。
+
+### CLI：scoped BuildBeat 包承载完整有界生命周期
+
+canonical npm 分发标识是 `@haiyangbg/buildbeat`；未加 scope 的 `buildbeat` 已被其他项目占用，本仓不会冒用。使用前先从官方 registry 回读 `@latest` 的精确版本；需要复现时，把后续命令中的 `@latest` 换成已记录版本：
 
 ```bash
-npm view solobaton@latest version  # 需要复现时，先记录这个精确版本并用它替换 @latest
-npx --yes solobaton@latest doctor /path/to/project
-npx --yes solobaton@latest init /path/to/project --dry-run
-npx --yes solobaton@latest adopt /path/to/project --dry-run --json
+npm view @haiyangbg/buildbeat@latest version
+npx --yes --package=@haiyangbg/buildbeat@latest buildbeat doctor /path/to/project
+npx --yes --package=@haiyangbg/buildbeat@latest buildbeat init /path/to/project --dry-run
+npx --yes --package=@haiyangbg/buildbeat@latest buildbeat adopt /path/to/project --dry-run --json
+npx --yes --package=@haiyangbg/buildbeat@latest buildbeat upgrade /path/to/project --dry-run --json
 ```
 
 需要长期使用时，可以显式管理全局 CLI：
 
 ```bash
-npm install --global solobaton@latest  # 安装 registry 当前版本
-solobaton doctor /path/to/project
-npm install --global solobaton@latest  # 更新 CLI 包
-npm uninstall --global solobaton       # 移除全局 CLI
+npm install --global @haiyangbg/buildbeat@latest
+buildbeat doctor /path/to/project
+npm install --global @haiyangbg/buildbeat@latest  # 更新 CLI 包
+npm uninstall --global @haiyangbg/buildbeat       # 只移除全局 CLI 包
 ```
 
-这里的安装、更新、移除只管理 **CLI 包和 `solobaton` 可执行文件**，不会创建、升级或删除项目里的协作骨架。`doctor` 检查已有骨架的布局、版本、关键文件、占位符、Hook 与依赖降级；`init/adopt --dry-run` 分别规划默认/紧凑布局。省略 `--dry-run` 会明确拒绝且不创建任何文件，`solobaton upgrade/uninstall` 仍未开放。CLI 不替代 Skill 的代码理解、少量提问和一屏确认，完整边界见 [`docs/CLI.md`](docs/CLI.md)。源码 checkout 仍可使用 `node bin/solobaton.js ...`。
+包管理器的安装、更新、移除只管理 **CLI 包和可执行文件**，不会创建、升级或删除项目里的协作骨架。`doctor` 只读检查；`init/adopt` 必须先看完整计划，并在无 blocker、干净 Git 和明确确认后才写入；`upgrade` 只接受 canonical schema 2 基线，按 manifest/hash 做机械升级，冲突时零写。`diff/uninstall` 与工作流命令扩张继续冻结。canonical 命令是 `buildbeat`；`solobaton` executable 只保留兼容别名。完整契约见 [`docs/CLI.md`](docs/CLI.md)。
+
+`1.20.0` 是 Phase 0–3 的合并版本：包含 Wave 1 `init/adopt` 受控写入、schema-2-only `upgrade`、Gate/证据强关联、多仓漂移与扫描边界报告。`--force` 也永不覆盖 project-owned 内容或不安全路径；跨 major 另需 `--major`。源码 checkout、Git tag 和 npm artifact 仍是不同证据面，发布状态与真实试点边界必须以 [`docs/RELEASING.md`](docs/RELEASING.md) 和对应 GitHub Release/registry 回读为准。
+
+已拷出的 v1.16 legacy 项目不得手写、复制或重命名 manifest 来伪造 schema 2 所有权。默认继续按 CHANGELOG 手工维护；如果确需进入机械升级，按 [v1.16 legacy 迁移指南](docs/LEGACY-V1.16-MIGRATION.md) 在专用 Git 分支受控重建基线。
+
+旧 `solobaton@latest` 固定在 legacy v0 只读能力，并迁移提示到本 scoped package；它不会获得新的项目写入或升级能力。写入式首屏命令必须使用 `@haiyangbg/buildbeat`，并且仍先展示计划、受 Git/碰撞/所有权检查约束，不能跨人工 Gate。
 
 ### 手动安装
 
 只建议在你已经理解模板含义时使用：
 
 ```bash
-git clone https://github.com/HaiYangBG1/solobaton.git
-cp -R "solobaton/templates/." /path/to/new-project/
+git clone https://github.com/HaiYangBG1/BuildBeat.git
+rsync -a --exclude '/standards/' --exclude '/pm/adr/' "BuildBeat/templates/" /path/to/new-project/
 cd /path/to/new-project
 ```
+
+上面的默认路径保留隐藏 `.claude/`，但不生成可选的 `standards/` 与 `pm/adr/`。它们仍作为 project-owned 模板随源仓提供：只有在 Bootstrap 一屏确认中明确启用相应规范，或真实决定命中 ADR 判据时，才单独复制并按项目事实填写；缺失是合法状态。
 
 接着必须：
 
@@ -91,18 +112,18 @@ chmod +x .git/hooks/pre-commit
 
 ## 日常怎么运行
 
-第一次打开三个会话时，分别声明角色：
+先从看板认领一个可独立验收的工作包；同一个 Builder 对它端到端负责。需要并行专业视角时，可以打开产品、全栈、测试会话，但它们是该工作包内的 AI 视角，不是三个人类岗位的强制交接。多个 Builder 协作时，各自认领不同工作包并通过 Git 共享最终事实。
 
 ```text
-你是产品会话，负责需求、看板和决策。开工。
+你是当前工作包的产品视角，负责澄清需求、看板和决策事实。开工。
 ```
 
 ```text
-你是全栈会话，负责实现、契约和部署。看板上该你的工作包开工。
+你是当前工作包的全栈视角，负责实现、契约和部署候选。开工。
 ```
 
 ```text
-你是测试会话，负责黑盒验收、E2E 和证据。验收当前候选。
+你是当前工作包的测试视角，负责黑盒验收、E2E 和证据。验收当前候选。
 ```
 
 每个会话开工先同步代码，再运行护栏：
@@ -117,7 +138,8 @@ bash scripts/bus-check.sh
 常用命令：
 
 ```bash
-bash scripts/bus-check.sh --strict       # 腐烂、幽灵 hash、已确认漂移会非零退出
+bash scripts/bus-check.sh --format=json  # 输出 schema 1 JSON；warning/unverified 不会被吞掉
+bash scripts/bus-check.sh --strict       # 任一 conflict/error finding 会非零退出
 bash scripts/verify-status.sh --run       # 跑项目配置的真实测试套件并记录最近全绿
 bash scripts/design-preview.sh 1          # 有 UI 时，Gate2 前打开真实可点原型
 ```
@@ -130,6 +152,8 @@ bash scripts/design-preview.sh 1          # 有 UI 时，Gate2 前打开真实�
 - **单点事实**：`NOW.md` 只做薄指针，契约、决策、状态和线上查询各有唯一入口。
 - **review-ready 核查门**：候选稳定、工作树干净、L3 证据已绿且没有已知待修项后，才启动一次独立 milestone reviewer。
 - **机器护栏**：`bus-check --strict`、pre-commit、gitleaks 和项目测试把确定性规则变成可执行检查。
+- **多仓漂移**：多仓项目在契约入口显式绑定各子仓 CHANGELOG、契约版本来源和本地部署基线 app；确定不一致才阻塞，缺仓或缺来源保持 unverified，不猜自然语言。
+- **可选规范与 ADR**：STACK/CODE/REVIEW/DESIGN 默认不生成；存在时检查三行声明、Rule ID 和 Draft/Confirmed 状态。Confirmed STACK 还只读比对显式基线与 Node、lockfile、Docker FROM 事实，无法覆盖时保持 unverified。长期难回退决定才建 ADR，并校验 Status 与 Superseded 链。
 - **生产状态证据**：项目接入 `live-status.sh` / `live-config.sh` 后，可检查部署平台配置与基线的漂移；它不自动证明运行中容器已经加载最新配置。
 - **存量接管**：先建立系统边界和最小验证能力，再把新地盘纳入完整总线，避免直接重写未知遗留行为。
 
@@ -139,14 +163,15 @@ bash scripts/design-preview.sh 1          # 有 UI 时，Gate2 前打开真实�
 
 ```mermaid
 flowchart LR
-    PM["产品会话<br/>需求·看板·决策"] -->|"Gate1 规格拍板"| Design["设计工具<br/>可点原型"]
-    Design -->|"Gate2 真渲染拍板"| Deliver["全栈会话<br/>实现·契约·部署"]
-    Deliver -->|"review-ready 后一次核查"| Verify["测试会话<br/>E2E·走查·证据"]
-    Verify -->|"Gate3 合并拍板"| Deploy["部署候选"]
-    Deploy -->|"Gate4 上线拍板"| PM
+    Views["AI 专业视角<br/>产品 · 全栈 · 测试"] --> WPA["Builder / 工作包 A<br/>判断 → 实现 → 测试 → 合并/发布证据"]
+    Views --> WPB["Builder / 工作包 B<br/>判断 → 实现 → 测试 → 合并/发布证据"]
+    Human["人工 Gate<br/>规格 · 设计 · 合并 · 上线"] --> WPA
+    Human --> WPB
+    WPA --> Bus["Git 文件总线<br/>NOW · 契约 · 决策 · 状态 · 证据"]
+    WPB --> Bus
 ```
 
-人不负责在会话之间搬运上下文，只负责不能委托的判断。普通事实、归档、状态回写和已授权范围内的可逆实现继续自动推进。
+每个工作包都纵向闭环，不按人类职能切成产品→研发→测试流水线。人不负责在会话之间搬运上下文，只负责不能委托的判断；普通事实、归档、状态回写和已授权范围内的可逆实现继续自动推进。
 
 ## 适用边界
 
@@ -154,7 +179,7 @@ flowchart LR
 
 - 至少 2 个仓库或部署单元；
 - 会持续迭代数周或更久；
-- 一个人同时承担产品、开发、测试和运维；
+- 一个或多个 Builder 需要分别驾驭多个 AI 上下文，并按工作包端到端闭环；
 - 多个 AI Coding 会话需要稳定交接；
 - 项目重视可核验记录，但不希望引入复杂 Agent Runtime。
 
@@ -167,7 +192,7 @@ flowchart LR
 
 已知边界：人仍是最终决策者；流程提高“按已定目标正确交付”的可信度，不保证产品方向本身正确。自动加载规则和 skill 目录也因 AI Coding 工具而异，正式宣称兼容前应以对应工具的当前文档和实测为准。
 
-当前非目标：多人账号、角色/权限和组织管理后台；遥测采集、团队效能评分或指标仪表盘。Solobaton CLI 不采集或上传项目使用数据。这些不是未完成的维护项；若未来立项，必须单独定义需求、数据口径、隐私/权限治理和验收 Gate。
+当前非目标：多人账号、角色/权限和组织管理后台；遥测采集、团队效能评分或指标仪表盘。BuildBeat CLI 不采集或上传项目使用数据。这些不是未完成的维护项；若未来立项，必须单独定义需求、数据口径、隐私/权限治理和验收 Gate。
 
 ## 安装后的项目结构
 
@@ -183,7 +208,9 @@ flowchart LR
 │   ├── decisions.md
 │   ├── status/
 │   ├── changes/
+│   ├── adr/                         # 可选；长期技术决定与替代链
 │   └── archive/<期>/evidence/
+├── standards/                      # 可选；STACK/CODE/REVIEW，UI 项目可加 DESIGN
 ├── scripts/
 │   ├── bus-check.sh
 │   ├── verify-status.sh
@@ -192,10 +219,10 @@ flowchart LR
 │   └── pre-commit.sh
 ├── .claude/agents/reviewer.md      # 只读 milestone / risk-delta / closure 核查
 ├── 指挥台.md                        # 给人的一页操作卡
-└── SOLOBATON.md                    # 所用 Solobaton 版本与升级记录
+└── BUILDBEAT.md                    # 所用 BuildBeat 版本与升级记录
 ```
 
-存量项目的紧凑布局会把脚本、指挥台和版本标记放进 `pm/`；具体规则见 `SKILL.md` §3。
+存量项目的紧凑布局会把脚本、指挥台和版本标记放进 `pm/`。`standards/` 与 `pm/adr/` 两个可选目录不属于默认骨架；具体规则见 `SKILL.md` §3/§8。
 
 ## 能力与依赖
 
@@ -207,15 +234,28 @@ flowchart LR
 | 生产配置漂移 | `jq`、SHA 工具、项目 `live-config.sh` | 明确跳过，不能外推生产状态 |
 | 线上版本查询 | 项目 `live-status.sh` 和平台 CLI | 明确未配置，不引用文档版本冒充线上事实 |
 | L3 测试证据 | 项目填写 `verify-status.sh` 的 `SUITES` | 只能报告未配置，不能声称自动化测试已绿 |
-| CLI v0 检查/规划 | Node.js 20+、npm registry 或本仓库源码 | 回退到 Skill/手动流程；当前无项目写入、升级、卸载能力 |
+| CLI 检查/脚手架/机械升级 | Node.js 20+、npm registry 或本仓库源码 | legacy npm v0 仍只读；scoped BuildBeat 1.20 已完成真实 schema 2 版本增量试点，registry artifact 是否可用仍须独立回读；项目 uninstall 继续冻结，Skill/手动等价路径始终保留 |
+
+Skill-only、legacy npm v0 和 scoped BuildBeat 1.20 是三个不同可用面；源码 checkout、registry artifact 与真实项目也必须分别核验。`doctor`、`init/adopt`、`upgrade` 不承担相同责任。完整对照见 [BuildBeat 能力矩阵](docs/CAPABILITY-MATRIX.md)，真实版本增量证据见 [v1.20 试点记录](docs/PHASE4-V1.20-PILOT-2026-08-25.md)。
 
 ## 继续阅读
 
 - [`SKILL.md`](SKILL.md)：方法论与 Bootstrap 的唯一完整入口；
-- [`example/`](example/)：虚构「简账」项目跑完一期后的完整文件快照；
+- [`example/`](example/)：虚构「简账」项目一期收尾的协议教学快照（可执行脚本仍引用模板 SSOT）；
 - [`lessons.md`](lessons.md)：真实反模式、根因与解法；
-- [`docs/CLI.md`](docs/CLI.md)：CLI 生命周期、文件所有权、manifest 和安全升级/卸载合同；
+- [`docs/ROADMAP.md`](docs/ROADMAP.md)：新版产品方向、设计原则与 2026-08-24 生效的 CLI 执行修订；
+- [`docs/EXECUTION-PLAN.md`](docs/EXECUTION-PLAN.md)：当前分阶段工作包、依赖、验收和冻结边界；
+- [`docs/CLI-STRATEGY-2026-08.md`](docs/CLI-STRATEGY-2026-08.md)：基于官方来源的 CLI 策略对照与证据边界；
+- [`docs/CHECKS.md`](docs/CHECKS.md)：文件总线不变量、Gate/证据令牌、finding code 与严格模式规格；
+- [`docs/CLI.md`](docs/CLI.md)：CLI 命令边界、文件所有权、manifest、机械升级和手动移除合同；
+- [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md)：Skill-only、legacy npm v0 与 scoped BuildBeat 1.20 的双语能力/互操作对照；
+- [`docs/LEGACY-V1.16-MIGRATION.md`](docs/LEGACY-V1.16-MIGRATION.md)：v1.16 拷出项目继续手工维护或受控重建 schema 2 基线的安全路径；
 - [`docs/CLI-PILOT-2026-08-23.md`](docs/CLI-PILOT-2026-08-23.md)：三个真实存量项目的 CLI v0 只读试点与写入边界决策；
+- [`docs/PHASE1-PILOT-2026-08-24.md`](docs/PHASE1-PILOT-2026-08-24.md)：Phase 1 文件总线在 example、活跃多仓投影和真实单仓代码树上的只读试点；
+- [`docs/PHASE2-PILOT-2026-08-25.md`](docs/PHASE2-PILOT-2026-08-25.md)：Wave 1 三条真实目录写路径、Tide 保护摘要、UI 探测反馈与最终本地 Git/Hook/hash 证据；
+- [`docs/PHASE2-BUILDBEAT-PILOT-2026-08-25.md`](docs/PHASE2-BUILDBEAT-PILOT-2026-08-25.md)：BuildBeat canonical namespace 的新真实目录回归、Tide 保护复核与 Gate3 关闭证据；
+- [`docs/PHASE4-V1.20-PILOT-2026-08-25.md`](docs/PHASE4-V1.20-PILOT-2026-08-25.md)：schema 2 真实版本增量升级、项目所有权保护与真实多仓只读刷新证据；
+- [`docs/PHASE4-STABILITY-AUDIT-2026-08-25.md`](docs/PHASE4-STABILITY-AUDIT-2026-08-25.md)：演进书 §15 的 12 条硬门槛现状、证据边界与未关闭发布阻塞；
 - [`docs/RELEASING.md`](docs/RELEASING.md)：npm 发布 Gate、验证与 Trusted Publishing 迁移；
 - [`CONTRIBUTING.md`](CONTRIBUTING.md)：贡献、验证和 PR 边界；
 - [`SECURITY.md`](SECURITY.md)：支持版本与私密漏洞报告通道；
@@ -233,9 +273,10 @@ flowchart LR
 
 ```bash
 bash -n templates/scripts/*.sh tests/*.sh
-bash tests/test-scripts.sh
-bash tests/check-docs.sh
 npm test
+npm run test:scripts
+npm run test:skill-only
+npm run check:docs
 npm run pack:check
 git diff --check
 ```

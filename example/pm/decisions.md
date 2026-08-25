@@ -5,6 +5,7 @@
 
 | 日期 | 拍板人 | 决策包 | 回写(落点 → 状态) |
 |---|---|---|---|
+| 2026-08-25 | 你 | 【FLOW-BUILDBEAT-RENAME】协作骨架品牌从 Solobaton 迁移为 BuildBeat；历史升级记录不回改，后续只写 canonical 新名 | BUILDBEAT.md / README / 产品 status → ✅；旧名行保留为历史 |
 | 2026-08-22 | 你 | 【FLOW-CLI-PREVIEW】升级 Solobaton v1.16:业务模板零替换;CLI v0 只读检查/规划,不允许写入、升级或卸载 | SOLOBATON.md / 产品 status → ✅;现有 Shell 护栏不变 |
 | 2026-08-22 | 你 | 【FLOW-UPSTREAM-TESTS】升级 Solobaton v1.15:替换 3 个路径健壮性脚本;上游 README/CI/测试不拷入业务项目;流程语义不变 | SOLOBATON.md / 产品 status → ✅;历史决策与看板不回改 |
 | 2026-08-22 | 你 | 【FLOW-REVIEW-READY】升级 Solobaton v1.14:候选满足 `HEAD=candidate`、干净、L3/渲染绿、无待修后才做一次 milestone;P0/P1 合并 closure;reviewer 静默返回 | AGENTS.md 规则⑥ / SOLOBATON.md / 一期-看板.md → ✅;历史报告不回改 |
@@ -13,6 +14,7 @@
 | 2026-06-20 | 你 | 一期验收通过,批准上线(⛔Gate4);报表导出 CSV 挪二期 | 一期-看板.md ⑤ → ✅;看板挂账 #1 → ✅ |
 | 2026-06-19 | 你 | ⛔Gate3 批准合并:月度报表(走查 P1「空月除零」已修复复验) | 一期-看板.md ⑤ 合并项 → ✅ |
 | 2026-06-15 | 你 | ⛔Gate2 真渲染过:报表用柱状图不用折线;移动端两列改单列 | design brief → ✅;一期-看板.md ② → ✅ |
+| 2026-06-13 | 你 | 【ADR-0001】一期账本采用本地优先 SQLite；多人实时协作或水平扩容时必须重开架构决策 | [ADR-0001](adr/ADR-0001-local-first-sqlite.md) / PROTOCOL.md / STACK.md → ✅ |
 | 2026-06-12 | 你 | 月度报表**按自然月**汇总,不做滚动 30 天 | PROTOCOL.md §1 → ✅ |
 | 2026-06-11 | 你 | ⛔Gate1 批准一期规格:记一笔 / 列表 / 月度报表;多币种不做 | 一期-看板.md → ✅ |
-| 2026-06-10 | 你 | Bootstrap 结论:两仓(jz-web / jz-api),三域用默认名,标准轨 | AGENTS.md §1 → ✅ |
+| 2026-06-10 | 你 | Bootstrap 结论:两仓(jz-web / jz-api),同一 Builder 端到端负责,按需调用三种 AI 视角,标准轨 | AGENTS.md §1 → ✅ |

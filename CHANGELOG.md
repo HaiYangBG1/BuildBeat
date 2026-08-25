@@ -4,11 +4,82 @@
 
 ## Unreleased
 
+## v1.20.0 — 2026-08-25
+
+> 主题：把 Phase 0–3 合并为 BuildBeat 首个 scoped 正式候选，canonical 分发迁移到 `@haiyangbg/buildbeat` 与 `HaiYangBG1/BuildBeat`；旧 `solobaton` 包冻结为只读兼容入口。
+> **拷出项目升级**：真实 schema 2 v1.16 安装可先运行 `buildbeat upgrade --dry-run`，无 blocker 后再机械升级到 v1.20；legacy/无 manifest 项目继续走手工迁移指南。`--force` 不覆盖 project-owned，项目 uninstall 仍不开放。
+> **发布状态**：本条随不可变候选进入 tag；只有官方 registry 的 scoped artifact、SLSA provenance、签名、隔离安装、README 与 GitHub Release 全部回读后，才能补记为已验证发布。
+
+- **WP4.3 scoped 分发决策**：用户拍板立即迁移到 `@haiyangbg/buildbeat` 和 `HaiYangBG1/BuildBeat`；不冒用已被占用的 unscoped `buildbeat`。canonical executable 保持 `buildbeat`，`solobaton` 只保留包内兼容别名
+- **版本序列合并**：未对外发布的 v1.17/v1.18/v1.19 不伪造成中间 artifact；当前 Phase 0–3 统一进入 `1.20.0`，scaffold version 从 v1.16 形成真实增量到 v1.20
+- **legacy 包退场策略**：新 scoped artifact 与迁移回读全绿后，`solobaton@*` 只做 deprecation 提示，不 unpublish、不获得写入/upgrade 能力，避免破坏既有只读安装
+- **Claude plugin 迁移**：仓库入口更新为 `HaiYangBG1/BuildBeat`，插件版本升至 `0.2.0` 以刷新分发缓存；npm CLI `bin/` 仍不进入插件包
+- **真实 v1.20 升级试点**：在专用分支将真实 schema 2 项目从 scaffold `v1.16` / CLI `1.16.3` 升至 `v1.20` / `1.20.0`；默认 dry-run 对四个改写文件零写阻断，force 后人工回灌项目事实，project-owned 零 diff，doctor 0/0、strict exit 0、提交后 dry-run up-to-date，目标仓 clean 且无 remote
+- **真实多仓刷新与兼容修复**：当前检查器在真实四子仓协调层投影中发现 legacy prose 根内 `../` 误判；现只对 scoped prose 允许 realpath 留在根内的 source-relative link，canonical Gate/evidence 仍禁 traversal，根外逃逸回归继续阻断。Shell 回归增至 `222/222`；最终刷新精确保留业务仓真实 `lessons.md` 断链、未登记 map 与适配器/远端/live unverified，不冒充全绿
+- **Linux CI 可移植性**：JSON renderer 的 awk quote 正则改为 BSD awk / mawk 共通写法，避免 Linux stderr warning 污染机器 JSON；同时展开旧式 `A && B || C` Shell 断言并兼容 ShellCheck 0.9/0.11，macOS 与 Ubuntu 共用同一语义
+- **品牌正式定名 BuildBeat**：2026-08-25 用户拍板产品名为 BuildBeat；canonical CLI/Skill/Claude plugin 标识统一为 `buildbeat` / `buildbeat@buildbeat-plugins`，新骨架入口改为 `BUILDBEAT.md`
+- **canonical namespace 迁移**：新写入只生成 `.buildbeat/manifest.json`、BuildBeat `.gitignore` marker 与 `buildbeat-stack-baseline:v1`；doctor/bus-check 继续读取旧 `SOLOBATON.md`、`.solobaton/manifest.json`、marker 与 STACK 基线，双 manifest 或混合安装 fail-closed
+- **legacy 分发兼容**：已发布 npm 包 `solobaton` 保留为 BuildBeat 的 legacy read-only distribution ID，并同时暴露 canonical `buildbeat` 与兼容 `solobaton` executable；未加 scope 的 `buildbeat` 包名已被其他项目占用，用户已批准迁移 scoped package 和新仓库名，远端完成状态仍逐项回读
+- **改名证据边界**：WP2.7 三条真实目录试点及其 hash 保持为 legacy namespace 历史证据；WP2.8 已用全新的隔离目录完成 BuildBeat canonical init/adopt/Skill-only 回归，二者不混写、不互相外推
+- **新版方向与执行基线入库**：新增 `docs/ROADMAP.md`、`docs/EXECUTION-PLAN.md` 与官方来源可复核的 CLI 策略对照；产品方向由路线图承载，当前交付范围与依赖顺序由执行计划 v3 承载
+- **CLI 选择性解冻决策**：未来只开放 `init/adopt` 哑脚手架写入与 manifest/hash 驱动的机械 `upgrade`；三方合并、项目 uninstall 引擎、`gate/adr/standards/check` 命令扩张继续冻结，语义渲染和冲突合并归 AI 会话/Skill
+- **Wave 2 机械升级源码候选**：新增 schema-2-only `buildbeat upgrade [path] [--dry-run] [--json] [--force] [--major]`；同 major 按 manifest baseline/current/bundled template 三组 hash 做 replace/create/retain/report，跨 major 需显式确认，安装版本更新于 bundle 时拒绝降级
+- **Wave 2 所有权与事务边界**：任一未解决冲突使整次 apply 零写；`--force` 仅可覆盖已登记的 `replace-if-unmodified` 或唯一 `.gitignore` owned fragment，永不触碰 project-owned、未登记碰撞、异常 marker、symlink/目录等不安全路径；写前复核 hash/absence，manifest 最后写，失败逐字节与 mode 回滚，成功后回读 doctor 并提示 bus-check
+- **WP3.1 本地候选门禁**：Node `55/55`（其中 CLI `50/50`）、Shell `176/176`、Skill-only、Claude plugin 隔离安装 `7/7`、99 份 Markdown 契约检查、74 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；这些是本地源码与 disposable sandbox 证据，不是 push、真实版本增量试点或发布证据
+- **WP3.2 Gate/证据强关联**：`bus-check` 对正向 UI 信号与 Gate2 `n/a` 的矛盾新增 `gate.na_inconsistent` warning；passed Gate 的 `决策:` 必须精确指向 `pm/decisions.md:<行号>` 的现存日期表格行；有效本地证据不在 `pm/archive/<期>/evidence/` 时新增 `evidence.outside_archive` warning。未检出 UI 不外推为“无 UI”，两个 warning 均不冒充人工 Gate 结论或阻塞 strict
+- **WP3.2 本地候选门禁**：Node `55/55`（其中 CLI `50/50`）、Shell `199/199`、Skill-only、Claude plugin 隔离安装 `7/7`、106 份 Markdown 契约检查、74 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；新增 fixture 分别覆盖 UI/n-a 矛盾、有效/缺失决策行和归档内/外证据，证据仍限当前本地源码与 disposable Git 沙箱
+- **WP3.3 多仓漂移**：`contracts/PROTOCOL.md` 新增 project-owned `buildbeat-multirepo-map:v1`，显式逐仓绑定子仓路径、契约版本文件与 `bus-baseline.json` app；`bus-check` 只核对首个非 Unreleased CHANGELOG H2、唯一契约快照版本和本地部署基线 imageTag。任意两个已观测来源确定不一致进入 `sync.multirepo_drift` conflict；缺 map/仓/来源/jq/基线、非标准版本或越界保留 `sync.unverified`，symlink/权限边界由后续 WP3.4 统一为 `sync.scan_truncated`
+- **WP3.3 迁移边界**：`bus-check.sh` 可整文件替换获得检查，但 `PROTOCOL.md` 是 project-owned，现有多仓项目须人工加入 map；未配置只增加非阻断 unverified，绝不猜架构表、package version、Git tag、自由文本或线上状态。当前真实多仓文件仅用于只读校准格式，没有修改项目、运行线上查询或形成真实项目通过证据
+- **WP3.3 本地候选门禁**：Node `55/55`（其中 CLI `50/50`）、Shell `210/210`、Skill-only、Claude plugin 隔离安装 `7/7`、106 份 Markdown 契约检查、74 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；runtime fixture 临时创建带空格路径的内嵌 Git 仓，覆盖三源一致、确定漂移、精确 source/path 与未登记仓 unverified
+- **WP3.4 扫描边界**：机械扫描因阈值、根内 symlink 或权限不足未覆盖时统一进入非阻断 `sync.scan_truncated`，message 携带稳定 `reason=limit|symlink|permission`，finding path 指向已知的仓库相对来源；NOW/看板/status/evidence/standards/ADR/STACK/多仓来源不跟随 symlink、不读取无权限文件，也不把未读误报为不存在或一致
+- **WP3.4 结果处置与本地门禁**：`SKILL.md` 与 `指挥台.md` 新增五级 finding、strict/coverage 边界和常见处置页；runtime 回归证明 limit、symlink evidence 与 chmod `000` evidence 均保持 coverage unverified、strict 0、精确 path，且后两者不误报 `evidence.missing`。Node `55/55`（其中 CLI `50/50`）、Shell `221/221`、Skill-only、Claude plugin 隔离安装 `7/7`、106 份 Markdown 契约检查、74 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过
+- **WP4.1 新协议教学全貌**：`example/` 在保留已完成一期四个 `passed` live Gate 的同时，单独给出 `pending/passed/blocked/n/a` 四态语法；新增 schema 2 合成教学 manifest，由文档检查精确锁定 8 个声明路径的 policy 和当前字节 hash。该 manifest 明示不是已发布 v1.16 写入证据、健康 CLI 安装或真实项目可复制基线
+- **WP4.1 legacy 迁移边界**：新增 `docs/LEGACY-V1.16-MIGRATION.md`，默认路径是按所有权继续手工维护；只在明确批准后才可于专用 Git 分支移出旧冲突路径、重走当前源码候选 `adopt`、回灌 project-owned 事实并审查合并。手写/复制/重命名 manifest、混合 namespace、破坏性 reset 和把基线当成 Gate/部署证据均禁止
+- **WP4.1 本地门禁**：Node `55/55`（其中 CLI `50/50`）、Shell `221/221`、Skill-only、Claude plugin 隔离安装 `7/7`、107 份 Markdown 契约检查、76 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；未执行真实项目迁移、push、tag、GitHub Release、npm publish 或远端改名
+- **WP4.2 能力矩阵与双语终校**：新增 `docs/CAPABILITY-MATRIX.md`，把可用面固定为检查 `doctor`、脚手架 `init/adopt`、机械升级 `upgrade` 三组生命周期入口，并逐项区分 Skill-only、已发布 `solobaton@1.16.3` 只读 v0 与当前本地源码候选；中英 README 同步 Phase 3 范围、真实试点缺口、示例边界和能力矩阵入口
+- **WP4.2 双向互操作**：Skill-only 手工项目可由源码 CLI `doctor` 保守识别并明确返回 `manifest.missing`；CLI 真实 `init` 的一次性项目经 Skill 渲染后，在屏蔽 Node/CLI 的环境中仍可运行项目本地 strict 检查。该回归只证明结构兼容，不把沙箱结果外推为真实项目升级或 npm 可用性
+- **WP4.2 硬门槛归档与本地门禁**：`docs/PHASE4-STABILITY-AUDIT-2026-08-25.md` 对演进书§15 逐条归档，12 条中 11 条达到本地源码候选口径；第 11 条仍缺真实版本增量 upgrade 和 WP3.3/WP3.4 真实环境刷新。Node `55/55`、Shell `221/221`、Skill-only + CLI/Skill 双向互操作、Claude plugin `7/7`、109 份 Markdown 契约检查、78 文件 pack dry-run及全部静态检查通过；未查询 npm/GitHub 可变远端状态，未执行 push、tag、Release、publish、部署或远端改名
 - **仓库安全基线**：新增 npm/GitHub Actions Dependabot 周检、JavaScript/TypeScript CodeQL、SECURITY/贡献/行为规范、CODEOWNERS、Issue/PR 模板；CI 中第三方 Action 改为不可变完整 commit SHA
 - **发布引用保护**：GitHub 服务端 `Protect release tags` ruleset 覆盖 `refs/tags/v*`，禁止更新和删除已创建的发布 tag，且无绕过角色；发布 runbook 增加回读步骤
 - **CLI v0 真实试点**：使用官方 npm registry 的 `solobaton@1.16.3` 对三个存量项目运行只读 `doctor` 和 `adopt --dry-run`；Git 可见状态前后一致，并正确区分未安装、旧版已安装和部分安装状态
-- **写入边界收口**：当前试点不足以支持安全写入；`init/adopt/upgrade/uninstall` 写入能力继续 fail-closed，未来必须作为独立产品里程碑审批和验收，不再作为本次仓库维护的遗留项
+- **当前能力边界不冒进**：已独立验证的 npm `solobaton@1.16.3` 仍对所有项目写入 fail-closed；scoped `1.20.0` 源码候选已完成真实旧 schema 2 → 新 bundle 试点，但源码/项目证据不替代 registry artifact、provenance、签名、隔离安装与 GitHub Release 回读
 - **产品扩张边界**：多人账号/权限/组织管理和遥测/效能评分/指标仪表盘明确为当前非目标；CLI 不采集或上传项目使用数据，未来若扩展须独立立项并审查数据口径、隐私和权限治理
+- **不变量与输出合同落地**：`docs/CHECKS.md` 冻结八条文件总线不变量、Gate/证据令牌、五级结论、finding code 命名空间、JSON 外形和严格模式退出语义；`bus-check --format=json` 已由同一 finding 集合渲染，默认人类报告保持 exit 0，strict 只拦 `conflict/error`
+- **Phase 1 执行同步**：`SKILL.md` 与 AGENTS/status 模板固化开工 7 步、执行中 5 守则、收工 7 步；看板模板和教学沙盘新增四行 canonical Gate 状态与完成工作包 `**证据**:` 令牌
+- **Phase 1 检查实现**：`bus-check` 新增 Gate、完成证据、作用域引用、扫描截断和显式 coverage 检查；`verify-status --format=machine` 返回 `sync.l3_stale` / `sync.l3_unconfigured`，`verify-status --run` 在任一真实套件失败时非零退出，warning/unverified 保持可见但不冒充绿灯
+- **Phase 1 fixture 闭环**：健康、坏指针、无证据完成、Gate n/a 无理由、passed 不可追溯、非法 Gate、有效证据、幽灵 hash、陈旧看板和扫描截断场景逐项核对 JSON code/level/count/coverage/path 与 strict 退出码
+- **Phase 1 只读试点**：example 的 11 个教学假 hash 全部被拦；活跃多仓投影稳定暴露 4 个 NOW 引用迁移项、4 条 legacy Gate warning 与旧 verify 机器协议缺口；真实单仓代码树投影基线 strict 通过，注入无证据完成/n-a 无理由/幽灵 hash 后分别命中唯一目标 conflict。三类源项目试点前后 Git 可见状态一致；详见 `docs/PHASE1-PILOT-2026-08-24.md`
+- **Phase 2-A 可选规范**：新增 project-owned 的 STACK/CODE/REVIEW/DESIGN 模板与教学沙盘完成态；三行声明、稳定 Rule ID、CODE 安全底线和 UI-only DESIGN 契约已冻结。`OPTIONAL_TEMPLATE_PREFIXES` 确保默认 CLI 计划和 Skill-only 骨架不生成它们；缺失零 finding，Draft 显式 `unverified`，结构损坏进入 strict
+- **Phase 2-A ADR**：新增五判据 README、七字段 ADR 模板和 decisions 索引口径；`bus-check` 校验四种 Status 与 Superseded 终止链，能拦缺失目标、自指、循环和非法目标状态；ADR 仍只记录长期技术决定，不承载成员或审批管理
+- **Phase 2-A Bootstrap/Adopt 契约**：技术栈事实先形成一屏 STACK Draft 卡，可选规范默认不落文件且不增加提问预算；只有 UI 项目建议 DESIGN；确认无 UI/无部署时生成 canonical Gate2/Gate4 n/a 理由草案。存量摸底固定区分已确认历史债务、未验证范围、新地盘、只维护老地盘和明确不碰边界
+- **Phase 2-A 历史收口边界**：Phase 2-A 稳定候选当时仍只接受 `init/adopt --dry-run`；该结论用于标记批次边界，不再描述后续叠加了 WP2.4–WP2.5 的当前工作区
+- **Phase 2-B Wave 1 源码候选**：`init/adopt` 已实现“完整计划 → 交互确认或显式 `--yes` → 受控写入”；默认/紧凑布局均排除 optional standards/ADR，并只渲染项目名、日期、骨架版本、布局与紧凑脚本路径，剩余语义占位符结构化返回给 Skill
+- **Phase 2-B STACK 漂移候选**：Confirmed STACK 新增 `buildbeat-stack-baseline:v1` 精确集合并只读兼容旧 `solobaton-stack-baseline:v1`；`bus-check` 比对 `.nvmrc` / `package.json#engines.node`、npm/pnpm/yarn/bun lockfile 种类与 Dockerfile FROM，确定矛盾进 `stack.drift` conflict，缺源/解析/权限/符号链接/截断边界进 `stack.unverified`；不猜自然语言、不回显原始值、不修改项目文件，matching/conflict/unverified 三类 fixture 已将 Shell 回归扩至 `166/166`
+- **Phase 2-B Claude 插件分发候选**：新增 `buildbeat-plugins` marketplace 与独立 `buildbeat` 插件 `0.1.0`；插件以 marketplace 内相对符号链接复用 canonical SKILL/templates/docs/example，安装缓存解引用为自包含副本，并刻意排除 npm CLI 顶层 `bin/`。隔离配置回归覆盖严格校验、marketplace 添加、插件安装/启用、缓存同源与二次校验；CI 无 Claude CLI 时只证明静态打包，不冒充安装证据
+- **分发入口证据边界**：中英 README 首屏加入 Claude plugin 与 scoped npm 路径；legacy `solobaton@latest` 不再承载写入入口，`npx --yes --package=@haiyangbg/buildbeat@latest buildbeat init my-project` 只有在 scoped artifact 完成官方 registry 回读后才宣称可用
+- **WP2.7 安全前置**：新增 `standards-partial` fixture，证明仅启用 Confirmed CODE/REVIEW 时缺失 STACK/DESIGN 合法，Shell 回归增至 `176/176`；只读 dry-run 排除 partial 且碰撞的 `chickAI` 与 dirty legacy 安装的 `底座` 作为 Wave 1 adopt 目标
+- **WP2.7 真实目录本地写入**：获用户点名后，分别保留 init dry-run 零写、交互拒绝零写、default init apply、Tide compact adopt 与 Skill-only 手动 Bootstrap 证据；三个实际骨架完成项目语义渲染，验证套件及离线 `bus-check --strict` exit 0，可选 standards/ADR 均未被为了全绿而生成
+- **存量保护证据**：Tide 接管前后原 83 个文件的聚合 SHA-256 完全一致；剥离唯一 managed fragment 后，原 `.gitignore` 的 173 字节与 SHA-256 完全一致。没有运行构建、浏览器加载、发布或部署，静态保护证据不得外推为业务验证
+- **浏览器扩展 UI 探测修复**：真实 Tide 试点暴露 `hasUi=false` 假阴性；项目扫描现在解析嵌套 Manifest V2/V3 的 action/content/options 等 UI 信号，Tide 重探测为 `hasUi=true`，并加入不依赖 `index.html` 或前端框架包的 Node 回归
+- **WP2.7 Git 证据闭环**：获明确授权后，三个 apply 目标均初始化 `main`、安装与仓内规范脚本一致的 pre-commit Hook，并各形成 baseline + evidence 两个仅本地提交；最终 HEAD 为 `eb27a88663701ea03de776e32b6a23c2d1e3ac28`、`5b6aa726a1722226f9651a14bf0fb8fa36a5f9f6`、`b63383db9e56f17495a8ccc8edcb81e7c9cf24f0`，均 clean、无 remote。最终 doctor 均 `ok=true`，Skill-only 只保留预期 `manifest.missing`；不自动授权上游源码 commit、tag、GitHub Release、npm publish 或首屏写入入口激活
+- **WP2.7 候选门禁**：真实试点反馈回灌后 Node `39/39`、Shell `176/176`、Skill-only、Claude plugin 隔离安装 `7/7`、98 份 Markdown 检查、71 文件 pack dry-run 与全部静态检查通过；该次结果是提交前 worktree 证据，后来随 Phase 0–2 本地基线一并保全，仍不是发布证据
+- **WP2.8 本地迁移门禁**：BuildBeat namespace 改名与新试点证据回写后 Node `41/41`、Shell `176/176`、Skill-only、Claude plugin 隔离安装 `7/7`、99 份 Markdown 检查、73 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；该次结果是提交前本地候选证据，后来随 Phase 0–2 本地基线一并保全，不是发布证据
+- **WP2.8 BuildBeat 真实目录关闭**：新隔离根完成 default init、Tide compact adopt 与 Skill-only；doctor/verify-status/离线 strict、canonical namespace、Git/Hook/clean/no-remote 全部闭合，Tide 原 76 文件逐字节复核 0 差异。用户已确认 Gate3 并关闭 WP2.8，最终关闭 HEAD 为 `4ea29a94a3a29fa905ae99662359ec561298135d`、`69d6e8358f7fda03225c090d99b5647cae152183`、`6b32c53e4fd750770690a0bbe796638314cb792a`；随后另行授权形成 Phase 0–2 本地源仓基线 `b062f25`，未推送、未发布
+- **Wave 1 fail-closed 事务**：每个目标文件经同文件系统临时 sibling、fsync 与原子 rename 落盘；碰撞、符号链接父路径、已有/partial/mixed 安装、dirty/unavailable 根 Git 状态、异常 `.gitignore` marker 全部写前拒绝；任一步失败回删本次文件/空目录并逐字节恢复既有 `.gitignore`
+- **manifest/output schema 2（破坏性输出变更）**：CLI JSON envelope 从 schema 1 升为 2，新增实际写入路径、manifest、确定性替换和待渲染清单；新 manifest schema 2 最后写入，记录基线 SHA-256 与固定 `.gitignore` owned fragment，拒绝 `three-way-only`，同时 doctor 继续读取历史 schema 1
+- **所有权策略迁移**：AGENTS.md / BUILDBEAT.md / 指挥台.md 的新计划由历史 `three-way-only` 改为 `replace-if-unmodified`；历史 schema 1 仍可回读旧 `SOLOBATON.md` 与该旧策略，当前 schema 2 永不生成它
+- **Wave 1 证据边界**：Node 回归覆盖新目录/干净 Git/存量紧凑布局、无 Git 的诚实 `git.not_initialized`、确认取消、碰撞、dirty Git、ignore 幂等/hash、schema 双读、符号链接拒绝和注入失败回滚；WP2.7 另完成三条真实目录本地试点与 Git/Hook/hash 闭环，但没有上游 tag、GitHub Release 或 npm publish
+- **端到端 Builder 模型对齐**：`SKILL.md`、模板、示例和中英 README 统一为“按需求/功能工作包并行，单个 Builder 端到端负责产品判断、实现、测试与交付证据”；产品/全栈/测试保留为 AI 专业视角，不建人类角色接力或团队管理层
+- **Phase 0 回归地基**：新增健康/坏指针项目夹具和 `expected-findings.json` 过渡合同，并增加无 Node、无 CLI manifest 的 Skill-only 脚手架回归；两条 Shell 套件纳入 `prepublishOnly`，但未授权 v1.17 tag、GitHub Release 或 npm 发布
+
+> **拷出项目升级（当前 Unreleased 候选，尚未发布）**：
+> 1. 若 `scripts/bus-check.sh` 未被项目修改，可整文件替换；紧凑布局替换 `pm/scripts/bus-check.sh`。
+> 2. `verify-status.sh` 属 project-owned：保留现有 `SUITES`，仅人工合并 `--format=machine` 与 L3 新鲜度逻辑，不整文件覆盖。
+> 3. 旧看板人工补 Gate1–Gate4 四行；每个 `✅完成` 工作包补恰好一行 `**证据**:`；NOW/看板的新机器引用改用仓库根相对路径（不用 `../`），并按需把开工/收工核对措辞合入 AGENTS/status 约定。
+> 4. optional standards 与 ADR 不自动迁移：项目未启用就保持缺失；要启用时只复制选中的 project-owned 模板，填完项目事实后从 Draft 经人工确认改为 Confirmed，已有同名文件绝不覆盖。新 Confirmed STACK 使用 `buildbeat-stack-baseline:v1`；旧 `solobaton-stack-baseline:v1` 仅为读取兼容，缺基线时诚实显示 `stack.unverified`。
+> 5. 已有 decisions.md 只补一行 ADR 索引口径；只有命中五项长期技术判据的决定才新建 ADR，历史普通拍板不追补、不拆表。
+> 6. WP2.4 是新增安装能力，不自动改动任何已拷出项目；legacy 项目继续按上述所有权分类手动迁移。新的 `init/adopt` 只产生 `.buildbeat/manifest.json`；旧项目不得仅靠重命名 marker 伪造受管基线。
+> 7. 品牌迁移不自动改写已拷出项目。保留旧 namespace 可继续只读兼容；若要迁移到 `BUILDBEAT.md` / `.buildbeat`，必须先做备份、ownership 核对和独立 dry-run，不同时保留两份 manifest。
 
 ## v1.16.3 — 2026-08-23
 

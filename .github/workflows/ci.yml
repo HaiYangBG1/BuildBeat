@@ -32,6 +32,9 @@ jobs:
       - name: Check documentation
         run: bash tests/check-docs.sh
 
+      - name: Check Claude plugin marketplace package
+        run: bash tests/plugin-marketplace.test.sh
+
       - name: Check commit whitespace
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then

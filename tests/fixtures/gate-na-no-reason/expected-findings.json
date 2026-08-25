@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified",
+    "gate.na_without_reason"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 1
+  },
+  "legacy": {
+    "strictExit": 1,
+    "contains": [
+      "Gate2=n/a 但缺少同一行的非占位理由"
+    ],
+    "notContains": []
+  }
+}

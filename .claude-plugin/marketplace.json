@@ -1,0 +1,22 @@
+{
+  "name": "buildbeat-plugins",
+  "owner": {
+    "name": "HaiYangBG",
+    "url": "https://github.com/HaiYangBG1"
+  },
+  "description": "Official BuildBeat plugins for file-first, human-gated delivery with AI coding sessions.",
+  "plugins": [
+    {
+      "name": "buildbeat",
+      "source": "./plugins/buildbeat",
+      "description": "Guides AI coding sessions through BuildBeat bootstrap, brownfield adoption, file-bus synchronization, human Gates, and evidence-based delivery.",
+      "category": "productivity",
+      "tags": [
+        "ai-coding",
+        "delivery",
+        "git-workflow",
+        "human-in-the-loop"
+      ]
+    }
+  ]
+}

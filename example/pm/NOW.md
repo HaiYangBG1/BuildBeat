@@ -1,4 +1,4 @@
-# NOW — 当前冲刺指针(各域会话开工先读这里)
+# NOW — 当前冲刺指针(各工作包/AI 视角会话开工先读这里)
 
 > 本文件**永远只是薄指针**:当前期 + 看哪些文件,🔴 禁堆流水日志。
 > 🔴 线上版本不写在任何文档里:查 `bash scripts/bus-check.sh`。
@@ -10,13 +10,13 @@
 |---|---|
 | 🧭 当期看板 | `一期-看板.md` |
 | 🗳 拍板台账(决策单点) | `decisions.md` |
-| 🔌 契约 | `../contracts/PROTOCOL.md` |
-| 📊 各域状态(各写各的) | `status/产品.md` · `status/全栈.md` · `status/测试.md` |
+| 🔌 契约 | `contracts/PROTOCOL.md` |
+| 📊 各 AI 视角状态(各写各的) | `status/产品.md` · `status/全栈.md` · `status/测试.md` |
 | 🔁 在途变更提案 | `changes/`(本期无提案,目录未建) |
 | 📦 历史期归档 | `archive/`(证据产物期中即写 `archive/一期/evidence/`;看板等文档换期时归档) |
 
 ---
 
-### 换期 checklist(产品域)—— 含压缩仪式
+### 换期 checklist(当前工作包 Builder / 产品视角)—— 含压缩仪式
 
-> 与 [templates/pm/NOW.md](../../templates/pm/NOW.md) 完全一致,沙盘从略;二期立项时逐条执行。
+> 与上游 NOW 模板的换期 checklist 一致,沙盘从略;二期立项时逐条执行。

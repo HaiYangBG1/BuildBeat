@@ -6,6 +6,11 @@
 **契约快照对应版本:`v0.2.0`**(2026-06-20 上线)
 > 🔴 线上实况唯一查询口 = `bash scripts/bus-check.sh`;本行只标「本快照写就时对应的版本」。
 
+<!-- buildbeat-multirepo-map:v1
+repo=jz-web|contract=contracts/PROTOCOL.md|deployment=n/a
+repo=jz-api|contract=contracts/PROTOCOL.md|deployment=n/a
+-->
+
 ---
 
 ## 1. 当前契约快照

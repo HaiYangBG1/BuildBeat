@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified",
+    "gate.line_missing"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 0
+  },
+  "legacy": {
+    "strictExit": 0,
+    "contains": [
+      "standards/CODE.md 结构与 Confirmed 状态可解析",
+      "standards/REVIEW.md 结构与 Confirmed 状态可解析"
+    ],
+    "notContains": [
+      "standards.invalid",
+      "standards.unconfirmed",
+      "standards/STACK.md",
+      "standards/DESIGN.md"
+    ]
+  }
+}
