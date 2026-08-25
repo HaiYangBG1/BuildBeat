@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified",
+    "gate.line_missing"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 0
+  },
+  "legacy": {
+    "strictExit": 0,
+    "contains": [
+      "NOW 薄、看板归位、status 克制"
+    ],
+    "notContains": [
+      "薄指针长肥",
+      "坏指针"
+    ]
+  }
+}

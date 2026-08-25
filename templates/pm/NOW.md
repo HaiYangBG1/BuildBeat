@@ -1,7 +1,7 @@
-# NOW — 当前冲刺指针(各域会话开工先读这里)
+# NOW — 当前冲刺指针(各工作包/AI 视角会话开工先读这里)
 
 > 本文件**永远只是薄指针**:当前期是什么 + 看哪些文件。🔴 **禁止在这里堆流水日志**(那是 `status/<域>.md` 的事;NOW 长肥 = SSOT 腐烂的开端)。
-> 🔴 **线上版本不写在任何文档里**(规则⑨):查 `bash scripts/bus-check.sh`;契约快照对应版本只看 `../contracts/PROTOCOL.md` 头部。
+> 🔴 **线上版本不写在任何文档里**(规则⑨):查 `bash scripts/bus-check.sh`;契约快照对应版本只看 `contracts/PROTOCOL.md` 头部。
 
 **当前期:<期名>**(<一句话状态>)
 **本期轨道:<快轨|标准轨|重轨>**
@@ -10,17 +10,17 @@
 |---|---|
 | 🧭 当期看板 | `<期>-看板.md` |
 | 🗳 拍板台账(决策单点) | `decisions.md` |
-| 🔌 契约 | `../contracts/PROTOCOL.md` |
-| 📊 各域状态(各写各的) | `status/产品.md` · `status/全栈.md` · `status/测试.md` |
+| 🔌 契约 | `contracts/PROTOCOL.md` |
+| 📊 各 AI 视角状态(各写各的) | `status/产品.md` · `status/全栈.md` · `status/测试.md` |
 | 🔁 在途变更提案 | `changes/`(在途几个跑 bus-check 看,别在这里记) |
 | 📦 历史期归档 | `archive/` |
 
 ---
 
-### 换期 checklist(产品域)—— 含压缩仪式
+### 换期 checklist(当前工作包 Builder / 产品视角)—— 含压缩仪式
 1. **压缩仪式**:① 当期 看板/需求/todo/验收清单 `git mv` 进 `archive/<期>/`(归档文件超 40 个会触发 pre-commit 闸④,这一单用 `BUS_ALLOW_BULK=1 git commit` 提交);② `status/*.md` 全文 `cp` 进 `archive/<期>/status-<域>-<期>全程.md`,live 文件截断只留「当前基线 + 最近 1 条 + 归档指针」;③ NOW 流水清零(只留指针区);④ 核对本期证据产物已在 `archive/<期>/evidence/`(走查图/E2E 报告生成时就该写进去,换期零搬运),工作区根与 pm/ 无散落临时文件。
 2. 新建下一期 `<期>-看板.md`(+需求/todo),回来把上表指针换掉、更新「当前期」「本期轨道」两行。
 3. `decisions.md` 追加一行「换期」;新看板开第一个阶段门。
-4. **回灌一问**:本期踩到 Solobaton 没覆盖的新坑了吗?有 → 回上游 lessons.md 登记(见根 `SOLOBATON.md`)。
+4. **回灌一问**:本期踩到 BuildBeat 没覆盖的新坑了吗?有 → 回上游 lessons.md 登记(见根 `BUILDBEAT.md`)。
 
 > 全工作区换期 = 只动本文件的指针区。看板文件名**不得**写死进 `AGENTS.md` 等别处。

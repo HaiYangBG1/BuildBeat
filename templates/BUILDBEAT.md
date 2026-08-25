@@ -1,6 +1,6 @@
-# SOLOBATON.md — 本项目的协作骨架版本标记
+# BUILDBEAT.md — 本项目的协作骨架版本标记
 
-**本项目使用 Solobaton `v<X.Y>`**(<yyyy-mm-dd> 拷入)
+**本项目使用 BuildBeat `v<X.Y>`**(<yyyy-mm-dd> 拷入)
 **协调层布局:`<默认|紧凑>`**(默认 = 脚本在 `scripts/`;紧凑 = 在 `pm/scripts/`,见上游 SKILL §3)
 来源:<https://github.com/HaiYangBG1/solobaton>
 
@@ -10,4 +10,4 @@
 
 ## 回灌(比升级更重要)
 
-本项目踩到 Solobaton **没覆盖的新坑**(新反模式/机制漏洞)→ 回上游 `lessons.md` 登记一条(症状→根因→解药),提 issue/PR 或直接改上游仓。换期压缩仪式的 checklist 里有"回灌一问",别跳过——没有回灌,N 个项目的坑不会变成组织资产,只会各踩各的。
+本项目踩到 BuildBeat **没覆盖的新坑**(新反模式/机制漏洞)→ 回上游 `lessons.md` 登记一条(症状→根因→解药),提 issue/PR 或直接改上游仓。换期压缩仪式的 checklist 里有"回灌一问",别跳过——没有回灌,N 个项目的坑不会变成组织资产,只会各踩各的。

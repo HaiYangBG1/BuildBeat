@@ -1,6 +1,6 @@
-# Contributing to Solobaton
+# Contributing to BuildBeat
 
-Contributions should start from a reproducible delivery failure mode. Solobaton keeps workflow semantics in `SKILL.md`; templates, examples, bilingual READMEs, tests, and the changelog must remain aligned with that source of truth.
+Contributions should start from a reproducible delivery failure mode. BuildBeat keeps workflow semantics in `SKILL.md`; templates, examples, bilingual READMEs, tests, and the changelog must remain aligned with that source of truth.
 
 ## Local setup
 
@@ -8,8 +8,9 @@ Use Node.js 20 or newer, Git, and Bash:
 
 ```bash
 npm ci --ignore-scripts
-bash tests/test-scripts.sh
 npm test
+npm run test:scripts
+npm run test:skill-only
 npm run check:docs
 npm run pack:check
 git diff --check

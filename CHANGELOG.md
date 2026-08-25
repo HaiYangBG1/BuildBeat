@@ -4,11 +4,53 @@
 
 ## Unreleased
 
+- **品牌正式定名 BuildBeat**：2026-08-25 用户拍板产品名为 BuildBeat；canonical CLI/Skill/Claude plugin 标识统一为 `buildbeat` / `buildbeat@buildbeat-plugins`，新骨架入口改为 `BUILDBEAT.md`
+- **canonical namespace 迁移**：新写入只生成 `.buildbeat/manifest.json`、BuildBeat `.gitignore` marker 与 `buildbeat-stack-baseline:v1`；doctor/bus-check 继续读取旧 `SOLOBATON.md`、`.solobaton/manifest.json`、marker 与 STACK 基线，双 manifest 或混合安装 fail-closed
+- **legacy 分发兼容**：已发布 npm 包 `solobaton` 暂作为 BuildBeat 的 legacy distribution ID，并同时暴露 canonical `buildbeat` 与兼容 `solobaton` executable；未加 scope 的 `buildbeat` 包名已被其他项目占用，scoped package、GitHub 仓库改名、tag、Release 与 npm publish 均未获授权
+- **改名证据边界**：WP2.7 三条真实目录试点及其 hash 保持为 legacy namespace 历史证据；WP2.8 已用全新的隔离目录完成 BuildBeat canonical init/adopt/Skill-only 回归，二者不混写、不互相外推
+- **新版方向与执行基线入库**：新增 `docs/ROADMAP.md`、`docs/EXECUTION-PLAN.md` 与官方来源可复核的 CLI 策略对照；产品方向由路线图承载，当前交付范围与依赖顺序由执行计划 v3 承载
+- **CLI 选择性解冻决策**：未来只开放 `init/adopt` 哑脚手架写入与 manifest/hash 驱动的机械 `upgrade`；三方合并、项目 uninstall 引擎、`gate/adr/standards/check` 命令扩张继续冻结，语义渲染和冲突合并归 AI 会话/Skill
 - **仓库安全基线**：新增 npm/GitHub Actions Dependabot 周检、JavaScript/TypeScript CodeQL、SECURITY/贡献/行为规范、CODEOWNERS、Issue/PR 模板；CI 中第三方 Action 改为不可变完整 commit SHA
 - **发布引用保护**：GitHub 服务端 `Protect release tags` ruleset 覆盖 `refs/tags/v*`，禁止更新和删除已创建的发布 tag，且无绕过角色；发布 runbook 增加回读步骤
 - **CLI v0 真实试点**：使用官方 npm registry 的 `solobaton@1.16.3` 对三个存量项目运行只读 `doctor` 和 `adopt --dry-run`；Git 可见状态前后一致，并正确区分未安装、旧版已安装和部分安装状态
-- **写入边界收口**：当前试点不足以支持安全写入；`init/adopt/upgrade/uninstall` 写入能力继续 fail-closed，未来必须作为独立产品里程碑审批和验收，不再作为本次仓库维护的遗留项
+- **当前能力边界不冒进**：已独立验证的 npm `solobaton@1.16.3` 仍对所有项目写入 fail-closed；当前工作区的 Wave 1 源码候选已完成旧名与 BuildBeat canonical 两轮真实目录本地试点，WP2.8 Gate3 也已确认，但源仓仍按用户要求不提交、未发布，`upgrade` 仍未实现
 - **产品扩张边界**：多人账号/权限/组织管理和遥测/效能评分/指标仪表盘明确为当前非目标；CLI 不采集或上传项目使用数据，未来若扩展须独立立项并审查数据口径、隐私和权限治理
+- **不变量与输出合同落地**：`docs/CHECKS.md` 冻结八条文件总线不变量、Gate/证据令牌、五级结论、finding code 命名空间、JSON 外形和严格模式退出语义；`bus-check --format=json` 已由同一 finding 集合渲染，默认人类报告保持 exit 0，strict 只拦 `conflict/error`
+- **Phase 1 执行同步**：`SKILL.md` 与 AGENTS/status 模板固化开工 7 步、执行中 5 守则、收工 7 步；看板模板和教学沙盘新增四行 canonical Gate 状态与完成工作包 `**证据**:` 令牌
+- **Phase 1 检查实现**：`bus-check` 新增 Gate、完成证据、作用域引用、扫描截断和显式 coverage 检查；`verify-status --format=machine` 返回 `sync.l3_stale` / `sync.l3_unconfigured`，`verify-status --run` 在任一真实套件失败时非零退出，warning/unverified 保持可见但不冒充绿灯
+- **Phase 1 fixture 闭环**：健康、坏指针、无证据完成、Gate n/a 无理由、passed 不可追溯、非法 Gate、有效证据、幽灵 hash、陈旧看板和扫描截断场景逐项核对 JSON code/level/count/coverage/path 与 strict 退出码
+- **Phase 1 只读试点**：example 的 11 个教学假 hash 全部被拦；活跃多仓投影稳定暴露 4 个 NOW 引用迁移项、4 条 legacy Gate warning 与旧 verify 机器协议缺口；真实单仓代码树投影基线 strict 通过，注入无证据完成/n-a 无理由/幽灵 hash 后分别命中唯一目标 conflict。三类源项目试点前后 Git 可见状态一致；详见 `docs/PHASE1-PILOT-2026-08-24.md`
+- **Phase 2-A 可选规范**：新增 project-owned 的 STACK/CODE/REVIEW/DESIGN 模板与教学沙盘完成态；三行声明、稳定 Rule ID、CODE 安全底线和 UI-only DESIGN 契约已冻结。`OPTIONAL_TEMPLATE_PREFIXES` 确保默认 CLI 计划和 Skill-only 骨架不生成它们；缺失零 finding，Draft 显式 `unverified`，结构损坏进入 strict
+- **Phase 2-A ADR**：新增五判据 README、七字段 ADR 模板和 decisions 索引口径；`bus-check` 校验四种 Status 与 Superseded 终止链，能拦缺失目标、自指、循环和非法目标状态；ADR 仍只记录长期技术决定，不承载成员或审批管理
+- **Phase 2-A Bootstrap/Adopt 契约**：技术栈事实先形成一屏 STACK Draft 卡，可选规范默认不落文件且不增加提问预算；只有 UI 项目建议 DESIGN；确认无 UI/无部署时生成 canonical Gate2/Gate4 n/a 理由草案。存量摸底固定区分已确认历史债务、未验证范围、新地盘、只维护老地盘和明确不碰边界
+- **Phase 2-A 历史收口边界**：Phase 2-A 稳定候选当时仍只接受 `init/adopt --dry-run`；该结论用于标记批次边界，不再描述后续叠加了 WP2.4–WP2.5 的当前工作区
+- **Phase 2-B Wave 1 源码候选**：`init/adopt` 已实现“完整计划 → 交互确认或显式 `--yes` → 受控写入”；默认/紧凑布局均排除 optional standards/ADR，并只渲染项目名、日期、骨架版本、布局与紧凑脚本路径，剩余语义占位符结构化返回给 Skill
+- **Phase 2-B STACK 漂移候选**：Confirmed STACK 新增 `buildbeat-stack-baseline:v1` 精确集合并只读兼容旧 `solobaton-stack-baseline:v1`；`bus-check` 比对 `.nvmrc` / `package.json#engines.node`、npm/pnpm/yarn/bun lockfile 种类与 Dockerfile FROM，确定矛盾进 `stack.drift` conflict，缺源/解析/权限/符号链接/截断边界进 `stack.unverified`；不猜自然语言、不回显原始值、不修改项目文件，matching/conflict/unverified 三类 fixture 已将 Shell 回归扩至 `166/166`
+- **Phase 2-B Claude 插件分发候选**：新增 `buildbeat-plugins` marketplace 与独立 `buildbeat` 插件 `0.1.0`；插件以 marketplace 内相对符号链接复用 canonical SKILL/templates/docs/example，安装缓存解引用为自包含副本，并刻意排除 npm CLI 顶层 `bin/`。隔离配置回归覆盖严格校验、marketplace 添加、插件安装/启用、缓存同源与二次校验；CI 无 Claude CLI 时只证明静态打包，不冒充安装证据
+- **分发入口证据边界**：中英 README 首屏加入本地 Claude plugin 候选路径及合并后 GitHub marketplace 路径；WP2.8 已关闭，但 `npx --yes --package=solobaton@latest buildbeat init my-project` 仍刻意不作为当前入口，须等源仓候选提交、v1.19 发布授权与官方 registry 回读后再激活
+- **WP2.7 安全前置**：新增 `standards-partial` fixture，证明仅启用 Confirmed CODE/REVIEW 时缺失 STACK/DESIGN 合法，Shell 回归增至 `176/176`；只读 dry-run 排除 partial 且碰撞的 `chickAI` 与 dirty legacy 安装的 `底座` 作为 Wave 1 adopt 目标
+- **WP2.7 真实目录本地写入**：获用户点名后，分别保留 init dry-run 零写、交互拒绝零写、default init apply、Tide compact adopt 与 Skill-only 手动 Bootstrap 证据；三个实际骨架完成项目语义渲染，验证套件及离线 `bus-check --strict` exit 0，可选 standards/ADR 均未被为了全绿而生成
+- **存量保护证据**：Tide 接管前后原 83 个文件的聚合 SHA-256 完全一致；剥离唯一 managed fragment 后，原 `.gitignore` 的 173 字节与 SHA-256 完全一致。没有运行构建、浏览器加载、发布或部署，静态保护证据不得外推为业务验证
+- **浏览器扩展 UI 探测修复**：真实 Tide 试点暴露 `hasUi=false` 假阴性；项目扫描现在解析嵌套 Manifest V2/V3 的 action/content/options 等 UI 信号，Tide 重探测为 `hasUi=true`，并加入不依赖 `index.html` 或前端框架包的 Node 回归
+- **WP2.7 Git 证据闭环**：获明确授权后，三个 apply 目标均初始化 `main`、安装与仓内规范脚本一致的 pre-commit Hook，并各形成 baseline + evidence 两个仅本地提交；最终 HEAD 为 `eb27a88663701ea03de776e32b6a23c2d1e3ac28`、`5b6aa726a1722226f9651a14bf0fb8fa36a5f9f6`、`b63383db9e56f17495a8ccc8edcb81e7c9cf24f0`，均 clean、无 remote。最终 doctor 均 `ok=true`，Skill-only 只保留预期 `manifest.missing`；不自动授权上游源码 commit、tag、GitHub Release、npm publish 或首屏写入入口激活
+- **WP2.7 候选门禁**：真实试点反馈回灌后 Node `39/39`、Shell `176/176`、Skill-only、Claude plugin 隔离安装 `7/7`、98 份 Markdown 检查、71 文件 pack dry-run 与全部静态检查通过；这仍是未提交、未发布 worktree 证据
+- **WP2.8 本地迁移门禁**：BuildBeat namespace 改名与新试点证据回写后 Node `41/41`、Shell `176/176`、Skill-only、Claude plugin 隔离安装 `7/7`、99 份 Markdown 检查、73 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；这只证明本地未提交源码候选，不是发布证据
+- **WP2.8 BuildBeat 真实目录关闭**：新隔离根完成 default init、Tide compact adopt 与 Skill-only；doctor/verify-status/离线 strict、canonical namespace、Git/Hook/clean/no-remote 全部闭合，Tide 原 76 文件逐字节复核 0 差异。用户已确认 Gate3 并关闭 WP2.8，最终关闭 HEAD 为 `4ea29a94a3a29fa905ae99662359ec561298135d`、`69d6e8358f7fda03225c090d99b5647cae152183`、`6b32c53e4fd750770690a0bbe796638314cb792a`；源仓 commit 与外部发布仍未授权
+- **Wave 1 fail-closed 事务**：每个目标文件经同文件系统临时 sibling、fsync 与原子 rename 落盘；碰撞、符号链接父路径、已有/partial/mixed 安装、dirty/unavailable 根 Git 状态、异常 `.gitignore` marker 全部写前拒绝；任一步失败回删本次文件/空目录并逐字节恢复既有 `.gitignore`
+- **manifest/output schema 2（破坏性输出变更）**：CLI JSON envelope 从 schema 1 升为 2，新增实际写入路径、manifest、确定性替换和待渲染清单；新 manifest schema 2 最后写入，记录基线 SHA-256 与固定 `.gitignore` owned fragment，拒绝 `three-way-only`，同时 doctor 继续读取历史 schema 1
+- **所有权策略迁移**：AGENTS.md / BUILDBEAT.md / 指挥台.md 的新计划由历史 `three-way-only` 改为 `replace-if-unmodified`；历史 schema 1 仍可回读旧 `SOLOBATON.md` 与该旧策略，当前 schema 2 永不生成它
+- **Wave 1 证据边界**：Node 回归覆盖新目录/干净 Git/存量紧凑布局、无 Git 的诚实 `git.not_initialized`、确认取消、碰撞、dirty Git、ignore 幂等/hash、schema 双读、符号链接拒绝和注入失败回滚；WP2.7 另完成三条真实目录本地试点与 Git/Hook/hash 闭环，但没有上游 tag、GitHub Release 或 npm publish
+- **端到端 Builder 模型对齐**：`SKILL.md`、模板、示例和中英 README 统一为“按需求/功能工作包并行，单个 Builder 端到端负责产品判断、实现、测试与交付证据”；产品/全栈/测试保留为 AI 专业视角，不建人类角色接力或团队管理层
+- **Phase 0 回归地基**：新增健康/坏指针项目夹具和 `expected-findings.json` 过渡合同，并增加无 Node、无 CLI manifest 的 Skill-only 脚手架回归；两条 Shell 套件纳入 `prepublishOnly`，但未授权 v1.17 tag、GitHub Release 或 npm 发布
+
+> **拷出项目升级（当前 Unreleased 候选，尚未发布）**：
+> 1. 若 `scripts/bus-check.sh` 未被项目修改，可整文件替换；紧凑布局替换 `pm/scripts/bus-check.sh`。
+> 2. `verify-status.sh` 属 project-owned：保留现有 `SUITES`，仅人工合并 `--format=machine` 与 L3 新鲜度逻辑，不整文件覆盖。
+> 3. 旧看板人工补 Gate1–Gate4 四行；每个 `✅完成` 工作包补恰好一行 `**证据**:`；NOW/看板的新机器引用改用仓库根相对路径（不用 `../`），并按需把开工/收工核对措辞合入 AGENTS/status 约定。
+> 4. optional standards 与 ADR 不自动迁移：项目未启用就保持缺失；要启用时只复制选中的 project-owned 模板，填完项目事实后从 Draft 经人工确认改为 Confirmed，已有同名文件绝不覆盖。新 Confirmed STACK 使用 `buildbeat-stack-baseline:v1`；旧 `solobaton-stack-baseline:v1` 仅为读取兼容，缺基线时诚实显示 `stack.unverified`。
+> 5. 已有 decisions.md 只补一行 ADR 索引口径；只有命中五项长期技术判据的决定才新建 ADR，历史普通拍板不追补、不拆表。
+> 6. WP2.4 是新增安装能力，不自动改动任何已拷出项目；legacy 项目继续按上述所有权分类手动迁移。新的 `init/adopt` 只产生 `.buildbeat/manifest.json`；旧项目不得仅靠重命名 marker 伪造受管基线。
+> 7. 品牌迁移不自动改写已拷出项目。保留旧 namespace 可继续只读兼容；若要迁移到 `BUILDBEAT.md` / `.buildbeat`，必须先做备份、ownership 核对和独立 dry-run，不同时保留两份 manifest。
 
 ## v1.16.3 — 2026-08-23
 

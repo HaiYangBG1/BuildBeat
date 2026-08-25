@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified",
+    "gate.line_missing",
+    "adr.status_invalid"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 1
+  },
+  "legacy": {
+    "strictExit": 1,
+    "contains": [
+      "ADR-0001-invalid.md 缺少唯一合法 Status"
+    ],
+    "notContains": [
+      "ADR-0001-invalid.md 的 Superseded 链"
+    ]
+  }
+}

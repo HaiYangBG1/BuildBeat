@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # pre-commit.sh —— 红线机器闸。规则不能只靠自觉:每条规则问一句「违反了会怎样」,答案得是「拦下来」。
 # 闸①:凭据不入 git(红线1)—— gitleaks 扫暂存区,报警即拦;未装 gitleaks 只警告不拦(装:brew install gitleaks)。
-# 闸②:协调层可信 —— bus-check --strict 检出 腐烂/幽灵hash 即拦(离线模式,不查线上;仅 meta 仓生效,子仓自动跳过)。
+# 闸②:协调层可信 —— bus-check --strict 检出任一 conflict/error finding 即拦(离线模式,不查线上;仅 meta 仓生效,子仓自动跳过)。
 # 闸③:状态分写(规则⑦)—— 一次 commit 暂存 ≥2 个域的 status 文件即拦(单会话=单域,不该同时写别人的;
 #        换期压缩仪式例外:连同 pm/archive/ 一起提交即放行,或 BUS_RITUAL=1 git commit)。
 # 闸④:不批量 stage(红线2)—— 暂存文件数 > BUS_MAX_STAGED(默认 40)即拦,像 `git add -A` 的手笔;

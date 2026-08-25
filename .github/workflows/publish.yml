@@ -1,4 +1,4 @@
-name: Publish npm package
+name: Publish BuildBeat legacy npm package
 
 on:
   workflow_dispatch:
@@ -82,7 +82,7 @@ jobs:
         run: |
           set -euo pipefail
           package_version="$(node -p "require('./package.json').version")"
-          candidate_dir="$RUNNER_TEMP/solobaton-candidate"
+          candidate_dir="$RUNNER_TEMP/buildbeat-candidate"
           mkdir -p "$candidate_dir"
           pack_json="$(npm pack --json --pack-destination "$candidate_dir")"
           package_file="$(node -e 'const value=JSON.parse(process.argv[1]); if (!Array.isArray(value) || value.length !== 1) process.exit(1); process.stdout.write(value[0].filename)' "$pack_json")"
@@ -99,9 +99,9 @@ jobs:
       - name: Publish or reconcile the exact candidate through npm Trusted Publishing
         shell: bash
         env:
-          SOLOBATON_PACKAGE_VERSION: ${{ steps.candidate.outputs.version }}
-          SOLOBATON_CANDIDATE_INTEGRITY: ${{ steps.candidate.outputs.integrity }}
-          SOLOBATON_CANDIDATE_TARBALL: ${{ steps.candidate.outputs.tarball }}
+          BUILDBEAT_PACKAGE_VERSION: ${{ steps.candidate.outputs.version }}
+          BUILDBEAT_CANDIDATE_INTEGRITY: ${{ steps.candidate.outputs.integrity }}
+          BUILDBEAT_CANDIDATE_TARBALL: ${{ steps.candidate.outputs.tarball }}
         run: bash .github/scripts/publish-candidate.sh
 
   verify:
@@ -138,7 +138,7 @@ jobs:
           set -euo pipefail
           package_version="$(node -p "require('./package.json').version")"
           test "$RELEASE_TAG" = "v$package_version"
-          candidate_dir="$RUNNER_TEMP/solobaton-verify-candidate"
+          candidate_dir="$RUNNER_TEMP/buildbeat-verify-candidate"
           mkdir -p "$candidate_dir"
           pack_json="$(npm pack --json --pack-destination "$candidate_dir")"
           candidate_integrity="$(node -e 'const value=JSON.parse(process.argv[1]); if (!Array.isArray(value) || value.length !== 1) process.exit(1); process.stdout.write(value[0].integrity)' "$pack_json")"
@@ -187,6 +187,7 @@ jobs:
           release_probe="$(mktemp -d)"
           npm install --prefix "$release_probe" "solobaton@$package_version" \
             --registry=https://registry.npmjs.org/ --ignore-scripts --no-audit --no-fund
+          test "$(node "$release_probe/node_modules/solobaton/bin/buildbeat.js" --version)" = "$package_version"
           test "$(node "$release_probe/node_modules/solobaton/bin/solobaton.js" --version)" = "$package_version"
           (
             cd "$release_probe"

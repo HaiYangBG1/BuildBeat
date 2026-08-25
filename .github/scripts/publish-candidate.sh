@@ -3,34 +3,34 @@ set -euo pipefail
 
 package_name="solobaton"
 official_registry="https://registry.npmjs.org/"
-package_version="${SOLOBATON_PACKAGE_VERSION:-}"
-candidate_integrity="${SOLOBATON_CANDIDATE_INTEGRITY:-}"
-candidate_tarball="${SOLOBATON_CANDIDATE_TARBALL:-}"
-reconcile_attempts="${SOLOBATON_RECONCILE_ATTEMPTS:-12}"
-reconcile_delay_seconds="${SOLOBATON_RECONCILE_DELAY_SECONDS:-5}"
+package_version="${BUILDBEAT_PACKAGE_VERSION:-${SOLOBATON_PACKAGE_VERSION:-}}"
+candidate_integrity="${BUILDBEAT_CANDIDATE_INTEGRITY:-${SOLOBATON_CANDIDATE_INTEGRITY:-}}"
+candidate_tarball="${BUILDBEAT_CANDIDATE_TARBALL:-${SOLOBATON_CANDIDATE_TARBALL:-}}"
+reconcile_attempts="${BUILDBEAT_RECONCILE_ATTEMPTS:-${SOLOBATON_RECONCILE_ATTEMPTS:-12}}"
+reconcile_delay_seconds="${BUILDBEAT_RECONCILE_DELAY_SECONDS:-${SOLOBATON_RECONCILE_DELAY_SECONDS:-5}}"
 
 if [[ "${NPM_CONFIG_REGISTRY:-}" != "$official_registry" ]]; then
   echo "NPM_CONFIG_REGISTRY must be pinned to $official_registry" >&2
   exit 2
 fi
 if [[ ! "$package_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "SOLOBATON_PACKAGE_VERSION must use MAJOR.MINOR.PATCH." >&2
+  echo "BUILDBEAT_PACKAGE_VERSION must use MAJOR.MINOR.PATCH." >&2
   exit 2
 fi
 if [[ ! "$candidate_integrity" =~ ^sha512-[A-Za-z0-9+/]+={0,2}$ ]]; then
-  echo "SOLOBATON_CANDIDATE_INTEGRITY must be a sha512 integrity value." >&2
+  echo "BUILDBEAT_CANDIDATE_INTEGRITY must be a sha512 integrity value." >&2
   exit 2
 fi
 if [[ ! -f "$candidate_tarball" ]]; then
-  echo "SOLOBATON_CANDIDATE_TARBALL must name the packed candidate file." >&2
+  echo "BUILDBEAT_CANDIDATE_TARBALL must name the packed candidate file." >&2
   exit 2
 fi
 if [[ ! "$reconcile_attempts" =~ ^[1-9][0-9]*$ ]]; then
-  echo "SOLOBATON_RECONCILE_ATTEMPTS must be a positive integer." >&2
+  echo "BUILDBEAT_RECONCILE_ATTEMPTS must be a positive integer." >&2
   exit 2
 fi
 if [[ ! "$reconcile_delay_seconds" =~ ^[0-9]+$ ]]; then
-  echo "SOLOBATON_RECONCILE_DELAY_SECONDS must be a non-negative integer." >&2
+  echo "BUILDBEAT_RECONCILE_DELAY_SECONDS must be a non-negative integer." >&2
   exit 2
 fi
 

@@ -48,7 +48,7 @@ body:
     attributes:
       label: Boundary check
       options:
-        - label: I considered whether this belongs in Solobaton rather than a target project's own tooling.
+        - label: I considered whether this belongs in BuildBeat rather than a target project's own tooling.
           required: true
         - label: I have not assumed that a preview, check, or proposal authorizes project writes, merges, or releases.
           required: true

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "env": {
+    "BUS_REF_MAX": 1
+  },
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.scan_truncated",
+    "sync.unverified"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 0
+  },
+  "legacy": {
+    "strictExit": 0,
+    "contains": [
+      "作用域引用扫描达到 BUS_REF_MAX=1"
+    ],
+    "notContains": []
+  }
+}

@@ -1,9 +1,10 @@
 {
   "name": "solobaton",
   "version": "1.16.3",
-  "description": "File-first, human-gated delivery bus for solo builders orchestrating multiple AI coding sessions.",
+  "description": "BuildBeat: a Git-based, human-gated engineering delivery protocol for humans and AI sessions.",
   "type": "module",
   "bin": {
+    "buildbeat": "bin/buildbeat.js",
     "solobaton": "bin/solobaton.js"
   },
   "files": [
@@ -22,8 +23,11 @@
   "scripts": {
     "check:docs": "bash tests/check-docs.sh",
     "test": "node --test tests/*.test.js",
+    "test:scripts": "bash tests/test-scripts.sh",
+    "test:skill-only": "bash tests/skill-only.test.sh",
+    "test:plugin": "bash tests/plugin-marketplace.test.sh",
     "pack:check": "npm pack --dry-run",
-    "prepublishOnly": "npm test && npm run check:docs && npm run pack:check"
+    "prepublishOnly": "npm test && npm run test:scripts && npm run test:skill-only && npm run test:plugin && npm run check:docs && npm run pack:check"
   },
   "engines": {
     "node": ">=20"
@@ -46,7 +50,9 @@
     "human-in-the-loop",
     "scaffold",
     "software-delivery",
-    "solo-builder"
+    "delivery-protocol",
+    "ai-sessions",
+    "git-workflow"
   ],
   "author": "HaiYangBG",
   "license": "MIT"

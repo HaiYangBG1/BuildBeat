@@ -1,6 +1,6 @@
-# CLI package release runbook
+# BuildBeat CLI package release runbook
 
-This runbook governs the public npm package. It does not authorize project-scaffold writes, a Git merge, or a production rollout. Each state transition still requires its own human Gate.
+This runbook governs BuildBeat's public npm distribution. The currently published package name `solobaton` is a legacy distribution ID; the canonical executable in the next approved release candidate is `buildbeat`, while `solobaton` remains an executable alias. This runbook does not authorize project-scaffold writes, a Git merge, a repository rename, a package migration, or a production rollout. Each state transition still requires its own human Gate.
 
 Release evidence at this commit: source package version `solobaton@1.16.3`; latest independently verified npm distribution `solobaton@1.16.3`. The immutable published artifact is anchored by annotated tag `v1.16.3` at commit `821ea3e`. Workflow run [32587162679](https://github.com/HaiYangBG1/solobaton/actions/runs/32587162679) and an independent official-registry readback verified the exact tarball, SLSA v1 provenance, registry signature, attestation, isolated installation, executable version, zero-write `doctor` behavior, and evergreen registry README before the matching GitHub Release was created.
 
@@ -13,8 +13,9 @@ Release evidence at this commit: source package version `solobaton@1.16.3`; late
 5. A successful `npm publish` response is not enough. Registry metadata, tarball contents, an isolated install, the executable version, and a read-only command must be checked independently.
 6. `npm install/update/uninstall` manage the CLI package only. They must never be described as project-scaffold `init/upgrade/uninstall` support.
 7. After a version is published, later `main` documentation changes carrying that same `package.json` version do not redefine its artifact and are not releasable candidates. The next publication requires a new package version, Changelog heading, and annotated tag.
-8. Distribution-facing executable examples use `solobaton@latest`, not a hard-coded release number. This keeps the immutable npm README usable before and after publication. Reproducible consumers first resolve `npm view solobaton@latest version`, record that exact version, and substitute it for `@latest`; exact release evidence remains in this runbook and the matching GitHub Release.
+8. Published-v0 examples continue to use `solobaton@latest`, not a hard-coded release number. This keeps the immutable npm README usable before and after publication. Reproducible consumers first resolve `npm view solobaton@latest version`, record that exact version, and substitute it for `@latest`; exact release evidence remains in this runbook and the matching GitHub Release. After a rename-aware package is independently verified, canonical one-off commands use `npx --yes --package=solobaton@latest buildbeat ...`.
 9. The active repository ruleset `Protect release tags` must match `refs/tags/v*`, forbid tag updates and deletions, and grant no bypass actor. It deliberately does not forbid creation, so a reviewed new release tag can still be created once.
+10. The write-enabled first-screen command `npx --yes --package=solobaton@latest buildbeat init my-project` must not be described as active while the independently verified `@latest` remains read-only and lacks the BuildBeat namespace. The old-name WP2.7 pilots are historical compatibility evidence; activation still requires a fresh BuildBeat namespace real-directory pilot, explicit v1.19 publication authorization, successful registry/provenance/isolated-install verification, and an independent registry README readback.
 
 ## Candidate checks
 
@@ -27,6 +28,7 @@ shellcheck -x .github/scripts/*.sh templates/scripts/*.sh tests/*.sh
 actionlint .github/workflows/*.yml
 bash tests/check-docs.sh
 bash tests/test-scripts.sh
+npm run test:plugin
 npm test
 npm publish --dry-run --access public --registry=https://registry.npmjs.org/
 gitleaks git --no-banner --redact --no-color
@@ -49,7 +51,7 @@ The expected readback is active enforcement, include pattern `refs/tags/v*`, exa
 
 ## Initial public package bootstrap
 
-The first package must be created by an npm account protected by 2FA, or by another npm-supported initial-publication credential. Solobaton completed this one-time bootstrap with `1.16.1`. Use the official web login rather than copying a token into the repository:
+The first package must be created by an npm account protected by 2FA, or by another npm-supported initial-publication credential. The legacy `solobaton` package completed this one-time bootstrap with `1.16.1`. Use the official web login rather than copying a token into the repository:
 
 ```bash
 npm login --auth-type=web --registry=https://registry.npmjs.org/
@@ -57,7 +59,7 @@ npm whoami --registry=https://registry.npmjs.org/
 npm publish --access public --registry=https://registry.npmjs.org/
 ```
 
-The npm documentation requires 2FA or an allowed granular token for package publication. Solobaton's initial release uses interactive 2FA; no long-lived publish token belongs in Git, shell history, logs, or a chat transcript. See npm's guides for [unscoped public packages](https://docs.npmjs.com/creating-and-publishing-unscoped-public-packages/) and [publishing 2FA requirements](https://docs.npmjs.com/requiring-2fa-for-package-publishing-and-settings-modification/).
+The npm documentation requires 2FA or an allowed granular token for package publication. The legacy package's initial release used interactive 2FA; no long-lived publish token belongs in Git, shell history, logs, or a chat transcript. See npm's guides for [unscoped public packages](https://docs.npmjs.com/creating-and-publishing-unscoped-public-packages/) and [publishing 2FA requirements](https://docs.npmjs.com/requiring-2fa-for-package-publishing-and-settings-modification/).
 
 ## Independent readback
 
@@ -72,8 +74,9 @@ npm view "solobaton@$release_version" name version dist-tags.latest \
 release_probe="$(mktemp -d)"
 npm install --prefix "$release_probe" "solobaton@$release_version" \
   --registry=https://registry.npmjs.org/ --ignore-scripts --no-audit --no-fund
+node "$release_probe/node_modules/solobaton/bin/buildbeat.js" --version
 node "$release_probe/node_modules/solobaton/bin/solobaton.js" --version
-node "$release_probe/node_modules/solobaton/bin/solobaton.js" doctor . --json
+node "$release_probe/node_modules/solobaton/bin/buildbeat.js" doctor . --json
 ```
 
 The expected version is exact. `doctor` may correctly return exit 1 for a directory without an installed scaffold; the acceptance condition is valid bounded JSON and zero project writes, not a forced green diagnosis.
@@ -110,4 +113,4 @@ The workflow waits for exact registry-version readback, requires `dist.attestati
 
 Trusted Publishing removes the long-lived write token and automatically emits provenance for supported public GitHub repositories. Configure the exact owner, repository, workflow filename, allowed `npm publish` action, and the exact `npm-publish` environment on npmjs.com. A GitHub Environment without the matching npm-side environment binding is not sufficient evidence. See npm's [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) and [provenance](https://docs.npmjs.com/generating-provenance-statements/) documentation.
 
-The first manually published version is not retroactively provenance-backed. Record that evidence boundary in its GitHub Release instead of implying otherwise. The existence of the workflow and trusted-publisher binding is configuration evidence only; npm explicitly validates the binding only during a real publish. After the first OIDC release succeeds, separately set npm publishing access to require 2FA and disallow bypass-2FA tokens. Solobaton completed and live-read this account-governance step before `1.16.3`; the selected package setting is compatible with the existing OIDC Trusted Publisher. Because this is mutable registry configuration, future release operators must recheck it live instead of treating this repository statement as perpetual proof.
+The first manually published version is not retroactively provenance-backed. Record that evidence boundary in its GitHub Release instead of implying otherwise. The existence of the workflow and trusted-publisher binding is configuration evidence only; npm explicitly validates the binding only during a real publish. After the first OIDC release succeeds, separately set npm publishing access to require 2FA and disallow bypass-2FA tokens. The legacy `solobaton` package completed and live-read this account-governance step before `1.16.3`; the selected package setting is compatible with the existing OIDC Trusted Publisher. Because this is mutable registry configuration, future release operators must recheck it live instead of treating this repository statement as perpetual proof.

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified",
+    "gate.line_missing",
+    "adr.superseded_broken"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 1
+  },
+  "legacy": {
+    "strictExit": 1,
+    "contains": [
+      "ADR-0001-old.md 的 Superseded 链缺失、成环或指向非法 ADR"
+    ],
+    "notContains": [
+      "ADR-0001-old.md 缺少唯一合法 Status"
+    ]
+  }
+}

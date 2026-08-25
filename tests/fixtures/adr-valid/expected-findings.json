@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified",
+    "gate.line_missing"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 0
+  },
+  "legacy": {
+    "strictExit": 0,
+    "contains": [],
+    "notContains": [
+      "ADR-0001-valid.md 缺少唯一合法 Status",
+      "ADR-0001-valid.md 的 Superseded 链"
+    ]
+  }
+}
