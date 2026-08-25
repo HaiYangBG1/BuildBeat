@@ -16,7 +16,8 @@
   "legacy": {
     "strictExit": 0,
     "contains": [
-      "作用域引用扫描达到 BUS_REF_MAX=1"
+      "作用域引用扫描达到 BUS_REF_MAX=1",
+      "reason=limit"
     ],
     "notContains": []
   }

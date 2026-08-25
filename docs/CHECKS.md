@@ -1,6 +1,6 @@
 # BuildBeat file-bus check specification
 
-Status: **Phase 3 WP3.3 implementation baseline** · normative bus-check schema: `1` · Phase 0–2 are committed locally in `b062f25`, while the current source checkout and legacy `solobaton@1.16.3` package metadata remain unpushed/unpublished and make no v1.18/v1.19/v1.20 release claim. CLI output/manifest schema 2 and the WP3.1 mechanical-upgrade candidate are specified separately in [`CLI.md`](CLI.md); neither changes this bus-check schema.
+Status: **Phase 3 WP3.4 implementation baseline** · normative bus-check schema: `1` · Phase 0–2 are committed locally in `b062f25`, while the current source checkout and legacy `solobaton@1.16.3` package metadata remain unpushed/unpublished and make no v1.18/v1.19/v1.20 release claim. CLI output/manifest schema 2 and the WP3.1 mechanical-upgrade candidate are specified separately in [`CLI.md`](CLI.md); neither changes this bus-check schema.
 
 This document is the single semantic source for `templates/scripts/bus-check.sh` and the same-directory scripts it orchestrates. It defines what a result means, not merely how output is colored. `SKILL.md`, board templates, fixtures, and script tests must use the same tokens and finding codes.
 
@@ -143,7 +143,7 @@ Each non-empty row has exactly `repo=<path>|contract=<path>|deployment=<app-or-n
 
 The repository version comes only from the first non-`Unreleased` H2 in `<repo>/CHANGELOG.md`. Accepted headings are Keep-a-Changelog forms such as `## [1.2.3] - 2026-08-25` or `## v1.2`; accepted source tokens have two or three numeric components plus optional SemVer prerelease/build suffixes. One leading `v`/`V` is ignored for equality. Free-form release prose, package versions, Git tags, commit hashes, and a later convenient heading are not substituted for an invalid head source.
 
-For each mapped repository, every successfully observed source is compared pairwise. A definite mismatch emits `sync.multirepo_drift` at `conflict` and identifies the repository, `CHANGELOG.md`, mapped contract file, and `bus-baseline.json#apps.<app>.imageTag` fact source. A missing/unreadable/symlinked/out-of-root repository or source, invalid/duplicate/empty map, unparseable version, missing `jq`, missing app, missing deployment baseline, mapped repository outside the bounded discovery, or discovered repository absent from the map emits `sync.unverified`. A definite mismatch and an incomplete third source may emit both.
+For each mapped repository, every successfully observed source is compared pairwise. A definite mismatch emits `sync.multirepo_drift` at `conflict` and identifies the repository, `CHANGELOG.md`, mapped contract file, and `bus-baseline.json#apps.<app>.imageTag` fact source. A missing/out-of-root repository or source, invalid/duplicate/empty map, unparseable version, missing `jq`, missing app, missing deployment baseline, mapped repository outside the bounded discovery, or discovered repository absent from the map emits `sync.unverified`; a present source skipped for symlink or permission safety emits `sync.scan_truncated` under §3.8. A definite mismatch and an incomplete third source may emit both.
 
 No discovered repositories plus no map is a legal zero-finding state. A present map is the expected inventory, so a mapped-but-undiscovered repository remains explicitly unverified even when no nested repository was found. `deployment=n/a` compares CHANGELOG and contract only. This check is read-only and compares a local deployment baseline; it does not query production or prove that the baseline is current. `live-status.sh` and `drift-check.sh` retain those separate authority boundaries.
 
@@ -164,6 +164,20 @@ A Superseded ADR must contain exactly one root-relative target such as:
 ```
 
 The target must exist, must itself have a legal status, and the chain must terminate without self-reference or cycles. Otherwise emit `adr.superseded_broken` at `conflict`. The script checks link integrity only; it cannot prove the architectural decision is correct or genuinely approved.
+
+### 3.8 Mechanical scan boundaries
+
+`sync.scan_truncated` is the common non-blocking result when a relevant local source is present or a bounded scan started, but the checker deliberately did not inspect the entire scope. Its message contains one stable reason token and its `path` names the skipped repository-relative source when known:
+
+| Reason | Condition | Operator response |
+|---|---|---|
+| `reason=limit` | scoped-reference or STACK observation count exceeds `BUS_REF_MAX` / `BUS_STACK_MAX` | inspect what was omitted; raise the relevant limit only when the larger scope is intentional, then rerun |
+| `reason=symlink` | a relevant coordination, evidence, standards, ADR, STACK, contract, repository, or deployment-baseline path traverses an in-root symbolic link | independently inspect the target or materialize the required fact as an in-root regular file; the checker does not follow it |
+| `reason=permission` | the current process cannot read a relevant file, search a mapped repository directory, or complete filesystem traversal | restore only the minimum read/search access needed for the check, or provide a readable evidence artifact, then rerun |
+
+This finding means “coverage stopped here,” not “the source is missing” and not “the source is valid.” A completed-work evidence reference that resolves only through a symlink or unreadable file therefore remains unverified and does not additionally become `evidence.missing`; an absent or unsafe path still follows its narrower missing/broken rule. Domain findings may coexist: for example, a Confirmed STACK scan can emit both `sync.scan_truncated` for the exact mechanical boundary and `stack.unverified` for the affected comparison dimensions.
+
+Intentional exclusions such as `.git`, `node_modules`, build output, and vendor directories do not each produce findings because those trees are outside the declared observation scope. Raw OS error text and temporary absolute paths are not copied into JSON; an unlocatable traversal failure uses `path="."`. Any `sync.scan_truncated` sets `coverage.complete=false` but does not block strict mode. It must be reported in handoff evidence and cannot be converted into an all-clear by exit 0.
 
 ## 4. Result levels
 
@@ -206,7 +220,7 @@ The initial registry is:
 | `sync.multirepo_drift` | `conflict` | explicitly mapped CHANGELOG, contract, and/or deployment-baseline versions disagree | Phase 3 / WP3.3 |
 | `sync.l3_stale` | `warning` | configured suite evidence is absent, unreadable, or older than `BUS_L3_MAX_AGE_DAYS` (default `7`) | Phase 1 |
 | `sync.l3_unconfigured` | `unverified` | no real L3 suite is configured | Phase 1 |
-| `sync.scan_truncated` | `unverified` | size, depth, permission, or symlink boundary leaves relevant scope unchecked | Phase 1 fixture; full advice in Phase 3 |
+| `sync.scan_truncated` | `unverified` | limit, permission, or symlink boundary leaves relevant declared scope unchecked | Phase 1; consolidated path/reason handling in Phase 3 / WP3.4 |
 | `sync.unverified` | `unverified` | a material check boundary has no narrower registered code | Phase 1 |
 | `gate.line_missing` | `warning` | a legacy board lacks one or more canonical Gate lines | Phase 1 |
 | `gate.invalid` | `error` | a Gate state line is duplicated, malformed, or uses an unknown state | Phase 1 |
@@ -281,11 +295,11 @@ Exit behavior:
 
 ## 7. Current versus planned implementation
 
-The current worktree candidate implements Phase 1, the Phase 2-A structural checks, WP2.5 STACK observation, WP3.2 Gate/evidence joins, and WP3.3 explicit multi-repository version joins from one finding collection: human rendering, schema 1 JSON, strict blocking, canonical Gate/evidence parsing, scoped reference scanning, L3 machine findings, explicit incomplete coverage, the three legacy strict checks, optional standards metadata/Rule-ID validation, exact Node/lockfile/Docker baseline comparison, ADR status/supersession integrity, and mapped CHANGELOG/contract/deployment-baseline comparison. Default human and JSON report modes still return exit 0 after producing a trustworthy report; `--strict` returns exit 1 only for `conflict` or `error`.
+The current worktree candidate implements Phase 1, the Phase 2-A structural checks, WP2.5 STACK observation, WP3.2 Gate/evidence joins, WP3.3 explicit multi-repository version joins, and WP3.4 consolidated mechanical-boundary reporting from one finding collection: human rendering, schema 1 JSON, strict blocking, canonical Gate/evidence parsing, scoped reference scanning, L3 machine findings, explicit incomplete coverage, the three legacy strict checks, optional standards metadata/Rule-ID validation, exact Node/lockfile/Docker baseline comparison, ADR status/supersession integrity, mapped CHANGELOG/contract/deployment-baseline comparison, and precise `limit`/`symlink`/`permission` reasons. Default human and JSON report modes still return exit 0 after producing a trustworthy report; `--strict` returns exit 1 only for `conflict` or `error`.
 
-Fixtures now execute both renderings. They compare finding codes, registered levels, counts, relative paths, coverage reasons, and strict status; retained human text assertions protect operator-facing compatibility. Matching, definite-conflict, and missing-observation STACK fixtures lock the WP2.5 result boundary. Runtime-generated nested Git repositories cover WP3.3 matching, definite drift, spaces in repository paths, and unmapped coverage without checking nested `.git` metadata into this source repository. WP1.6 has also completed the earlier example, active multi-repo projection, and real single-repo code-tree projection documented in [`PHASE1-PILOT-2026-08-24.md`](PHASE1-PILOT-2026-08-24.md). Current WP3.3 evidence remains a disposable local fixture, not a refreshed real-project pilot. Without separate release authorization and installed-project migration evidence, this remains an Unreleased candidate rather than released behavior.
+Fixtures now execute both renderings. They compare finding codes, registered levels, counts, relative paths, coverage reasons, and strict status; retained human text assertions protect operator-facing compatibility. Matching, definite-conflict, and missing-observation STACK fixtures lock the WP2.5 result boundary. Runtime-generated nested Git repositories cover WP3.3 matching, definite drift, spaces in repository paths, and unmapped coverage without checking nested `.git` metadata into this source repository. WP3.4 additionally covers reference-limit, symlinked evidence, and permission-denied evidence paths, including non-blocking strict behavior, incomplete coverage, and exact relative paths; the Shell suite currently has 221 assertions. WP1.6 has also completed the earlier example, active multi-repo projection, and real single-repo code-tree projection documented in [`PHASE1-PILOT-2026-08-24.md`](PHASE1-PILOT-2026-08-24.md). Current Phase 3 evidence remains disposable local fixtures, not a refreshed real-project pilot. Without separate release authorization and installed-project migration evidence, this remains an Unreleased candidate rather than released behavior.
 
-WP2.5 does not extend beyond its three explicit regular-file dimensions. WP3.2 and WP3.3 add their separately mapped scopes, but a green STACK or multi-repository comparison still cannot be extrapolated into deployment health, semantic contract correctness, human approval, or unobserved permission/symlink scope. WP3.4 remains responsible for the consolidated boundary/response guide.
+WP2.5 does not extend beyond its three explicit regular-file dimensions. WP3.2–WP3.4 add separately mapped checks and honest boundary reporting, but a green STACK or multi-repository comparison still cannot be extrapolated into deployment health, semantic contract correctness, human approval, or any path outside the declared observation scope.
 
 ## 8. Three retained compatibility files
 

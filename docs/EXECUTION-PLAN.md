@@ -4,13 +4,13 @@
 > 基线日期：2026-08-24
 > 上游文档：[`ROADMAP.md`](ROADMAP.md)（下称“演进书”）；竞品调研见 [`CLI-STRATEGY-2026-08.md`](CLI-STRATEGY-2026-08.md)
 > 基线代码：`solobaton@1.16.3`（npm 已发布，Git tag `v1.16.3`）
-> 实施状态（更新于 2026-08-25）：**WP0.1–WP0.5、WP1.1–WP1.6 与 WP2.1–WP2.8 已完成本地闭环并由本地源仓基线 `b062f25` 保全；WP3.1 机械 upgrade、WP3.2 Gate/证据强关联与 WP3.3 多仓漂移已完成源码和 disposable Git 沙箱候选，真实版本增量 upgrade 试点待办**。三个 BuildBeat Wave 1 试点最终关闭 HEAD 为 `4ea29a94a3a29fa905ae99662359ec561298135d`、`69d6e8358f7fda03225c090d99b5647cae152183`、`6b32c53e4fd750770690a0bbe796638314cb792a`；它们均 clean、无 remote。旧名试点继续只作为 legacy 兼容历史证据。当前 package metadata 仍为 `1.16.3`，全部后续源码均未推送、未发布，不等于 v1.17/v1.18/v1.19/v1.20 已打 tag、已创建 GitHub Release 或已发布 npm；Claude plugin 只在隔离配置完成本地安装验证。
+> 实施状态（更新于 2026-08-25）：**WP0.1–WP0.5、WP1.1–WP1.6 与 WP2.1–WP2.8 已完成本地闭环并由本地源仓基线 `b062f25` 保全；WP3.1–WP3.4 已完成源码和 disposable Git 沙箱候选，Phase 3 源码范围闭合，真实版本增量 upgrade 试点待办**。三个 BuildBeat Wave 1 试点最终关闭 HEAD 为 `4ea29a94a3a29fa905ae99662359ec561298135d`、`69d6e8358f7fda03225c090d99b5647cae152183`、`6b32c53e4fd750770690a0bbe796638314cb792a`；它们均 clean、无 remote。旧名试点继续只作为 legacy 兼容历史证据。当前 package metadata 仍为 `1.16.3`，全部后续源码均未推送、未发布，不等于 v1.17/v1.18/v1.19/v1.20 已打 tag、已创建 GitHub Release 或已发布 npm；Claude plugin 只在隔离配置完成本地安装验证。
 >
 > **决策链（2026-08-24）**：
 > ① 先拍板"CLI 全冻结于 v0 只读"；
 > ② 经对 Spec Kit / OpenSpec / BMAD 官方能力的限定范围调研（结论：CLI 分发/更新有明确价值，命令面并不相同；所核对页面未记录三方合并），修订为**选择性解冻**；
 > ③ 最终边界：解冻 **Wave 1（init/adopt 真写入）** 与 **Wave 2（机械 upgrade）**；三方合并、uninstall 引擎、CLI 命令面扩张（gate/adr/standards/check）**继续冻结**。
-> 原待拍板决策 D1（双实现权威）按"bus-check 唯一同步权威"执行；D3（写入事实注入）的"哑脚手架 + AI 渲染"已通过旧名与 BuildBeat canonical 两轮真实目录本地 Git/Hook/hash 验证。WP2.8 Gate3 已确认；WP3.1–WP3.3 源码候选完成后，下一实现项是 WP3.4 边界报告，真实版本增量 upgrade 试点与发布序列仍是独立证据闸。
+> 原待拍板决策 D1（双实现权威）按"bus-check 唯一同步权威"执行；D3（写入事实注入）的"哑脚手架 + AI 渲染"已通过旧名与 BuildBeat canonical 两轮真实目录本地 Git/Hook/hash 验证。WP2.8 Gate3 已确认；WP3.1–WP3.4 源码候选完成后，下一本地实现项是 WP4.1 示例/迁移指南，真实版本增量 upgrade 试点与发布序列仍是独立证据闸。
 
 ---
 
@@ -80,7 +80,7 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 - 启动基线的 npm CLI v0：`doctor` / `init --dry-run` / `adopt --dry-run` / `version`，无写路径；当前工作区已由 WP2.4 叠加未发布的 Wave 1 写路径，见 §7。
 - 可复用地基：`FILE_POLICIES` 四策略 + `filePolicy()` 已实现；manifest schema 1 校验完整（`validateManifest`，含路径逃逸/符号链接防御）；扫描边界 4 层/5,000 条目/不追符号链接；`planner.js` 已计算 operations + collisions。
 - 启动基线的 `templates/` 为 AGENTS / CLAUDE（指针）/ ARCHITECTURE / SOLOBATON / 指挥台 / contracts/PROTOCOL / pm / 5 脚本 / gitignore.template / reviewer；当前候选已将 canonical marker 迁移为 `BUILDBEAT.md`，并新增 optional `standards/` 与 `pm/adr/`。旧 `SOLOBATON.md` 只在读取层兼容，不再由新骨架生成。
-- `bus-check.sh` 当前候选已有：原远端/腐烂/幽灵 hash/线上/漂移能力，以及 Gate 四态、完成↔证据、作用域引用、扫描截断、五级 finding、显式 coverage、`--format=json` 和 conflict/error strict；`verify-status.sh` 已提供 L3 机器行。它们仍需 WP1.6 真实项目试点，不能从 fixture 全绿外推为生产适配完成。
+- `bus-check.sh` 当前候选已有：原远端/腐烂/幽灵 hash/线上/漂移能力，以及 Gate 四态、完成↔证据、作用域引用、五级 finding、显式 coverage、`--format=json`、conflict/error strict、STACK/多仓 join 与 limit/symlink/permission 边界报告；`verify-status.sh` 已提供 L3 机器行。WP1.6 已完成早期真实项目只读试点，但 WP3.2–WP3.4 新增语义仍只有 disposable fixture，不能从局部全绿外推为生产适配完成。
 - 测试基线已扩为 fixture 双渲染：Node CLI/发布回归、Shell human+JSON、Skill-only、文档契约、pack 审计；精确计数以最近一次完整门禁输出为准。改 README/模板/检查语义必须同步 `tests/check_docs.py`、fixture、`docs/CHECKS.md` 与 `example/`。
 - 发布：GitHub Actions Trusted Publishing（OIDC + provenance 回读）；npm README 不可变已由 `@latest` 方案解决；CHANGELOG 每版必写"拷出项目升级"。
 - manifest schema 1 规定 `integrations.gitignore/hooks` 必须为 null → **Wave 1 需要 schema 2**。
@@ -354,9 +354,14 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 
 **候选验收**：`tests/test-scripts.sh` 在 mktemp 项目内运行时创建两个映射子仓和一个未登记子仓（含空格路径），覆盖三源一致 strict 0、部署版本确定冲突 strict 1、code/level/path/source 精确性与未登记仓 unverified；Shell 回归 `210/210`，Node `55/55`。
 
-### WP3.4 边界报告完善
+### WP3.4 边界报告完善（源码候选完成）
 
-- 大目录/符号链接/权限不足统一 `unverified` 表达；`指挥台.md` 与 SKILL 补一页"检查结果怎么读"（五级分级 + 常见 finding 处置）。
+- `sync.scan_truncated` 统一表达机械覆盖边界，message 使用稳定 `reason=limit|symlink|permission`，`path` 尽量落到具体仓库相对来源；无法从文件系统遍历错误安全定位时只写 `.`，不泄露临时绝对路径或原始 OS 错误。
+- 作用域引用与 STACK 扫描达到 `BUS_REF_MAX` / `BUS_STACK_MAX` 报 `limit`；NOW/看板/status/evidence/standards/ADR/STACK/多仓来源遇到根内 symlink 或权限不足时不跟随、不读取、不冒充缺失或全绿。领域语义可并列，如 STACK 同时给精确 `sync.scan_truncated` 与受影响维度 `stack.unverified`。
+- 完成工作包的证据若只是 symlink 或不可读，保持非阻断 unverified，不额外误报 `evidence.missing`；真正缺失/越界/不安全引用仍走原有 `evidence.missing` / `ref.broken`。
+- `SKILL.md` 与 `templates/指挥台.md` 新增“检查结果怎么读”：解释五级含义、strict 边界、`coverage.complete=false` 结论口径，以及 limit/symlink/permission、L3、Gate/evidence/ref、STACK/多仓 finding 的处置顺序。
+
+**候选验收**：既有 `scan-truncated` fixture 补 `reason=limit`；runtime fixture 分别验证 symlink evidence 与 chmod `000` evidence 均 strict 0、`coverage.complete=false`、精确相对 path 且不误报 `evidence.missing`。Shell 回归 `221/221`；真实大仓/权限异构环境尚未刷新试点，结论只限 disposable 本地沙箱。
 
 **v1.20 发布**：`bus-check.sh` 整文件替换即得增强；**upgrade 为新增能力**——本版起拷出项目升级从手册时代进入机械时代（有 manifest 的项目）。
 
@@ -426,9 +431,10 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 10. [x] **Phase 3 / WP3.1 源码候选**：schema 2 机械 upgrade、semver/ownership/Git 门控、完整冲突报告、force 边界、manifest-last 事务、doctor 回读与 disposable Git 沙箱矩阵已闭环；真实版本增量试点仍是独立发布前证据闸。
 11. [x] **Phase 3 / WP3.2 源码候选**：Gate2 n/a 与正向 UI 信号、passed 决策精确行、evidence 归档位置三个强关联规则及 fixtures 已闭环；warning 不扩张 strict 或 human Gate 权限。
 12. [x] **Phase 3 / WP3.3 源码候选**：显式多仓 map、CHANGELOG/契约/部署基线交叉比对、确定 drift conflict 与缺失范围 unverified 已由 runtime nested-Git fixture 闭环；尚未形成真实项目通过证据。
-13. [ ] **下一开工：Phase 3 / WP3.4**：统一大目录、symlink、权限不足等未覆盖范围的 unverified 说明，并在指挥台与 SKILL 补齐五级 finding 处置页。
+13. [x] **Phase 3 / WP3.4 源码候选**：limit/symlink/permission 统一为精确 `sync.scan_truncated` unverified，证据边界不误报缺失；SKILL/指挥台五级处置页与三类回归已闭环。
+14. [ ] **下一开工：Phase 4 / WP4.1**：把 `example/` 补成新协议全貌，并新增 v1.16 legacy 拷出项目到新版协议/基线的迁移指南；不执行发布或真实项目升级。
 
-Phase 0–2 已由 `b062f25` 本地提交保全，WP3.1 与 WP3.2 分别由 `a378b2f`、`168dfd3` 形成后续本地源码候选，WP3.3 当前候选继续在其上演进。BuildBeat Wave 1 新真实目录试点与 Gate3 已完成，Wave 2 目前只有 disposable Git 沙箱证据。任何远端 push、tag、远端改名、GitHub Release 或 npm publish 继续等待独立授权。
+Phase 0–2 已由 `b062f25` 本地提交保全，WP3.1–WP3.3 分别由 `a378b2f`、`168dfd3`、`7f4cf08` 形成后续本地源码候选，WP3.4 当前候选继续在其上演进。BuildBeat Wave 1 新真实目录试点与 Gate3 已完成，Wave 2 目前只有 disposable Git 沙箱证据。任何远端 push、tag、远端改名、GitHub Release 或 npm publish 继续等待独立授权。
 
 ---
 

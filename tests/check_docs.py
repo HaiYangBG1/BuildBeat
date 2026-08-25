@@ -587,7 +587,7 @@ def check_execution_contracts() -> list[str]:
             "`git.not_initialized`",
         ),
         "docs/CHECKS.md": (
-            "Status: **Phase 3 WP3.3 implementation baseline**",
+            "Status: **Phase 3 WP3.4 implementation baseline**",
             "INV-1",
             "INV-8",
             "`confirmed`",
@@ -612,6 +612,9 @@ def check_execution_contracts() -> list[str]:
             "Exit behavior:",
             "latest three dated rows",
             "buildbeat-multirepo-map:v1",
+            "reason=limit",
+            "reason=symlink",
+            "reason=permission",
         ),
         "docs/EXECUTION-PLAN.md": (
             "按 schema 分开的 policy 校验集合",
@@ -624,7 +627,8 @@ def check_execution_contracts() -> list[str]:
             "WP2.6 分发补强（候选完成）",
             "WP3.2 Gate/证据强关联（源码候选完成）",
             "WP3.3 多仓漂移（源码候选完成）",
-            "下一实现项是 WP3.4 边界报告",
+            "WP3.4 边界报告完善（源码候选完成）",
+            "下一本地实现项是 WP4.1 示例/迁移指南",
             "buildbeat@buildbeat-plugins",
             "PHASE1-PILOT-2026-08-24.md",
             "PHASE2-PILOT-2026-08-25.md",
@@ -673,6 +677,7 @@ def check_execution_contracts() -> list[str]:
             "2026-08-24 执行修订（生效）",
             "[`EXECUTION-PLAN.md`](EXECUTION-PLAN.md)",
             "一个 Builder 对一个工作包端到端负责",
+            "Phase 3 源码范围闭合",
         ),
         "SKILL.md": (
             "一个或多个端到端 Builder",
@@ -689,6 +694,13 @@ def check_execution_contracts() -> list[str]:
             "schema 2 机械 upgrade",
             "`pm/decisions.md:<行号>`",
             "buildbeat-multirepo-map:v1",
+            "检查结果怎么读",
+            "coverage.complete=false",
+        ),
+        "templates/指挥台.md": (
+            "检查结果怎么读",
+            "reason=limit|symlink|permission",
+            "coverage.complete=false",
         ),
         "templates/AGENTS.md": (
             "Builder 端到端负责",

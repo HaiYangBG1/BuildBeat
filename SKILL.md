@@ -154,11 +154,31 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 6. 确认各仓工作树与 staged 范围;他人 WIP、散落临时文件或计划中的 candidate 修改未收敛时,不声称 review-ready。
 7. 一屏收尾:交付结果、证据、未验证边界、挂账/真实阻塞、是否命中下一道人工 Gate。
 
-### 6.4 拍板仪式
+### 6.4 检查结果怎么读
+
+先按级别处理,不要只看退出码。`bus-check --strict` 只让 `conflict/error` 非零退出；`warning/unverified` 不阻断,但仍必须写进本次证据边界。需要给自动化消费时用 `--format=json --strict`,同时看 `summary`、`coverage.complete` 和 `strict.blocked`。
+
+| Level | 它证明什么 | 当下动作 |
+|---|---|---|
+| `confirmed` | 某个明确事实已直接观测 | 可复用这条事实；不得外推为全项目通过 |
+| `warning` | 已有风险或追溯弱点,尚未形成确定矛盾 | 定位到 finding 的 `path`;进入受影响 Gate/review-ready 前处理或明确挂账 |
+| `unverified` | 这段范围没有被可靠核到 | 补工具/权限/本地证据后重跑；保留在收尾,不得拿 strict exit 0 当全绿 |
+| `conflict` | 声明与事实矛盾,或必需证据缺失 | 先修权威来源或真实实现,再重跑；机器闸阻断 |
+| `error` | 协议结构非法,报告无法可信解释该部分 | 先修格式/唯一性/检查器故障；机器闸阻断 |
+
+常见 finding 处置：
+
+- `sync.scan_truncated`：看 message 的稳定 `reason`。`limit` 先确认被省略范围,再按需调 `BUS_REF_MAX` / `BUS_STACK_MAX` 并重跑,不要只为消警盲目抬阈值；`symlink` 单独核目标,或把应纳入总线的事实落成根内 regular file；`permission` 只补检查所需的最小读/目录搜索权限,或换成可读证据后重跑。
+- `sync.unverified` / `sync.l3_unconfigured` / `sync.l3_stale`：按 `path` 配适配器、真实测试套件或刷新本地证据；远端/线上没回读就继续标未验证。
+- `gate.*` / `evidence.*` / `ref.*`：先修看板 canonical 行、`pm/decisions.md:<行号>`、归档 evidence 或坏引用；人批 Gate 不能由脚本代签。
+- `stack.drift` / `sync.multirepo_drift`：回到声明来源与已观测来源逐项对齐；脚本只报告,不自动改 STACK、CHANGELOG、契约或部署基线。
+- `coverage.complete=false`：无论 `ok` 或 strict exit 是否为 0,结论都必须写成“已覆盖部分未见阻断 + 以下范围未验证”。
+
+### 6.5 拍板仪式
 
 当前工作包的产品视角先把验收清单压成真实决策变量并批量呈现;用户拍板后 → 该视角**按收敛决策包**在 `decisions.md` 落一行(决策+回写落点)→ 再分发回写各 SSOT。部分对话进度留在看板「决策收件箱」,不污染永久台账。
 
-### 6.5 换期压缩仪式
+### 6.6 换期压缩仪式
 
 当期看板/需求/todo/验收清单 `git mv` 进 `pm/archive/<期>/`;status 全文快照入 archive、live 文件截断只留「基线+最近一条+归档指针」;NOW 流水清零;核对证据产物已在 `archive/<期>/evidence/`、无散落临时文件。**NOW 长肥 = 腐烂开端**——bus-check 会在 NOW 长肥 / 旧看板滞留 / status 超长时报警。换期同时做**回灌一问**:本期踩到 BuildBeat 没覆盖的新坑了吗?有 → 回上游 `lessons.md` 登记。
 

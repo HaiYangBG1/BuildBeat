@@ -92,18 +92,49 @@ add_finding() {
   printf '%s\t%s\t%s\t%s\t%s\n' "$rank" "$code" "$level" "$message" "$path" >> "$FINDINGS_RAW"
 }
 
+# Mechanical coverage boundaries share one non-blocking finding. The reason
+# token is intentionally small and stable; details never include raw OS errors
+# or file contents, and the path remains coordination-root relative.
+add_scan_boundary() {
+  boundary_reason="$1"; boundary_path="$2"; boundary_detail="$3"
+  add_finding "sync.scan_truncated" "unverified" \
+    "Scan coverage is incomplete: reason=$boundary_reason; $boundary_detail." \
+    "$boundary_path"
+}
+
+path_uses_symlink_component() {
+  boundary_probe="$1"
+  case "$boundary_probe" in
+    "$ROOT_PHYS"/*) ;;
+    *) return 1 ;;
+  esac
+  while [ "$boundary_probe" != "$ROOT_PHYS" ]; do
+    [ -L "$boundary_probe" ] && return 0
+    boundary_parent="$(dirname "$boundary_probe")"
+    [ "$boundary_parent" != "$boundary_probe" ] || break
+    boundary_probe="$boundary_parent"
+  done
+  return 1
+}
+
 resolve_hash() {
   candidate_hash="$1"
   for hash_repo in . "${SUBREPOS[@]:-}"; do
     [ -n "$hash_repo" ] || continue
     [ -d "$hash_repo" ] || continue
+    if [ "$hash_repo" != "." ]; then
+      path_uses_symlink_component "$ROOT_PHYS/${hash_repo#./}" && continue
+      [ -r "$hash_repo" ] && [ -x "$hash_repo" ] || continue
+    fi
     git -C "$hash_repo" cat-file -t "$candidate_hash" >/dev/null 2>&1 && return 0
   done
   return 1
 }
 
-# Return 0=local/hash valid, 1=broken local/hash, 2=remote (traceable but
-# unverified), 3=not a machine-reference token.
+# Return 0=local/hash valid, 1=broken/unsafe local/hash, 2=remote (traceable
+# but unverified), 3=not a machine-reference token, 4=in-root symlink boundary,
+# 5=permission boundary. Callers keep 4/5 unverified rather than calling them
+# missing, valid, or contradictory.
 validate_reference() {
   ref="$1"; source_path="$2"
   case "$ref" in
@@ -118,7 +149,7 @@ validate_reference() {
   ref="${ref%%#*}"; ref="${ref%%\?*}"
   ref="$(printf '%s' "$ref" | sed -E 's/:[0-9]+$//')"
   case "$ref" in
-    ""|*"<"*|*"\\"*|*"*"*|*"?"*|*"["*|*"]"*|*"|"*) return 3 ;;
+    ""|*$'\n'*|*$'\r'*|*$'\t'*|*"<"*|*"\\"*|*"*"*|*"?"*|*"["*|*"]"*|*"|"*) return 3 ;;
     /*|../*|*/../*|*/..|./*|*/./*) return 1 ;;
   esac
   [ "${#ref}" -le 240 ] || return 3
@@ -146,9 +177,19 @@ validate_reference() {
       "$ROOT_PHYS"/*) ;;
       *) return 1 ;;
     esac
+    path_uses_symlink_component "$candidate" && return 4
+    [ -r "$candidate" ] || return 5
     return 0
   done
   return 1
+}
+
+reference_display_path() {
+  display_ref="$1"
+  display_ref="${display_ref%%#*}"
+  display_ref="${display_ref%%\?*}"
+  display_ref="$(printf '%s' "$display_ref" | sed -E 's/:[0-9]+$//')"
+  printf '%s\n' "$display_ref"
 }
 
 extract_backtick_tokens() {
@@ -165,7 +206,8 @@ validate_decision_reference() {
     return 1
   fi
   decision_line_n="${decision_ref##*:}"
-  [ -f pm/decisions.md ] || return 1
+  [ -f pm/decisions.md ] && [ ! -L pm/decisions.md ] && [ -r pm/decisions.md ] || return 1
+  path_uses_symlink_component "$ROOT_PHYS/pm/decisions.md" && return 1
   decision_line="$(sed -n "${decision_line_n}p" pm/decisions.md 2>/dev/null || true)"
   printf '%s\n' "$decision_line" \
     | grep -Eq '^[[:space:]]*\|[[:space:]]*[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]]*\|'
@@ -274,9 +316,10 @@ read_contract_snapshot_version() {
   contract_lines="$(grep -E '契约快照对应版本' "$contract_path" 2>/dev/null || true)"
   contract_count="$(printf '%s\n' "$contract_lines" | awk 'NF { n++ } END { print n+0 }')"
   [ "$contract_count" -eq 1 ] || return 1
-  # shellcheck disable=SC2016 # backticks are literal Markdown delimiters
-  contract_version="$(printf '%s\n' "$contract_lines" \
-    | sed -nE 's/.*契约快照对应版本[^`]*`([^`]*)`.*/\1/p')"
+  contract_tokens="$(extract_backtick_tokens "$contract_lines")"
+  contract_token_count="$(printf '%s\n' "$contract_tokens" | awk 'NF { n++ } END { print n+0 }')"
+  [ "$contract_token_count" -eq 1 ] || return 1
+  contract_version="$contract_tokens"
   [ -n "$contract_version" ] || return 1
   is_release_version_token "$contract_version" || return 1
   printf '%s\n' "$contract_version"
@@ -288,6 +331,7 @@ multirepo_map_value_safe() {
     *$'\n'*|*$'\r'*|*$'\t'*) return 1 ;;
   esac
   [ -n "$map_value" ] && [ "${#map_value}" -le "$map_value_max" ] \
+    && ! printf '%s' "$map_value" | LC_ALL=C grep -q '[[:cntrl:]]' \
     && ! printf '%s\n' "$map_value" | grep -Eq '[|`"\\]|<[^>]*>'
 }
 
@@ -319,15 +363,29 @@ check_multirepo_drift() {
 
   multirepo_map_real="$(realpath "$multirepo_map_path" 2>/dev/null || true)"
   multirepo_map_unsafe=0
-  if [ ! -f "$multirepo_map_path" ] || [ -L "$multirepo_map_path" ] || [ -z "$multirepo_map_real" ]; then
+  multirepo_map_boundary=""
+  if [ -L "$multirepo_map_path" ] \
+      || { [ -e "$multirepo_map_path" ] \
+        && path_uses_symlink_component "$ROOT_PHYS/$multirepo_map_path"; }; then
+    multirepo_map_unsafe=1
+    multirepo_map_boundary="symlink"
+  elif [ -e "$multirepo_map_path" ] && [ ! -r "$multirepo_map_path" ]; then
+    multirepo_map_unsafe=1
+    multirepo_map_boundary="permission"
+  elif [ ! -f "$multirepo_map_path" ] || [ -z "$multirepo_map_real" ]; then
     multirepo_map_unsafe=1
   else
     case "$multirepo_map_real" in
       "$ROOT_PHYS"/*) ;;
-      *) multirepo_map_unsafe=1 ;;
+      *) multirepo_map_unsafe=1; multirepo_map_boundary="symlink" ;;
     esac
   fi
   if [ "$multirepo_map_unsafe" -eq 1 ]; then
+    if [ -n "$multirepo_map_boundary" ]; then
+      echo "  ⚠️  $multirepo_map_path 因 $multirepo_map_boundary 边界未读取"
+      add_scan_boundary "$multirepo_map_boundary" "$multirepo_map_path" \
+        "the multi-repository map was not read"
+    fi
     if [ ! -s "$multirepo_discovered" ]; then
       echo "  · 未发现子仓;多仓漂移检查不适用"
       return
@@ -437,15 +495,41 @@ check_multirepo_drift() {
     multirepo_deployment_version=""
 
     if ! grep -Fxq "$multirepo_repo" "$multirepo_discovered"; then
-      echo "  ⚠️  $multirepo_repo 在 map 中登记,但未被既有 SUBREPOS 深度发现"
-      add_finding "sync.unverified" "unverified" "Expected repo=$multirepo_repo was not observed by the bounded SUBREPOS discovery." "$multirepo_repo"
+      if [ -L "$multirepo_repo" ] \
+          || { [ -e "$multirepo_repo" ] \
+            && path_uses_symlink_component "$ROOT_PHYS/$multirepo_repo"; }; then
+        echo "  ⚠️  $multirepo_repo 在 map 中登记,但经 symlink 到达"
+        add_scan_boundary "symlink" "$multirepo_repo" \
+          "the discovered repository was not traversed"
+      elif [ -d "$multirepo_repo" ] \
+          && { [ ! -r "$multirepo_repo" ] || [ ! -x "$multirepo_repo" ]; }; then
+        echo "  ⚠️  $multirepo_repo 在 map 中登记,但当前权限不足"
+        add_scan_boundary "permission" "$multirepo_repo" \
+          "the discovered repository was not readable and searchable"
+      else
+        echo "  ⚠️  $multirepo_repo 在 map 中登记,但未被既有 SUBREPOS 深度发现"
+        add_finding "sync.unverified" "unverified" "Expected repo=$multirepo_repo was not observed by the bounded SUBREPOS discovery." "$multirepo_repo"
+      fi
       continue
     fi
 
     multirepo_repo_real="$(realpath "$multirepo_repo" 2>/dev/null || true)"
-    if [ -L "$multirepo_repo" ] || [ -z "$multirepo_repo_real" ]; then
+    if [ -L "$multirepo_repo" ] \
+        || path_uses_symlink_component "$ROOT_PHYS/$multirepo_repo"; then
+      echo "  ⚠️  $multirepo_repo 经 symlink 到达,未跟随扫描"
+      add_scan_boundary "symlink" "$multirepo_repo" \
+        "the discovered repository was not traversed"
+      continue
+    fi
+    if [ -z "$multirepo_repo_real" ]; then
       echo "  ⚠️  $multirepo_repo 不是可安全扫描的 regular 子仓目录"
-      add_finding "sync.unverified" "unverified" "Expected repo=$multirepo_repo is a symlink or cannot be resolved safely." "$multirepo_repo"
+      add_finding "sync.unverified" "unverified" "Expected repo=$multirepo_repo cannot be resolved safely." "$multirepo_repo"
+      continue
+    fi
+    if [ ! -r "$multirepo_repo" ] || [ ! -x "$multirepo_repo" ]; then
+      echo "  ⚠️  $multirepo_repo 当前权限不足,未遍历"
+      add_scan_boundary "permission" "$multirepo_repo" \
+        "the discovered repository was not readable and searchable"
       continue
     fi
     case "$multirepo_repo_real" in
@@ -457,7 +541,19 @@ check_multirepo_drift() {
         ;;
     esac
 
-    if [ ! -f "$multirepo_changelog" ] || [ -L "$multirepo_changelog" ]; then
+    if [ -L "$multirepo_changelog" ] \
+        || { [ -e "$multirepo_changelog" ] \
+          && path_uses_symlink_component "$ROOT_PHYS/$multirepo_changelog"; }; then
+      echo "  ⚠️  $multirepo_changelog 经 symlink 到达,未读取"
+      add_scan_boundary "symlink" "$multirepo_changelog" \
+        "the mapped CHANGELOG version source was not read"
+      multirepo_issue=1
+    elif [ -e "$multirepo_changelog" ] && [ ! -r "$multirepo_changelog" ]; then
+      echo "  ⚠️  $multirepo_changelog 当前权限不足,未读取"
+      add_scan_boundary "permission" "$multirepo_changelog" \
+        "the mapped CHANGELOG version source was not readable"
+      multirepo_issue=1
+    elif [ ! -f "$multirepo_changelog" ]; then
       echo "  ⚠️  $multirepo_repo 缺少可读 regular CHANGELOG.md"
       add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo has no readable regular CHANGELOG.md version source." "$multirepo_changelog"
       multirepo_issue=1
@@ -476,7 +572,15 @@ check_multirepo_drift() {
     validate_reference "$multirepo_contract" "$multirepo_map_path" || multirepo_contract_rc=$?
     if [ "$multirepo_contract_rc" -ne 0 ]; then
       echo "  ⚠️  $multirepo_repo 的契约版本来源不可读:$multirepo_contract"
-      add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo contract version source is not a readable in-root file: $multirepo_contract." "$multirepo_contract"
+      if [ "$multirepo_contract_rc" -eq 4 ]; then
+        add_scan_boundary "symlink" "$multirepo_contract" \
+          "the mapped contract version source was not read"
+      elif [ "$multirepo_contract_rc" -eq 5 ]; then
+        add_scan_boundary "permission" "$multirepo_contract" \
+          "the mapped contract version source was not readable"
+      else
+        add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo contract version source is not a readable in-root file: $multirepo_contract." "$multirepo_contract"
+      fi
       multirepo_issue=1
     else
       multirepo_contract_version="$(read_contract_snapshot_version "$multirepo_contract" || true)"
@@ -496,8 +600,19 @@ check_multirepo_drift() {
         echo "  ⚠️  $multirepo_repo 的部署基线需 jq 才能核对"
         add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo deployment source requires jq: $multirepo_baseline#apps.$multirepo_deployment.imageTag." "$multirepo_baseline"
         multirepo_issue=1
-      elif [ ! -f "$multirepo_baseline" ] || [ -L "$multirepo_baseline" ] \
-          || [ -z "$multirepo_baseline_real" ]; then
+      elif [ -L "$multirepo_baseline" ] \
+          || { [ -e "$multirepo_baseline" ] \
+            && path_uses_symlink_component "$ROOT_PHYS/$multirepo_baseline"; }; then
+        echo "  ⚠️  $multirepo_repo 的部署基线经 symlink 到达,未读取"
+        add_scan_boundary "symlink" "$multirepo_baseline" \
+          "the deployment baseline was not read"
+        multirepo_issue=1
+      elif [ -e "$multirepo_baseline" ] && [ ! -r "$multirepo_baseline" ]; then
+        echo "  ⚠️  $multirepo_repo 的部署基线当前权限不足,未读取"
+        add_scan_boundary "permission" "$multirepo_baseline" \
+          "the deployment baseline was not readable"
+        multirepo_issue=1
+      elif [ ! -f "$multirepo_baseline" ] || [ -z "$multirepo_baseline_real" ]; then
         echo "  ⚠️  $multirepo_repo 的部署基线不可读:$multirepo_baseline"
         add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo deployment baseline is missing or not a regular file: $multirepo_baseline." "$multirepo_baseline"
         multirepo_issue=1
@@ -646,6 +761,8 @@ check_stack_drift() {
   stack_node_issue=0
   stack_lockfile_issue=0
   stack_docker_issue=0
+  stack_find_failed=0
+  stack_limit_reached=0
   stack_limit="${BUS_STACK_MAX:-200}"
   case "$stack_limit" in
     ''|*[!0-9]*) stack_limit=200; stack_global_issue=1 ;;
@@ -662,14 +779,19 @@ check_stack_drift() {
         -o -name Dockerfile -o -name 'Dockerfile.*' \) \) \) -print0 \
       > "$stack_files" 2> "$stack_find_errors"; then
     stack_global_issue=1
+    stack_find_failed=1
   fi
-  [ ! -s "$stack_find_errors" ] || stack_global_issue=1
+  if [ -s "$stack_find_errors" ]; then
+    stack_global_issue=1
+    stack_find_failed=1
+  fi
 
   stack_scan_count=0
   while IFS= read -r -d '' stack_file; do
     stack_scan_count=$((stack_scan_count + 1))
     if [ "$stack_scan_count" -gt "$stack_limit" ]; then
       stack_global_issue=1
+      stack_limit_reached=1
       break
     fi
     stack_base="${stack_file##*/}"
@@ -682,11 +804,25 @@ check_stack_drift() {
       esac
       if [ -d "$stack_file" ]; then
         stack_global_issue=1
+        add_scan_boundary "symlink" "${stack_file#./}" \
+          "a directory in the STACK observation scope was not traversed"
       else
         case "$stack_base" in
-          .nvmrc|package.json) stack_node_issue=1 ;;
-          package-lock.json|npm-shrinkwrap.json|pnpm-lock.yaml|yarn.lock|bun.lock|bun.lockb) stack_lockfile_issue=1 ;;
-          Dockerfile|Dockerfile.*) stack_docker_issue=1 ;;
+          .nvmrc|package.json)
+            stack_node_issue=1
+            add_scan_boundary "symlink" "${stack_file#./}" \
+              "a Node version source was not read"
+            ;;
+          package-lock.json|npm-shrinkwrap.json|pnpm-lock.yaml|yarn.lock|bun.lock|bun.lockb)
+            stack_lockfile_issue=1
+            add_scan_boundary "symlink" "${stack_file#./}" \
+              "a lockfile source was not read"
+            ;;
+          Dockerfile|Dockerfile.*)
+            stack_docker_issue=1
+            add_scan_boundary "symlink" "${stack_file#./}" \
+              "a Docker FROM source was not read"
+            ;;
         esac
       fi
       continue
@@ -696,6 +832,8 @@ check_stack_drift() {
       .nvmrc)
         if [ ! -r "$stack_file" ]; then
           stack_node_issue=1
+          add_scan_boundary "permission" "${stack_file#./}" \
+            "a Node version source was not readable"
           continue
         fi
         stack_nvmrc_count="$(awk 'NF { n++ } END { print n+0 }' "$stack_file" 2>/dev/null || echo 0)"
@@ -711,6 +849,10 @@ check_stack_drift() {
       package.json)
         if [ ! -r "$stack_file" ] || ! command -v python3 >/dev/null 2>&1; then
           stack_node_issue=1
+          if [ ! -r "$stack_file" ]; then
+            add_scan_boundary "permission" "${stack_file#./}" \
+              "a package manifest was not readable"
+          fi
           continue
         fi
         stack_package_status=0
@@ -745,12 +887,17 @@ PY
         ;;
       package-lock.json|npm-shrinkwrap.json|pnpm-lock.yaml|yarn.lock|bun.lock|bun.lockb)
         if [ -r "$stack_file" ]; then printf '%s\n' "$stack_base" >> "$stack_actual_lockfile"
-        else stack_lockfile_issue=1
+        else
+          stack_lockfile_issue=1
+          add_scan_boundary "permission" "${stack_file#./}" \
+            "a lockfile source was not readable"
         fi
         ;;
       Dockerfile|Dockerfile.*)
         if [ ! -r "$stack_file" ]; then
           stack_docker_issue=1
+          add_scan_boundary "permission" "${stack_file#./}" \
+            "a Docker FROM source was not readable"
           continue
         fi
         stack_from_values="$(awk '
@@ -779,6 +926,15 @@ PY
         ;;
     esac
   done < "$stack_files"
+
+  if [ "$stack_find_failed" -eq 1 ]; then
+    add_scan_boundary "permission" "." \
+      "filesystem traversal for STACK observations returned an unreadable or I/O boundary"
+  fi
+  if [ "$stack_limit_reached" -eq 1 ]; then
+    add_scan_boundary "limit" "." \
+      "the STACK observation scan stopped at BUS_STACK_MAX=$stack_limit"
+  fi
 
   LC_ALL=C sort -u "$stack_actual_node" -o "$stack_actual_node"
   LC_ALL=C sort -u "$stack_actual_lockfile" -o "$stack_actual_lockfile"
@@ -917,17 +1073,30 @@ for r in "${SUBREPOS[@]:-}"; do
   if [ -z "$r" ] || [ ! -d "$r/.git" ]; then
     continue
   fi
+  subrepo_display="${r#./}"
+  if path_uses_symlink_component "$ROOT_PHYS/$subrepo_display"; then
+    echo "  ⚠️  $subrepo_display 经 symlink 到达,远端同步未检查"
+    add_scan_boundary "symlink" "$subrepo_display" \
+      "the discovered repository was not traversed"
+    continue
+  fi
+  if [ ! -r "$r" ] || [ ! -x "$r" ]; then
+    echo "  ⚠️  $subrepo_display 当前权限不足,远端同步未检查"
+    add_scan_boundary "permission" "$subrepo_display" \
+      "the discovered repository was not readable and searchable"
+    continue
+  fi
   if [ "${BUS_CHECK_NO_FETCH:-0}" != "1" ] && ! git -C "$r" fetch --quiet 2>/dev/null; then
-    add_finding "sync.unverified" "unverified" "A sub-repository fetch failed; remote synchronization is not verified." "${r#./}"
+    add_finding "sync.unverified" "unverified" "A sub-repository fetch failed; remote synchronization is not verified." "$subrepo_display"
   fi
   if git -C "$r" rev-parse '@{u}' >/dev/null 2>&1; then
     ahead=$(git -C "$r" rev-list --count '@{u}..HEAD' 2>/dev/null || echo "?")
     behind=$(git -C "$r" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo "?")
     head_h=$(git -C "$r" rev-parse --short HEAD 2>/dev/null || echo "?")
     flag="✅"; { [ "$behind" != "0" ] || [ "$ahead" != "0" ]; } && flag="⚠️ "
-    printf "  %s %-32s HEAD %s  领先 %s / 落后 %s\n" "$flag" "${r#./}" "$head_h" "$ahead" "$behind"
+    printf "  %s %-32s HEAD %s  领先 %s / 落后 %s\n" "$flag" "$subrepo_display" "$head_h" "$ahead" "$behind"
   else
-    printf "  ·  %-32s (无上游)\n" "${r#./}"
+    printf "  ·  %-32s (无上游)\n" "$subrepo_display"
   fi
 done
 echo ""
@@ -943,6 +1112,10 @@ echo "── 机器闸自检 (pre-commit) ──"
 gate_missing=""; gate_checked=0
 for r in . "${SUBREPOS[@]:-}"; do
   [ -n "$r" ] || continue; [ -e "$r/.git" ] || continue
+  if [ "$r" != "." ]; then
+    path_uses_symlink_component "$ROOT_PHYS/${r#./}" && continue
+    [ -r "$r" ] && [ -x "$r" ] || continue
+  fi
   gate_checked=1
   installed=0
   [ -f "$r/.git/hooks/pre-commit" ] && installed=1
@@ -963,17 +1136,37 @@ echo ""
 
 # 2) 当前期 + 看板指针 (pm/NOW.md)
 echo "── 当前期 / 协调看板 (pm/NOW.md) ──"
-grep -m1 "^\*\*当前期" pm/NOW.md 2>/dev/null || echo "  (NOW.md 无「当前期」行)"
-grep -m1 "本期轨道" pm/NOW.md 2>/dev/null || true
-grep -m1 "当期看板" pm/NOW.md 2>/dev/null || true
+now_scan_ok=0
+if [ -f pm/NOW.md ]; then
+  if [ -L pm/NOW.md ] \
+      || path_uses_symlink_component "$ROOT_PHYS/pm/NOW.md"; then
+    echo "  (pm/NOW.md 经 symlink 到达,未读取)"
+    add_scan_boundary "symlink" "pm/NOW.md" \
+      "the live coordination pointer was not read"
+  elif [ ! -r pm/NOW.md ]; then
+    echo "  (pm/NOW.md 当前权限不足,未读取)"
+    add_scan_boundary "permission" "pm/NOW.md" \
+      "the live coordination pointer was not readable"
+  else
+    now_scan_ok=1
+  fi
+fi
+if [ "$now_scan_ok" -eq 1 ]; then
+  grep -m1 "^\*\*当前期" pm/NOW.md 2>/dev/null || echo "  (NOW.md 无「当前期」行)"
+  grep -m1 "本期轨道" pm/NOW.md 2>/dev/null || true
+  grep -m1 "当期看板" pm/NOW.md 2>/dev/null || true
+fi
 echo ""
 
 # 2.5) 协调层腐烂检测(仪式没有护栏 = 没有仪式;阈值可用 env 调:BUS_NOW_MAX / BUS_STATUS_MAX)
 echo "── 协调层腐烂检测 ──"
 cur_board=""
+board_scan_ok=0
 if [ ! -f pm/NOW.md ]; then
   echo "  (pm/NOW.md 不存在 —— 无法判定,先按模板建骨架)"
   add_finding "ref.broken" "conflict" "pm/NOW.md is missing." "pm/NOW.md"
+elif [ "$now_scan_ok" -eq 0 ]; then
+  echo "  (pm/NOW.md 未读取;协调层腐烂检测保持 unverified)"
 else
   rot=0; board_note=""
   NOW_MAX="${BUS_NOW_MAX:-40}"; ST_MAX="${BUS_STATUS_MAX:-60}"
@@ -992,13 +1185,26 @@ else
     board_note="(NOW 未填当期看板,看板检查跳过)"
     add_finding "sync.unverified" "unverified" "The current-board pointer cannot be determined from pm/NOW.md." "pm/NOW.md"
   else
-    [ -f "pm/$cur_board" ] || {
+    if [ ! -f "pm/$cur_board" ]; then
       echo "  ⚠️  NOW 指向的当期看板 pm/$cur_board 不存在 —— 坏指针,先修 NOW"
       add_finding "ref.broken" "conflict" "The current-board pointer does not resolve." "pm/$cur_board"
       rot=1
-    }
+    elif [ -L "pm/$cur_board" ] \
+        || path_uses_symlink_component "$ROOT_PHYS/pm/$cur_board"; then
+      echo "  ⚠️  pm/$cur_board 经 symlink 到达,未读取"
+      add_scan_boundary "symlink" "pm/$cur_board" \
+        "the current board was not read"
+      rot=1
+    elif [ ! -r "pm/$cur_board" ]; then
+      echo "  ⚠️  pm/$cur_board 当前权限不足,未读取"
+      add_scan_boundary "permission" "pm/$cur_board" \
+        "the current board was not readable"
+      rot=1
+    else
+      board_scan_ok=1
+    fi
     for b in pm/*看板*.md; do
-      [ -e "$b" ] || continue
+      { [ -e "$b" ] || [ -L "$b" ]; } || continue
       base="$(basename "$b")"
       [ "$base" = "$cur_board" ] || {
         echo "  ⚠️  $base 不是当期看板还留在 pm/ —— 归档进 pm/archive/<期>/"
@@ -1009,8 +1215,22 @@ else
   fi
   # c) status 文件超长(该截断:全文快照进 archive,live 只留基线+最近一条)
   for f in pm/status/*.md; do
-    [ -e "$f" ] || continue
+    { [ -e "$f" ] || [ -L "$f" ]; } || continue
     base="$(basename "$f")"; [ "$base" = "README.md" ] && continue
+    if [ -L "$f" ] || path_uses_symlink_component "$ROOT_PHYS/$f"; then
+      echo "  ⚠️  pm/status/$base 经 symlink 到达,未读取"
+      add_scan_boundary "symlink" "pm/status/$base" \
+        "a live status file was not read"
+      rot=1
+      continue
+    fi
+    if [ ! -r "$f" ]; then
+      echo "  ⚠️  pm/status/$base 当前权限不足,未读取"
+      add_scan_boundary "permission" "pm/status/$base" \
+        "a live status file was not readable"
+      rot=1
+      continue
+    fi
     n=$(wc -l < "$f" | tr -d ' ')
     [ "$n" -le "$ST_MAX" ] || {
       echo "  ⚠️  pm/status/$base 已 $n 行(>$ST_MAX)—— 换期压缩仪式该截断了"
@@ -1028,7 +1248,7 @@ echo ""
 # 2.6) canonical Gate / completed-WP evidence / scoped local references
 echo "── Gate / 完成证据 / 作用域引用 ──"
 board_path=""
-if [ -n "$cur_board" ] && [ -f "pm/$cur_board" ]; then
+if [ "$board_scan_ok" -eq 1 ]; then
   board_path="pm/$cur_board"
 fi
 
@@ -1087,6 +1307,14 @@ if [ -n "$board_path" ]; then
             ref_rc=$?
             if [ "$ref_rc" -eq 2 ]; then
               add_finding "sync.unverified" "unverified" "Gate${gate_n} uses a remote reference that was not checked." "$board_path"
+            elif [ "$ref_rc" -eq 4 ]; then
+              echo "  ⚠️  Gate${gate_n} 引用经 symlink 到达,未读取:$gate_ref"
+              add_scan_boundary "symlink" "$(reference_display_path "$gate_ref")" \
+                "a local reference was not followed"
+            elif [ "$ref_rc" -eq 5 ]; then
+              echo "  ⚠️  Gate${gate_n} 引用当前权限不足,未读取:$gate_ref"
+              add_scan_boundary "permission" "$(reference_display_path "$gate_ref")" \
+                "a local reference was not readable"
             elif [ "$ref_rc" -eq 1 ]; then
               echo "  ⚠️  Gate${gate_n} 引用无法解析:$gate_ref"
               add_finding "ref.broken" "conflict" "Gate${gate_n} reference does not resolve: $gate_ref" "$board_path"
@@ -1129,7 +1357,7 @@ if [ -n "$board_path" ]; then
       continue
     fi
 
-    evidence_ref_seen=0; evidence_ref_valid=0; evidence_ref_remote=0
+    evidence_ref_seen=0; evidence_ref_valid=0; evidence_ref_unverified=0
     while IFS= read -r evidence_ref; do
       [ -n "$evidence_ref" ] || continue
       if validate_reference "$evidence_ref" "$board_path"; then
@@ -1143,8 +1371,18 @@ if [ -n "$board_path" ]; then
       else
         ref_rc=$?
         if [ "$ref_rc" -eq 2 ]; then
-          evidence_ref_seen=1; evidence_ref_remote=1
+          evidence_ref_seen=1; evidence_ref_unverified=1
           add_finding "sync.unverified" "unverified" "$wp_title uses remote-only evidence that was not checked." "$board_path"
+        elif [ "$ref_rc" -eq 4 ]; then
+          evidence_ref_seen=1; evidence_ref_unverified=1
+          echo "  ⚠️  $wp_title 的证据引用经 symlink 到达,未读取:$evidence_ref"
+          add_scan_boundary "symlink" "$(reference_display_path "$evidence_ref")" \
+            "a local reference was not followed"
+        elif [ "$ref_rc" -eq 5 ]; then
+          evidence_ref_seen=1; evidence_ref_unverified=1
+          echo "  ⚠️  $wp_title 的证据引用当前权限不足,未读取:$evidence_ref"
+          add_scan_boundary "permission" "$(reference_display_path "$evidence_ref")" \
+            "a local reference was not readable"
         elif [ "$ref_rc" -eq 1 ]; then
           evidence_ref_seen=1
           echo "  ⚠️  $wp_title 的证据引用无法解析:$evidence_ref"
@@ -1152,7 +1390,8 @@ if [ -n "$board_path" ]; then
         fi
       fi
     done < <(extract_backtick_tokens "$evidence_line")
-    if [ "$evidence_ref_seen" -eq 0 ] || { [ "$evidence_ref_valid" -eq 0 ] && [ "$evidence_ref_remote" -eq 0 ]; }; then
+    if [ "$evidence_ref_seen" -eq 0 ] \
+        || { [ "$evidence_ref_valid" -eq 0 ] && [ "$evidence_ref_unverified" -eq 0 ]; }; then
       echo "  ⚠️  $wp_title 已完成但证据行没有可机器核验的路径/hash/URL"
       add_finding "evidence.missing" "conflict" "$wp_title has no machine-verifiable evidence reference." "$board_path"
     fi
@@ -1181,6 +1420,19 @@ case "$ref_limit" in ''|*[!0-9]*) ref_limit=200 ;; esac
 ref_scanned=0; ref_truncated=0
 for ref_source in pm/NOW.md "$board_path" pm/decisions.md; do
   [ -n "$ref_source" ] && [ -f "$ref_source" ] || continue
+  if [ -L "$ref_source" ] \
+      || path_uses_symlink_component "$ROOT_PHYS/$ref_source"; then
+    echo "  ⚠️  $ref_source 经 symlink 到达,作用域引用未扫描"
+    add_scan_boundary "symlink" "$ref_source" \
+      "the scoped-reference source was not read"
+    continue
+  fi
+  if [ ! -r "$ref_source" ]; then
+    echo "  ⚠️  $ref_source 当前权限不足,作用域引用未扫描"
+    add_scan_boundary "permission" "$ref_source" \
+      "the scoped-reference source was not readable"
+    continue
+  fi
   ref_scan_input="$ref_source"
   if [ "$ref_source" = "pm/decisions.md" ]; then
     ref_scan_input="$BUS_TMP/decisions.scope"
@@ -1200,6 +1452,14 @@ for ref_source in pm/NOW.md "$board_path" pm/decisions.md; do
       :
     elif [ "$ref_rc" -eq 2 ]; then
       add_finding "sync.unverified" "unverified" "A scoped remote reference was not checked." "$ref_source"
+    elif [ "$ref_rc" -eq 4 ]; then
+      echo "  ⚠️  $ref_source 中的作用域引用经 symlink 到达,未读取:$scoped_ref"
+      add_scan_boundary "symlink" "$(reference_display_path "$scoped_ref")" \
+        "a local reference was not followed"
+    elif [ "$ref_rc" -eq 5 ]; then
+      echo "  ⚠️  $ref_source 中的作用域引用当前权限不足,未读取:$scoped_ref"
+      add_scan_boundary "permission" "$(reference_display_path "$scoped_ref")" \
+        "a local reference was not readable"
     elif [ "$ref_rc" -eq 1 ]; then
       echo "  ⚠️  $ref_source 中的作用域引用无法解析:$scoped_ref"
       add_finding "ref.broken" "conflict" "Scoped reference does not resolve: $scoped_ref" "$ref_source"
@@ -1214,7 +1474,8 @@ for ref_source in pm/NOW.md "$board_path" pm/decisions.md; do
 done
 if [ "$ref_truncated" -eq 1 ]; then
   echo "  ⚠️  作用域引用扫描达到 BUS_REF_MAX=$ref_limit,剩余范围未核验"
-  add_finding "sync.scan_truncated" "unverified" "Scoped reference scan stopped at BUS_REF_MAX=$ref_limit." "pm/"
+  add_scan_boundary "limit" "pm/" \
+    "the scoped reference scan stopped at BUS_REF_MAX=$ref_limit"
 fi
 [ -n "$board_path" ] && echo "  · 已检查 canonical Gate、完成证据与 $ref_scanned 条作用域引用"
 echo ""
@@ -1257,7 +1518,11 @@ echo ""
 
 # 3) 契约快照版本
 echo "── 契约 (contracts/PROTOCOL.md) ──"
-grep -m1 -E "契约快照对应版本" contracts/PROTOCOL.md 2>/dev/null || echo "  (无)"
+if [ "${multirepo_map_unsafe:-1}" -eq 0 ]; then
+  grep -m1 -E "契约快照对应版本" contracts/PROTOCOL.md 2>/dev/null || echo "  (无)"
+else
+  echo "  (契约入口缺失或未安全读取)"
+fi
 echo ""
 
 # 3.5) 可选 standards / ADR。缺失即跳过；存在才检查结构与明确状态。
@@ -1268,6 +1533,19 @@ stack_standard_valid=0
 for standard_path in standards/STACK.md standards/CODE.md standards/REVIEW.md standards/DESIGN.md; do
   [ -f "$standard_path" ] || continue
   standard_count=$((standard_count + 1))
+  if [ -L "$standard_path" ] \
+      || path_uses_symlink_component "$ROOT_PHYS/$standard_path"; then
+    echo "  ⚠️  $standard_path 经 symlink 到达,可选规范未读取"
+    add_scan_boundary "symlink" "$standard_path" \
+      "an optional standard was not read"
+    continue
+  fi
+  if [ ! -r "$standard_path" ]; then
+    echo "  ⚠️  $standard_path 当前权限不足,可选规范未读取"
+    add_scan_boundary "permission" "$standard_path" \
+      "an optional standard was not readable"
+    continue
+  fi
   standard_name="$(basename "$standard_path" .md)"
   standard_invalid=0
 
@@ -1311,6 +1589,13 @@ for standard_path in standards/STACK.md standards/CODE.md standards/REVIEW.md st
     standard_ref_rc=0
     validate_reference "$standard_ref" "$standard_path" || standard_ref_rc=$?
     [ "$standard_ref_rc" -ne 1 ] || standard_invalid=1
+    if [ "$standard_ref_rc" -eq 4 ]; then
+      add_scan_boundary "symlink" "$(reference_display_path "$standard_ref")" \
+        "a local reference was not followed"
+    elif [ "$standard_ref_rc" -eq 5 ]; then
+      add_scan_boundary "permission" "$(reference_display_path "$standard_ref")" \
+        "a local reference was not readable"
+    fi
   done < <(
     # shellcheck disable=SC2016 # backticks are literal Markdown delimiters
     grep -hoE '`[^`]+`' "$standard_path" 2>/dev/null | sed 's/^`//; s/`$//' || true
@@ -1338,6 +1623,17 @@ adr_count=0
 for adr_path in pm/adr/ADR-[0-9][0-9][0-9][0-9]-*.md; do
   [ -f "$adr_path" ] || continue
   adr_count=$((adr_count + 1))
+  if [ -L "$adr_path" ] \
+      || path_uses_symlink_component "$ROOT_PHYS/$adr_path"; then
+    echo "  ⚠️  $adr_path 经 symlink 到达,ADR 未读取"
+    add_scan_boundary "symlink" "$adr_path" "an ADR was not read"
+    continue
+  fi
+  if [ ! -r "$adr_path" ]; then
+    echo "  ⚠️  $adr_path 当前权限不足,ADR 未读取"
+    add_scan_boundary "permission" "$adr_path" "an ADR was not readable"
+    continue
+  fi
   adr_status_lines="$(grep -E '^- Status:' "$adr_path" 2>/dev/null || true)"
   adr_status_count="$(printf '%s\n' "$adr_status_lines" | awk 'NF { n++ } END { print n+0 }')"
   if [ "$adr_status_count" -ne 1 ] || ! printf '%s\n' "$adr_status_lines" | grep -Eq '^- Status: (Proposed|Accepted|Rejected|Superseded)[[:space:]]*$'; then
@@ -1348,6 +1644,9 @@ done
 
 for adr_path in pm/adr/ADR-[0-9][0-9][0-9][0-9]-*.md; do
   [ -f "$adr_path" ] || continue
+  [ ! -L "$adr_path" ] || continue
+  path_uses_symlink_component "$ROOT_PHYS/$adr_path" && continue
+  [ -r "$adr_path" ] || continue
   initial_status_lines="$(grep -E '^- Status:' "$adr_path" 2>/dev/null || true)"
   initial_status_count="$(printf '%s\n' "$initial_status_lines" | awk 'NF { n++ } END { print n+0 }')"
   if [ "$initial_status_count" -ne 1 ] || ! printf '%s\n' "$initial_status_lines" | grep -Eq '^- Status: (Proposed|Accepted|Rejected|Superseded)[[:space:]]*$'; then
@@ -1398,7 +1697,8 @@ echo ""
 
 # 4) 最近拍板 (pm/decisions.md, 规则⑨ 决策单点)
 echo "── 最近拍板 (pm/decisions.md, 最新 3 条) ──"
-if [ -f pm/decisions.md ]; then
+if [ -f pm/decisions.md ] && [ ! -L pm/decisions.md ] && [ -r pm/decisions.md ] \
+    && ! path_uses_symlink_component "$ROOT_PHYS/pm/decisions.md"; then
   if command -v perl >/dev/null 2>&1; then
     # perl -CSD -Mutf8 按「字符」截断,避免按字节截断把中文/省略号切成乱码
     grep -E '^\| 20[0-9]{2}-' pm/decisions.md | head -3 | perl -CSD -Mutf8 -ne 'chomp; $_ = substr($_,0,110)."…" if length() > 110; print "  $_\n"'
@@ -1406,7 +1706,7 @@ if [ -f pm/decisions.md ]; then
     grep -E '^\| 20[0-9]{2}-' pm/decisions.md | head -3 | sed 's/^/  /'   # 无 perl:降级为不截断(截字节会把中文切成乱码)
   fi
 else
-  echo "  (无 pm/decisions.md)"
+  echo "  (pm/decisions.md 缺失或未安全读取)"
 fi
 echo ""
 
@@ -1414,8 +1714,11 @@ echo ""
 echo "── 各域状态 (pm/status/) ──"
 if [ -d pm/status ]; then
   for f in pm/status/*.md; do
-    [ -e "$f" ] || continue
+    { [ -e "$f" ] || [ -L "$f" ]; } || continue
     base="$(basename "$f")"; [ "$base" = "README.md" ] && continue
+    [ ! -L "$f" ] || continue
+    path_uses_symlink_component "$ROOT_PHYS/$f" && continue
+    [ -r "$f" ] || continue
     line=$(git log -1 --format="%h %ad %s" --date=short -- "$f" 2>/dev/null)
     printf "  %-10s %s\n" "${base%.md}" "${line:-(未提交/未跟踪)}"
   done
@@ -1432,7 +1735,11 @@ if [ -d pm/status ]; then
   #   token 须同含字母与数字(干掉 defaced 这类纯字母英文词)。
   #   代价:纯字母/纯数字的 7 位真 hash(各约 0.1%/3.7%)会被静默跳过——良性漏检,换不误拦。
   HASHES=$(for f in pm/status/*.md; do
-      [ -e "$f" ] || continue; [ "$(basename "$f")" = "README.md" ] && continue
+      { [ -e "$f" ] || [ -L "$f" ]; } || continue
+      [ "$(basename "$f")" = "README.md" ] && continue
+      [ ! -L "$f" ] || continue
+      path_uses_symlink_component "$ROOT_PHYS/$f" && continue
+      [ -r "$f" ] || continue
       # shellcheck disable=SC2016 # backticks are literal Markdown delimiters, not shell expansion
       grep -hoE '`[^`]*`' "$f" 2>/dev/null
     done | sed -E 's#[a-zA-Z][a-zA-Z0-9+.-]*://[^` ]*##g; s#sha256:[0-9a-fA-F]*##g' \
@@ -1443,6 +1750,10 @@ if [ -d pm/status ]; then
     for r in . "${SUBREPOS[@]:-}"; do
       if [ -z "$r" ] || [ ! -d "$r" ]; then
         continue
+      fi
+      if [ "$r" != "." ]; then
+        path_uses_symlink_component "$ROOT_PHYS/${r#./}" && continue
+        [ -r "$r" ] && [ -x "$r" ] || continue
       fi
       git -C "$r" cat-file -t "$h" >/dev/null 2>&1 && { found=1; break; }
     done

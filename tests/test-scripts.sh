@@ -479,6 +479,60 @@ run_bus "$PROJECT" scripts/bus-check.sh --strict
 expect_status 1 "a broken reference in the latest decision window blocks strict mode"
 expect_contains "pm/missing-current.md" "current decision reference failure names the broken token"
 
+# WP3.4 keeps mechanically skipped local evidence visible without converting
+# a symlink or permission boundary into either a missing-evidence conflict or a
+# false successful read.
+new_project default
+mkdir -p "$PROJECT/pm/archive/test/evidence"
+printf '%s\n' '# proof' > "$PROJECT/pm/archive/test/evidence/proof.md"
+ln -s proof.md "$PROJECT/pm/archive/test/evidence/proof-link.md"
+cat > "$PROJECT/pm/测试期-看板.md" <<'EOF'
+# 测试期看板
+
+### WP-1 · 已完成
+
+- **状态**: ✅完成
+- **证据**: `pm/archive/test/evidence/proof-link.md`
+
+## 阶段门
+
+- Gate1: pending
+- Gate2: pending
+- Gate3: pending
+- Gate4: pending
+EOF
+run_bus_json "$PROJECT" scripts/bus-check.sh
+expect_status 0 "a symlinked evidence source remains non-blocking and unverified"
+expect_contains 'reason=symlink' "a symlink boundary has the stable coverage reason"
+expect_contains '"path":"pm/archive/test/evidence/proof-link.md"' "a symlink boundary names the exact skipped path"
+expect_contains '"complete":false' "a symlink boundary marks report coverage incomplete"
+expect_not_contains 'evidence.missing' "a symlink boundary is not mislabeled as missing evidence"
+
+printf '%s\n' '# locked proof' > "$PROJECT/pm/archive/test/evidence/proof-locked.md"
+chmod 000 "$PROJECT/pm/archive/test/evidence/proof-locked.md"
+cat > "$PROJECT/pm/测试期-看板.md" <<'EOF'
+# 测试期看板
+
+### WP-1 · 已完成
+
+- **状态**: ✅完成
+- **证据**: `pm/archive/test/evidence/proof-locked.md`
+
+## 阶段门
+
+- Gate1: pending
+- Gate2: pending
+- Gate3: pending
+- Gate4: pending
+EOF
+run_bus_json "$PROJECT" scripts/bus-check.sh
+expect_status 0 "an unreadable evidence source remains non-blocking and unverified"
+expect_contains 'reason=permission' "a permission boundary has the stable coverage reason"
+expect_contains '"path":"pm/archive/test/evidence/proof-locked.md"' "a permission boundary names the exact unreadable path"
+expect_contains '"complete":false' "a permission boundary marks report coverage incomplete"
+expect_not_contains 'evidence.missing' "a permission boundary is not mislabeled as missing evidence"
+chmod 600 "$PROJECT/pm/archive/test/evidence/proof-locked.md"
+
 new_project compact
 run_bus "$PROJECT" pm/scripts/bus-check.sh --strict
 expect_status 0 "compact pm/scripts layout passes strict bus-check"

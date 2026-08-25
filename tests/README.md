@@ -28,6 +28,7 @@ The runner validates JSON syntax, registered code/level pairs, stable unique cod
 - the teaching example's 11 intentional ghost hashes while its optional standards/ADR remain structurally clean and its omitted code repositories stay explicit in STACK and multi-repository coverage;
 - ghost hashes, including URL false positives and mixed URL/hash segments;
 - automatic discovery of sub-repositories whose names contain spaces, plus runtime-generated nested Git repositories for mapped version agreement, definite CHANGELOG/contract/deployment drift, and an unmapped-repository `sync.unverified` boundary;
+- bounded reference scans plus runtime symlinked and permission-denied evidence sources, which must remain non-blocking `sync.scan_truncated` coverage gaps with stable reasons and precise relative paths rather than false `evidence.missing` conflicts;
 - per-domain status write boundaries and the iteration-ritual exception;
 - bulk staging and its explicit override;
 - provider-side contract reminders without client-consumer noise;

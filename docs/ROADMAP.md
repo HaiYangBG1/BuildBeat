@@ -181,16 +181,16 @@ contracts / decisions / status / evidence
 
 ### 3.2 当前 CLI 状态
 
-已独立验证并发布的 CLI v0 只承担检查和只读规划，`init/adopt` 必须带 `--dry-run`，所有项目写入 fail-closed。Phase 0–2 已形成本地基线 `b062f25`：Wave 1 `init/adopt`、manifest schema 2、Confirmed STACK 漂移检查和 marketplace plugin 均完成沙箱验证，Wave 1 另有 BuildBeat canonical 真实目录与 Gate3 证据。当前未发布 checkout 又实现了 WP3.1 schema 2 机械 `upgrade` 并通过 disposable Git 沙箱矩阵；bundle 仍为 `v1.16`，所以真实旧版本到新 bundle 的独立升级试点尚未发生。项目 `uninstall`、`diff`、工作流命令扩张与三方合并引擎继续冻结。Skill 仍承担项目语义和人工 Gate。
+已独立验证并发布的 CLI v0 只承担检查和只读规划，`init/adopt` 必须带 `--dry-run`，所有项目写入 fail-closed。Phase 0–2 已形成本地基线 `b062f25`：Wave 1 `init/adopt`、manifest schema 2、Confirmed STACK 漂移检查和 marketplace plugin 均完成沙箱验证，Wave 1 另有 BuildBeat canonical 真实目录与 Gate3 证据。当前未发布 checkout 已完成 WP3.1–WP3.4：schema 2 机械 `upgrade`、Gate/证据强关联、多仓版本 join 与扫描边界报告均通过 disposable Git/文件系统沙箱；bundle 仍为 `v1.16`，所以这些源码候选不是已发布行为，真实旧版本到新 bundle 的独立升级试点也尚未发生。项目 `uninstall`、`diff`、工作流命令扩张与三方合并引擎继续冻结。Skill 仍承担项目语义和人工 Gate。
 
 ### 3.3 主要缺口
 
 | 缺口 | 影响 |
 |---|---|
-| Gate 与证据仍只做基础关联 | `passed` 的决策引用和 evidence 归档位置可能存在但不够精确，UI 项目也可能错误标 Gate2 `n/a` |
-| 多仓漂移诊断尚未闭环 | 子仓 CHANGELOG、契约版本和部署基线仍可能各自演进而缺少统一定位报告 |
+| Phase 3 仍缺真实项目刷新证据 | Gate/多仓/扫描边界目前是源码与 disposable fixture 候选，不能外推为任一真实项目当前一致 |
 | 机械升级缺真实版本增量证据 | 当前 bundle 与真实 schema 2 安装同为 `v1.16`，沙箱矩阵不能外推为真实升级试点或发布就绪 |
-| 扫描边界报告仍可加强 | 大目录、符号链接和权限不足虽然不冒充绿灯，但处置说明还不够集中 |
+| 示例全貌与 legacy 迁移指南未完成 | 拷出项目还缺一条从 v1.16 手册时代到新协议/基线的集中可执行路径 |
+| 发布序列尚未拍板 | v1.17–v1.20 分段还是合并候选会影响 tag、release note 与 registry 回读顺序，但不阻塞本地源码继续演进 |
 | 外部分发仍是旧 namespace | npm/GitHub 远端名、稳定版本序列和 registry 回读尚未完成 BuildBeat 发布收口 |
 
 ---
@@ -694,7 +694,7 @@ CLI 侧：
 
 **目标**：在 Wave 1 的 schema 2 基线上补齐有边界的机械升级，并完善多仓和 Gate 检查，不扩张工作流命令面。
 
-当前进度：WP3.1 机械 upgrade、WP3.2 Gate/证据强关联与 WP3.3 多仓漂移的源码及 disposable Git 沙箱候选已完成；WP3.4 边界报告是下一实现项。真实版本增量 upgrade 试点保留为发布前独立证据闸。
+当前进度：WP3.1–WP3.4 的机械 upgrade、Gate/证据强关联、多仓漂移与扫描边界报告源码及 disposable Git 沙箱候选已完成，Phase 3 源码范围闭合；下一本地实现项是 WP4.1 示例全貌与 legacy 迁移指南。真实版本增量 upgrade 试点保留为发布前独立证据闸。
 
 交付：
 
