@@ -98,7 +98,7 @@ function hash(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-function listRelative(root) {
+function listRelative(root, { excludeRootGit = false } = {}) {
   const output = [];
   function visit(current, prefix = "") {
     if (!existsSync(current)) {
@@ -107,6 +107,9 @@ function listRelative(root) {
     for (const entry of readdirSync(current, { withFileTypes: true }).sort((a, b) =>
       a.name.localeCompare(b.name),
     )) {
+      if (excludeRootGit && prefix === "" && entry.name === ".git") {
+        continue;
+      }
       const relative = prefix ? path.join(prefix, entry.name) : entry.name;
       output.push(relative.split(path.sep).join("/"));
       if (entry.isDirectory()) {
@@ -403,7 +406,11 @@ test("adopt dry-run defaults to compact layout and detects project signals", asy
   writeFileSync(path.join(target, "Dockerfile"), "FROM scratch\n");
   writeFileSync(path.join(target, ".gitignore"), "/service one/\n/.claude/worktrees/\n");
   commitPaths(target, "package.json", "Dockerfile", ".gitignore");
-  const before = listRelative(target);
+  // Root Git metadata may gain or lose transient maintenance lock files while
+  // read-only Git commands run. Snapshot the project tree and Git-visible state
+  // instead; nested repositories remain part of the project-tree comparison.
+  const before = listRelative(target, { excludeRootGit: true });
+  const beforeGit = git(target, "status", "--porcelain=v1", "--untracked-files=all");
 
   const result = await invoke(["adopt", target, "--dry-run", "--json"]);
   const plan = JSON.parse(result.stdout);
@@ -416,7 +423,8 @@ test("adopt dry-run defaults to compact layout and detects project signals", asy
   assert.ok(plan.detected.deploymentMarkers.includes("Dockerfile"));
   assert.ok(plan.operations.some((item) => item.target === "pm/scripts/bus-check.sh"));
   assert.ok(plan.questions.length === 4);
-  assert.deepEqual(listRelative(target), before);
+  assert.deepEqual(listRelative(target, { excludeRootGit: true }), before);
+  assert.equal(git(target, "status", "--porcelain=v1", "--untracked-files=all"), beforeGit);
 });
 
 test("adopt detects browser-extension UI from a nested manifest", async (t) => {
