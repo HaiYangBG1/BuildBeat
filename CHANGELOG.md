@@ -16,6 +16,7 @@
 - **Claude plugin 迁移**：仓库入口更新为 `HaiYangBG1/BuildBeat`，插件版本升至 `0.2.0` 以刷新分发缓存；npm CLI `bin/` 仍不进入插件包
 - **真实 v1.20 升级试点**：在专用分支将真实 schema 2 项目从 scaffold `v1.16` / CLI `1.16.3` 升至 `v1.20` / `1.20.0`；默认 dry-run 对四个改写文件零写阻断，force 后人工回灌项目事实，project-owned 零 diff，doctor 0/0、strict exit 0、提交后 dry-run up-to-date，目标仓 clean 且无 remote
 - **真实多仓刷新与兼容修复**：当前检查器在真实四子仓协调层投影中发现 legacy prose 根内 `../` 误判；现只对 scoped prose 允许 realpath 留在根内的 source-relative link，canonical Gate/evidence 仍禁 traversal，根外逃逸回归继续阻断。Shell 回归增至 `222/222`；最终刷新精确保留业务仓真实 `lessons.md` 断链、未登记 map 与适配器/远端/live unverified，不冒充全绿
+- **Linux CI 可移植性**：JSON renderer 的 awk quote 正则改为 BSD awk / mawk 共通写法，避免 Linux stderr warning 污染机器 JSON；同时展开旧式 `A && B || C` Shell 断言并兼容 ShellCheck 0.9/0.11，macOS 与 Ubuntu 共用同一语义
 - **品牌正式定名 BuildBeat**：2026-08-25 用户拍板产品名为 BuildBeat；canonical CLI/Skill/Claude plugin 标识统一为 `buildbeat` / `buildbeat@buildbeat-plugins`，新骨架入口改为 `BUILDBEAT.md`
 - **canonical namespace 迁移**：新写入只生成 `.buildbeat/manifest.json`、BuildBeat `.gitignore` marker 与 `buildbeat-stack-baseline:v1`；doctor/bus-check 继续读取旧 `SOLOBATON.md`、`.solobaton/manifest.json`、marker 与 STACK 基线，双 manifest 或混合安装 fail-closed
 - **legacy 分发兼容**：已发布 npm 包 `solobaton` 保留为 BuildBeat 的 legacy read-only distribution ID，并同时暴露 canonical `buildbeat` 与兼容 `solobaton` executable；未加 scope 的 `buildbeat` 包名已被其他项目占用，用户已批准迁移 scoped package 和新仓库名，远端完成状态仍逐项回读

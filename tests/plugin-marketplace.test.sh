@@ -127,12 +127,14 @@ pass "isolated marketplace add and plugin install return one enabled plugin"
 
 [ -d "$INSTALL_PATH" ] || fail "installed plugin cache directory is missing"
 for relative in SKILL.md CHANGELOG.md LICENSE lessons.md; do
-  [ -f "$INSTALL_PATH/$relative" ] && [ ! -L "$INSTALL_PATH/$relative" ] \
-    || fail "$relative was not dereferenced into a regular cached file"
+  if [ ! -f "$INSTALL_PATH/$relative" ] || [ -L "$INSTALL_PATH/$relative" ]; then
+    fail "$relative was not dereferenced into a regular cached file"
+  fi
 done
 for relative in templates docs example; do
-  [ -d "$INSTALL_PATH/$relative" ] && [ ! -L "$INSTALL_PATH/$relative" ] \
-    || fail "$relative was not dereferenced into a regular cached directory"
+  if [ ! -d "$INSTALL_PATH/$relative" ] || [ -L "$INSTALL_PATH/$relative" ]; then
+    fail "$relative was not dereferenced into a regular cached directory"
+  fi
 done
 [ -f "$INSTALL_PATH/docs/CLI.md" ] \
   || fail "installed plugin is missing reference documentation"

@@ -47,7 +47,7 @@ HUMAN_OUT="$BUS_TMP/human.out"
 : > "$FINDINGS_RAW"
 : > "$FINDINGS_SORTED"
 : > "$HUMAN_OUT"
-# shellcheck disable=SC2329 # invoked indirectly by trap
+# shellcheck disable=SC2317,SC2329 # invoked indirectly by trap
 cleanup_bus_check() { rm -rf -- "$BUS_TMP"; }
 trap cleanup_bus_check EXIT
 
@@ -124,7 +124,7 @@ resolve_hash() {
     [ -d "$hash_repo" ] || continue
     if [ "$hash_repo" != "." ]; then
       path_uses_symlink_component "$ROOT_PHYS/${hash_repo#./}" && continue
-      [ -r "$hash_repo" ] && [ -x "$hash_repo" ] || continue
+      if [ ! -r "$hash_repo" ] || [ ! -x "$hash_repo" ]; then continue; fi
     fi
     git -C "$hash_repo" cat-file -t "$candidate_hash" >/dev/null 2>&1 && return 0
   done
@@ -996,7 +996,7 @@ finalize_findings() {
 render_json_report() {
   awk -F '\t' -v strict="$STRICT" '
     function esc(s) {
-      gsub(/\\/, "\\\\", s); gsub(/\"/, "\\\"", s)
+      gsub(/\\/, "\\\\", s); gsub(/"/, "\\\"", s)
       gsub(/\r/, "\\r", s); gsub(/\t/, "\\t", s)
       return s
     }
@@ -1117,7 +1117,7 @@ for r in . "${SUBREPOS[@]:-}"; do
   [ -n "$r" ] || continue; [ -e "$r/.git" ] || continue
   if [ "$r" != "." ]; then
     path_uses_symlink_component "$ROOT_PHYS/${r#./}" && continue
-    [ -r "$r" ] && [ -x "$r" ] || continue
+    if [ ! -r "$r" ] || [ ! -x "$r" ]; then continue; fi
   fi
   gate_checked=1
   installed=0
@@ -1422,7 +1422,7 @@ ref_limit="${BUS_REF_MAX:-200}"
 case "$ref_limit" in ''|*[!0-9]*) ref_limit=200 ;; esac
 ref_scanned=0; ref_truncated=0
 for ref_source in pm/NOW.md "$board_path" pm/decisions.md; do
-  [ -n "$ref_source" ] && [ -f "$ref_source" ] || continue
+  if [ -z "$ref_source" ] || [ ! -f "$ref_source" ]; then continue; fi
   if [ -L "$ref_source" ] \
       || path_uses_symlink_component "$ROOT_PHYS/$ref_source"; then
     echo "  ⚠️  $ref_source 经 symlink 到达,作用域引用未扫描"
@@ -1756,7 +1756,7 @@ if [ -d pm/status ]; then
       fi
       if [ "$r" != "." ]; then
         path_uses_symlink_component "$ROOT_PHYS/${r#./}" && continue
-        [ -r "$r" ] && [ -x "$r" ] || continue
+        if [ ! -r "$r" ] || [ ! -x "$r" ]; then continue; fi
       fi
       git -C "$r" cat-file -t "$h" >/dev/null 2>&1 && { found=1; break; }
     done

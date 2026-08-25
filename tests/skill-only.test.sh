@@ -100,13 +100,17 @@ chmod +x "$FAKE_BIN/node"
 
 run_bus_without_node "$PROJECT" "Skill-only scaffold"
 run_bus_without_node "$CLI_PROJECT" "CLI-created scaffold maintained by Skill"
-[ ! -e "$PROJECT/.buildbeat/manifest.json" ] && [ ! -e "$PROJECT/.solobaton/manifest.json" ] \
-  || fail "Skill-only bootstrap unexpectedly created a CLI manifest"
-[ -f "$CLI_PROJECT/.buildbeat/manifest.json" ] && [ ! -e "$CLI_PROJECT/.solobaton/manifest.json" ] \
-  || fail "CLI-created scaffold lost its canonical lifecycle manifest"
-[ ! -e "$PROJECT/standards" ] && [ ! -e "$PROJECT/pm/adr" ] \
-  || fail "Skill-only bootstrap unexpectedly generated optional standards or ADR files"
-[ ! -e "$CLI_PROJECT/standards" ] && [ ! -e "$CLI_PROJECT/pm/adr" ] \
-  || fail "CLI-created scaffold unexpectedly generated optional standards or ADR files"
+if [ -e "$PROJECT/.buildbeat/manifest.json" ] || [ -e "$PROJECT/.solobaton/manifest.json" ]; then
+  fail "Skill-only bootstrap unexpectedly created a CLI manifest"
+fi
+if [ ! -f "$CLI_PROJECT/.buildbeat/manifest.json" ] || [ -e "$CLI_PROJECT/.solobaton/manifest.json" ]; then
+  fail "CLI-created scaffold lost its canonical lifecycle manifest"
+fi
+if [ -e "$PROJECT/standards" ] || [ -e "$PROJECT/pm/adr" ]; then
+  fail "Skill-only bootstrap unexpectedly generated optional standards or ADR files"
+fi
+if [ -e "$CLI_PROJECT/standards" ] || [ -e "$CLI_PROJECT/pm/adr" ]; then
+  fail "CLI-created scaffold unexpectedly generated optional standards or ADR files"
+fi
 
 printf '%s\n' 'PASS: Skill-only and CLI/Skill interoperability work without a runtime CLI dependency'
