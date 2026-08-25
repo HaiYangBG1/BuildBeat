@@ -13,6 +13,8 @@
 - **Wave 2 机械升级源码候选**：新增 schema-2-only `buildbeat upgrade [path] [--dry-run] [--json] [--force] [--major]`；同 major 按 manifest baseline/current/bundled template 三组 hash 做 replace/create/retain/report，跨 major 需显式确认，安装版本更新于 bundle 时拒绝降级
 - **Wave 2 所有权与事务边界**：任一未解决冲突使整次 apply 零写；`--force` 仅可覆盖已登记的 `replace-if-unmodified` 或唯一 `.gitignore` owned fragment，永不触碰 project-owned、未登记碰撞、异常 marker、symlink/目录等不安全路径；写前复核 hash/absence，manifest 最后写，失败逐字节与 mode 回滚，成功后回读 doctor 并提示 bus-check
 - **WP3.1 本地候选门禁**：Node `55/55`（其中 CLI `50/50`）、Shell `176/176`、Skill-only、Claude plugin 隔离安装 `7/7`、99 份 Markdown 契约检查、74 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；这些是本地源码与 disposable sandbox 证据，不是 push、真实版本增量试点或发布证据
+- **WP3.2 Gate/证据强关联**：`bus-check` 对正向 UI 信号与 Gate2 `n/a` 的矛盾新增 `gate.na_inconsistent` warning；passed Gate 的 `决策:` 必须精确指向 `pm/decisions.md:<行号>` 的现存日期表格行；有效本地证据不在 `pm/archive/<期>/evidence/` 时新增 `evidence.outside_archive` warning。未检出 UI 不外推为“无 UI”，两个 warning 均不冒充人工 Gate 结论或阻塞 strict
+- **WP3.2 本地候选门禁**：Node `55/55`（其中 CLI `50/50`）、Shell `199/199`、Skill-only、Claude plugin 隔离安装 `7/7`、106 份 Markdown 契约检查、74 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；新增 fixture 分别覆盖 UI/n-a 矛盾、有效/缺失决策行和归档内/外证据，证据仍限当前本地源码与 disposable Git 沙箱
 - **仓库安全基线**：新增 npm/GitHub Actions Dependabot 周检、JavaScript/TypeScript CodeQL、SECURITY/贡献/行为规范、CODEOWNERS、Issue/PR 模板；CI 中第三方 Action 改为不可变完整 commit SHA
 - **发布引用保护**：GitHub 服务端 `Protect release tags` ruleset 覆盖 `refs/tags/v*`，禁止更新和删除已创建的发布 tag，且无绕过角色；发布 runbook 增加回读步骤
 - **CLI v0 真实试点**：使用官方 npm registry 的 `solobaton@1.16.3` 对三个存量项目运行只读 `doctor` 和 `adopt --dry-run`；Git 可见状态前后一致，并正确区分未安装、旧版已安装和部分安装状态

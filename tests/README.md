@@ -22,7 +22,7 @@ npm run pack:check
 - `legacy.strictExit`, `contains`, and `notContains`: retained operator-facing human-output assertions;
 - optional `env.BUS_REF_MAX`: a fixture-only bounded-scan override.
 
-The runner validates JSON syntax, registered code/level pairs, stable unique code order, exact summary counts, relative safe paths, coverage reasons, and strict blocking. The fixture set covers healthy legacy boards, broken NOW pointers, completed work without evidence, Gate reason/traceability/protocol failures, valid completed evidence, ghost hashes, stale live boards, truncated reference scans, legal partial presence plus valid/Draft/invalid optional standards, matching/conflicting/unverified STACK baselines, legal/illegal ADR Status, and broken ADR supersession. The remaining dynamic scenarios cover:
+The runner validates JSON syntax, registered code/level pairs, stable unique code order, exact summary counts, relative safe paths, coverage reasons, and strict blocking. The fixture set covers healthy legacy boards, broken NOW pointers, completed work without evidence, Gate reason/traceability/protocol failures, positive UI versus Gate2 `n/a`, exact decision-row lookup, valid and misplaced completed evidence, ghost hashes, stale live boards, truncated reference scans, legal partial presence plus valid/Draft/invalid optional standards, matching/conflicting/unverified STACK baselines, legal/illegal ADR Status, and broken ADR supersession. The remaining dynamic scenarios cover:
 
 - clean and bloated coordination state;
 - the teaching example's 11 intentional ghost hashes while its optional standards/ADR remain structurally clean and its omitted code repositories keep STACK observation explicitly unverified;

@@ -294,9 +294,11 @@ registry = {
     "sync.unverified": "unverified",
     "gate.line_missing": "warning",
     "gate.na_without_reason": "conflict",
+    "gate.na_inconsistent": "warning",
     "gate.pass_untraceable": "warning",
     "gate.invalid": "error",
     "evidence.missing": "conflict",
+    "evidence.outside_archive": "warning",
     "ref.broken": "conflict",
     "standards.invalid": "error",
     "standards.unconfirmed": "unverified",
@@ -349,9 +351,13 @@ run_fixture healthy-default
 run_fixture broken-now-pointer
 run_fixture board-done-no-evidence
 run_fixture gate-na-no-reason
+run_fixture gate-na-ui-inconsistent
 run_fixture gate-pass-untraceable
+run_fixture gate-decision-valid
+run_fixture gate-decision-line-missing
 run_fixture gate-invalid
 run_fixture evidence-valid
+run_fixture evidence-outside-archive
 run_fixture ghost-hash
 run_fixture stale-now
 run_fixture scan-truncated

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 0
+  },
+  "legacy": {
+    "strictExit": 0,
+    "contains": [
+      "已检查 canonical Gate、完成证据"
+    ],
+    "notContains": [
+      "Gate3=passed 的决策引用未指向"
+    ]
+  }
+}

@@ -4,13 +4,13 @@
 > 基线日期：2026-08-24
 > 上游文档：[`ROADMAP.md`](ROADMAP.md)（下称“演进书”）；竞品调研见 [`CLI-STRATEGY-2026-08.md`](CLI-STRATEGY-2026-08.md)
 > 基线代码：`solobaton@1.16.3`（npm 已发布，Git tag `v1.16.3`）
-> 实施状态（更新于 2026-08-25）：**WP0.1–WP0.5、WP1.1–WP1.6 与 WP2.1–WP2.8 已完成本地闭环并由本地源仓基线 `b062f25` 保全；WP3.1 机械 upgrade 已完成源码与 disposable Git 沙箱候选，真实版本增量试点待办**。三个 BuildBeat Wave 1 试点最终关闭 HEAD 为 `4ea29a94a3a29fa905ae99662359ec561298135d`、`69d6e8358f7fda03225c090d99b5647cae152183`、`6b32c53e4fd750770690a0bbe796638314cb792a`；它们均 clean、无 remote。旧名试点继续只作为 legacy 兼容历史证据。当前 package metadata 仍为 `1.16.3`，全部后续源码均未推送、未发布，不等于 v1.17/v1.18/v1.19/v1.20 已打 tag、已创建 GitHub Release 或已发布 npm；Claude plugin 只在隔离配置完成本地安装验证。
+> 实施状态（更新于 2026-08-25）：**WP0.1–WP0.5、WP1.1–WP1.6 与 WP2.1–WP2.8 已完成本地闭环并由本地源仓基线 `b062f25` 保全；WP3.1 机械 upgrade 与 WP3.2 Gate/证据强关联已完成源码和 disposable Git 沙箱候选，真实版本增量 upgrade 试点待办**。三个 BuildBeat Wave 1 试点最终关闭 HEAD 为 `4ea29a94a3a29fa905ae99662359ec561298135d`、`69d6e8358f7fda03225c090d99b5647cae152183`、`6b32c53e4fd750770690a0bbe796638314cb792a`；它们均 clean、无 remote。旧名试点继续只作为 legacy 兼容历史证据。当前 package metadata 仍为 `1.16.3`，全部后续源码均未推送、未发布，不等于 v1.17/v1.18/v1.19/v1.20 已打 tag、已创建 GitHub Release 或已发布 npm；Claude plugin 只在隔离配置完成本地安装验证。
 >
 > **决策链（2026-08-24）**：
 > ① 先拍板"CLI 全冻结于 v0 只读"；
 > ② 经对 Spec Kit / OpenSpec / BMAD 官方能力的限定范围调研（结论：CLI 分发/更新有明确价值，命令面并不相同；所核对页面未记录三方合并），修订为**选择性解冻**；
 > ③ 最终边界：解冻 **Wave 1（init/adopt 真写入）** 与 **Wave 2（机械 upgrade）**；三方合并、uninstall 引擎、CLI 命令面扩张（gate/adr/standards/check）**继续冻结**。
-> 原待拍板决策 D1（双实现权威）按"bus-check 唯一同步权威"执行；D3（写入事实注入）的"哑脚手架 + AI 渲染"已通过旧名与 BuildBeat canonical 两轮真实目录本地 Git/Hook/hash 验证。WP2.8 Gate3 已确认；WP3.1 源码候选完成后，下一实现项是 WP3.2，真实版本增量 upgrade 试点与发布序列仍是独立证据闸。
+> 原待拍板决策 D1（双实现权威）按"bus-check 唯一同步权威"执行；D3（写入事实注入）的"哑脚手架 + AI 渲染"已通过旧名与 BuildBeat canonical 两轮真实目录本地 Git/Hook/hash 验证。WP2.8 Gate3 已确认；WP3.1 与 WP3.2 源码候选完成后，下一实现项是 WP3.3 多仓漂移，真实版本增量 upgrade 试点与发布序列仍是独立证据闸。
 
 ---
 
@@ -330,9 +330,17 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 
 **候选验收**：升级专属用例覆盖 equal no-op、clean replace、compact 映射、modified/missing conflict、force 边界、跨 major 与 downgrade、schema 1/missing/invalid/legacy、dirty Git、上游新增/删除、未登记碰撞、gitignore changed/duplicate marker、失败逐字节回滚与 option scope。真实版本增量试点需在后续明确的 scaffold version/template delta 上单独执行，并保留目标 Git 前后与 doctor/bus-check 证据。
 
-### WP3.2 Gate/证据强关联
+### WP3.2 Gate/证据强关联（源码候选完成）
 
-- `gate.na_inconsistent`（检出 UI 却 Gate2 n/a → warning）；Gate passed 的 `决策:` 引用回查 decisions.md 行存在；证据路径不在 `pm/archive/<期>/evidence/` 约定位置 → warning。
+> **当前证据边界（2026-08-25）**：以下结论只来自当前本地源码与 disposable Git fixture。正向探测未命中不证明“无 UI”；决策行存在只证明仓内引用可解析，不证明人真实批准；证据路径合规只证明位置和文件可读，不证明证据内容或线上状态为真。
+
+- 新增 `gate.na_inconsistent`：Gate2 为 `n/a` 且仓库存在 regular `standards/DESIGN.md`、`index.html`、已知 UI package key 或浏览器扩展 UI manifest 时发 warning；仅做正向探测，未命中不输出反向结论。
+- passed Gate 只要填写 `决策:`，就必须使用 `pm/decisions.md:<正整数行号>` 并命中现存日期表格行；仅写台账文件名、越界行或非决策行均复用 `gate.pass_untraceable` warning。只填有效 `证据:` 仍保持合法。
+- 新增 `evidence.outside_archive`：Gate/已完成工作包的有效本地证据不在 `pm/archive/<期>/evidence/` 时发 warning；hash/URL 没有本地位置语义，不套用该 finding。
+
+**实现落点**：`templates/scripts/bus-check.sh` 共享同一 finding 集合渲染 human/JSON；`docs/CHECKS.md`、SKILL、看板模板与教学沙盘同步精确令牌。未扩 CLI 命令面，未自动改项目文件，warning 不改变既有 `--strict` 的 conflict/error 阻塞边界。
+
+**候选验收**：新增 `gate-na-ui-inconsistent`、`gate-decision-valid`、`gate-decision-line-missing`、`evidence-outside-archive` 四组 fixture，并把既有 `evidence-valid` 迁到 canonical 归档路径。Node `55/55`、Shell `199/199`、Skill-only、Claude plugin `7/7`、106 份 Markdown 检查、74 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 均通过。
 
 ### WP3.3 多仓漂移
 
@@ -408,9 +416,10 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 8. [x] **Phase 2-B / WP2.7**：三条真实目录写路径、语义渲染、Git/Hook/evidence commits、Tide 保护性摘要、离线 strict 与最终 doctor 已闭环；浏览器扩展 UI 探测假阴性已修。npm 发布另需单独授权。
 9. [x] **Phase 2-B / WP2.8**：BuildBeat canonical namespace 的源码、模板、Skill、plugin、文档、本地全门禁与新真实目录 init/adopt/Skill-only 均已闭环；用户已确认 Gate3 并关闭 WP2.8。旧名 WP2.7 证据保持历史，不参与新 namespace 结论。
 10. [x] **Phase 3 / WP3.1 源码候选**：schema 2 机械 upgrade、semver/ownership/Git 门控、完整冲突报告、force 边界、manifest-last 事务、doctor 回读与 disposable Git 沙箱矩阵已闭环；真实版本增量试点仍是独立发布前证据闸。
-11. [ ] **下一开工：Phase 3 / WP3.2**：实现 Gate/证据强关联；只新增 `gate.na_inconsistent`、passed 决策引用回查与 evidence 归档位置 warning，不扩 CLI 命令面，也不把 warning 冒充 human Gate 结论。
+11. [x] **Phase 3 / WP3.2 源码候选**：Gate2 n/a 与正向 UI 信号、passed 决策精确行、evidence 归档位置三个强关联规则及 fixtures 已闭环；warning 不扩张 strict 或 human Gate 权限。
+12. [ ] **下一开工：Phase 3 / WP3.3**：沿既有 SUBREPOS 机制实现多仓版本/契约/部署基线交叉比对，结果精确到仓、文件和事实来源；未扫描范围保持 `sync.unverified`。
 
-Phase 0–2 已由 `b062f25` 本地提交保全；WP3.1 继续形成后续本地源码候选。BuildBeat Wave 1 新真实目录试点与 Gate3 已完成，Wave 2 目前只有 disposable Git 沙箱证据。任何远端 push、tag、远端改名、GitHub Release 或 npm publish 继续等待独立授权。
+Phase 0–2 已由 `b062f25` 本地提交保全，WP3.1 已由 `a378b2f` 形成后续本地源码候选，WP3.2 本地候选继续在其上演进。BuildBeat Wave 1 新真实目录试点与 Gate3 已完成，Wave 2 目前只有 disposable Git 沙箱证据。任何远端 push、tag、远端改名、GitHub Release 或 npm publish 继续等待独立授权。
 
 ---
 

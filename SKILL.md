@@ -1,6 +1,6 @@
 ---
 name: buildbeat
-description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工程交付协议:帮助一个或多个端到端 Builder 通过 Git 文件总线、四个人工 Gate 和可验证证据闭环需求/功能工作包;产品/全栈/测试是可调用的 AI 专业视角,不是人类岗位流水线。包含会话路由/文件总线/三轨/任务包/审批分层/核查门/决策台账/换期压缩仪式/开工护栏脚本/机器闸 pre-commit:gitleaks+bus-check --strict/引导式 Bootstrap:自查代码+少量提问/接管存量项目仪式/已发布 legacy CLI v0 只读证据与源码候选 init/adopt 受控写入/证据分级 L0-L4。当用户要为新的中大型项目搭多会话协作架构、**要给已有的存量老项目套上协作流程(接管)**、提到"BuildBeat/Solobaton/协作总线/Builder/人在回路/多 session 协作/AI 团队流程/项目骨架 bootstrap",或抱怨"多个 AI 会话信息不同步、任务过早结束、审批打断过多、review 过于频繁、验收漏验、文档腐烂、返工螺旋"时使用。
+description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工程交付协议:帮助一个或多个端到端 Builder 通过 Git 文件总线、四个人工 Gate 和可验证证据闭环需求/功能工作包;产品/全栈/测试是可调用的 AI 专业视角,不是人类岗位流水线。包含会话路由/文件总线/三轨/任务包/审批分层/核查门/决策台账/换期压缩仪式/开工护栏脚本/机器闸 pre-commit:gitleaks+bus-check --strict/引导式 Bootstrap:自查代码+少量提问/接管存量项目仪式/已发布 legacy CLI v0 只读证据与源码候选 init/adopt 受控写入、schema 2 机械 upgrade/证据分级 L0-L4。当用户要为新的中大型项目搭多会话协作架构、**要给已有的存量老项目套上协作流程(接管)**、提到"BuildBeat/Solobaton/协作总线/Builder/人在回路/多 session 协作/AI 团队流程/项目骨架 bootstrap",或抱怨"多个 AI 会话信息不同步、任务过早结束、审批打断过多、review 过于频繁、验收漏验、文档腐烂、返工螺旋"时使用。
 ---
 
 # BuildBeat —— 面向人和 AI 会话的工程交付协议
@@ -83,7 +83,7 @@ description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工�
 6. **核查门(review-ready + 一次候选核查)**:① 轻量机器闸每次提交,受影响测试按批次;首次 milestone reviewer 只在四项同时成立后启动:工作包实现/写者自查完成、所有候选仓 `HEAD=candidate` 且干净、受影响/全量 L3 与真渲染证据绿、无已知待修或计划改 hash。② 首次 milestone 前,鉴权/租户/Secret/fail-closed/持久化等写者自发现问题统一进实现语义清单并自行收敛,不边改边审;只有修改已冻结对外契约或不可逆副作用才 `STOP_NOW`,批准后按一个风险批次核 `risk-delta`。③ 每工作包每 Gate 默认 1 次 milestone;P0/P1 合并修完后 1 次 closure,P2 不复核。reviewer 返回前 hash 变化 → 原审查 `SUPERSEDED`,不得把连续修补包装成 delta 链;重新 review-ready 后再替代。milestone 后新生高风险语义才做 `risk-delta`,同一 hash+绿证据直接复用。**完成 = hash + 可核验证据**;证据分 L0 声称 / L1 `文件:行` / L2 编译·类型 / L3 自动化测试 / L4 线上实测。标准轨最低 L3,重轨与上线必须 L4;L1 只作补充定位。项目测试跑不动 → 先补测试。
 7. **变更提案 + 状态分写**:跨工作包/共享边界变更走 `pm/changes/` delta 提案;各 AI 视角只写 `pm/status/{视角}.md`,别人只读——物理消灭"同文件互踩"。状态按工作包/里程碑批量更新,不为每个子产物另起一次交接。
 8. **视觉问题带图**:提 UI bug / 判设计符合性必附「实现截图 ⟷ 设计稿截图」并排对比,纯文字描述不算证据。
-9. **单点事实**:① 线上版本只信 bus-check 实查(任何文档不写"当前线上 vX",契约快照版本仅 PROTOCOL 头部一处)② 每个收敛后的**真实决策包**只在 `decisions.md` 记一行并回写落点;验收条目、推导结论、对话中的部分进度不得膨胀成独立拍板③ 换期必跑压缩仪式。
+9. **单点事实**:① 线上版本只信 bus-check 实查(任何文档不写"当前线上 vX",契约快照版本仅 PROTOCOL 头部一处)② 每个收敛后的**真实决策包**只在 `decisions.md` 记一行并回写落点;passed Gate 的 `决策:` 必须精确到该表格行,本地证据统一归档到 `pm/archive/<期>/evidence/`;验收条目、推导结论、对话中的部分进度不得膨胀成独立拍板③ 换期必跑压缩仪式。
 10. **Gate2 真渲染拍板**:设计拍板对象必须是**真渲染可点原型**(`bash scripts/design-preview.sh <期>`),静态稿/截图不充当拍板对象;设计 brief 必须要求"单 HTML 可渲染入口 + 关键流可点"。**终签同样要含真渲染走查**(spec 数值对 ≠ 渲染对)。
 
 > 十条之外的一条**元原则:能实查的不问人**——查代码 / 配置 / 部署平台能得到的事实,不拿去问用户、不信文档、不信上游转述(规则⑨与规则②的推广;§8 Bootstrap 的提问三原则同源)。
@@ -147,7 +147,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 1. 确认工作包达到 `terminal_condition`,不把单个子产物当完成。
 2. 跑受影响测试;里程碑候选再跑全量 L3/真渲染,记录命令与结果证据。
 3. 回读 candidate/report hash,确保状态中的 hash 真实可解析且不是 status 自身提交。
-4. 回写 contracts/decisions/当期看板/status,已完成工作包必须有一条 `**证据**:` 并指向可核验产物。
+4. 回写 contracts/decisions/当期看板/status,已完成工作包必须有一条 `**证据**:` 并指向 `pm/archive/<期>/evidence/` 内的可核验产物;passed Gate 的决策引用写成 `pm/decisions.md:<行号>`。
 5. 跑 `bash scripts/bus-check.sh --strict` 并阅读非阻断的 warning/unverified;不用 exit 0 替代覆盖面判断。
 6. 确认各仓工作树与 staged 范围;他人 WIP、散落临时文件或计划中的 candidate 修改未收敛时,不声称 review-ready。
 7. 一屏收尾:交付结果、证据、未验证边界、挂账/真实阻塞、是否命中下一道人工 Gate。

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "extends": "healthy-default",
+  "expectedCodes": [
+    "sync.l3_unconfigured",
+    "sync.unverified",
+    "gate.na_inconsistent"
+  ],
+  "expectedCoverageComplete": false,
+  "json": {
+    "strictExit": 0
+  },
+  "legacy": {
+    "strictExit": 0,
+    "contains": [
+      "Gate2=n/a 但仓库存在明确 UI 信号"
+    ],
+    "notContains": [
+      "Gate2=n/a 但缺少同一行的非占位理由"
+    ]
+  }
+}

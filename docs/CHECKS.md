@@ -1,6 +1,6 @@
 # BuildBeat file-bus check specification
 
-Status: **Phase 2-B WP2.5 implementation baseline** · normative bus-check schema: `1` · Phase 0–2 are committed locally in `b062f25`, while the current source checkout and legacy `solobaton@1.16.3` package metadata remain unpushed/unpublished and make no v1.18/v1.19/v1.20 release claim. CLI output/manifest schema 2 and the WP3.1 mechanical-upgrade candidate are specified separately in [`CLI.md`](CLI.md); neither changes this bus-check schema.
+Status: **Phase 3 WP3.2 implementation baseline** · normative bus-check schema: `1` · Phase 0–2 are committed locally in `b062f25`, while the current source checkout and legacy `solobaton@1.16.3` package metadata remain unpushed/unpublished and make no v1.18/v1.19/v1.20 release claim. CLI output/manifest schema 2 and the WP3.1 mechanical-upgrade candidate are specified separately in [`CLI.md`](CLI.md); neither changes this bus-check schema.
 
 This document is the single semantic source for `templates/scripts/bus-check.sh` and the same-directory scripts it orchestrates. It defines what a result means, not merely how output is colored. `SKILL.md`, board templates, fixtures, and script tests must use the same tokens and finding codes.
 
@@ -46,7 +46,7 @@ The board contains one list item for each fixed Gate. The canonical form is:
 ```md
 - Gate1: pending
 - Gate2: n/a | 理由: `本期无 UI 或交互面`
-- Gate3: passed | 决策: `pm/decisions.md` | 证据: `pm/archive/一期/evidence/gate3.md`
+- Gate3: passed | 决策: `pm/decisions.md:42` | 证据: `pm/archive/一期/evidence/gate3.md`
 - Gate4: blocked | 理由: `尚无获批发布窗口`
 ```
 
@@ -55,9 +55,10 @@ Parser rules:
 1. Accept optional leading whitespace, then the exact list marker `- `, `Gate1` through `Gate4`, one colon, and one lowercase state: `pending`, `passed`, `blocked`, or `n/a`.
 2. Each Gate appears exactly once. Missing lines in a legacy board produce `gate.line_missing` at `warning`; duplicates or an unknown state are protocol `error` findings.
 3. `n/a` requires a same-line `理由:` field whose backticked value is non-empty and contains no canonical `<...>` placeholder. Otherwise emit `gate.na_without_reason` at `conflict`.
-4. `passed` should provide at least one `决策:` or `证据:` field. If neither is present or the reference cannot be traced, emit `gate.pass_untraceable` at `warning`.
-5. `blocked` should carry `理由:`. Phase 1 may warn when it is absent, but this is not a strict blocker until a stable finding code is added here.
-6. Natural-language Gate tables may remain for readers, but only these four canonical lines drive machine conclusions.
+4. `passed` should provide at least one `决策:` or `证据:` field. A present `决策:` must be exactly `pm/decisions.md:<positive-line-number>` and that line must exist as a dated decision-table row; naming the ledger file alone is not enough. A missing or invalid trace emits `gate.pass_untraceable` at `warning`.
+5. Gate2 `n/a` is compared only with positive UI signals: a regular `standards/DESIGN.md`, an `index.html`, a known UI package dependency, or a browser-extension UI manifest. A detected signal emits `gate.na_inconsistent` at `warning`; no signal is merely inconclusive and is never proof that the project has no UI.
+6. `blocked` should carry `理由:`. Phase 1 may warn when it is absent, but this is not a strict blocker until a stable finding code is added here.
+7. Natural-language Gate tables may remain for readers, but only these four canonical lines drive machine conclusions.
 
 ### 3.2 Work-package evidence lines
 
@@ -76,7 +77,7 @@ Machine-verifiable reference forms are:
 - a backticked 7–40 character lowercase hexadecimal Git token containing at least one letter and one digit, resolvable in the meta repo or a discovered subrepo;
 - an `https://` reference, which is recorded but remains `unverified` unless a project adapter supplies a verified result.
 
-Paths must not be absolute, contain traversal segments, or resolve through a symlink outside the coordination root. A command name or prose claim by itself is not machine-verifiable evidence; retain it for humans and emit `sync.unverified` when no local evidence token exists.
+Paths must not be absolute, contain traversal segments, or resolve through a symlink outside the coordination root. A valid local Gate/work-package evidence path outside `pm/archive/<期>/evidence/` remains traceable but emits `evidence.outside_archive` at `warning`; Git hashes and remote URLs have no local archive-location claim. A command name or prose claim by itself is not machine-verifiable evidence; retain it for humans and emit `sync.unverified` when no local evidence token exists.
 
 ### 3.3 Scoped reference scan
 
@@ -190,8 +191,10 @@ The initial registry is:
 | `gate.line_missing` | `warning` | a legacy board lacks one or more canonical Gate lines | Phase 1 |
 | `gate.invalid` | `error` | a Gate state line is duplicated, malformed, or uses an unknown state | Phase 1 |
 | `gate.na_without_reason` | `conflict` | `n/a` lacks a valid same-line reason | Phase 1 |
+| `gate.na_inconsistent` | `warning` | Gate2 is `n/a` while a positive UI signal is present | Phase 3 / WP3.2 |
 | `gate.pass_untraceable` | `warning` | `passed` lacks a resolvable decision/evidence reference | Phase 1 |
 | `evidence.missing` | `conflict` | a completed work package lacks one valid canonical evidence line | Phase 1 |
+| `evidence.outside_archive` | `warning` | a valid local Gate/work-package evidence path is outside `pm/archive/<期>/evidence/` | Phase 3 / WP3.2 |
 | `ref.broken` | `conflict` | a scoped local path/hash reference is syntactically unsafe or does not resolve | Phase 1 |
 | `standards.invalid` | `error` | a present optional standard has invalid metadata, Rule IDs, confirmed placeholders, or local references | Phase 2-A |
 | `standards.unconfirmed` | `unverified` | a present optional standard is structurally valid but remains Draft | Phase 2-A |

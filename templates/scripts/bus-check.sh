@@ -66,10 +66,12 @@ finding_rank() {
     sync.scan_truncated) echo 60 ;;
     sync.unverified) echo 70 ;;
     gate.line_missing) echo 100 ;;
-    gate.na_without_reason) echo 110 ;;
-    gate.pass_untraceable) echo 120 ;;
     gate.invalid) echo 105 ;;
+    gate.na_without_reason) echo 110 ;;
+    gate.na_inconsistent) echo 115 ;;
+    gate.pass_untraceable) echo 120 ;;
     evidence.missing) echo 200 ;;
+    evidence.outside_archive) echo 210 ;;
     ref.broken) echo 300 ;;
     standards.invalid) echo 400 ;;
     standards.unconfirmed) echo 410 ;;
@@ -151,6 +153,82 @@ validate_reference() {
 extract_backtick_tokens() {
   # shellcheck disable=SC2016 # backticks are literal Markdown delimiters
   printf '%s\n' "$1" | grep -oE '`[^`]+`' 2>/dev/null | sed 's/^`//; s/`$//' || true
+}
+
+# Return 0 when a decision reference names one existing dated table row in the
+# canonical ledger. The explicit line keeps a passed Gate tied to one decision,
+# not merely to the existence of decisions.md.
+validate_decision_reference() {
+  decision_ref="$1"
+  if ! printf '%s\n' "$decision_ref" | grep -Eq '^pm/decisions\.md:[1-9][0-9]{0,6}$'; then
+    return 1
+  fi
+  decision_line_n="${decision_ref##*:}"
+  [ -f pm/decisions.md ] || return 1
+  decision_line="$(sed -n "${decision_line_n}p" pm/decisions.md 2>/dev/null || true)"
+  printf '%s\n' "$decision_line" \
+    | grep -Eq '^[[:space:]]*\|[[:space:]]*[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]]*\|'
+}
+
+# Call only after validate_reference succeeds. Return 0=canonical local
+# evidence path, 1=local path outside pm/archive/<期>/evidence/, 2=hash/other.
+evidence_location_status() {
+  evidence_ref="$1"
+  case "$evidence_ref" in
+    http://*|https://*) return 2 ;;
+  esac
+  if printf '%s' "$evidence_ref" | grep -Eq '^[0-9a-f]{7,40}$'; then
+    return 2
+  fi
+  evidence_ref="${evidence_ref%%#*}"
+  evidence_ref="${evidence_ref%%\?*}"
+  evidence_ref="$(printf '%s' "$evidence_ref" | sed -E 's/:[0-9]+$//')"
+  case "$evidence_ref" in
+    *.md|*.json|*.html|*.png|*.jpg|*.jpeg|*.svg|*.txt|*.log|*/*) ;;
+    *) return 2 ;;
+  esac
+  if printf '%s\n' "$evidence_ref" \
+      | grep -Eq '^pm/archive/[^/]+/evidence/[^/].*$'; then
+    return 0
+  fi
+  return 1
+}
+
+# Best-effort positive UI detection only. A miss is never proof that the
+# project has no UI; it simply means gate.na_inconsistent is not emitted.
+detect_ui_signal() {
+  if [ -f standards/DESIGN.md ] && [ ! -L standards/DESIGN.md ]; then
+    return 0
+  fi
+  ui_files="$BUS_TMP/ui-candidates"
+  if ! find -P . \
+      \( -type d \( -name .claude -o -name .codex -o -name .git -o -name .buildbeat -o -name .solobaton \
+        -o -name .next -o -name .nuxt -o -name .output -o -name build -o -name coverage \
+        -o -name dist -o -name node_modules -o -name target -o -name vendor \) -prune \) -o \
+      \( -type f \( -name index.html -o -name package.json -o -name manifest.json \) \) -print0 \
+      > "$ui_files" 2>/dev/null; then
+    return 1
+  fi
+  ui_count=0
+  while IFS= read -r -d '' ui_file; do
+    ui_count=$((ui_count + 1))
+    [ "$ui_count" -le 5000 ] || return 1
+    case "${ui_file##*/}" in
+      index.html) return 0 ;;
+      package.json)
+        if grep -Eq '"(@angular/core|@sveltejs/kit|next|nuxt|react|svelte|vite|vue)"[[:space:]]*:' "$ui_file" 2>/dev/null; then
+          return 0
+        fi
+        ;;
+      manifest.json)
+        if grep -Eq '"manifest_version"[[:space:]]*:[[:space:]]*[23]' "$ui_file" 2>/dev/null \
+            && grep -Eq '"(action|browser_action|content_scripts|options_page|options_ui|page_action|side_panel)"[[:space:]]*:' "$ui_file" 2>/dev/null; then
+          return 0
+        fi
+        ;;
+    esac
+  done < "$ui_files"
+  return 1
 }
 
 check_stack_drift() {
@@ -647,10 +725,21 @@ if [ -n "$board_path" ]; then
         echo "  ⚠️  Gate${gate_n}=n/a 但缺少同一行的非占位理由"
         add_finding "gate.na_without_reason" "conflict" "Gate${gate_n} is n/a without a non-placeholder reason." "$board_path"
       fi
+      if [ "$gate_n" -eq 2 ] && detect_ui_signal; then
+        echo "  ⚠️  Gate2=n/a 但仓库存在明确 UI 信号 —— 复核是否应进入 Gate2"
+        add_finding "gate.na_inconsistent" "warning" "Gate2 is n/a even though a positive UI signal was detected." "$board_path"
+      fi
     fi
 
     if [ "$gate_state" = "passed" ]; then
-      gate_ref_seen=0; gate_ref_valid=0
+      gate_ref_seen=0; gate_ref_valid=0; gate_decision_issue=0
+      if printf '%s\n' "$gate_line" | grep -Eq '决策:'; then
+        # shellcheck disable=SC2016 # backticks are literal Markdown delimiters
+        gate_decision_ref="$(printf '%s\n' "$gate_line" | sed -nE 's/.*决策:[[:space:]]*`([^`]*)`.*/\1/p')"
+        if [ -z "$gate_decision_ref" ] || ! validate_decision_reference "$gate_decision_ref"; then
+          gate_decision_issue=1
+        fi
+      fi
       if printf '%s\n' "$gate_line" | grep -Eq '(决策|证据):[[:space:]]*`'; then
         while IFS= read -r gate_ref; do
           [ -n "$gate_ref" ] || continue
@@ -668,7 +757,22 @@ if [ -n "$board_path" ]; then
           fi
         done < <(extract_backtick_tokens "$gate_line")
       fi
-      if [ "$gate_ref_seen" -eq 0 ] || [ "$gate_ref_valid" -eq 0 ]; then
+      if printf '%s\n' "$gate_line" | grep -Eq '证据:'; then
+        # shellcheck disable=SC2016 # backticks are literal Markdown delimiters
+        gate_evidence_ref="$(printf '%s\n' "$gate_line" | sed -nE 's/.*证据:[[:space:]]*`([^`]*)`.*/\1/p')"
+        if [ -n "$gate_evidence_ref" ] && validate_reference "$gate_evidence_ref" "$board_path"; then
+          evidence_location_status "$gate_evidence_ref"
+          evidence_location_rc=$?
+          if [ "$evidence_location_rc" -eq 1 ]; then
+            echo "  ⚠️  Gate${gate_n} 的本地证据未落在 pm/archive/<期>/evidence/"
+            add_finding "evidence.outside_archive" "warning" "Gate${gate_n} uses a local evidence path outside pm/archive/<period>/evidence/." "$board_path"
+          fi
+        fi
+      fi
+      if [ "$gate_decision_issue" -eq 1 ]; then
+        echo "  ⚠️  Gate${gate_n}=passed 的决策引用未指向 pm/decisions.md 有效决策行"
+        add_finding "gate.pass_untraceable" "warning" "Gate${gate_n} has a decision reference that does not identify an existing decisions.md row." "$board_path"
+      elif [ "$gate_ref_seen" -eq 0 ] || [ "$gate_ref_valid" -eq 0 ]; then
         echo "  ⚠️  Gate${gate_n}=passed 但没有可追溯的决策/证据引用"
         add_finding "gate.pass_untraceable" "warning" "Gate${gate_n} is passed without a traceable decision or evidence reference." "$board_path"
       fi
@@ -693,6 +797,12 @@ if [ -n "$board_path" ]; then
       [ -n "$evidence_ref" ] || continue
       if validate_reference "$evidence_ref" "$board_path"; then
         evidence_ref_seen=1; evidence_ref_valid=1
+        evidence_location_status "$evidence_ref"
+        evidence_location_rc=$?
+        if [ "$evidence_location_rc" -eq 1 ]; then
+          echo "  ⚠️  $wp_title 的本地证据未落在 pm/archive/<期>/evidence/"
+          add_finding "evidence.outside_archive" "warning" "$wp_title uses a local evidence path outside pm/archive/<period>/evidence/." "$board_path"
+        fi
       else
         ref_rc=$?
         if [ "$ref_rc" -eq 2 ]; then
