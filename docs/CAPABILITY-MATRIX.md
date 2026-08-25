@@ -1,6 +1,6 @@
 # BuildBeat 能力矩阵 / Capability Matrix
 
-> 状态：Phase 4 / WP4.3 scoped 分发迁移合同（2026-08-25）。本页同时区分 Skill-only、legacy npm v0 和 BuildBeat 1.20；源码、registry artifact 与真实项目证据仍分别核验。
+> 状态：BuildBeat v1.21 scoped 分发合同（2026-08-25）。本页同时区分 Skill-only、legacy npm v0 和 BuildBeat 1.21；源码、registry artifact 与真实项目证据仍分别核验。
 
 ## 1. 三组生命周期入口
 
@@ -16,7 +16,7 @@ WP4.2 所说的“CLI 三命令”按职责分成三组，不是把 `version` �
 
 ## 2. 可用面与权威边界
 
-| 能力 | Skill-only / 手工路径 | legacy `solobaton@1.16.3` | BuildBeat `@haiyangbg/buildbeat@1.20.0` | 权威与边界 |
+| 能力 | Skill-only / 手工路径 | legacy `solobaton@1.16.3` | BuildBeat `@haiyangbg/buildbeat@1.21.0` | 权威与边界 |
 |---|---|---|---|---|
 | 理解新/存量项目，只问剩余问题 | 完整；读代码/配置后做 Bootstrap/Adopt | 不提供语义判断 | 不提供语义判断，只输出有界事实/问题 | Skill 与当前 AI 会话承担语义，CLI 不内置模型 |
 | 安装与能力体检 | 读文件并运行项目脚本 | `doctor` 只读可用 | `doctor` 只读可用 | `doctor` 是 CLI 体检；同步检查唯一权威仍是项目 `bus-check` |
@@ -43,8 +43,8 @@ WP4.2 所说的“CLI 三命令”按职责分成三组，不是把 `version` �
 
 - **Skill-only:** first-class and complete for protocol semantics; it does not need a lifecycle manifest or a runtime CLI.
 - **Legacy npm v0:** `solobaton@latest` is frozen on `doctor`, `init/adopt --dry-run`, and version inspection, then deprecated toward the scoped package. Project writes and `upgrade` remain unavailable there.
-- **BuildBeat 1.20:** `@haiyangbg/buildbeat@1.20.0` is the independently verified canonical scoped distribution for bounded `init/adopt` writes and schema-2-only mechanical `upgrade`. Registry availability, provenance, signatures, and exact artifact identity are archived in [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md) and remain live-recheck requirements for future releases.
+- **BuildBeat 1.21:** `@haiyangbg/buildbeat@1.21.0` is the independently verified canonical scoped distribution. It keeps the bounded `init/adopt` and schema-2-only mechanical `upgrade` surface established in 1.20, and adds the standard domain-response contract to Skill/scaffold handoffs. Registry availability, provenance, signatures, and exact artifact identity are archived in [`V1.21-RELEASE-EVIDENCE-2026-08-25.md`](V1.21-RELEASE-EVIDENCE-2026-08-25.md) and remain live-recheck requirements for future releases.
 - **Claude Code plugin:** the local marketplace candidate distributes the canonical Skill/templates/docs, not the top-level npm CLI `bin/`; installation evidence does not authorize project writes or npm publication.
 - **Project runtime:** after scaffolding, the Git files and project-local scripts remain independently usable. BuildBeat has no account service, telemetry, remote project database, or agent runtime.
 
-The real version-increment and multi-repository evidence is archived in [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md); release readiness is tracked in [`PHASE4-STABILITY-AUDIT-2026-08-25.md`](PHASE4-STABILITY-AUDIT-2026-08-25.md), and the completed external distribution is recorded in [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md). Command details remain authoritative in [`CLI.md`](CLI.md); legacy migration uses [`LEGACY-V1.16-MIGRATION.md`](LEGACY-V1.16-MIGRATION.md).
+The real version-increment and multi-repository evidence remains archived in [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md); release readiness is tracked in [`PHASE4-STABILITY-AUDIT-2026-08-25.md`](PHASE4-STABILITY-AUDIT-2026-08-25.md), the first scoped publication in [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md), and the current v1.21 distribution in [`V1.21-RELEASE-EVIDENCE-2026-08-25.md`](V1.21-RELEASE-EVIDENCE-2026-08-25.md). Command details remain authoritative in [`CLI.md`](CLI.md); legacy migration uses [`LEGACY-V1.16-MIGRATION.md`](LEGACY-V1.16-MIGRATION.md).

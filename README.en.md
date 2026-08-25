@@ -79,7 +79,7 @@ npm uninstall --global @haiyangbg/buildbeat       # remove only the global CLI p
 
 Package-manager install, update, and removal operations manage only the **CLI package and executables**; they never create, upgrade, or delete a project's scaffold. `doctor` is read-only. `init/adopt` show the complete plan and write only after clean-Git, collision, blocker, and confirmation checks. `upgrade` accepts only a canonical schema 2 baseline and performs manifest/hash-based mechanical changes with zero writes on unresolved conflict. `diff/uninstall` and workflow-command expansion remain frozen. `buildbeat` is canonical; the `solobaton` executable remains only as a compatibility alias. See [`docs/CLI.md`](docs/CLI.md) for the complete contract.
 
-`1.21.0` adds a standard domain-response format on top of the verified `1.20.0` lifecycle: close out with Done → Not done → Next, and keep evidence directly under the completed outcome it supports. CLI commands and safety boundaries do not expand. `--force` still cannot overwrite project-owned content or unsafe paths, and a major transition separately requires `--major`. A source checkout, Git tag, and npm artifact remain different evidence surfaces; use [`docs/RELEASING.md`](docs/RELEASING.md) plus the matching GitHub Release and registry readback for release and pilot status.
+`1.21.0` is now independently verified and adds a standard domain-response format on top of the `1.20.0` lifecycle: close out with Done → Not done → Next, and keep evidence directly under the completed outcome it supports. CLI commands and safety boundaries do not expand. `--force` still cannot overwrite project-owned content or unsafe paths, and a major transition separately requires `--major`. A source checkout, Git tag, and npm artifact remain different evidence surfaces; exact release evidence is archived in [`docs/V1.21-RELEASE-EVIDENCE-2026-08-25.md`](docs/V1.21-RELEASE-EVIDENCE-2026-08-25.md).
 
 Copied v1.16 legacy projects must not hand-author, copy, or rename a manifest to fabricate schema 2 ownership. Continue with manual CHANGELOG-based maintenance by default; if mechanical upgrades are genuinely required, use the [v1.16 legacy migration guide](docs/LEGACY-V1.16-MIGRATION.md) to rebuild the baseline under review on a dedicated Git branch.
 
@@ -238,9 +238,9 @@ The compact brownfield layout moves the scripts, operator card, and version mark
 | Production-config drift | `jq`, a SHA tool, project `live-config.sh` | Explicitly skipped; no production-state conclusion |
 | Live-version query | project `live-status.sh` and platform CLI | Explicitly unconfigured; documentation is not treated as live truth |
 | L3 test evidence | real `SUITES` in project `verify-status.sh` | Reports unconfigured; cannot claim automation is green |
-| CLI inspection/scaffolding/mechanical upgrade | Node.js 20+, the npm registry, or this source checkout | Legacy npm v0 remains read-only; scoped BuildBeat 1.20 has completed a genuine schema 2 version-increment pilot, while registry-artifact availability still requires independent readback; project uninstall remains frozen, and the Skill/manual equivalent stays supported |
+| CLI inspection/scaffolding/mechanical upgrade | Node.js 20+, the npm registry, or this source checkout | Legacy npm v0 remains read-only; scoped BuildBeat 1.21 is independently verified, while the genuine schema 2 version-increment pilot remains the v1.20 real-project evidence; project uninstall remains frozen, and the Skill/manual equivalent stays supported |
 
-Skill-only, legacy npm v0, and scoped BuildBeat 1.20 are distinct availability surfaces; the source checkout, registry artifact, and real project must also be verified separately. `doctor`, `init/adopt`, and `upgrade` own different responsibilities. See the bilingual [BuildBeat capability matrix](docs/CAPABILITY-MATRIX.md) and the [v1.20 real-project pilot](docs/PHASE4-V1.20-PILOT-2026-08-25.md).
+Skill-only, legacy npm v0, and scoped BuildBeat 1.21 are distinct availability surfaces; the source checkout, registry artifact, and real project must also be verified separately. `doctor`, `init/adopt`, and `upgrade` own different responsibilities. See the bilingual [BuildBeat capability matrix](docs/CAPABILITY-MATRIX.md) and the [v1.20 real-project pilot](docs/PHASE4-V1.20-PILOT-2026-08-25.md).
 
 ## Continue reading
 
@@ -252,7 +252,7 @@ Skill-only, legacy npm v0, and scoped BuildBeat 1.20 are distinct availability s
 - [`docs/CLI-STRATEGY-2026-08.md`](docs/CLI-STRATEGY-2026-08.md): the official-source CLI comparison and its evidence limits;
 - [`docs/CHECKS.md`](docs/CHECKS.md): file-bus invariants, Gate/evidence tokens, finding codes, and strict-mode semantics;
 - [`docs/CLI.md`](docs/CLI.md): command boundaries, file ownership, manifest, mechanical upgrade, and manual-removal contract;
-- [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md): bilingual capability and interoperability mapping across Skill-only, legacy npm v0, and scoped BuildBeat 1.20;
+- [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md): bilingual capability and interoperability mapping across Skill-only, legacy npm v0, and scoped BuildBeat 1.21;
 - [`docs/LEGACY-V1.16-MIGRATION.md`](docs/LEGACY-V1.16-MIGRATION.md): safe paths for a copied v1.16 project to remain manually managed or rebuild a schema 2 baseline under review (Chinese);
 - [`docs/CLI-PILOT-2026-08-23.md`](docs/CLI-PILOT-2026-08-23.md): read-only CLI v0 evidence from three real brownfield projects and the write-boundary decision;
 - [`docs/PHASE1-PILOT-2026-08-24.md`](docs/PHASE1-PILOT-2026-08-24.md): the read-only Phase 1 file-bus pilot across the example, an active multi-repo projection, and a real single-repo code tree;

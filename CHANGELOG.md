@@ -6,6 +6,7 @@
 
 > 主题：统一各域的收口回复，让人一眼看清做成了什么、证据在哪、还有什么没做，以及下一棒或真实求助。
 > **拷出项目升级**:在根 `AGENTS.md` 的任务包规则后补入「域回复格式」;未改过的 `指挥台.md` 可随后续版本机械替换。历史 status、看板和证据不回改,`pm/status/**` 持久口径不变。
+> **发布状态**：`@haiyangbg/buildbeat@1.21.0` 已通过 GitHub Actions OIDC / Trusted Publishing 发布；官方 registry exact artifact、SLSA provenance、签名、attestation、隔离安装、README 与 GitHub Release 均已独立回读。关闭证据见 [`docs/V1.21-RELEASE-EVIDENCE-2026-08-25.md`](docs/V1.21-RELEASE-EVIDENCE-2026-08-25.md)。
 
 - **域回复契约**:产品/全栈/测试等 AI 视角面向人收口时统一按「已做 → 未做 → 下一步」输出;已做只写功能/业务结果,证据紧跟对应事项,未做必须写原因,下一步明确交棒对象或真实求助
 - **发挥边界**:回复契约只约束收口/交接,不要求中间进展和探索讨论套模板;本域仍能安全推进时继续做,不伪造求助或固定域流水线
