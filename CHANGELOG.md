@@ -10,10 +10,13 @@
 - **改名证据边界**：WP2.7 三条真实目录试点及其 hash 保持为 legacy namespace 历史证据；WP2.8 已用全新的隔离目录完成 BuildBeat canonical init/adopt/Skill-only 回归，二者不混写、不互相外推
 - **新版方向与执行基线入库**：新增 `docs/ROADMAP.md`、`docs/EXECUTION-PLAN.md` 与官方来源可复核的 CLI 策略对照；产品方向由路线图承载，当前交付范围与依赖顺序由执行计划 v3 承载
 - **CLI 选择性解冻决策**：未来只开放 `init/adopt` 哑脚手架写入与 manifest/hash 驱动的机械 `upgrade`；三方合并、项目 uninstall 引擎、`gate/adr/standards/check` 命令扩张继续冻结，语义渲染和冲突合并归 AI 会话/Skill
+- **Wave 2 机械升级源码候选**：新增 schema-2-only `buildbeat upgrade [path] [--dry-run] [--json] [--force] [--major]`；同 major 按 manifest baseline/current/bundled template 三组 hash 做 replace/create/retain/report，跨 major 需显式确认，安装版本更新于 bundle 时拒绝降级
+- **Wave 2 所有权与事务边界**：任一未解决冲突使整次 apply 零写；`--force` 仅可覆盖已登记的 `replace-if-unmodified` 或唯一 `.gitignore` owned fragment，永不触碰 project-owned、未登记碰撞、异常 marker、symlink/目录等不安全路径；写前复核 hash/absence，manifest 最后写，失败逐字节与 mode 回滚，成功后回读 doctor 并提示 bus-check
+- **WP3.1 本地候选门禁**：Node `55/55`（其中 CLI `50/50`）、Shell `176/176`、Skill-only、Claude plugin 隔离安装 `7/7`、99 份 Markdown 契约检查、74 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；这些是本地源码与 disposable sandbox 证据，不是 push、真实版本增量试点或发布证据
 - **仓库安全基线**：新增 npm/GitHub Actions Dependabot 周检、JavaScript/TypeScript CodeQL、SECURITY/贡献/行为规范、CODEOWNERS、Issue/PR 模板；CI 中第三方 Action 改为不可变完整 commit SHA
 - **发布引用保护**：GitHub 服务端 `Protect release tags` ruleset 覆盖 `refs/tags/v*`，禁止更新和删除已创建的发布 tag，且无绕过角色；发布 runbook 增加回读步骤
 - **CLI v0 真实试点**：使用官方 npm registry 的 `solobaton@1.16.3` 对三个存量项目运行只读 `doctor` 和 `adopt --dry-run`；Git 可见状态前后一致，并正确区分未安装、旧版已安装和部分安装状态
-- **当前能力边界不冒进**：已独立验证的 npm `solobaton@1.16.3` 仍对所有项目写入 fail-closed；当前工作区的 Wave 1 源码候选已完成旧名与 BuildBeat canonical 两轮真实目录本地试点，WP2.8 Gate3 也已确认，但源仓仍按用户要求不提交、未发布，`upgrade` 仍未实现
+- **当前能力边界不冒进**：已独立验证的 npm `solobaton@1.16.3` 仍对所有项目写入 fail-closed；Phase 0–2 已按用户授权形成本地基线提交 `b062f25`，当前 checkout 的 Wave 2 `upgrade` 只有 disposable Git 沙箱证据。bundle 仍为 `v1.16`，因此尚无“真实旧 schema 2 安装 → 新 bundle”的独立项目试点；源仓未推送、未发布
 - **产品扩张边界**：多人账号/权限/组织管理和遥测/效能评分/指标仪表盘明确为当前非目标；CLI 不采集或上传项目使用数据，未来若扩展须独立立项并审查数据口径、隐私和权限治理
 - **不变量与输出合同落地**：`docs/CHECKS.md` 冻结八条文件总线不变量、Gate/证据令牌、五级结论、finding code 命名空间、JSON 外形和严格模式退出语义；`bus-check --format=json` 已由同一 finding 集合渲染，默认人类报告保持 exit 0，strict 只拦 `conflict/error`
 - **Phase 1 执行同步**：`SKILL.md` 与 AGENTS/status 模板固化开工 7 步、执行中 5 守则、收工 7 步；看板模板和教学沙盘新增四行 canonical Gate 状态与完成工作包 `**证据**:` 令牌
@@ -27,15 +30,15 @@
 - **Phase 2-B Wave 1 源码候选**：`init/adopt` 已实现“完整计划 → 交互确认或显式 `--yes` → 受控写入”；默认/紧凑布局均排除 optional standards/ADR，并只渲染项目名、日期、骨架版本、布局与紧凑脚本路径，剩余语义占位符结构化返回给 Skill
 - **Phase 2-B STACK 漂移候选**：Confirmed STACK 新增 `buildbeat-stack-baseline:v1` 精确集合并只读兼容旧 `solobaton-stack-baseline:v1`；`bus-check` 比对 `.nvmrc` / `package.json#engines.node`、npm/pnpm/yarn/bun lockfile 种类与 Dockerfile FROM，确定矛盾进 `stack.drift` conflict，缺源/解析/权限/符号链接/截断边界进 `stack.unverified`；不猜自然语言、不回显原始值、不修改项目文件，matching/conflict/unverified 三类 fixture 已将 Shell 回归扩至 `166/166`
 - **Phase 2-B Claude 插件分发候选**：新增 `buildbeat-plugins` marketplace 与独立 `buildbeat` 插件 `0.1.0`；插件以 marketplace 内相对符号链接复用 canonical SKILL/templates/docs/example，安装缓存解引用为自包含副本，并刻意排除 npm CLI 顶层 `bin/`。隔离配置回归覆盖严格校验、marketplace 添加、插件安装/启用、缓存同源与二次校验；CI 无 Claude CLI 时只证明静态打包，不冒充安装证据
-- **分发入口证据边界**：中英 README 首屏加入本地 Claude plugin 候选路径及合并后 GitHub marketplace 路径；WP2.8 已关闭，但 `npx --yes --package=solobaton@latest buildbeat init my-project` 仍刻意不作为当前入口，须等源仓候选提交、v1.19 发布授权与官方 registry 回读后再激活
+- **分发入口证据边界**：中英 README 首屏加入本地 Claude plugin 候选路径及合并后 GitHub marketplace 路径；WP2.8 已关闭，但 `npx --yes --package=solobaton@latest buildbeat init my-project` 仍刻意不作为当前入口，须等稳定候选进入远端默认分支、获得发布授权并完成官方 registry 回读后再激活
 - **WP2.7 安全前置**：新增 `standards-partial` fixture，证明仅启用 Confirmed CODE/REVIEW 时缺失 STACK/DESIGN 合法，Shell 回归增至 `176/176`；只读 dry-run 排除 partial 且碰撞的 `chickAI` 与 dirty legacy 安装的 `底座` 作为 Wave 1 adopt 目标
 - **WP2.7 真实目录本地写入**：获用户点名后，分别保留 init dry-run 零写、交互拒绝零写、default init apply、Tide compact adopt 与 Skill-only 手动 Bootstrap 证据；三个实际骨架完成项目语义渲染，验证套件及离线 `bus-check --strict` exit 0，可选 standards/ADR 均未被为了全绿而生成
 - **存量保护证据**：Tide 接管前后原 83 个文件的聚合 SHA-256 完全一致；剥离唯一 managed fragment 后，原 `.gitignore` 的 173 字节与 SHA-256 完全一致。没有运行构建、浏览器加载、发布或部署，静态保护证据不得外推为业务验证
 - **浏览器扩展 UI 探测修复**：真实 Tide 试点暴露 `hasUi=false` 假阴性；项目扫描现在解析嵌套 Manifest V2/V3 的 action/content/options 等 UI 信号，Tide 重探测为 `hasUi=true`，并加入不依赖 `index.html` 或前端框架包的 Node 回归
 - **WP2.7 Git 证据闭环**：获明确授权后，三个 apply 目标均初始化 `main`、安装与仓内规范脚本一致的 pre-commit Hook，并各形成 baseline + evidence 两个仅本地提交；最终 HEAD 为 `eb27a88663701ea03de776e32b6a23c2d1e3ac28`、`5b6aa726a1722226f9651a14bf0fb8fa36a5f9f6`、`b63383db9e56f17495a8ccc8edcb81e7c9cf24f0`，均 clean、无 remote。最终 doctor 均 `ok=true`，Skill-only 只保留预期 `manifest.missing`；不自动授权上游源码 commit、tag、GitHub Release、npm publish 或首屏写入入口激活
-- **WP2.7 候选门禁**：真实试点反馈回灌后 Node `39/39`、Shell `176/176`、Skill-only、Claude plugin 隔离安装 `7/7`、98 份 Markdown 检查、71 文件 pack dry-run 与全部静态检查通过；这仍是未提交、未发布 worktree 证据
-- **WP2.8 本地迁移门禁**：BuildBeat namespace 改名与新试点证据回写后 Node `41/41`、Shell `176/176`、Skill-only、Claude plugin 隔离安装 `7/7`、99 份 Markdown 检查、73 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；这只证明本地未提交源码候选，不是发布证据
-- **WP2.8 BuildBeat 真实目录关闭**：新隔离根完成 default init、Tide compact adopt 与 Skill-only；doctor/verify-status/离线 strict、canonical namespace、Git/Hook/clean/no-remote 全部闭合，Tide 原 76 文件逐字节复核 0 差异。用户已确认 Gate3 并关闭 WP2.8，最终关闭 HEAD 为 `4ea29a94a3a29fa905ae99662359ec561298135d`、`69d6e8358f7fda03225c090d99b5647cae152183`、`6b32c53e4fd750770690a0bbe796638314cb792a`；源仓 commit 与外部发布仍未授权
+- **WP2.7 候选门禁**：真实试点反馈回灌后 Node `39/39`、Shell `176/176`、Skill-only、Claude plugin 隔离安装 `7/7`、98 份 Markdown 检查、71 文件 pack dry-run 与全部静态检查通过；该次结果是提交前 worktree 证据，后来随 Phase 0–2 本地基线一并保全，仍不是发布证据
+- **WP2.8 本地迁移门禁**：BuildBeat namespace 改名与新试点证据回写后 Node `41/41`、Shell `176/176`、Skill-only、Claude plugin 隔离安装 `7/7`、99 份 Markdown 检查、73 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；该次结果是提交前本地候选证据，后来随 Phase 0–2 本地基线一并保全，不是发布证据
+- **WP2.8 BuildBeat 真实目录关闭**：新隔离根完成 default init、Tide compact adopt 与 Skill-only；doctor/verify-status/离线 strict、canonical namespace、Git/Hook/clean/no-remote 全部闭合，Tide 原 76 文件逐字节复核 0 差异。用户已确认 Gate3 并关闭 WP2.8，最终关闭 HEAD 为 `4ea29a94a3a29fa905ae99662359ec561298135d`、`69d6e8358f7fda03225c090d99b5647cae152183`、`6b32c53e4fd750770690a0bbe796638314cb792a`；随后另行授权形成 Phase 0–2 本地源仓基线 `b062f25`，未推送、未发布
 - **Wave 1 fail-closed 事务**：每个目标文件经同文件系统临时 sibling、fsync 与原子 rename 落盘；碰撞、符号链接父路径、已有/partial/mixed 安装、dirty/unavailable 根 Git 状态、异常 `.gitignore` marker 全部写前拒绝；任一步失败回删本次文件/空目录并逐字节恢复既有 `.gitignore`
 - **manifest/output schema 2（破坏性输出变更）**：CLI JSON envelope 从 schema 1 升为 2，新增实际写入路径、manifest、确定性替换和待渲染清单；新 manifest schema 2 最后写入，记录基线 SHA-256 与固定 `.gitignore` owned fragment，拒绝 `three-way-only`，同时 doctor 继续读取历史 schema 1
 - **所有权策略迁移**：AGENTS.md / BUILDBEAT.md / 指挥台.md 的新计划由历史 `three-way-only` 改为 `replace-if-unmodified`；历史 schema 1 仍可回读旧 `SOLOBATON.md` 与该旧策略，当前 schema 2 永不生成它

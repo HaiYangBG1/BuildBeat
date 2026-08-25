@@ -181,19 +181,17 @@ contracts / decisions / status / evidence
 
 ### 3.2 当前 CLI 状态
 
-已独立验证并发布的 CLI v0 只承担检查和只读规划，`init/adopt` 必须带 `--dry-run`，所有项目写入 fail-closed。当前未发布工作区已形成 WP2.4–WP2.6 源码候选：只在一次性沙箱验证 `init/adopt` 确定性脚手架与 manifest schema 2，用脚本 fixture 验证 Confirmed STACK 的 Node/lockfile/Docker 只读漂移检查，并在隔离 Claude config/cache 中验证 marketplace plugin 安装；真实项目试点、发布和 schema 2 `upgrade` 尚未完成。项目 `uninstall`、`diff`、工作流命令扩张与三方合并引擎继续冻结。Skill 仍承担项目语义和人工 Gate。
+已独立验证并发布的 CLI v0 只承担检查和只读规划，`init/adopt` 必须带 `--dry-run`，所有项目写入 fail-closed。Phase 0–2 已形成本地基线 `b062f25`：Wave 1 `init/adopt`、manifest schema 2、Confirmed STACK 漂移检查和 marketplace plugin 均完成沙箱验证，Wave 1 另有 BuildBeat canonical 真实目录与 Gate3 证据。当前未发布 checkout 又实现了 WP3.1 schema 2 机械 `upgrade` 并通过 disposable Git 沙箱矩阵；bundle 仍为 `v1.16`，所以真实旧版本到新 bundle 的独立升级试点尚未发生。项目 `uninstall`、`diff`、工作流命令扩张与三方合并引擎继续冻结。Skill 仍承担项目语义和人工 Gate。
 
 ### 3.3 主要缺口
 
 | 缺口 | 影响 |
 |---|---|
-| 执行中同步主要依赖人工纪律 | NOW、看板、status、contracts 和 evidence 容易彼此过期 |
-| “完成”与证据之间约束不够强 | 工作状态可能先变绿，证据稍后补或不补 |
-| Bootstrap/Adopt 的 CLI 写能力不完整 | 语义分析较强，但落盘、预览、冲突处理仍不统一 |
-| 缺少项目级工程规范入口 | AI 会话需要重复推断技术栈、代码、安全和 Review 标准 |
-| Gate 对不同项目类型不够灵活 | 无 UI 或无部署项目只能跳过，缺少明确的 `N/A` 语义 |
-| 架构决策与普通拍板混在一起 | 长期决策不易索引、替代和追踪后果 |
-| Skill 与 CLI 的兼容契约未形式化 | CLI 变强后存在反向削弱 Skill 的风险 |
+| Gate 与证据仍只做基础关联 | `passed` 的决策引用和 evidence 归档位置可能存在但不够精确，UI 项目也可能错误标 Gate2 `n/a` |
+| 多仓漂移诊断尚未闭环 | 子仓 CHANGELOG、契约版本和部署基线仍可能各自演进而缺少统一定位报告 |
+| 机械升级缺真实版本增量证据 | 当前 bundle 与真实 schema 2 安装同为 `v1.16`，沙箱矩阵不能外推为真实升级试点或发布就绪 |
+| 扫描边界报告仍可加强 | 大目录、符号链接和权限不足虽然不冒充绿灯，但处置说明还不够集中 |
+| 外部分发仍是旧 namespace | npm/GitHub 远端名、稳定版本序列和 registry 回读尚未完成 BuildBeat 发布收口 |
 
 ---
 
@@ -696,6 +694,8 @@ CLI 侧：
 
 **目标**：在 Wave 1 的 schema 2 基线上补齐有边界的机械升级，并完善多仓和 Gate 检查，不扩张工作流命令面。
 
+当前进度：WP3.1 源码与 disposable Git 沙箱候选已完成；WP3.2 Gate/证据强关联是下一实现项。真实版本增量 upgrade 试点保留为发布前独立证据闸。
+
 交付：
 
 - schema 2 `upgrade`：baseline hash 未变才替换，本地改写则报冲突；`--force` 也不触碰 project-owned；
@@ -742,6 +742,7 @@ CLI 侧：
 | `src/constants.js` | 新文件路径、所有权策略和生命周期规则 |
 | `src/project.js` | standards/ADR/Gate/多仓事实扫描与安全边界 |
 | `src/planner.js` | 从只读计划逐步演进为可执行变更计划 |
+| `src/upgrader.js` | schema 2 机械升级计划、所有权/version/Git 门控、原子事务与回滚 |
 | `src/doctor.js` | 新 finding code、结构与漂移诊断 |
 | `src/cli.js` | 有界的 init/adopt 写入与 upgrade 编排 |
 | `.buildbeat/manifest.json` | 仅作为机械升级基线与手动移除盘点 |

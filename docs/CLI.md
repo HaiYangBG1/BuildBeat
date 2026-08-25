@@ -1,8 +1,8 @@
 # BuildBeat CLI lifecycle contract
 
-Status: **current published CLI v0 remains read-only in the independently verified npm distribution** · product name `BuildBeat` · legacy npm package/version field `solobaton@1.16.3` · latest independently verified npm distribution `solobaton@1.16.3` · Node.js 20+ · zero third-party runtime dependencies. The uncommitted/unpublished source worktree contains the WP2.4 Wave 1 write path and BuildBeat namespace migration. Old-name WP2.7 pilots remain historical evidence; the fresh WP2.8 BuildBeat canonical real-directory candidate passed Gate3 and WP2.8 is closed. The user explicitly withheld source-commit authority; tags, releases, publishing, remote rename, and a future scoped package decision also remain unapproved. Mechanical upgrade remains a v1.20 target.
+Status: **current published CLI v0 remains read-only in the independently verified npm distribution** · product name `BuildBeat` · legacy npm package/version field `solobaton@1.16.3` · latest independently verified npm distribution `solobaton@1.16.3` · Node.js 20+ · zero third-party runtime dependencies. Phase 0–2 now have the local source baseline commit `b062f25`; it has not been pushed or published. The current checkout additionally contains the WP3.1 mechanical-upgrade source candidate and disposable Git-sandbox regressions. It has no independent real-project upgrade pilot yet, because the bundled scaffold is still `v1.16` and genuine Phase 2 schema 2 installs are already `v1.16`. Tags, releases, publishing, remote rename, and a future scoped-package decision remain unapproved.
 
-The CLI does not replace `SKILL.md`. The Skill owns code-aware reasoning, minimal questions, project semantics, and human Gates. The CLI owns deterministic inspection, scaffold mechanics, manifest/hash bookkeeping, and—only after its milestone is implemented—bounded mechanical upgrade. Synchronous file-bus checks remain authoritative in the project-local scripts specified by [`CHECKS.md`](CHECKS.md).
+The CLI does not replace `SKILL.md`. The Skill owns code-aware reasoning, minimal questions, project semantics, and human Gates. The CLI owns deterministic inspection, scaffold mechanics, manifest/hash bookkeeping, and bounded mechanical upgrade in the current source candidate. Synchronous file-bus checks remain authoritative in the project-local scripts specified by [`CHECKS.md`](CHECKS.md).
 
 ## Command boundary and phased availability
 
@@ -30,16 +30,21 @@ The current source candidate is evaluated separately from that registry evidence
 node bin/buildbeat.js init /path/to/project --dry-run --json
 node bin/buildbeat.js init /path/to/project             # plan + interactive confirmation
 node bin/buildbeat.js adopt /path/to/project --yes      # non-interactive only after plan approval
+node bin/buildbeat.js upgrade /path/to/project --dry-run --json
+node bin/buildbeat.js upgrade /path/to/project          # apply only when the complete plan is ready
 ```
 
-In this source candidate, `init/adopt` apply the bounded Wave 1 transaction specified below. `--yes` skips only the prompt; `--dry-run --yes` is invalid. If no interactive terminal is available, an apply call without `--yes` returns `confirmation_required` and performs zero writes. JSON apply keeps the machine result on stdout and prints the pre-write human plan on stderr. These commands now have bounded local BuildBeat real-directory, Git, hook, evidence-commit, and Gate3 closure recorded in [`PHASE2-BUILDBEAT-PILOT-2026-08-25.md`](PHASE2-BUILDBEAT-PILOT-2026-08-25.md); that remains local work-package evidence, not source-commit, npm-distribution, or release evidence.
+In this source candidate, `init/adopt` apply the bounded Wave 1 transaction specified below. `--yes` skips only the prompt; `--dry-run --yes` is invalid. If no interactive terminal is available, an apply call without `--yes` returns `confirmation_required` and performs zero writes. `upgrade` follows the separate Wave 2 contract below: `--dry-run` emits the full mechanical plan, while an invocation without `--dry-run` writes only when every prerequisite and ownership check is ready. It has no `--yes`; naming the write command is the explicit apply request, and `--force`/`--major` acknowledge only their documented narrow boundaries. JSON apply keeps the machine result on stdout and prints the pre-write human plan on stderr.
+
+Wave 1 now has bounded local BuildBeat real-directory, Git, hook, evidence-commit, and Gate3 closure recorded in [`PHASE2-BUILDBEAT-PILOT-2026-08-25.md`](PHASE2-BUILDBEAT-PILOT-2026-08-25.md). Wave 2 currently has disposable Git-sandbox evidence only. Neither is npm-distribution or release evidence.
 
 The target command whitelist is intentionally small:
 
 | Milestone | Enabled main commands | Boundary |
 |---|---|---|
 | current v0 through Phase 2-A | `doctor`, `init --dry-run`, `adopt --dry-run`, `version` | read-only; optional template libraries do not change the write boundary |
-| current WP2.4/WP2.7 source candidate | `doctor`, `init`, `adopt`, `version` | Wave 1 writes implemented, sandbox-tested, and locally piloted through Git/Hook/evidence closure; source commit and release remain open |
+| local Phase 0–2 baseline `b062f25` | `doctor`, `init`, `adopt`, `version` | Wave 1 writes implemented, sandbox-tested, locally piloted, and committed locally; not pushed or released |
+| current WP3.1 source candidate | `doctor`, `init`, `adopt`, `upgrade`, `version` | Wave 2 mechanical upgrade implemented and sandbox-tested; no genuine newer-scaffold real-project pilot, push, or release |
 | v1.19 target, after Wave 1 acceptance | `doctor`, `init`, `adopt`, `version` | `init/adopt` may write; dry-run remains available |
 | v1.20 target, after Wave 2 acceptance | `doctor`, `init`, `adopt`, `upgrade`, `version` | `upgrade` is mechanical and schema-2-only |
 
@@ -166,7 +171,7 @@ Schema 2 integration rules:
 3. `baselineSha256` covers the exact UTF-8 fragment bytes from the first byte of `beginMarker` through the final line ending after `endMarker`. A changed fragment is a conflict; `--force` may replace only that fragment, never the rest of `.gitignore`.
 4. The manifest is written last. If it is absent after an interrupted write, later commands classify the target as partial/mixed and refuse to infer ownership.
 
-## Scaffold write transaction (Wave 1 source candidate)
+## Scaffold write transaction (Wave 1 local source baseline)
 
 A write-capable `init` or `adopt` must:
 
@@ -187,9 +192,11 @@ In-process rollback is mandatory. On any failure before manifest completion, rem
 
 No command may initialize Git, add a remote, commit, push, install a package globally, or cross a human Gate without separate explicit authority.
 
-## Mechanical upgrade and manual removal
+## Mechanical upgrade source candidate and manual removal
 
-Wave 2 targets `buildbeat upgrade [path] [--dry-run] [--json] [--force] [--major]`; the old executable remains only a compatibility alias. It is available only for a valid schema 2 manifest and a clean target-root Git worktree. Schema 1, a missing manifest, an invalid manifest, or a mixed/partial installation is blocked; the CLI reports the manual migration or explicitly confirmed re-baselining path instead of inferring ownership.
+The current source candidate implements `buildbeat upgrade [path] [--dry-run] [--json] [--force] [--major]`; the old executable remains only a compatibility alias. It is available only for one canonical BuildBeat installation, a valid canonical schema 2 manifest, and a clean target-root Git worktree. Schema 1, a missing/invalid/legacy manifest, a legacy marker namespace, or a mixed/partial installation is blocked; the CLI reports the manual migration or explicitly confirmed re-baselining path instead of inferring ownership.
+
+The JSON plan contains only bounded metadata: version-gate state, paths, policies, actions, SHA-256 values, blockers, warnings, and conflict eligibility/resolution. It never returns template or project file contents. Any unresolved conflict keeps apply mode at zero writes. A ready apply rechecks every expected hash or absence before mutation, prints the plan, updates the manifest last, and performs in-process byte/mode rollback on failure.
 
 Version gates compare `manifest.scaffoldVersion` with the bundled `SCAFFOLD_VERSION`:
 
@@ -218,7 +225,7 @@ There is no project `uninstall` engine in the approved command set. `buildbeat u
 
 ## Security and privacy boundary
 
-- Published v0 is read-only. The Wave 1 source candidate performs only the documented local writes, and neither path makes a network request. Wave 1/2 mechanics use only bundled templates and local Git/filesystem facts; package-manager download or publication is outside the project-lifecycle command.
+- Published v0 is read-only. The local Wave 1 baseline and Wave 2 source candidate perform only the documented local writes, and neither path makes a network request. Wave 1/2 mechanics use only bundled templates and local Git/filesystem facts; package-manager download or publication is outside the project-lifecycle command.
 - Project scans stop at four directory levels or 5,000 entries, skip common build/vendor directories, and never follow symlinks.
 - JSON output contains paths, counts, capability/version metadata, finding codes, bounded placeholder tokens, and one bounded project-name candidate from `package.json`, the first README heading, or the directory name. It does not emit arbitrary source contents, dependency values, environment values, or secrets.
 - Command availability and worktree checks execute only fixed `--version` or read-only Git calls with argument arrays and no shell interpolation.

@@ -44,9 +44,9 @@ It inspects the code and configuration first, identifying repositories, deploy u
 
 > Do not apply the new-project template directly to a large existing codebase. Use the **brownfield takeover ritual** in `SKILL.md` §8.5: survey the system, draw the old/new boundary, establish minimum verification, and use the compact `pm/scripts/` layout so BuildBeat does not collide with the project's own `scripts/` directory.
 
-### Claude Code plugin: source candidate
+### Claude Code plugin: local source candidate
 
-This repository now contains a standalone Claude Code marketplace package. Once installed, `/buildbeat:buildbeat` routes to the same canonical [`SKILL.md`](SKILL.md). The current uncommitted candidate can be exercised from a local checkout in isolation:
+This repository now contains a standalone Claude Code marketplace package. Once installed, `/buildbeat:buildbeat` routes to the same canonical [`SKILL.md`](SKILL.md). The current local source candidate can be exercised from a checkout in isolation:
 
 ```text
 /plugin marketplace add /absolute/path/to/solobaton
@@ -56,7 +56,7 @@ This repository now contains a standalone Claude Code marketplace package. Once 
 
 After the candidate reaches the GitHub default branch, the first line still uses the current repository address, `/plugin marketplace add HaiYangBG1/solobaton`; renaming the remote repository is a separate external action. The plugin carries the Skill, templates, example, and reference documentation without exposing the npm CLI's top-level `bin/` to Claude Code. Project writes remain bounded by the current CLI distribution state, its confirmation screen, and human Gates. See [`plugins/buildbeat/README.md`](plugins/buildbeat/README.md) for the packaging boundary.
 
-### CLI v0: distributed through npm, still read-only for projects
+### CLI: npm v0 remains read-only; the local source candidate is in Wave 2
 
 v1.16 adds a zero-third-party-runtime-dependency CLI for Node.js 20+. Starting with `solobaton@1.16.1`, the CLI is formally distributed through npm. That package name is BuildBeat's legacy distribution ID: the unscoped `buildbeat` name is already owned by another project, so this repository will not claim it. Published-v0 examples continue to use `solobaton@latest` rather than pretending that the unpublished BuildBeat command is already available:
 
@@ -78,9 +78,9 @@ npm uninstall --global solobaton       # remove the global CLI
 
 These install, update, and removal commands manage only the **legacy CLI package and its `solobaton` executable**. They never create, upgrade, or delete a project's collaboration scaffold. `doctor` checks an existing scaffold's layout, version, critical files, placeholders, hook, and dependency degradation. `init/adopt --dry-run` plan the default or compact layout. Omitting `--dry-run` is explicitly rejected without creating any file, and `solobaton upgrade/uninstall` remain disabled. The source candidate's canonical command is `buildbeat doctor`, with local entry point `node bin/buildbeat.js ...`; `bin/solobaton.js` remains only as a compatibility alias. See [`docs/CLI.md`](docs/CLI.md) for the complete contract.
 
-The current **uncommitted and unpublished source candidate** now implements bounded Wave 1 writes for `init/adopt`: inspect with `--dry-run`, then confirm interactively; a non-interactive caller must explicitly pass `--yes`. It renders only deterministic project name, date, scaffold version, and layout values. The remaining semantic placeholders must still be completed through `SKILL.md` §8/§8.5. In addition to disposable-sandbox regressions, both the WP2.7 legacy namespace and the WP2.8 BuildBeat canonical namespace have completed init/adopt/Skill-only pilots with local Git, canonical hooks, and local-only evidence commits. The user confirmed Gate3 and closed WP2.8; the three BuildBeat targets are clean and have no remotes. This does not authorize a source commit or release. The independently verified npm `@latest` is still read-only v0.
+Phases 0–2 now have a local source baseline commit, `b062f25`, which has not been pushed or released. In addition to bounded Wave 1 `init/adopt` writes, the current checkout implements WP3.1's schema-2-only mechanical `upgrade`: within one major version it uses manifest hashes to replace unchanged managed files, any unresolved conflict keeps the transaction at zero writes, `--force` still cannot overwrite project-owned content or unsafe paths, and a major transition separately requires `--major`. This implementation has passed disposable Git-sandbox regressions, but it has not completed an independent real-project pilot and is not in npm. The earlier WP2.7 legacy and WP2.8 BuildBeat canonical pilots remain evidence only for their respective local boundaries.
 
-> The write-enabled first-screen command `npx --yes --package=solobaton@latest buildbeat init my-project` is deliberately not presented as an active entry point yet. WP2.8 is closed, but a source-candidate commit, explicit release authorization, and official-registry readback are still required.
+> The write-enabled first-screen command `npx --yes --package=solobaton@latest buildbeat init my-project` is deliberately not presented as an active entry point yet. A stable candidate must still reach the remote default branch, receive explicit release authorization, and pass official-registry readback.
 
 ### Manual installation
 
@@ -232,7 +232,7 @@ The compact brownfield layout moves the scripts, operator card, and version mark
 | Production-config drift | `jq`, a SHA tool, project `live-config.sh` | Explicitly skipped; no production-state conclusion |
 | Live-version query | project `live-status.sh` and platform CLI | Explicitly unconfigured; documentation is not treated as live truth |
 | L3 test evidence | real `SUITES` in project `verify-status.sh` | Reports unconfigured; cannot claim automation is green |
-| CLI inspection/scaffolding | Node.js 20+, the npm registry, or this source checkout | Published v0 is read-only; the WP2.8 BuildBeat canonical real-directory and Gate3 closure are complete, but the source remains uncommitted by user request and unpublished; upgrade/uninstall remain unavailable, and the Skill/manual equivalent stays supported |
+| CLI inspection/scaffolding/mechanical upgrade | Node.js 20+, the npm registry, or this source checkout | Published npm v0 remains read-only; the local source implements Wave 1 writes and WP3.1 schema 2 mechanical upgrade, but upgrade has no independent real-project pilot and is unpushed/unreleased; project uninstall remains frozen, and the Skill/manual equivalent stays supported |
 
 ## Continue reading
 

@@ -42,9 +42,9 @@ BuildBeat 把这些问题收敛成四个支柱：
 
 > 已经存在大量代码的项目不要直接套新项目模板。使用 `SKILL.md` §8.5 的**存量接管仪式**：先摸底、划新旧边界、补最小验证能力，再采用 `pm/scripts/` 紧凑布局，避免撞上原项目自己的 `scripts/`。
 
-### Claude Code 插件：源码候选
+### Claude Code 插件：本地源码候选
 
-本仓现在提供独立的 Claude Code marketplace 包，安装后以 `/buildbeat:buildbeat` 路由同一份 canonical [`SKILL.md`](SKILL.md)。当前未提交候选可从本地 checkout 隔离试用：
+本仓现在提供独立的 Claude Code marketplace 包，安装后以 `/buildbeat:buildbeat` 路由同一份 canonical [`SKILL.md`](SKILL.md)。当前本地源码候选可从 checkout 隔离试用：
 
 ```text
 /plugin marketplace add /absolute/path/to/solobaton
@@ -54,7 +54,7 @@ BuildBeat 把这些问题收敛成四个支柱：
 
 候选合并到 GitHub 默认分支后，第一条仍使用当前仓库地址 `/plugin marketplace add HaiYangBG1/solobaton`；远端仓库改名是独立外部动作。插件只携带 Skill、模板、示例和参考文档，不把 npm CLI 的顶层 `bin/` 暴露进 Claude Code；是否对项目执行写入仍受当前 CLI 发布状态、确认屏和人工 Gate 约束。完整打包边界见 [`plugins/buildbeat/README.md`](plugins/buildbeat/README.md)。
 
-### CLI v0：旧 npm 包继续分发，项目仍只读
+### CLI：npm v0 仍只读，本地源码候选进入 Wave 2
 
 v1.16 新增零第三方运行时依赖的 Node.js 20+ CLI；从 `solobaton@1.16.1` 起通过 npm 正式分发。该 npm 包名是 BuildBeat 的 legacy distribution ID：未加 scope 的 `buildbeat` 已被其他项目占用，本仓不会冒用。面向已发布 v0 的执行示例继续使用 `solobaton@latest`，避免把尚未发布的 BuildBeat 命令写成可用事实：
 
@@ -76,9 +76,9 @@ npm uninstall --global solobaton       # 移除全局 CLI
 
 这里的安装、更新、移除只管理 **legacy CLI 包和 `solobaton` 可执行文件**，不会创建、升级或删除项目里的协作骨架。`doctor` 检查已有骨架的布局、版本、关键文件、占位符、Hook 与依赖降级；`init/adopt --dry-run` 分别规划默认/紧凑布局。省略 `--dry-run` 会明确拒绝且不创建任何文件，`solobaton upgrade/uninstall` 仍未开放。当前源码候选的 canonical 命令是 `buildbeat doctor`，本地入口为 `node bin/buildbeat.js ...`；`bin/solobaton.js` 只保留为兼容别名。完整契约见 [`docs/CLI.md`](docs/CLI.md)。
 
-当前**未提交、未发布的源码候选**已完成 Wave 1 `init/adopt` 受控写入：先用 `--dry-run` 审计划，随后交互确认；非交互调用须显式 `--yes`。它只填项目名、日期、骨架版本、布局等确定项，剩余语义占位符必须继续按 `SKILL.md` §8/§8.5 渲染。除一次性沙箱回归外，WP2.7 legacy namespace 与 WP2.8 BuildBeat canonical namespace 均已在用户点名或授权的新隔离目录完成 init/adopt/Skill-only、Git、规范 Hook 与仅本地 evidence commits；用户已确认 Gate3 并关闭 WP2.8，三套 BuildBeat 目标均 clean、无 remote。这不改变 npm `@latest` 仍是只读 v0，也不授权上游源码提交或发布。
+Phase 0–2 已形成本地源仓基线提交 `b062f25`，但未推送、未发布。当前 checkout 在 Wave 1 `init/adopt` 受控写入之外，又实现了 WP3.1 的 schema-2-only 机械 `upgrade`：同 major 按 manifest/hash 替换未改的 managed 文件，冲突默认零写，`--force` 也永不覆盖 project-owned 内容或不安全路径；跨 major 另需 `--major`。该升级实现已通过一次性 Git 沙箱回归，尚未完成独立真实项目试点，也未进入 npm。WP2.7 legacy namespace 与 WP2.8 BuildBeat canonical namespace 的既有试点仍只证明各自当时的本地边界。
 
-> 因此，写入式首屏命令 `npx --yes --package=solobaton@latest buildbeat init my-project` 目前刻意不作为可用入口展示；WP2.8 已关闭，但仍须源仓候选提交、发布授权与官方 registry 回读后才会激活。
+> 因此，写入式首屏命令 `npx --yes --package=solobaton@latest buildbeat init my-project` 目前刻意不作为可用入口展示；仍须稳定候选进入远端默认分支、获得发布授权并完成官方 registry 回读后才会激活。
 
 ### 手动安装
 
@@ -230,7 +230,7 @@ flowchart LR
 | 生产配置漂移 | `jq`、SHA 工具、项目 `live-config.sh` | 明确跳过，不能外推生产状态 |
 | 线上版本查询 | 项目 `live-status.sh` 和平台 CLI | 明确未配置，不引用文档版本冒充线上事实 |
 | L3 测试证据 | 项目填写 `verify-status.sh` 的 `SUITES` | 只能报告未配置，不能声称自动化测试已绿 |
-| CLI 检查/脚手架 | Node.js 20+、npm registry 或本仓库源码 | npm 已发布 v0 只读；WP2.8 BuildBeat canonical 真实目录与 Gate3 已闭环，但上游源码仍按用户要求不提交、未发布；升级/卸载仍不可用，始终保留 Skill/手动等价路径 |
+| CLI 检查/脚手架/机械升级 | Node.js 20+、npm registry 或本仓库源码 | npm 已发布 v0 仍只读；本地源码已实现 Wave 1 写入和 WP3.1 schema 2 机械升级，但升级尚无独立真实项目试点、未推送、未发布；项目 uninstall 继续冻结，Skill/手动等价路径始终保留 |
 
 ## 继续阅读
 

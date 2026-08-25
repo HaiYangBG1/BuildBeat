@@ -54,6 +54,7 @@ CRITICAL_CLI_FILES = (
     "src/doctor.js",
     "src/planner.js",
     "src/project.js",
+    "src/upgrader.js",
     "src/writer.js",
     "tests/cli.test.js",
     "tests/publish-workflow.test.js",
@@ -233,7 +234,7 @@ def check_readme_shape() -> list[str]:
         ("面向人和 AI 会话", "for humans and AI sessions"),
         ("端到端工作包", "End-to-end work packages"),
         ("不是人类岗位接力", "not mandatory human-role handoffs"),
-        ("Claude Code 插件：源码候选", "Claude Code plugin: source candidate"),
+        ("Claude Code 插件：本地源码候选", "Claude Code plugin: local source candidate"),
         (
             "/plugin install buildbeat@buildbeat-plugins",
             "/plugin install buildbeat@buildbeat-plugins",
@@ -582,7 +583,7 @@ def check_execution_contracts() -> list[str]:
             "`git.not_initialized`",
         ),
         "docs/CHECKS.md": (
-            "Status: **Phase 2-B WP2.5 implementation candidate**",
+            "Status: **Phase 2-B WP2.5 implementation baseline**",
             "INV-1",
             "INV-8",
             "`confirmed`",
@@ -712,8 +713,17 @@ def check_execution_contracts() -> list[str]:
         ),
         "src/cli.js": (
             'token === "--yes"',
+            'token === "--force"',
             "applyScaffold(plan, { now })",
+            "applyUpgrade(plan, { now })",
             'code: "confirmation_required"',
+        ),
+        "src/upgrader.js": (
+            "export function buildUpgradePlan",
+            "export function applyUpgrade",
+            "function preflightExpectations",
+            "function rollback",
+            'command: "upgrade"',
         ),
         "src/writer.js": (
             "function atomicWrite",

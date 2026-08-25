@@ -1,6 +1,6 @@
 # BuildBeat file-bus check specification
 
-Status: **Phase 2-B WP2.5 implementation candidate** · normative bus-check schema: `1` · current BuildBeat worktree remains an uncommitted/unpublished candidate carried by the legacy `solobaton@1.16.3` package metadata, not a v1.18/v1.19 release claim. CLI output/manifest schema 2 is specified separately in [`CLI.md`](CLI.md); it does not change this bus-check schema.
+Status: **Phase 2-B WP2.5 implementation baseline** · normative bus-check schema: `1` · Phase 0–2 are committed locally in `b062f25`, while the current source checkout and legacy `solobaton@1.16.3` package metadata remain unpushed/unpublished and make no v1.18/v1.19/v1.20 release claim. CLI output/manifest schema 2 and the WP3.1 mechanical-upgrade candidate are specified separately in [`CLI.md`](CLI.md); neither changes this bus-check schema.
 
 This document is the single semantic source for `templates/scripts/bus-check.sh` and the same-directory scripts it orchestrates. It defines what a result means, not merely how output is colored. `SKILL.md`, board templates, fixtures, and script tests must use the same tokens and finding codes.
 
