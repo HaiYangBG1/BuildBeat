@@ -181,15 +181,14 @@ contracts / decisions / status / evidence
 
 ### 3.2 当前 CLI 状态
 
-legacy `solobaton@1.16.3` CLI v0 只承担检查和只读规划，`init/adopt` 必须带 `--dry-run`，所有项目写入 fail-closed。当前 scoped BuildBeat 候选已将 Phase 0–3 合并为 package `@haiyangbg/buildbeat@1.20.0` / bundle `v1.20`：Wave 1 `init/adopt`、schema 2、Confirmed STACK、机械 `upgrade`、Gate/证据强关联、多仓 join、扫描边界和 marketplace plugin 均已完成源码/沙箱回归；Wave 1 有 BuildBeat canonical 真实目录与 Gate3 证据，Wave 2 又完成真实 schema 2 `v1.16 → v1.20` 升级。真实多仓只读刷新能精确区分业务仓断链与未验证范围。scoped registry artifact、provenance 与仓库改名仍属于外部分发执行，不因源码/项目试点自动成立。项目 `uninstall`、`diff`、工作流命令扩张与三方合并引擎继续冻结。Skill 仍承担项目语义和人工 Gate。
+legacy `solobaton@1.16.3` CLI v0 只承担检查和只读规划，`init/adopt` 必须带 `--dry-run`，所有项目写入 fail-closed；该分发 ID 已 deprecate 但未 unpublish。Canonical `@haiyangbg/buildbeat@1.20.0` / bundle `v1.20` 已通过 Trusted Publishing 独立发布验证：Wave 1 `init/adopt`、schema 2、Confirmed STACK、机械 `upgrade`、Gate/证据强关联、多仓 join、扫描边界和 marketplace plugin 已完成源码/沙箱回归，Wave 1 有 BuildBeat canonical 真实目录与 Gate3 证据，Wave 2 完成真实 schema 2 `v1.16 → v1.20` 升级；registry exact artifact、provenance、签名、隔离安装与 Release 另由 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md) 闭合。项目 `uninstall`、`diff`、工作流命令扩张与三方合并引擎继续冻结。Skill 仍承担项目语义和人工 Gate。
 
 ### 3.3 主要缺口
 
 | 缺口 | 影响 |
 |---|---|
-| scoped artifact 尚未发布回读 | 源码和真实项目试点不等于 registry artifact；Trusted Publisher、provenance、签名、integrity 与隔离安装必须独立验证 |
 | 真实业务仓仍可有自身冲突 | 多仓刷新已完成，但目标仓存在真实 `lessons.md` 断链、未登记 map 和未升级适配器；检查器必须保持 blocked/unverified，不能替业务仓修事实 |
-| 外部分发迁移执行中 | GitHub 改名、push、受保护 tag、Release、legacy deprecation 与旧 URL 重定向须逐项完成和回读 |
+| 发布远端是可变状态 | 首次 scoped 发布已闭合，但 GitHub ruleset/Environment、Trusted Publisher、publishing access、dist-tags 和版本占用仍须每次发布前重查 |
 
 ---
 
@@ -558,7 +557,7 @@ buildbeat upgrade
 buildbeat version
 ```
 
-`diff` / `uninstall` 只保留不可用名并明确返回 `command_not_available`；`check/status/gate/adr/standards` 属 Skill 与项目脚本边界，不加入 CLI。已发布 v0 仅开放 `doctor`、`init/adopt --dry-run` 和 `version`；未发布 WP2.4–WP2.6 源码候选已实现 `init/adopt` 受控写入、脚本侧 STACK 漂移检查与 Claude plugin marketplace 打包，但只有完成真实项目试点、发布门禁与 registry 回读后才能宣称 npm 写能力可用。
+`diff` / `uninstall` 只保留不可用名并明确返回 `command_not_available`；`check/status/gate/adr/standards` 属 Skill 与项目脚本边界，不加入 CLI。legacy v0 仅开放 `doctor`、`init/adopt --dry-run` 和 `version`；WP2.4–WP2.6 当时形成的源码候选已在后续 `@haiyangbg/buildbeat@1.20.0` 中通过真实项目试点、发布门禁与 registry/供应链回读，因此 scoped npm 写能力可用，legacy 包能力不变。
 
 ### 10.3 CLI 智能边界
 
@@ -692,7 +691,7 @@ CLI 侧：
 
 **目标**：在 Wave 1 的 schema 2 基线上补齐有边界的机械升级，并完善多仓和 Gate 检查，不扩张工作流命令面。
 
-当前进度：WP3.1–WP3.4 的机械 upgrade、Gate/证据强关联、多仓漂移与扫描边界报告源码及 disposable Git 沙箱候选已完成；真实 schema 2 `v1.16 → v1.20` upgrade 和真实四子仓只读刷新也已归档。WP4.1–WP4.2 的示例/迁移、能力矩阵、双语终校与硬门槛归档已完成；WP4.3 已决定 scoped package + 新仓库名并进入外部分发执行。
+当前进度：WP3.1–WP3.4 的机械 upgrade、Gate/证据强关联、多仓漂移与扫描边界报告源码及 disposable Git 沙箱候选已完成；真实 schema 2 `v1.16 → v1.20` upgrade 和真实四子仓只读刷新也已归档。WP4.1–WP4.2 的示例/迁移、能力矩阵、双语终校与硬门槛归档已完成；WP4.3 scoped package、新仓库名与 `1.20.0` 外部分发已关闭。
 
 交付：
 
@@ -719,9 +718,9 @@ CLI 侧：
 - 兼容性声明；
 - 完成 BuildBeat 外部分发标识决策：继续沿用 legacy `solobaton` 包/仓库地址，或另行批准 scoped package 与远端改名。
 
-品牌名与外部分发标识均已在 2026-08-25 拍板：`@haiyangbg/buildbeat` + `HaiYangBG1/BuildBeat`。远端仓库、npm 包和发布动作不由本地改名自动成立，仍按独立回读确认。
+品牌名与外部分发标识均已在 2026-08-25 拍板并执行：`@haiyangbg/buildbeat` + `HaiYangBG1/BuildBeat`。远端仓库、npm 包和发布动作已按独立读回关闭；这不改变未来版本仍须重新核验可变远端的要求。
 
-当前进度：WP4.1 已补齐 schema 2 教学 manifest 与 legacy 指南；WP4.2 已完成能力矩阵、双语终校、双向互操作回归与§15 归档；真实升级和多仓刷新已补证。WP4.3 的 package/repository/版本序列决策已完成，当前执行远端改名、Trusted Publishing 和 scoped `1.20.0` 首发回读。
+当前进度：WP4.1 已补齐 schema 2 教学 manifest 与 legacy 指南；WP4.2 已完成能力矩阵、双语终校、双向互操作回归与§15 归档；真实升级和多仓刷新已补证。WP4.3 已完成远端改名、Trusted Publishing、scoped `1.20.0` 首发、供应链/安装回读、GitHub Release 与 legacy deprecation。
 
 ---
 
@@ -813,7 +812,7 @@ CLI 侧：
 11. 真实项目试点通过，而不仅是模板测试通过；
 12. README、SKILL、AGENTS、示例和 CLI 帮助不存在相互矛盾的定位。
 
-2026-08-25 的逐条归档见 [`PHASE4-STABILITY-AUDIT-2026-08-25.md`](PHASE4-STABILITY-AUDIT-2026-08-25.md)，真实试点补证见 [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md)。当前 12/12 达到源码/真实试点候选口径；这仍不宣称新版协议已稳定发布或写入式 CLI 已在 npm 可用，必须等 scoped registry artifact 和外部分发链独立回读。
+2026-08-25 的逐条归档见 [`PHASE4-STABILITY-AUDIT-2026-08-25.md`](PHASE4-STABILITY-AUDIT-2026-08-25.md)，真实试点补证见 [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md)，外部分发关闭见 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。12/12 源码/真实试点口径与 scoped registry/供应链证据均已闭合，但仍不替业务项目批准 Gate 或外推生产状态。
 
 ---
 
@@ -839,12 +838,12 @@ CLI 侧：
 - 技术雷达产品化；
 - 远程服务或云端协作。
 
-### 16.3 尚未拍板
+### 16.3 已拍板并执行
 
-- legacy npm 包 `solobaton` 是长期兼容分发 ID，还是迁移到新的 scoped package；
-- 当前 GitHub 仓库何时改名，以及重定向、文档和 Trusted Publishing 如何迁移。
+- legacy npm 包 `solobaton` 保留为已 deprecate 的只读兼容分发 ID，不 unpublish；canonical 分发迁移到 `@haiyangbg/buildbeat`。
+- GitHub 仓库已改名为 `HaiYangBG1/BuildBeat`；旧 URL 重定向、文档、Trusted Publishing 与 `v1.20.0` 首发已回读。
 
-该事项不阻塞当前路线图。
+后续版本按 [`RELEASING.md`](RELEASING.md) 重新核验可变远端状态。
 
 ---
 
@@ -862,7 +861,7 @@ CLI 侧：
 10. [x] 完成 schema 2 机械升级、多仓增强、真实版本增量 upgrade 和真实多仓只读刷新；项目卸载继续走手册；
 11. [x] 完成 BuildBeat 本地 namespace、能力矩阵、双语文档与硬门槛归档；
 12. [x] 人工决定 WP4.3 外部标识：`@haiyangbg/buildbeat` 与 `HaiYangBG1/BuildBeat`，Phase 0–3 合并首发 `1.20.0`；
-13. [ ] 逐项完成远端改名、push、Trusted Publisher、受保护 tag、npm publish、registry/provenance/签名/隔离安装回读、GitHub Release 与 legacy deprecation。
+13. [x] 完成远端改名、push、Trusted Publisher、受保护 `v1.20.0` tag、OIDC npm publish、registry/provenance/签名/隔离安装回读、GitHub Release 与 legacy deprecation；关闭证据见 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。
 
 ---
 

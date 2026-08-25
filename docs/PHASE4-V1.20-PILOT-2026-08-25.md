@@ -50,3 +50,7 @@
 - 已验证：真实 schema 2 项目从 `v1.16 / 1.16.3` 机械升级到 `v1.20 / 1.20.0`，项目所有权和 Git 边界成立；真实多仓刷新能诚实阻断真实断链并显式暴露未验证范围。
 - 未验证：`@haiyangbg/buildbeat@1.20.0` registry artifact、Trusted Publisher、provenance、签名、隔离安装、GitHub tag/Release 与旧包 deprecation。它们须在外部分发 Gate 中逐项回读。
 - 不可外推：本文不证明任何业务仓 Gate、部署、生产健康或常态流量。
+
+## 后续状态
+
+上述“未验证”是本试点关闭时的证据边界，未被倒改。后续 WP4.3 外部分发已逐项完成并独立读回，见 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md)；发布结果仍不能反向扩大本页对业务仓 Gate、部署或生产状态的结论。

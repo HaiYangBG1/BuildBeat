@@ -6,20 +6,20 @@
 
 ## v1.20.0 — 2026-08-25
 
-> 主题：把 Phase 0–3 合并为 BuildBeat 首个 scoped 正式候选，canonical 分发迁移到 `@haiyangbg/buildbeat` 与 `HaiYangBG1/BuildBeat`；旧 `solobaton` 包冻结为只读兼容入口。
+> 主题：把 Phase 0–3 合并为 BuildBeat 首个 scoped 正式版本，canonical 分发迁移到 `@haiyangbg/buildbeat` 与 `HaiYangBG1/BuildBeat`；旧 `solobaton` 包冻结为只读兼容入口。
 > **拷出项目升级**：真实 schema 2 v1.16 安装可先运行 `buildbeat upgrade --dry-run`，无 blocker 后再机械升级到 v1.20；legacy/无 manifest 项目继续走手工迁移指南。`--force` 不覆盖 project-owned，项目 uninstall 仍不开放。
-> **发布状态**：本条随不可变候选进入 tag；只有官方 registry 的 scoped artifact、SLSA provenance、签名、隔离安装、README 与 GitHub Release 全部回读后，才能补记为已验证发布。
+> **发布状态**：`@haiyangbg/buildbeat@1.20.0` 已通过 GitHub Actions OIDC / Trusted Publishing 发布；官方 registry exact artifact、SLSA provenance、签名、attestation、隔离安装、README 与 GitHub Release 均已独立回读。关闭证据见 [`docs/WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](docs/WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。
 
 - **WP4.3 scoped 分发决策**：用户拍板立即迁移到 `@haiyangbg/buildbeat` 和 `HaiYangBG1/BuildBeat`；不冒用已被占用的 unscoped `buildbeat`。canonical executable 保持 `buildbeat`，`solobaton` 只保留包内兼容别名
 - **版本序列合并**：未对外发布的 v1.17/v1.18/v1.19 不伪造成中间 artifact；当前 Phase 0–3 统一进入 `1.20.0`，scaffold version 从 v1.16 形成真实增量到 v1.20
-- **legacy 包退场策略**：新 scoped artifact 与迁移回读全绿后，`solobaton@*` 只做 deprecation 提示，不 unpublish、不获得写入/upgrade 能力，避免破坏既有只读安装
+- **legacy 包退场完成**：`solobaton@1.16.1`、`1.16.2`、`1.16.3` 已逐版本读回指向 `@haiyangbg/buildbeat` 的 deprecation 提示；未 unpublish，旧包不获得写入/upgrade 能力
 - **Claude plugin 迁移**：仓库入口更新为 `HaiYangBG1/BuildBeat`，插件版本升至 `0.2.0` 以刷新分发缓存；npm CLI `bin/` 仍不进入插件包
 - **真实 v1.20 升级试点**：在专用分支将真实 schema 2 项目从 scaffold `v1.16` / CLI `1.16.3` 升至 `v1.20` / `1.20.0`；默认 dry-run 对四个改写文件零写阻断，force 后人工回灌项目事实，project-owned 零 diff，doctor 0/0、strict exit 0、提交后 dry-run up-to-date，目标仓 clean 且无 remote
 - **真实多仓刷新与兼容修复**：当前检查器在真实四子仓协调层投影中发现 legacy prose 根内 `../` 误判；现只对 scoped prose 允许 realpath 留在根内的 source-relative link，canonical Gate/evidence 仍禁 traversal，根外逃逸回归继续阻断。Shell 回归增至 `222/222`；最终刷新精确保留业务仓真实 `lessons.md` 断链、未登记 map 与适配器/远端/live unverified，不冒充全绿
 - **Linux CI 可移植性**：JSON renderer 的 awk quote 正则改为 BSD awk / mawk 共通写法，避免 Linux stderr warning 污染机器 JSON；同时展开旧式 `A && B || C` Shell 断言并兼容 ShellCheck 0.9/0.11，macOS 与 Ubuntu 共用同一语义
 - **品牌正式定名 BuildBeat**：2026-08-25 用户拍板产品名为 BuildBeat；canonical CLI/Skill/Claude plugin 标识统一为 `buildbeat` / `buildbeat@buildbeat-plugins`，新骨架入口改为 `BUILDBEAT.md`
 - **canonical namespace 迁移**：新写入只生成 `.buildbeat/manifest.json`、BuildBeat `.gitignore` marker 与 `buildbeat-stack-baseline:v1`；doctor/bus-check 继续读取旧 `SOLOBATON.md`、`.solobaton/manifest.json`、marker 与 STACK 基线，双 manifest 或混合安装 fail-closed
-- **legacy 分发兼容**：已发布 npm 包 `solobaton` 保留为 BuildBeat 的 legacy read-only distribution ID，并同时暴露 canonical `buildbeat` 与兼容 `solobaton` executable；未加 scope 的 `buildbeat` 包名已被其他项目占用，用户已批准迁移 scoped package 和新仓库名，远端完成状态仍逐项回读
+- **legacy 分发兼容**：已发布 npm 包 `solobaton` 保留为 BuildBeat 的 legacy read-only distribution ID；新 scoped 包同时暴露 canonical `buildbeat` 与兼容 `solobaton` executable。未加 scope 的 `buildbeat` 包名已被其他项目占用，canonical package/repository 已迁移并完成远端回读
 - **改名证据边界**：WP2.7 三条真实目录试点及其 hash 保持为 legacy namespace 历史证据；WP2.8 已用全新的隔离目录完成 BuildBeat canonical init/adopt/Skill-only 回归，二者不混写、不互相外推
 - **新版方向与执行基线入库**：新增 `docs/ROADMAP.md`、`docs/EXECUTION-PLAN.md` 与官方来源可复核的 CLI 策略对照；产品方向由路线图承载，当前交付范围与依赖顺序由执行计划 v3 承载
 - **CLI 选择性解冻决策**：未来只开放 `init/adopt` 哑脚手架写入与 manifest/hash 驱动的机械 `upgrade`；三方合并、项目 uninstall 引擎、`gate/adr/standards/check` 命令扩张继续冻结，语义渲染和冲突合并归 AI 会话/Skill
@@ -42,7 +42,7 @@
 - **仓库安全基线**：新增 npm/GitHub Actions Dependabot 周检、JavaScript/TypeScript CodeQL、SECURITY/贡献/行为规范、CODEOWNERS、Issue/PR 模板；CI 中第三方 Action 改为不可变完整 commit SHA
 - **发布引用保护**：GitHub 服务端 `Protect release tags` ruleset 覆盖 `refs/tags/v*`，禁止更新和删除已创建的发布 tag，且无绕过角色；发布 runbook 增加回读步骤
 - **CLI v0 真实试点**：使用官方 npm registry 的 `solobaton@1.16.3` 对三个存量项目运行只读 `doctor` 和 `adopt --dry-run`；Git 可见状态前后一致，并正确区分未安装、旧版已安装和部分安装状态
-- **当前能力边界不冒进**：已独立验证的 npm `solobaton@1.16.3` 仍对所有项目写入 fail-closed；scoped `1.20.0` 源码候选已完成真实旧 schema 2 → 新 bundle 试点，但源码/项目证据不替代 registry artifact、provenance、签名、隔离安装与 GitHub Release 回读
+- **真实 scoped 发布验收**：`@haiyangbg/buildbeat@1.20.0` 已由 `v1.20.0@5aaa9e8` 和 workflow run `32826832379` 保全；registry `latest=1.20.0`、exact integrity、SLSA v1 provenance、registry signature、attestation、隔离安装及 GitHub Release 全绿。legacy `solobaton@1.16.3` 仍对所有项目写入 fail-closed
 - **产品扩张边界**：多人账号/权限/组织管理和遥测/效能评分/指标仪表盘明确为当前非目标；CLI 不采集或上传项目使用数据，未来若扩展须独立立项并审查数据口径、隐私和权限治理
 - **不变量与输出合同落地**：`docs/CHECKS.md` 冻结八条文件总线不变量、Gate/证据令牌、五级结论、finding code 命名空间、JSON 外形和严格模式退出语义；`bus-check --format=json` 已由同一 finding 集合渲染，默认人类报告保持 exit 0，strict 只拦 `conflict/error`
 - **Phase 1 执行同步**：`SKILL.md` 与 AGENTS/status 模板固化开工 7 步、执行中 5 守则、收工 7 步；看板模板和教学沙盘新增四行 canonical Gate 状态与完成工作包 `**证据**:` 令牌
@@ -72,7 +72,7 @@
 - **端到端 Builder 模型对齐**：`SKILL.md`、模板、示例和中英 README 统一为“按需求/功能工作包并行，单个 Builder 端到端负责产品判断、实现、测试与交付证据”；产品/全栈/测试保留为 AI 专业视角，不建人类角色接力或团队管理层
 - **Phase 0 回归地基**：新增健康/坏指针项目夹具和 `expected-findings.json` 过渡合同，并增加无 Node、无 CLI manifest 的 Skill-only 脚手架回归；两条 Shell 套件纳入 `prepublishOnly`，但未授权 v1.17 tag、GitHub Release 或 npm 发布
 
-> **拷出项目升级（当前 Unreleased 候选，尚未发布）**：
+> **拷出项目升级（v1.20 已验证发布）**：
 > 1. 若 `scripts/bus-check.sh` 未被项目修改，可整文件替换；紧凑布局替换 `pm/scripts/bus-check.sh`。
 > 2. `verify-status.sh` 属 project-owned：保留现有 `SUITES`，仅人工合并 `--format=machine` 与 L3 新鲜度逻辑，不整文件覆盖。
 > 3. 旧看板人工补 Gate1–Gate4 四行；每个 `✅完成` 工作包补恰好一行 `**证据**:`；NOW/看板的新机器引用改用仓库根相对路径（不用 `../`），并按需把开工/收工核对措辞合入 AGENTS/status 约定。

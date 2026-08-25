@@ -1,8 +1,8 @@
 # Phase 4 / WP4.3 稳定性硬门槛刷新（2026-08-25）
 
 > 审计对象：以本地提交 `1887cf2` 为已保全输入，叠加 scoped `1.20.0` 迁移候选、真实版本增量 upgrade、多仓刷新与根内 legacy link 兼容修复。
-> 证据等级：本地源码/文档静态闭合 + disposable 沙箱 + Wave 1/2 真实 Git 项目 + 真实多仓只读投影。npm/GitHub 身份已做发布前只读预检；本页刷新时尚未执行 push、tag、Release、publish、部署或远端改名。
-> 结论：**12 条已达到源码/真实试点候选口径；外部分发仍未完成，因此不得把本结论写成“已发布”或“scoped npm artifact 已可用”。**
+> 证据等级：本地源码/文档静态闭合 + disposable 沙箱 + Wave 1/2 真实 Git 项目 + 真实多仓只读投影。下表保留发布前审计口径，不倒改当时尚未执行 push、tag、Release、publish 或远端改名的边界；后续外部分发另由 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md) 关闭。
+> 结论：**12 条源码/真实试点候选口径与后续 scoped 外部分发证据均已闭合；两类证据继续分开，不以发布成功外推业务项目 Gate、部署或生产状态。**
 
 ## 逐条审计
 
@@ -21,13 +21,15 @@
 | 11 | `[x]` | 真实项目试点通过，而不仅是模板测试 | [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md)：真实 schema 2 `v1.16 → v1.20` upgrade、project-owned 零 diff、doctor 0/0、项目 strict 0；另对真实四子仓协调层完成只读刷新 | 多仓刷新正确暴露业务仓 `lessons.md` 断链和 map/适配器未验证，不把目标业务仓冒充全绿 |
 | 12 | `[x]` | README、SKILL、AGENTS、示例和 CLI 帮助不存在相互矛盾的定位 | 中英 README 终校；[`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) 三面区分；`check_docs.py` 锁定定位/能力/发布边界 | 远端 npm README 是不可变已发布产物，须在真实发布后独立 registry 回读 |
 
-## 外部分发待办
+## 发布前外部分发清单（后续已关闭）
 
-1. 将候选提交保全，完成 GitHub 仓库改名、remote 更新、push 与默认分支 CI 回读，并确认规则集和 `npm-publish` environment 未因改名丢失。
-2. 为 `@haiyangbg/buildbeat` 建立最小 bootstrap package，再绑定 GitHub Actions Trusted Publisher；bootstrap 不占用 `latest`。
-3. 由受保护 `v1.20.0` tag 驱动 publish，逐项回读 registry version、integrity、provenance attestation、signature、隔离安装/doctor 和 npm README。
-4. 创建 GitHub Release；确认新旧仓库 URL 行为后，对 legacy `solobaton` 加迁移 deprecation，不 unpublish。
+1. [x] 候选提交保全，GitHub 仓库改名、remote 更新、push、默认分支 CI、规则集和 `npm-publish` Environment 回读。
+2. [x] `@haiyangbg/buildbeat` 最小 bootstrap 与 GitHub Actions Trusted Publisher 绑定。
+3. [x] 受保护 `v1.20.0` tag 驱动 publish，registry version、integrity、provenance attestation、signature、隔离安装与 npm README 回读。
+4. [x] GitHub Release、旧 URL 重定向与 legacy `solobaton` deprecation 回读；未 unpublish。
+
+首包实际出现过 `latest=0.0.0` 的短暂偏差，正式 OIDC 发布后已收敛为 `bootstrap=0.0.0`、`latest=1.20.0`；精确证据和处理边界见外部分发关闭文档。
 
 ## WP4.3 当前口径
 
-WP4.2 已关闭；真实升级和多仓刷新又关闭了第 11 条源码/试点证据缺口。用户已批准 scoped package + 新仓库名迁移，但只有完成上节每项远端回读后，才能关闭 WP4.3 并宣称 `@haiyangbg/buildbeat@1.20.0` 已发布。
+WP4.2、真实升级、多仓刷新和 WP4.3 外部分发均已关闭。`@haiyangbg/buildbeat@1.20.0` 可称为已独立验证发布；该结论仅覆盖 BuildBeat 分发，不替任何业务项目批准 Gate。

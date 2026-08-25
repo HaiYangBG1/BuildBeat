@@ -3,14 +3,14 @@
 > 文档状态：当前执行基线（本版替代 2026-08-24 早先两版）
 > 基线日期：2026-08-24
 > 上游文档：[`ROADMAP.md`](ROADMAP.md)（下称“演进书”）；竞品调研见 [`CLI-STRATEGY-2026-08.md`](CLI-STRATEGY-2026-08.md)
-> 基线代码：`solobaton@1.16.3`（npm 已发布，Git tag `v1.16.3`）
-> 实施状态（更新于 2026-08-25）：**WP0.1–WP4.2 已完成；WP4.3 已由用户决定迁移到 `@haiyangbg/buildbeat` 与 `HaiYangBG1/BuildBeat`，当前处于外部分发执行中**。Phase 0–3 合并为 `1.20.0`，不伪造未发布的 v1.17/v1.18/v1.19 artifacts；package metadata 与 bundle 已升为 `1.20.0` / `v1.20`。真实 schema 2 `v1.16 → v1.20` 升级试点以 `a136ff6f33d5814d36593f85a3b9ec2f1e223827` 闭合，真实多仓只读刷新及边界见 [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md)。`ROADMAP.md` §15 的 12 条已达到源码/真实试点候选口径；这不等于新仓已改名、源码已 push、tag/Release 已创建或 scoped npm artifact 已发布，外部动作须按 [`RELEASING.md`](RELEASING.md) 逐项回读。
+> 基线代码：`@haiyangbg/buildbeat@1.20.0`（npm 已验证发布，Git tag `v1.20.0`）；legacy `solobaton@1.16.3` 保留并已 deprecate
+> 实施状态（更新于 2026-08-25）：**WP0.1–WP4.3 已完成**。Phase 0–3 合并为 `1.20.0`，未补造 v1.17/v1.18/v1.19 artifacts；canonical package/repository 已迁移为 `@haiyangbg/buildbeat` / `HaiYangBG1/BuildBeat`。真实 schema 2 `v1.16 → v1.20` 升级试点以 `a136ff6f33d5814d36593f85a3b9ec2f1e223827` 闭合；GitHub 改名、push、Trusted Publisher、受保护 tag、OIDC publish、registry/provenance/签名/隔离安装、GitHub Release 与 legacy deprecation 已逐项回读。真实项目边界见 [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md)，外部分发关闭证据见 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。
 >
 > **决策链（2026-08-24）**：
 > ① 先拍板"CLI 全冻结于 v0 只读"；
 > ② 经对 Spec Kit / OpenSpec / BMAD 官方能力的限定范围调研（结论：CLI 分发/更新有明确价值，命令面并不相同；所核对页面未记录三方合并），修订为**选择性解冻**；
 > ③ 最终边界：解冻 **Wave 1（init/adopt 真写入）** 与 **Wave 2（机械 upgrade）**；三方合并、uninstall 引擎、CLI 命令面扩张（gate/adr/standards/check）**继续冻结**。
-> 原待拍板决策 D1（双实现权威）按"bus-check 唯一同步权威"执行；D3（写入事实注入）的"哑脚手架 + AI 渲染"已通过旧名与 BuildBeat canonical 两轮真实目录本地 Git/Hook/hash 验证。WP2.8 Gate3 已确认；WP3.1–WP3.4 源码候选、WP4.1–WP4.2 文档/互操作收口与真实版本增量 upgrade 试点均已完成。WP4.3 的外部分发标识和发布序列已拍板：scoped package + 新仓库名，Phase 0–3 合并为 `1.20.0`；当前只剩远端改名、push、Trusted Publisher、registry/provenance/签名/隔离安装和 GitHub Release 的逐项执行与回读。
+> 原待拍板决策 D1（双实现权威）按"bus-check 唯一同步权威"执行；D3（写入事实注入）的"哑脚手架 + AI 渲染"已通过旧名与 BuildBeat canonical 两轮真实目录本地 Git/Hook/hash 验证。WP2.8 Gate3、WP3.1–WP3.4、WP4.1–WP4.2 与真实版本增量 upgrade 试点均已完成。WP4.3 选择 scoped package + 新仓库名并合并首发 `1.20.0`，现已完成外部分发和独立回读；后续版本仍须重新执行 [`RELEASING.md`](RELEASING.md) 的可变远端检查。
 
 ---
 
@@ -373,7 +373,7 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 |---|---|
 | WP4.1（完成） | `example/` 换新协议全貌（standards + ADR + Gate 四态 + 证据行 + manifest）；legacy 项目迁移指南一页（v1.16 拷出项目 → 新版协议 + 建基线路径） |
 | WP4.2（完成） | 能力矩阵定稿（Skill-only ⟷ CLI 三命令）；双语文档终校；演进书 §15 硬门槛按修订后逐条打勾存档 |
-| WP4.3（执行中） | 迁移到 `@haiyangbg/buildbeat` 与 `HaiYangBG1/BuildBeat`；legacy npm 包只读保留并加迁移提示；独立验收仓库重定向、Trusted Publishing、registry/provenance/签名/隔离安装与 Release |
+| WP4.3（完成） | 已迁移到 `@haiyangbg/buildbeat` 与 `HaiYangBG1/BuildBeat`；legacy npm 包只读保留并加迁移提示；仓库重定向、Trusted Publishing、registry/provenance/签名/隔离安装与 Release 已独立回读 |
 
 ### WP4.1 示例全貌与 legacy 迁移（完成）
 
@@ -393,12 +393,12 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 
 **候选验收**：Node `55/55`、Shell `221/221`、Skill-only + CLI/Skill 双向互操作、Claude plugin `7/7`、109 份 Markdown 契约检查、78 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过。本次未重跑真实项目、未查询 npm/GitHub 可变远端状态，未执行任何外部动作。
 
-### WP4.3 scoped 分发迁移（执行中）
+### WP4.3 scoped 分发迁移（完成）
 
 - 用户已拍板 canonical npm package=`@haiyangbg/buildbeat`、repository=`HaiYangBG1/BuildBeat`；unscoped `buildbeat` 已被其他项目占用，不冒用。
 - 版本序列选择合并 `1.20.0`：Phase 0–3 的真实代码和文档一次交付，不补造从未发布的 v1.17/v1.18/v1.19 artifacts。
 - package/workflow/plugin/docs 已切换 scoped identity；真实 `v1.16 → v1.20` schema 2 upgrade 与真实多仓刷新证据见 [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md)。
-- 外部执行顺序固定为：本地全门禁与候选提交 → GitHub 仓库改名并核规则/环境 → push/CI → scoped 包 bootstrap → 绑定 Trusted Publisher → 受保护 tag 驱动 `1.20.0` publish → registry/provenance/签名/隔离安装回读 → GitHub Release → legacy `solobaton` deprecation。任何一步失败都停在当前证据层，不把后续状态写成完成。
+- 外部执行已按固定顺序完成：本地全门禁与候选提交 → GitHub 仓库改名并核规则/环境 → push/CI → scoped 包 bootstrap → 绑定 Trusted Publisher → 受保护 tag 驱动 `1.20.0` publish → registry/provenance/签名/隔离安装回读 → GitHub Release → legacy `solobaton` deprecation。精确身份和偏差记录见 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。
 
 ---
 
@@ -460,9 +460,9 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 14. [x] **Phase 4 / WP4.1**：`example/` 已补齐四态语法与 schema 2 合成教学 manifest，v1.16 legacy 拷出项目的手工维护/受控建基线路径已集中成指南；未执行发布或真实项目升级。
 15. [x] **Phase 4 / WP4.2**：Skill-only ↔ CLI 三组生命周期入口矩阵、双语终校、双向互操作回归和§15 硬门槛归档已闭合；真实升级补证后 12 条达到源码/试点候选口径。
 16. [x] **Phase 4 / WP4.3 决策**：迁移到 `@haiyangbg/buildbeat` 与 `HaiYangBG1/BuildBeat`，合并首发 `1.20.0`，legacy `solobaton` 保留只读并 deprecate。
-17. [ ] **Phase 4 / WP4.3 外部执行**：完成远端改名/push、Trusted Publisher、受保护 tag、npm publish、registry/provenance/签名/隔离安装回读、GitHub Release 与 legacy deprecation。
+17. [x] **Phase 4 / WP4.3 外部执行**：远端改名/push、Trusted Publisher、受保护 `v1.20.0` tag、OIDC npm publish、registry/provenance/签名/隔离安装回读、GitHub Release 与 legacy deprecation 已完成；关闭证据见 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。
 
-Phase 0–2 已由 `b062f25` 本地提交保全，WP3.1–WP3.4 分别由 `a378b2f`、`168dfd3`、`7f4cf08`、`f02686f` 形成后续本地源码候选，WP4.1/WP4.2 由 `5179e99` / `1887cf2` 保全。BuildBeat Wave 1 与真实 v1.20 Wave 2 upgrade 试点均已完成；WP4.3 外部分发执行已获当前用户指令授权，但每一步仍以独立远端回读为完成条件。
+Phase 0–2 已由 `b062f25` 本地提交保全，WP3.1–WP3.4 分别由 `a378b2f`、`168dfd3`、`7f4cf08`、`f02686f` 形成后续源码候选，WP4.1/WP4.2 由 `5179e99` / `1887cf2` 保全。BuildBeat Wave 1、真实 v1.20 Wave 2 upgrade 试点与 WP4.3 外部分发均已完成；可变远端状态未来仍按发布 runbook 重新读回。
 
 ---
 
