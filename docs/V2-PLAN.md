@@ -222,7 +222,7 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
   - **结论 (b)** 可组装能力覆盖率 ≥80%、三轮平均计划外介入 ≤2，且无重复的未处置 CRITICAL 运行缺口 → M1–M3 收缩为**薄内核**（只造 approval staleness、统一证据台账、policy/gate 检查器三件），总窗口 ~5–8 周；
   - 未跑场景一律记 `UNVERIFIED`，不得按通过计分；中间态默认少造，将存疑能力挂到 M4 复验。
 
-> **进展（2026-08-27）**：ChickAI 与 Tide 两个本地候选均已交付并保留 oracle、验证与截图证据，但由当前会话人工编排，未通过 `pilot/loop.sh` 形成自动 run ledger；故只能计入部分能力证据，不能当作两轮自动 Loop，也不触发 `V2-D2`。第三目标项目已按 `V2-D1A` 选定为 `AI底座/底座`，使用其下一项自然发生的真实任务，不回放改写既有 candidate。当前明细与 `UNVERIFIED` 边界见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md) 和 [`pilot/metrics.md`](../pilot/metrics.md)。
+> **进展（2026-08-28）**：ChickAI、Tide 与 `V2-D1A` 后续的 AI 底座 `WP-B1-AUTHZ` 推进均未激活 `pilot/loop.sh`，自动 Run ledger 为 `0/3`；第三项不倒算合格自动 Run，只作为重复激活失败的负向证据。F5 已确认只能 fail-closed、不能恢复，F6 已确认没有持久化 Approval 对象或 stale 事件；暂定可组装覆盖率仍为 45.8%。[`V2-D2-DECISION-CARD.md`](V2-D2-DECISION-CARD.md) 已就绪并推荐完整内核，当前等待项目所有者 A/B；`V2-D2` 尚未生效。明细见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)、[`pilot/metrics.md`](../pilot/metrics.md) 与 [`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../pilot/evidence/2026-08-28-m1-runtime-gap.md)。
 
 ### M0 — 核心重置（1 周）
 

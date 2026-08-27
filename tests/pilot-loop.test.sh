@@ -51,6 +51,14 @@ setup_repo() {
       # shellcheck disable=SC2016 # ${1:-} is literal content for the generated fixture script.
       printf '#!/usr/bin/env bash\ncase "${1:-}" in *fresh-context*) printf "no findings\\n" ;; *) printf "fixed\\n" > app.txt ;; esac\n' > "$project/agent.sh"
       ;;
+    interrupt)
+      # The verifier terminates its parent loop after the candidate changed. This
+      # characterizes F5 without relying on timing or a platform-specific timeout.
+      # shellcheck disable=SC2016 # ${1:-} and $PPID are literal fixture content.
+      printf '#!/usr/bin/env bash\ncase "${1:-}" in *fresh-context*) printf "no findings\\n" ;; *) printf "fixed\\n" > app.txt ;; esac\n' > "$project/agent.sh"
+      # shellcheck disable=SC2016 # $PPID is literal fixture content.
+      printf '#!/usr/bin/env bash\nkill -TERM "$PPID"\nsleep 0.1\nexit 143\n' > "$project/verify.sh"
+      ;;
     adapter-fail)
       printf '#!/usr/bin/env bash\nexit 7\n' > "$project/agent.sh"
       ;;
@@ -96,6 +104,19 @@ else
 fi
 assert_contains "$LOOP_OUTPUT" "WAITING_HUMAN" "successful loop stops before merge"
 assert_contains "$LOOP_OUTPUT" "PASS_READONLY" "mandatory reviewer remains read-only"
+approval_files=$(find "$project/pilot-work/demo/evidence" -maxdepth 1 -type f \
+  \( -iname '*approval*' -o -iname '*decision*' \) -print)
+if [ -z "$approval_files" ]; then
+  pass "F6 characterization confirms no persisted merge approval object exists (capability MISSING)"
+else
+  fail "F6 characterization expected no persisted merge approval object (found: $approval_files)"
+fi
+printf 'changed-after-waiting-human\n' > "$project/app.txt"
+if ! grep -q 'APPROVAL_STALE' "$project/pilot-work/demo/evidence/run.log"; then
+  pass "F6 characterization confirms post-run candidate changes emit no stale event (capability MISSING)"
+else
+  fail "F6 characterization unexpectedly found an APPROVAL_STALE event"
+fi
 
 project="$TMP_ROOT/baseline-green"
 setup_repo "$project" success fixed
@@ -136,6 +157,18 @@ else
   fail "reviewer workspace mutation blocks (rc=$LOOP_RC)"
 fi
 assert_contains "$LOOP_OUTPUT" "reviewer 修改了工作区" "reviewer write is detected by fingerprint"
+
+project="$TMP_ROOT/interrupted-verify"
+setup_repo "$project" interrupt
+run_loop "$project"
+interrupted_rc=$LOOP_RC
+run_loop "$project"
+if [ "$interrupted_rc" -ne 0 ] && [ "$LOOP_RC" -eq 2 ]; then
+  pass "F5 interruption cannot silently restart from an ambiguous candidate"
+else
+  fail "F5 interruption cannot silently restart from an ambiguous candidate (first_rc=$interrupted_rc rerun_rc=$LOOP_RC)"
+fi
+assert_contains "$LOOP_OUTPUT" "开跑前工作树必须完全干净" "F5 rerun blocks because no recoverable checkpoint exists"
 
 printf '%s passed, %s failed\n' "$passed" "$failed"
 [ "$failed" -eq 0 ]
