@@ -222,7 +222,7 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
   - **结论 (b)** 可组装能力覆盖率 ≥80%、三轮平均计划外介入 ≤2，且无重复的未处置 CRITICAL 运行缺口 → M1–M3 收缩为**薄内核**（只造 approval staleness、统一证据台账、policy/gate 检查器三件），总窗口 ~5–8 周；
   - 未跑场景一律记 `UNVERIFIED`，不得按通过计分；中间态默认少造，将存疑能力挂到 M4 复验。
 
-> **进展（2026-08-27）**：ChickAI 与 Tide 两个本地候选均已交付并保留 oracle、验证与截图证据，但由当前会话人工编排，未通过 `pilot/loop.sh` 形成自动 run ledger；故只能计入部分能力证据，不能当作两轮自动 Loop，也不触发 `V2-D2`。当前明细与 `UNVERIFIED` 边界见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md) 和 [`pilot/metrics.md`](../pilot/metrics.md)。
+> **进展（2026-08-27）**：ChickAI 与 Tide 两个本地候选均已交付并保留 oracle、验证与截图证据，但由当前会话人工编排，未通过 `pilot/loop.sh` 形成自动 run ledger；故只能计入部分能力证据，不能当作两轮自动 Loop，也不触发 `V2-D2`。第三目标项目已按 `V2-D1A` 选定为 `AI底座/底座`，使用其下一项自然发生的真实任务，不回放改写既有 candidate。当前明细与 `UNVERIFIED` 边界见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md) 和 [`pilot/metrics.md`](../pilot/metrics.md)。
 
 ### M0 — 核心重置（1 周）
 
@@ -310,7 +310,7 @@ B §24 的 1–20 原样进入测试矩阵。追加：
 | D4 | 首个专用 Adapter | M3 末按试点主力工具定（此前 Shell Adapter 已可驱动任意 CLI agent） | 裁决 #5 |
 | D5 | v1 手写状态处置 | 迁移即一步到位废除，无过渡双轨 | A-D4 原结论，B 同向 |
 | D6 | 试点组合（M4） | Self-host + 底座内一个有测试的单仓项目 + 一个含 UI 项目 | 合并 A-D5 与 B-WP5.3/5.4 |
-| D7 / `V2-D1` | **M-1 试点工作项（已决）** | 首批为 ChickAI 额度耗尽仍可登录（含 UI）与 Tide 悬浮球空闲收纳（小功能）；第三项按前两轮证据再决定是否补充 | 执行细则见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)；授权边界仍是不 merge、不 push、不发布、不部署 |
+| D7 / `V2-D1` + `V2-D1A` | **M-1 试点工作项与第三目标项目（已决）** | 首批为 ChickAI 额度耗尽仍可登录（含 UI）与 Tide 悬浮球空闲收纳（小功能）；第三目标项目为 `AI底座/底座`，具体使用其下一项自然发生、已授权、低风险的非生产开发任务 | 执行细则见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)；既有候选只作回放证据，授权边界仍是不 merge、不 push、不发布、不部署 |
 
 ---
 

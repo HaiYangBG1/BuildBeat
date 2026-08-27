@@ -8,11 +8,13 @@
 |---|---|---|---:|---:|---|---|---:|---:|---|
 | 1 | 2026-08-27 | ChickAI：额度耗尽仍可登录网站，模型发送禁用且不补发 Key | 含 UI + 生产发布 | 5（人工阶段；含发布重构） | PASS：冻结 oracle 在 `9d571b3` 非零 | `0.17.85` 已上线；unit 158/158、UI5 3/3、typecheck/lint/build；两阶段双 reviewer 无 P0/P1；两实例同 revision、Healthy/0 重启 | 1（reviewer P1 迫使单阶段改两阶段；非 loop ledger） | `UNVERIFIED` | 候选成功不代表发布安全：独立 reviewer 抓出新旧 Pod 混跑可绕 Agent/Excel 的 P1，先发 `0.17.84` 铺硬墙、再发 `0.17.85` 开功能；全过程仍由当前会话人工编排 |
 | 2 | 2026-08-27 | Tide：悬浮球空闲缩入左侧并半透明隐藏 | 小功能 | 1（人工实现轮次） | PASS：冻结 oracle 在 `e5c130d` 非零 | Node 3/3；Rollup build/syntax/diff PASS；截图已留 | `UNVERIFIED`（未走 loop ledger） | `UNVERIFIED` | 原目录无 Git，先建立本地可回滚基线；未做 fresh-context reviewer |
-| 3 | | 待项目所有者后续决定是否补充 | 待定 | | | | | | |
+| 3 | 2026-08-27（选定） | AI 底座：下一项自然发生、已授权的低风险非生产开发任务 | legacy v1.21 手工迁移 + 多仓真实项目 | `WAITING_TASK` | `UNVERIFIED` | `UNVERIFIED` | `UNVERIFIED` | `UNVERIFIED` | 目标项目已定，具体工作项未冻结；既有 `WP-B1-AUTHZ` 只作回放证据，不能倒算 run。只读摸底见 [`targets/ai-platform-base.md`](targets/ai-platform-base.md) |
 
-> 上述两行是**真实交付实况**，但不是 `pilot/loop.sh` 的有效 run record。attempts 仅表示人工阶段数，不进入 `V2-D2` 的平均 attempts；ChickAI 的一次计划外介入可由提交/审查记录确认，但没有 loop ledger，仍不得拿来算“三轮平均”；token 与费用继续保持 `UNVERIFIED`。
+> 第 1～2 行是**真实交付实况**，但不是 `pilot/loop.sh` 的有效 run record；第 3 行只是目标项目选择，也不是 run。attempts 仅表示人工阶段数，不进入 `V2-D2` 的平均 attempts；ChickAI 的一次计划外介入可由提交/审查记录确认，但没有 loop ledger，仍不得拿来算“三轮平均”；token 与费用继续保持 `UNVERIFIED`。
 
 > **使用判定**：这两个例子已足够证明 B 方案可以作为后续工作的默认协议使用（冻结验收、隔离 candidate、独立审查、证据边界都产生了实际价值）；但不足以形成 `V2-D2`，因为自动 Loop、F5 恢复、F6 Approval stale、attempt/token/cost ledger 均未验证。无需为了凑数再造一个假案例；下一项自然发生的真实任务必须从干净 oracle 由 `pilot/loop.sh` 驱动，并补跑 F5/F6。
+
+> **第三项目口径**：`AI底座/底座` 已选定，但当前 `WP-B1-AUTHZ` 已经过实现、测试和 reviewer，真实下一棒是产品 Gate2.5；不得为凑第三轮而回改 candidate 或把历史记录包装成自动 Loop。等下一项自然工作包时从旁路干净 worktree 开跑。
 
 ## 能力覆盖矩阵
 
@@ -78,6 +80,14 @@
 - 当时怎么绕过：独立 reviewer 阻断单阶段；人工拆成 `0.17.84` 先铺服务端硬墙、确认两实例同 revision 后，再用 `0.17.85` 开启功能；开启后回滚下限固定为 `0.17.84`。
 - 若有内核，它应该做什么：Approval 绑定 candidate + image digest + rollout plan + rollback floor；plan 或 candidate 改变自动 stale；部署门必须验证每个实例的 revision/health 后才允许下一阶段。
 - 对应能力矩阵行：Verify→Fix、Approval stale、证据来源与 digest、Policy/Scope、进程状态恢复。
+
+### 卡点 4
+
+- 现象：第三目标项目 AI 底座是 meta + 多代码仓的活跃项目；当前工作树同时存在未提交的 BuildBeat v1.21 手工迁移、运维脚本改动与 `ruoyi-ai` 其它在途修改。已提交基线仍为 v1.20，且项目从未有 schema 2 manifest。当前 `WP-B1-AUTHZ` 候选虽在独立 worktree clean，但 `NOW/看板` 的接力描述落后于全栈/测试/status 与 reviewer 事实。
+- 根因：legacy 项目没有可机械升级基线；项目事实、候选和 Gate 分散在多个仓与多个 SSOT，当前单仓 `loop.sh` 不能原子绑定它们。
+- 当时怎么绕过：只做只读 preflight，把项目登记为第三目标；不触碰目标项目、不原地升级、不补造 manifest，也不倒算既有候选。等待下一项自然、已授权任务后，以旁路 `pilot/*` worktree 从干净 oracle commit 开始。
+- 若有内核，它应该做什么：提供 legacy/dirty/in-flight 的只读兼容 preflight；显式列出并绑定全部 workspace、candidate、plan/approval digest 与当前 Gate；发现接力棒/SSOT 冲突时阻断并指向真实 owner，而不是静默选择一个仓继续。
+- 对应能力矩阵行：证据来源、Policy/Scope、进程状态恢复、Approval stale。
 
 ## `V2-D2` 分叉决定
 
