@@ -222,6 +222,8 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
   - **结论 (b)** 可组装能力覆盖率 ≥80%、三轮平均计划外介入 ≤2，且无重复的未处置 CRITICAL 运行缺口 → M1–M3 收缩为**薄内核**（只造 approval staleness、统一证据台账、policy/gate 检查器三件），总窗口 ~5–8 周；
   - 未跑场景一律记 `UNVERIFIED`，不得按通过计分；中间态默认少造，将存疑能力挂到 M4 复验。
 
+> **进展（2026-08-27）**：ChickAI 与 Tide 两个本地候选均已交付并保留 oracle、验证与截图证据，但由当前会话人工编排，未通过 `pilot/loop.sh` 形成自动 run ledger；故只能计入部分能力证据，不能当作两轮自动 Loop，也不触发 `V2-D2`。当前明细与 `UNVERIFIED` 边界见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md) 和 [`pilot/metrics.md`](../pilot/metrics.md)。
+
 ### M0 — 核心重置（1 周）
 
 - 三份 RFC（产品定位 / 领域模型 / Workflow+Policy，B WP0.1–0.3），**需求来源必须引用 M-1 试点记录**，**observe 与 bands 的 schema 一并冻结**（裁决 #6）；
