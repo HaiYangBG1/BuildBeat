@@ -24,10 +24,11 @@
     "check:docs": "bash tests/check-docs.sh",
     "test": "node --test tests/*.test.js",
     "test:scripts": "bash tests/test-scripts.sh",
+    "test:pilot": "bash tests/pilot-loop.test.sh",
     "test:skill-only": "bash tests/skill-only.test.sh",
     "test:plugin": "bash tests/plugin-marketplace.test.sh",
     "pack:check": "npm pack --dry-run",
-    "prepublishOnly": "npm test && npm run test:scripts && npm run test:skill-only && npm run test:plugin && npm run check:docs && npm run pack:check"
+    "prepublishOnly": "npm test && npm run test:scripts && npm run test:pilot && npm run test:skill-only && npm run test:plugin && npm run check:docs && npm run pack:check"
   },
   "engines": {
     "node": ">=20"

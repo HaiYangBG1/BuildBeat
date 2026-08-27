@@ -1,9 +1,12 @@
 # BuildBeat 新版演进规划书：面向人和 AI 会话的工程交付协议
 
-> 文档状态：方向基线（受下述 2026-08-24 执行修订约束）
+> 文档状态：v1 历史方向基线（受下述 2026-08-24 执行修订约束；2026-08-27 起被 v2 方向取代，见下方修订框）
 > 基线日期：2026-08-23
 > 适用项目：BuildBeat 后续产品设计、协议演进与 CLI 开发
 > 本文替代此前《BuildBeat 演进规划书：从单人工具到尺度无关的工程协议》。旧规划中的团队激活层、Preset/extends、emit 编译层及相应路线不再执行。
+
+> **2026-08-27 方向变更（`V2-D0=B`，已生效）**
+> 项目所有者已正式拍板 BuildBeat v2：新开发方向与执行以 [`V2-PLAN.md`](V2-PLAN.md) 为准，决策记录见 [`V2-DECISIONS.md`](V2-DECISIONS.md)，当前迭代见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)。v1（本文所述协议与 CLI）转入维护线——只修缺陷与安全问题，不再按本文及 [`EXECUTION-PLAN.md`](EXECUTION-PLAN.md) 追加新能力。本文保留为 v1 决策存档。
 
 > **2026-08-24 执行修订（生效）**
 > 本文保留产品方向与问题定义；交付范围、顺序和验收以 [`EXECUTION-PLAN.md`](EXECUTION-PLAN.md) v3 的 §0 为准，冲突时由执行计划覆盖本文。CLI 仅选择性解冻 `init` / `adopt` 脚手架写入与 `upgrade` 机械升级，`doctor` 保持只读；`gate` / `adr` / `standards` / `check` 等命令面扩张、三方合并引擎和项目卸载引擎继续冻结。具体覆盖关系如下：

@@ -1,6 +1,6 @@
 # BuildBeat 落地执行计划（v3：CLI 选择性解冻版）
 
-> 文档状态：当前执行基线（本版替代 2026-08-24 早先两版）
+> 文档状态：v1 历史执行基线（WP0.1–WP4.3 已全部完成收口；项目所有者已于 2026-08-27 拍板 `V2-D0=B`，新开发按 [`V2-PLAN.md`](V2-PLAN.md) 与 [`V2-ITERATION-01.md`](V2-ITERATION-01.md) 执行，决策见 [`V2-DECISIONS.md`](V2-DECISIONS.md)，v1 转入维护线）
 > 基线日期：2026-08-24
 > 上游文档：[`ROADMAP.md`](ROADMAP.md)（下称“演进书”）；竞品调研见 [`CLI-STRATEGY-2026-08.md`](CLI-STRATEGY-2026-08.md)
 > 基线代码：`@haiyangbg/buildbeat@1.20.0`（npm 已验证发布，Git tag `v1.20.0`）；legacy `solobaton@1.16.3` 保留并已 deprecate

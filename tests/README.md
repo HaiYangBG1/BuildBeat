@@ -7,11 +7,14 @@ These checks validate BuildBeat itself. They are separate from `templates/script
 ```bash
 npm test
 npm run test:scripts
+npm run test:pilot
 npm run test:skill-only
 npm run test:plugin
 npm run check:docs
 npm run pack:check
 ```
+
+`pilot-loop.test.sh` creates disposable `pilot/*` repositories for the v2 M-1 driver. It locks the four preflight failure cases that must not become false green: an already-passing acceptance oracle, a nonzero Agent exit, mutation of a protected oracle, and a Reviewer that writes to the candidate. It also proves a successful Build–Verify–Accept–Review run stops at `WAITING_HUMAN` without merging.
 
 `test-scripts.sh` creates disposable Git repositories under a `mktemp` directory and exercises both supported layouts. Its first scenarios are loaded from `tests/fixtures/<name>/project/`. A fixture may extend `healthy-default` and overlay only the fact it changes. Every fixture has an `expected-findings.json` with this executable schema 1 contract:
 
