@@ -1,6 +1,6 @@
 # v2 迭代 01：M-1 人肉内核试点
 
-> 状态：**就绪待执行**——`V2-D0=B` 已正式立项；当前唯一外部阻塞是 `V2-D1`（项目所有者点名真实工作项）
+> 状态：**执行中**——`V2-D0=B` 已正式立项，`V2-D1` 已点名 ChickAI 与 Tide 两个真实工作项
 > 上游：[`V2-PLAN.md`](V2-PLAN.md) §8；决策台账：[`V2-DECISIONS.md`](V2-DECISIONS.md)；试点套件：[`pilot/`](../pilot/README.md)
 > 时间盒：**≤2 周**（自 `V2-D1` 起算）；到期未跑完也必须按已有证据形成分叉结论或明确 `UNVERIFIED`
 
@@ -15,7 +15,7 @@ v2 已由 `V2-D0=B` 决定正式实施；M-1 不再拥有“放弃 v2”的隐�
 
 ## 任务清单
 
-- [ ] **T1（项目所有者，`V2-D1`）**：点名 1–3 个低风险真实工作项，优先覆盖修 bug、小功能、含 UI；每个项目必须有稳定回归命令。
+- [x] **T1（项目所有者，`V2-D1`）**：已点名两个低风险真实工作项：ChickAI 额度耗尽仍可登录（含 UI）与 Tide 悬浮球空闲收纳（小功能）；第三项暂留空。
 - [ ] **T2（每个项目）**：准备独立 `ACCEPT_CMD`，确认其在基线非零、实现后应为零；把验收 oracle 写入 `protected-paths.txt`。
 - [ ] **T3（每轮）**：在 `pilot/*` 专用 branch/worktree 中提交 intent、Approved plan、protected paths 与验收 oracle；开跑前工作树连 untracked 都为空。
 - [ ] **T4（每轮）**：运行 [`pilot/loop.sh`](../pilot/loop.sh)，记录 attempts、计划外介入、token/费用、卡点和能力矩阵。
