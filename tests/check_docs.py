@@ -555,7 +555,8 @@ def check_cli_package() -> list[str]:
 
     release_guide = (ROOT / "docs/RELEASING.md").read_text(encoding="utf-8")
     verified_match = re.search(
-        r"latest independently verified BuildBeat npm distribution `@haiyangbg/buildbeat@(\d+\.\d+\.\d+)`",
+        r"latest independently verified BuildBeat npm distribution "
+        r"`@haiyangbg/buildbeat@(\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?)`",
         release_guide,
     )
     verified_pending = (
@@ -568,9 +569,10 @@ def check_cli_package() -> list[str]:
             "docs/RELEASING.md: scoped distribution evidence state is missing"
         )
     elif verified_match is not None and version_match is not None:
-        verified_parts = tuple(int(part) for part in verified_version.split("."))
-        # Compare on the numeric core; a pre-release source still outranks any
-        # older verified stable distribution.
+        # Compare on the numeric cores; pre-release suffixes never make a
+        # verified distribution outrank the source package version.
+        verified_core = re.match(r"(\d+)\.(\d+)\.(\d+)", verified_version)
+        verified_parts = tuple(int(verified_core.group(i)) for i in (1, 2, 3))
         source_parts = tuple(int(version_match.group(i)) for i in (1, 2, 3))
         if verified_parts > source_parts:
             errors.append(

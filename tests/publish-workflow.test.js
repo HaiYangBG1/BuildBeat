@@ -18,7 +18,7 @@ const PUBLISH_SCRIPT = path.join(REPO_ROOT, ".github", "scripts", "publish-candi
 const CANDIDATE_INTEGRITY = `sha512-${"A".repeat(86)}==`;
 const DIFFERENT_INTEGRITY = `sha512-${"B".repeat(86)}==`;
 
-function fixture(t, { views, publishStatus }) {
+function fixture(t, { views, publishStatus, version = "1.20.0", distTag = "latest" }) {
   const root = mkdtempSync(path.join(os.tmpdir(), "buildbeat-publish-test-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
 
@@ -75,7 +75,8 @@ esac
       MOCK_STATE_DIR: state,
       MOCK_PUBLISH_STATUS: String(publishStatus),
       BUILDBEAT_PACKAGE_NAME: "@haiyangbg/buildbeat",
-      BUILDBEAT_PACKAGE_VERSION: "1.20.0",
+      BUILDBEAT_PACKAGE_VERSION: version,
+      BUILDBEAT_DIST_TAG: distTag,
       BUILDBEAT_CANDIDATE_INTEGRITY: CANDIDATE_INTEGRITY,
       BUILDBEAT_CANDIDATE_TARBALL: tarball,
       BUILDBEAT_RECONCILE_ATTEMPTS: "3",
@@ -90,7 +91,47 @@ test("publishes an absent version", (t) => {
   const mock = fixture(t, { views: ["__EMPTY__"], publishStatus: 0 });
   const result = mock.run();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(mock.publishCalls(), /publish .*haiyangbg-buildbeat-1\.20\.0\.tgz --access public/);
+  assert.match(
+    mock.publishCalls(),
+    /publish .*haiyangbg-buildbeat-1\.20\.0\.tgz --access public --tag latest/,
+  );
+});
+
+test("routes a pre-release version onto dist-tag next", (t) => {
+  const mock = fixture(t, {
+    views: ["__EMPTY__"],
+    publishStatus: 0,
+    version: "2.0.0-beta.1",
+    distTag: "next",
+  });
+  const result = mock.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(mock.publishCalls(), /--access public --tag next/);
+});
+
+test("refuses a pre-release version aimed at dist-tag latest", (t) => {
+  const mock = fixture(t, {
+    views: ["__EMPTY__"],
+    publishStatus: 0,
+    version: "2.0.0-beta.1",
+    distTag: "latest",
+  });
+  const result = mock.run();
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /must publish on dist-tag next/);
+  assert.equal(mock.publishCalls(), "");
+});
+
+test("refuses a stable version aimed off dist-tag latest", (t) => {
+  const mock = fixture(t, {
+    views: ["__EMPTY__"],
+    publishStatus: 0,
+    distTag: "next",
+  });
+  const result = mock.run();
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /must publish on dist-tag latest/);
+  assert.equal(mock.publishCalls(), "");
 });
 
 test("accepts an existing version only when integrity matches exactly", (t) => {
