@@ -481,9 +481,15 @@ def check_cli_package() -> list[str]:
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
     version = package.get("version", "")
-    version_match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+    # Three-part SemVer with an optional pre-release tag (e.g. 2.0.0-beta.1):
+    # the v2 plan ships beta versions on dist-tag next before latest moves.
+    version_match = re.fullmatch(
+        r"(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*))?", version
+    )
     latest_match = re.search(
-        r"^## v(\d+)\.(\d+)(?:\.(\d+))?", changelog, re.MULTILINE
+        r"^## v(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*))?",
+        changelog,
+        re.MULTILINE,
     )
     if version_match is None:
         errors.append("package.json: version must use three-part SemVer")
@@ -493,6 +499,8 @@ def check_cli_package() -> list[str]:
         latest_version = ".".join(
             (latest_match.group(1), latest_match.group(2), latest_match.group(3) or "0")
         )
+        if latest_match.group(4):
+            latest_version += f"-{latest_match.group(4)}"
         if version != latest_version:
             errors.append(
                 "package.json: version does not match the latest changelog release"
@@ -561,7 +569,9 @@ def check_cli_package() -> list[str]:
         )
     elif verified_match is not None and version_match is not None:
         verified_parts = tuple(int(part) for part in verified_version.split("."))
-        source_parts = tuple(int(part) for part in version.split("."))
+        # Compare on the numeric core; a pre-release source still outranks any
+        # older verified stable distribution.
+        source_parts = tuple(int(version_match.group(i)) for i in (1, 2, 3))
         if verified_parts > source_parts:
             errors.append(
                 "docs/RELEASING.md: verified npm distribution cannot exceed source package version"
@@ -1017,7 +1027,8 @@ def check_example_manifest() -> list[str]:
     cli_version = package.get("version")
     scaffold_version = (
         f"v{'.'.join(cli_version.split('.')[:2])}"
-        if isinstance(cli_version, str) and re.fullmatch(r"\d+\.\d+\.\d+", cli_version)
+        if isinstance(cli_version, str)
+        and re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?", cli_version)
         else None
     )
     if manifest.get("schemaVersion") != 2:

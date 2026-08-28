@@ -2,6 +2,17 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## v2.0.0-beta.1 — 未发布（beta-ready，等待所有者发布授权）
+
+> 主题：BuildBeat v2 首个 Beta——确定性内核 + Agent Loop Runtime。事件溯源台账（hash 链、损坏截断、终态压实进 Git 面）、Policy 门（8 算子三值逻辑、`UNVERIFIED` 永不当 PASS）、隔离 Workspace（push 物理封禁、`allowedPaths` 越界即停、Reviewer 只读快照强制）、Shell Adapter 厂商中立接任意 CLI Agent（codex 实证）、digest 绑定人批与 `APPROVAL_STALE`。MVP 承诺兑现：Build–Verify–Fix–Review 自动闭环，停在合并决定，带证据交人。
+> **发布口径**：`dist-tag: next`；`latest` 仍指向 v1.21.0，v1 CLI 与文件原样冻结随包分发。v2 入口为独立 bin `buildbeat-v2`。
+> **试点证据**：self-host（RUN-SELF-001）+ 两个外部真实项目（ruoyi-ai RUN-CLI-DW-01 全自动 5.2 分钟到合并决定；chickAI 看板积压含完整 reviewer 阻断→fixer 修复闭环），六退出指标全达标；见 `docs/v2/M4-*.md`。
+
+- **observe v0**（RFC-0003 §8 冻结契约的实现）：drift-check/live-status 类探针接为 Evidence Provider（采不到即 `unverified`，同一 Evidence Contract 与链校验台账）；bands log→只读诊断→Intent 草稿三层分层响应；草稿只入队 Git 面绝不自动执行；`observe triage` 人分诊，`dismiss` 回调阈值防告警疲劳；分诊记忆活在 Git 面，runtime 可删（不变量 23 有测试）
+- **文档十件套**（`docs/v2/guide/`）：快速开始 / Workflow / Policy / Adapter / Worker 合同 / Evidence / Approval / v1 迁移半天手工 runbook / 安全边界 / 故障恢复
+- **`buildbeat-v2 metrics`**：本地只读六指标；行为 evals 九场景卡进 `npm test` 单入口
+- **v1 迁移**：半天手工 runbook（不猜旧状态、单向迁移、禁止双写）；`legacy-four-gates` 风险预设保留 v1 四 Gate 完整形态
+
 ## v1.21.0 — 2026-08-25
 
 > 主题：统一各域的收口回复，让人一眼看清做成了什么、证据在哪、还有什么没做，以及下一棒或真实求助。
