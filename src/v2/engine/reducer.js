@@ -66,6 +66,8 @@ export function applyEvent(state, event) {
         base: data.base,
         riskPreset: data.riskPreset,
         entry: data.entry ?? null,
+        planDigest: data.planDigest ?? "UNVERIFIED",
+        intentDigest: data.intentDigest ?? "UNVERIFIED",
       };
       break;
     }
@@ -165,6 +167,7 @@ export function applyEvent(state, event) {
         transition: data.transition,
         subject: data.subject,
         reasons: data.reasons,
+        kind: data.kind ?? "boundary",
       };
       next.run.status = "WAITING_HUMAN";
       break;
@@ -203,6 +206,7 @@ export function applyEvent(state, event) {
         transition: state.approvals[index].transition,
         subject: state.approvals[index].subject,
         reasons: ["APPROVAL_STALE"],
+        kind: "stale",
       };
       next.run.status = "WAITING_HUMAN";
       break;

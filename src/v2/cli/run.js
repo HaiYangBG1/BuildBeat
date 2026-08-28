@@ -4,12 +4,13 @@
 // parses input, wires adapters, and renders derived state.
 
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 import { createShellAdapter } from "../adapters/shell.js";
 import { loadWorkflow } from "../engine/workflow.js";
 import { parseYamlSubset } from "../engine/yaml-subset.js";
+import { approveRun, listInbox, rejectRun } from "../runtime/decisions.js";
 import { writeRunRecord } from "../runtime/run-record.js";
 import { resumeRun, startRun } from "../runtime/orchestrator.js";
 import { EventLedger } from "../storage/event-ledger.js";
@@ -23,6 +24,9 @@ Usage:
   run.js start --config <run-config.yaml>
   run.js resume --config <run-config.yaml>
   run.js status --repo <path> --run <RUN-ID>
+  run.js inbox --repo <path>
+  run.js approve --repo <path> --run <RUN-ID> --transition <t> [--by <name>]
+  run.js reject --repo <path> --run <RUN-ID> [--transition <t>] [--reason <text>] [--by <name>]
   run.js stop --repo <path> --run <RUN-ID> --reason <text>
 `;
 
@@ -103,6 +107,14 @@ function loadRunConfig(flags, command) {
       timeoutMs: spec.timeoutMs,
     });
   }
+  const digestOfWorkFile = (name) => {
+    const filePath = join(repoRoot, "delivery", "work", config.work, name);
+    if (!existsSync(filePath)) {
+      return undefined;
+    }
+    return `sha256:${createHash("sha256").update(readFileSync(filePath, "utf8"), "utf8").digest("hex")}`;
+  };
+
   return {
     repoRoot,
     workflow,
@@ -115,6 +127,8 @@ function loadRunConfig(flags, command) {
     adapters,
     maxAttemptsPerStep: config.maxAttemptsPerStep ?? 4,
     stepTimeoutMs: config.stepTimeoutMs,
+    planDigest: digestOfWorkFile("plan.md"),
+    intentDigest: digestOfWorkFile("intent.md"),
   };
 }
 
@@ -133,6 +147,65 @@ function commandResume(flags) {
   }
   console.log(`ledger: ${result.ledgerPath}`);
   printState(result.state, { corruption: null });
+}
+
+function commandInbox(flags) {
+  if (!flags.repo) {
+    throw new Error("inbox requires --repo");
+  }
+  const rows = listInbox(resolve(flags.repo));
+  if (rows.length === 0) {
+    console.log("inbox empty: no runs waiting on a human");
+    return;
+  }
+  for (const row of rows) {
+    if (row.corrupted) {
+      console.log(`${row.run}: LEDGER CORRUPTED after seq=${row.corrupted.afterSeq} (${row.corrupted.reason})`);
+      continue;
+    }
+    console.log(`${row.run} (work ${row.work}) [${row.kind}] ${row.transition}`);
+    console.log(`  candidate: ${row.subject.candidate}`);
+    console.log(`  planDigest: ${row.subject.planDigest}`);
+    console.log(`  evidenceDigest: ${row.subject.evidenceDigest}`);
+    for (const reason of row.reasons) {
+      console.log(`  reason: ${reason}`);
+    }
+  }
+}
+
+function commandApprove(flags) {
+  if (!flags.repo || !flags.run || !flags.transition) {
+    throw new Error("approve requires --repo, --run and --transition");
+  }
+  const result = approveRun(resolve(flags.repo), flags.run, {
+    by: flags.by ?? "human",
+    transition: flags.transition,
+  });
+  if (!result.approved) {
+    console.log("NOT approved: the subject changed since the request; a refreshed request was filed");
+    console.log(`  new candidate: ${result.subject.candidate}`);
+    return;
+  }
+  console.log(`approved ${result.transition} as ${result.decisionRef}`);
+  console.log(`  candidate: ${result.subject.candidate}`);
+  console.log(`  planDigest: ${result.subject.planDigest}`);
+  if (result.terminal) {
+    console.log("run is terminal: SUCCEEDED (merge itself stays a manual external action)");
+  } else {
+    console.log("decision recorded; continue with: run.js resume --config <run-config.yaml>");
+  }
+}
+
+function commandReject(flags) {
+  if (!flags.repo || !flags.run) {
+    throw new Error("reject requires --repo and --run");
+  }
+  const result = rejectRun(resolve(flags.repo), flags.run, {
+    by: flags.by ?? "human",
+    transition: flags.transition,
+    reason: flags.reason,
+  });
+  console.log(`rejected as ${result.decisionRef}; run cancelled and compacted`);
 }
 
 function commandStatus(flags) {
@@ -178,6 +251,12 @@ function main() {
       commandStart(flags);
     } else if (command === "resume") {
       commandResume(flags);
+    } else if (command === "inbox") {
+      commandInbox(flags);
+    } else if (command === "approve") {
+      commandApprove(flags);
+    } else if (command === "reject") {
+      commandReject(flags);
     } else if (command === "status") {
       commandStatus(flags);
     } else if (command === "stop") {

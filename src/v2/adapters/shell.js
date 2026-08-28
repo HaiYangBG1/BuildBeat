@@ -26,15 +26,19 @@ export function createShellAdapter(config) {
   const name = config.name ?? "shell";
   return {
     name,
-    execute({ step, worker, workspacePath, input, timeoutMs }) {
+    execute({ step, worker, workspacePath, input, timeoutMs, outputPath }) {
       const context = { step, worker, workspacePath };
       const args = (config.args ?? []).map((arg) => fillTemplate(String(arg), context));
       const startedAt = new Date().toISOString();
+      const env = { ...process.env, BUILDBEAT_INPUT: JSON.stringify(input ?? {}) };
+      if (outputPath) {
+        env.BUILDBEAT_OUTPUT = outputPath;
+      }
       const result = spawnSync(config.command, args, {
         cwd: workspacePath,
         encoding: "utf8",
         timeout: timeoutMs ?? config.timeoutMs,
-        env: { ...process.env, BUILDBEAT_INPUT: JSON.stringify(input ?? {}) },
+        env,
         maxBuffer: 16 * 1024 * 1024,
       });
       const finishedAt = new Date().toISOString();

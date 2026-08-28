@@ -27,7 +27,7 @@ const TOP_FIELDS = new Set([
   "policies",
   "budgets",
 ]);
-const STEP_FIELDS = new Set(["id", "worker", "optional", "requiredWhen"]);
+const STEP_FIELDS = new Set(["id", "worker", "optional", "requiredWhen", "readonly"]);
 const TRANSITION_FIELDS = new Set(["from", "on", "to"]);
 
 function rejectUnknownFields(object, allowed, where) {
@@ -79,12 +79,16 @@ export function parseWorkflow(text) {
     if (raw.optional !== undefined && typeof raw.optional !== "boolean") {
       throw new WorkflowError(`step ${id} optional must be a boolean`);
     }
+    if (raw.readonly !== undefined && typeof raw.readonly !== "boolean") {
+      throw new WorkflowError(`step ${id} readonly must be a boolean`);
+    }
     stepIds.add(id);
     steps.push({
       id,
       worker: raw.worker ?? null,
       optional: raw.optional ?? false,
       requiredWhen: raw.requiredWhen ?? null,
+      readonly: raw.readonly ?? false,
     });
   }
 

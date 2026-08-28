@@ -254,6 +254,8 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 - `WAITING_HUMAN` + `approve/reject` + inbox；Approval 绑定与 stale 检测；
 - **验收**：B §20 的 20 条 MVP DoD 逐条通过（含预埋 Bug 自动修复、进程中断可恢复、candidate 变更 Approval 失效、停在合并前不自动 merge）。
 
+> **进展（2026-08-28）**：M2 核验 **18/20 通过**——预埋 Bug 自动修复端到端（真实红测试→fix→绿→只读 review→停在合并前→人批终态）、F6 Approval stale 运行时关闭、approve/reject + inbox、决策落 Git。#1（plan"被接受"的 Policy 强制）与 #20（coverage 纪律）标 `PARTIAL` 挂 M3 既定范围。核验表见 [`v2/M2-DOD-2026-08-28.md`](v2/M2-DOD-2026-08-28.md)，跟踪见 [`V2-ITERATION-04.md`](V2-ITERATION-04.md)。进入 M3。
+
 ### M3 — 治理硬化（2 周）
 
 - Policy Engine 完整（四类 + 组合算子）；Protected Actions（merge/deploy/publish/force-push 无凭据即无能力，B WP4.4）；

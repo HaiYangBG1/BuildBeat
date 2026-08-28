@@ -1,6 +1,8 @@
 // Mock adapter for deterministic engine tests: scripted behaviors per step,
 // consumed one per attempt. Covers the failure shapes the kernel must survive
-// (fail, timeout, crash, invalid output) without any real process.
+// (fail, timeout, crash, invalid output) without any real process. An entry
+// may be a plain behavior string or { behavior, envelope } to also return a
+// worker output envelope (e.g. reviewer findings).
 
 export class MockScriptError extends Error {
   constructor(message) {
@@ -13,13 +15,14 @@ const BEHAVIORS = new Set(["succeed", "fail", "timeout", "crash", "invalid-outpu
 
 export function createMockAdapter(script) {
   const remaining = {};
-  for (const [step, behaviors] of Object.entries(script ?? {})) {
-    for (const behavior of behaviors) {
+  for (const [step, entries] of Object.entries(script ?? {})) {
+    for (const entry of entries) {
+      const behavior = typeof entry === "string" ? entry : entry.behavior;
       if (!BEHAVIORS.has(behavior)) {
         throw new MockScriptError(`unknown mock behavior: ${behavior}`);
       }
     }
-    remaining[step] = [...behaviors];
+    remaining[step] = [...entries];
   }
   return {
     name: "mock",
@@ -28,7 +31,9 @@ export function createMockAdapter(script) {
       if (!queue || queue.length === 0) {
         throw new MockScriptError(`mock adapter has no scripted behavior left for step: ${step}`);
       }
-      const behavior = queue.shift();
+      const entry = queue.shift();
+      const behavior = typeof entry === "string" ? entry : entry.behavior;
+      const envelope = typeof entry === "string" ? undefined : entry.envelope;
       const startedAt = new Date().toISOString();
       const finishedAt = startedAt;
       const base = {
@@ -41,6 +46,7 @@ export function createMockAdapter(script) {
         spawnError: null,
         startedAt,
         finishedAt,
+        envelope,
       };
       switch (behavior) {
         case "succeed":

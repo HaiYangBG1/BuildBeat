@@ -21,6 +21,7 @@ steps:
     worker: verifier
   - id: review
     worker: reviewer
+    readonly: true
   - id: wait-merge
   - id: fix
     worker: fixer
