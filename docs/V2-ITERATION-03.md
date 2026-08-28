@@ -16,8 +16,8 @@
 
 ## 任务清单
 
-- [ ] **T1 Event Ledger（WP1.2）**：append-only JSONL、单调 seq、digest/prev 哈希链、原子追加、损坏检测与截断报告、写侧合法性校验。
-- [ ] **T2 State Reducer（WP1.3）**：由事件派生 Run/Step 状态、attempts、budgets、candidate、待批请求、evidence coverage；replay 确定性；非法序列报告而非修补。
+- [x] **T1 Event Ledger（WP1.2）**：`src/v2/storage/event-ledger.js`——append-only JSONL、单调 seq、digest/prev 哈希链、原子追加、损坏检测与截断报告、写侧合法性校验；测试 `tests/v2-event-ledger.test.js`（8 例：链校验、重放一致、篡改/删行截断、未知版本拒绝、未知类型保留跳过、写侧拒绝）。
+- [x] **T2 State Reducer（WP1.3）**：`src/v2/engine/reducer.js` + `src/v2/domain/`——由事件派生 Run/Step 状态、attempts、budgets、candidate、待批请求、evidence；replay 确定性；非法序列报告而非修补；测试 `tests/v2-reducer.test.js`（7 例：全流程、确定性、失败指纹连击、approval stale 往返、非法序列、checkpoint/interrupt）。
 - [ ] **T3 最小 Workflow parser**：加载 + 校验 `software-delivery.yaml` 形状 v1（entry/terminal/环检测/未知字段拒绝）。
 - [ ] **T4 Workspace Manager**：worktree + 锁 + candidate 回读 + dirty 检测。
 - [ ] **T5 Mock + Shell Adapter**：Mock 覆盖成功/失败/超时/非法输出/越 Scope/崩溃；Shell 配置化驱动任意 CLI agent。
