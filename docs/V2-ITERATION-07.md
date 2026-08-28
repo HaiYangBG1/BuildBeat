@@ -1,6 +1,6 @@
 # v2 迭代 07：M5 闭环起步、迁移与 Beta
 
-> 状态：**beta-ready**（2026-08-28 开工并完成 T1–T4；T5 发布等待所有者单独授权）
+> 状态：**已完成——M5 于 2026-08-28 关闭**（T1–T5 全部完成；`2.0.0-beta.1` 已发布到 dist-tag `next`，发布证据：[`v2.0.0-beta.1 evidence`](V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md)）
 > 上游：[`V2-PLAN.md`](V2-PLAN.md) §8 M5；M4 收尾：[`V2-ITERATION-06.md`](V2-ITERATION-06.md)
 > 时间盒：**≤3 周**；授权边界沿用 `V2-D2=A`（仅本地 `v2` 分支，不含 push、merge、tag、部署）；**`npm publish 2.0.0-beta.1` 是独立生产动作，须所有者单独授权后执行**
 
@@ -16,7 +16,7 @@
 - [x] **T2 v1→v2 迁移 runbook（半天手工，WP6.2 原则）**：只读分析 v1 → 草稿 → 人工确认活动 Work → 冻结旧看板 → 新工作只进 v2 → 归档不双写 → 一个真实 Run 后才正式切换；装机量 N=1，不写 importer 工具。→ [`guide/08-migration-v1.md`](v2/guide/08-migration-v1.md)
 - [x] **T3 文档十件套（WP6.3）**：快速开始 / Workflow 编写 / Policy / Adapter / Worker 合同 / Evidence / Human Approval / v1 迁移（=T2）/ 安全与权限边界 / 故障恢复，落 [`docs/v2/guide/`](v2/guide/README.md)。
 - [x] **T4 Beta 打包准备**：`package.json` 版本 `2.0.0-beta.1`、`bin/buildbeat-v2.js` 入口、`files` 覆盖 `src/v2/`、`pack:check` 通过、v1 全套测试保持绿（v1 只冻结不删除，`latest` 不动）。文档一致性守卫（`tests/check_docs.py`）教会识别 prerelease 版本号（additive），教学快照/CLI 契约/RELEASING 版本联动完成。
-- [ ] **T5 发布 `@haiyangbg/buildbeat@2.0.0-beta.1`（dist-tag `next`）**：**等待所有者单独授权后执行**。
+- [x] **T5 发布 `@haiyangbg/buildbeat@2.0.0-beta.1`（dist-tag `next`）**：所有者授权（"发布吧，授权也一起"）后经 GitHub Actions OIDC Trusted Publishing 完成；prepublish 门抓出并修正 3 个真实缺陷（发布脚本 dist-tag 契约、v1 cliVersion prerelease 校验、SCAFFOLD_VERSION 虚构跨大版本升级）；`latest` 未动；独立回读五项全过。证据：[`V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md`](V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md)。
 
 ## 完成定义
 

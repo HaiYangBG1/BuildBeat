@@ -2,10 +2,10 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
-## v2.0.0-beta.1 — 未发布（beta-ready，等待所有者发布授权）
+## v2.0.0-beta.1 — 2026-08-28
 
 > 主题：BuildBeat v2 首个 Beta——确定性内核 + Agent Loop Runtime。事件溯源台账（hash 链、损坏截断、终态压实进 Git 面）、Policy 门（8 算子三值逻辑、`UNVERIFIED` 永不当 PASS）、隔离 Workspace（push 物理封禁、`allowedPaths` 越界即停、Reviewer 只读快照强制）、Shell Adapter 厂商中立接任意 CLI Agent（codex 实证）、digest 绑定人批与 `APPROVAL_STALE`。MVP 承诺兑现：Build–Verify–Fix–Review 自动闭环，停在合并决定，带证据交人。
-> **发布口径**：`dist-tag: next`；`latest` 仍指向 v1.21.0，v1 CLI 与文件原样冻结随包分发。v2 入口为独立 bin `buildbeat-v2`。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.1` 已于 2026-08-28 经 GitHub Actions OIDC / Trusted Publishing 发布到 dist-tag `next`；`latest` 保持 v1.21.0，v1 CLI 与文件冻结随包分发（脚手架束钉 `v1.21`）。v2 入口为独立 bin `buildbeat-v2`。registry exact artifact、SLSA provenance、dist-tag 路由、隔离安装、签名审计均已独立回读，证据见 [`docs/V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md`](docs/V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md)。
 > **试点证据**：self-host（RUN-SELF-001）+ 两个外部真实项目（ruoyi-ai RUN-CLI-DW-01 全自动 5.2 分钟到合并决定；chickAI 看板积压含完整 reviewer 阻断→fixer 修复闭环），六退出指标全达标；见 `docs/v2/M4-*.md`。
 
 - **observe v0**（RFC-0003 §8 冻结契约的实现）：drift-check/live-status 类探针接为 Evidence Provider（采不到即 `unverified`，同一 Evidence Contract 与链校验台账）；bands log→只读诊断→Intent 草稿三层分层响应；草稿只入队 Git 面绝不自动执行；`observe triage` 人分诊，`dismiss` 回调阈值防告警疲劳；分诊记忆活在 Git 面，runtime 可删（不变量 23 有测试）
