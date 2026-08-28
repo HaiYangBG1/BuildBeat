@@ -274,6 +274,8 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 > **进展（2026-08-28）**：工程面完成——九场景行为 evals（[`evals/`](../evals/README.md)）、`metrics` v0、Scope 越界即停、单活动 Run 锁、Adapter 故障路径回归；Self-host 试点 `RUN-SELF-001` 真实跑通并停在合并决定（真实 remote 上实测推送保护、抓到并修复一个 YAML 解析真实缺陷），证据与六指标核验见 [`v2/M4-SELFHOST-2026-08-28.md`](v2/M4-SELFHOST-2026-08-28.md)。**外部试点 ≥2 待项目所有者点名（D6），回填指标后 M4 关闭**；跟踪见 [`V2-ITERATION-06.md`](V2-ITERATION-06.md)。
 >
 > **进展（2026-08-28 补）**：外部试点完成——所有者点名的真实需求 `LXJ-AUTH-CLI-DW-01`（ruoyi-ai）由 codex CLI 经 Shell Adapter 全自动 5.2 分钟推进到合并决定（15 文件干净候选、JDK17 全量真实测试、只读 review、portal 页真渲染截图 + UI 门），证据见 [`v2/M4-EXTERNAL-PILOT-2026-08-28.md`](v2/M4-EXTERNAL-PILOT-2026-08-28.md)。六退出指标全部达标（自动到达率 2/2）；仅余 D6 口径（1 项目覆盖双验收面是否即满足"≥2"）待所有者定夺后 M4 关闭。
+>
+> **进展（2026-08-28 再补）：M4 关闭。** 第二外部项目 chickAI Bug 看板积压批处理（[`v2/M4-CHICKAI-PILOT-2026-08-28.md`](v2/M4-CHICKAI-PILOT-2026-08-28.md)）：钉钉 AI 表格读积压 → 两个 bug 各一 Run，其中 RUN-CHICK-0037 走出**完整 Build–Verify–Fix–Review 闭环**（reviewer 以 P1/P2 真实阻断、codex fixer 修复、二轮全绿）。外部项目数 2，D6 原文满足；六指标 4/4 Run 同向达标。进入 M5。
 
 ### M5 — 闭环起步、迁移与 Beta（2–3 周）
 

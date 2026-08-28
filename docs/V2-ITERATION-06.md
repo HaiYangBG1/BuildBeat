@@ -1,6 +1,6 @@
 # v2 迭代 06：M4 evals、度量与试点
 
-> 状态：**工程面 + Self-host + 外部试点完成；六退出指标全部达标（自动到达率 2/2）。仅余 D6 口径确认（1 项目双验收面是否即满足"外部试点 ≥2"）待所有者定夺后关闭 M4**（2026-08-28）
+> 状态：**已完成——M4 于 2026-08-28 关闭**。外部试点项目数 2（ruoyi-ai + chickAI），D6 原文口径满足；六退出指标全部达标（试点 Run 自动到达率 4/4）。第二项目证据：[`v2/M4-CHICKAI-PILOT-2026-08-28.md`](v2/M4-CHICKAI-PILOT-2026-08-28.md)（含完整 Build–Verify–Fix–Review 闭环实战：reviewer 阻断 → codex fixer → 二轮全绿）
 > 上游：[`V2-PLAN.md`](V2-PLAN.md) §8 M4；M3 收尾：[`V2-ITERATION-05.md`](V2-ITERATION-05.md)
 > 时间盒：**≤3 周**；授权边界沿用 `V2-D2=A`（仅本地 `v2` 分支；self-host 试点 Run 停在 `WAITING_HUMAN`，不 merge、不 push）
 
