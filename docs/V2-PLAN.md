@@ -283,6 +283,8 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 - v1 迁移改为**半天手工 runbook**（收尾修正三：装机量 N=1，importer 工具砍掉；"不猜旧状态有效性、单向迁移、禁止双写"原则不变）；
 - 文档十件套（B WP6.3）；发布 `@haiyangbg/buildbeat@2.0.0-beta.1`（dist-tag `next`）。
 
+> **进展（2026-08-28）：beta-ready。** observe v0 按 RFC-0003 §8 冻结契约实现（bands 三层 + intent 草稿只入队 + dismiss 回调；`tests/v2-observe.test.js` 8 项，含不变量 23）并在本仓库真实接入（探针=文档漂移守卫，cycle 1 证据入账）；迁移 runbook 与文档十件套落 [`v2/guide/`](v2/guide/README.md)；`2.0.0-beta.1` 打包核验通过（独立 bin `buildbeat-v2`，`latest` 不动）。全量测试 139/139。**仅剩 T5 `npm publish`（dist-tag `next`）等所有者授权**；跟踪见 [`V2-ITERATION-07.md`](V2-ITERATION-07.md)。
+
 ---
 
 ## 9. 系统不变量（B 的 20 条全部采纳，另加 3 条）
