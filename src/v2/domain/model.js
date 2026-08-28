@@ -49,3 +49,13 @@ export const EVIDENCE_STATUSES = ["passed", "failed", "unverified"];
 export const EVIDENCE_GRADES = ["L0", "L1", "L2", "L3", "L4"];
 
 export const DECISION_VALUES = ["approved", "rejected"];
+
+// observe v0 per docs/v2/RFC-0003-workflow-policy.md §8 (frozen shape):
+// bands are exactly three fixed levels; triage actions are a closed set.
+export const OBSERVE_BAND_LEVELS = ["log", "diagnose", "intent"];
+
+export const OBSERVE_SEVERITIES = ["info", "warn", "error", "critical"];
+
+export const TRIAGE_ACTIONS = ["fix_now", "schedule", "dismiss"];
+
+export const INTENT_DRAFT_STATES = ["draft", "accepted", "scheduled", "dismissed"];

@@ -13,6 +13,7 @@ import { loadRiskPreset } from "../engine/risk-preset.js";
 import { loadWorkflow } from "../engine/workflow.js";
 import { parseYamlSubset } from "../engine/yaml-subset.js";
 import { parsePolicyDoc } from "../policy/policy.js";
+import { observeStatus, runObserveCycle, triageIntent } from "../observe/observe.js";
 import { acceptArtifact, approveRun, listInbox, rejectRun } from "../runtime/decisions.js";
 import { computeMetrics, renderMetrics } from "../runtime/metrics.js";
 import { writeRunRecord } from "../runtime/run-record.js";
@@ -22,7 +23,7 @@ import { acquireLock, releaseLock } from "../workspace/workspace-manager.js";
 
 const KERNEL = { kind: "kernel", id: "cli" };
 
-const USAGE = `BuildBeat v2 runtime (M1 vertical slice)
+const USAGE = `BuildBeat v2 runtime
 
 Usage:
   run.js start --config <run-config.yaml>
@@ -37,6 +38,9 @@ Usage:
   run.js replay --repo <path> --run <RUN-ID>
   run.js metrics --repo <path> [--json true]
   run.js stop --repo <path> --run <RUN-ID> --reason <text>
+  run.js observe run --config <observe.yaml>
+  run.js observe status --repo <path>
+  run.js observe triage --repo <path> --intent <ref> --action <fix_now|schedule|dismiss> [--by <name>] [--note <text>]
 `;
 
 function parseFlags(argv) {
@@ -381,8 +385,75 @@ function commandStop(flags) {
   }
 }
 
+function commandObserve(rest) {
+  const [sub, ...args] = rest;
+  const flags = parseFlags(args);
+  if (sub === "run") {
+    if (!flags.config) {
+      throw new Error("observe run requires --config <observe.yaml>");
+    }
+    const result = runObserveCycle({ configPath: flags.config });
+    console.log(`observe cycle ${result.cycle} finished (ledger: ${result.ledgerPath})`);
+    for (const row of result.results) {
+      const bands = row.bands.length > 0 ? ` bands=${row.bands.join(",")}` : "";
+      const intent = row.intent ? ` intent=${row.intent.outcome}:${row.intent.intentRef}` : "";
+      console.log(
+        `  ${row.provider}: ${row.status}${row.severity ? ` severity=${row.severity}` : ""}${bands}${intent}`,
+      );
+    }
+  } else if (sub === "status") {
+    if (!flags.repo) {
+      throw new Error("observe status requires --repo");
+    }
+    const status = observeStatus({ repoRoot: flags.repo });
+    if (status.corruption) {
+      console.log(
+        `WARNING: observe ledger corrupted after seq=${status.corruption.afterSeq}: ${status.corruption.reason}`,
+      );
+    }
+    console.log(`cycles: ${status.cycles}`);
+    for (const [id, info] of Object.entries(status.providers)) {
+      console.log(`provider ${id}: ${info.lastStatus} (${info.lastKind} on ${info.lastSubject}) at ${info.lastTs}`);
+    }
+    if (status.intents.length === 0) {
+      console.log("intents: none");
+    }
+    for (const intent of status.intents) {
+      console.log(
+        `intent [${intent.status}] ${intent.file} (${intent.provider}, severity ${intent.severity})`,
+      );
+    }
+  } else if (sub === "triage") {
+    if (!flags.repo || !flags.intent || !flags.action) {
+      throw new Error("observe triage requires --repo, --intent and --action");
+    }
+    const result = triageIntent({
+      repoRoot: flags.repo,
+      intentRef: flags.intent,
+      action: flags.action,
+      by: flags.by,
+      note: flags.note,
+    });
+    console.log(`intent ${result.intentRef} -> ${result.status}`);
+    if (result.suggestion) {
+      console.log(result.suggestion);
+    }
+  } else {
+    throw new Error(`observe subcommand must be run|status|triage, got: ${sub ?? "(none)"}`);
+  }
+}
+
 function main() {
   const [command, ...rest] = process.argv.slice(2);
+  if (command === "observe") {
+    try {
+      commandObserve(rest);
+    } catch (error) {
+      console.error(`error: ${error.message}`);
+      process.exitCode = 1;
+    }
+    return;
+  }
   try {
     const flags = parseFlags(rest);
     if (command === "start") {

@@ -1,0 +1,45 @@
+# observe workflow preset per docs/v2/RFC-0003-workflow-policy.md §8 (frozen
+# shape; block form — the strict YAML subset has no inline {}/[]).
+# One `observe run` invocation = one cycle; scheduling is host-level in v0
+# (cron/CI invoking the CLI). Copy to <repo>/.buildbeat/observe.yaml and
+# point commands at the project's real probes.
+kind: workflow
+version: 1
+name: observe
+providers:
+  - id: drift-check
+    command: bash
+    args:
+      - scripts/drift-check.sh
+    schedule: manual
+    evidence:
+      kind: drift
+      subject: deploy-unit
+    severity:
+      failed: error
+      unverified: warn
+    diagnose:
+      command: bash
+      args:
+        - scripts/live-status.sh
+  - id: live-status
+    command: bash
+    args:
+      - scripts/live-status.sh
+    schedule: manual
+    evidence:
+      kind: runtime-health
+      subject: deploy-unit
+bands:
+  - level: log
+    when: "severity >= info"
+  - level: diagnose
+    when: "severity >= error"
+  - level: intent
+    when: "severity >= error"
+triage:
+  actions:
+    - fix_now
+    - schedule
+    - dismiss
+  dismissFeedback: bands

@@ -41,20 +41,26 @@ export function eventDigest(event) {
   return `sha256:${hex}`;
 }
 
+// Default reducer is the run reducer; other streams (observe) plug their own
+// reducer while keeping the exact same envelope, chain and corruption rules.
+const RUN_REDUCER = { initialState, applyEvent };
+
 export class EventLedger {
   #run = null;
   #work = null;
+  #reducer;
 
-  constructor(filePath) {
+  constructor(filePath, reducer = RUN_REDUCER) {
     this.path = filePath;
     this.events = [];
     this.corruption = null;
-    this.state = initialState();
+    this.#reducer = reducer;
+    this.state = reducer.initialState();
     this.lastDigest = GENESIS_DIGEST;
   }
 
-  static open(filePath) {
-    const ledger = new EventLedger(filePath);
+  static open(filePath, reducer = RUN_REDUCER) {
+    const ledger = new EventLedger(filePath, reducer);
     if (existsSync(filePath)) {
       ledger.#load();
     }
@@ -95,7 +101,7 @@ export class EventLedger {
         return;
       }
       try {
-        this.state = applyEvent(this.state, event);
+        this.state = this.#reducer.applyEvent(this.state, event);
       } catch (error) {
         this.#fail(atLine, `illegal event sequence: ${error.message}`);
         return;
@@ -135,7 +141,7 @@ export class EventLedger {
       prev: this.lastDigest,
     };
     event.digest = eventDigest(event);
-    const nextState = applyEvent(this.state, event);
+    const nextState = this.#reducer.applyEvent(this.state, event);
     mkdirSync(dirname(this.path), { recursive: true });
     appendFileSync(this.path, `${JSON.stringify(event)}\n`, "utf8");
     this.events.push(event);
