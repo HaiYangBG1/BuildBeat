@@ -1,0 +1,38 @@
+# Official software-delivery preset per docs/v2/RFC-0003-workflow-policy.md §2.
+# Step order defines the happy path (each step chains to the next on
+# "succeeded"); fix sits off-path at the end and is reached only via the
+# explicit failure/findings transitions.
+kind: workflow
+version: 1
+name: software-delivery
+entry: intent
+steps:
+  - id: intent
+    worker: planner
+  - id: spec
+    worker: planner
+    optional: true
+    requiredWhen: ui-delivery
+  - id: plan
+    worker: planner
+  - id: build
+    worker: builder
+  - id: verify
+    worker: verifier
+  - id: review
+    worker: reviewer
+  - id: wait-merge
+  - id: fix
+    worker: fixer
+transitions:
+  - from: verify
+    on: failed
+    to: fix
+  - from: fix
+    on: succeeded
+    to: verify
+  - from: review
+    on: findings-blocking
+    to: fix
+terminal:
+  - wait-merge

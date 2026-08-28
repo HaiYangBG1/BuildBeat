@@ -65,6 +65,7 @@ export function applyEvent(state, event) {
         workflowDigest: data.workflowDigest,
         base: data.base,
         riskPreset: data.riskPreset,
+        entry: data.entry ?? null,
       };
       break;
     }
