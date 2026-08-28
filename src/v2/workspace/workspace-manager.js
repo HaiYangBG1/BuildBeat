@@ -46,7 +46,7 @@ export function releaseLock(repoRoot, runId) {
   rmSync(lockPath, { recursive: true, force: true });
 }
 
-export function createWorkspace({ repoRoot, runId, base, branch }) {
+export function createWorkspace({ repoRoot, runId, base, branch, protectPush = true }) {
   const resolvedBase = git(repoRoot, ["rev-parse", "--verify", `${base}^{commit}`]);
   const worktreePath = join(repoRoot, ".buildbeat", "worktrees", runId);
   if (existsSync(worktreePath)) {
@@ -58,12 +58,34 @@ export function createWorkspace({ repoRoot, runId, base, branch }) {
     throw new WorkspaceError(`branch already exists: ${branchName}`);
   }
   git(repoRoot, ["worktree", "add", "-b", branchName, worktreePath, resolvedBase]);
+
+  // Protected Actions (B WP4.4): the reliable form of "workers must not
+  // push" is capability removal, not a prompt. Worktree-scoped pushurl
+  // overrides make any push from inside the workspace fail while the main
+  // checkout keeps its remotes untouched.
+  let protectedRemotes = [];
+  if (protectPush) {
+    const remotes = git(repoRoot, ["remote"]).split("\n").filter(Boolean);
+    if (remotes.length > 0) {
+      git(repoRoot, ["config", "extensions.worktreeConfig", "true"]);
+      for (const remote of remotes) {
+        git(worktreePath, [
+          "config",
+          "--worktree",
+          `remote.${remote}.pushurl`,
+          "protected://push-blocked-by-buildbeat",
+        ]);
+      }
+      protectedRemotes = remotes;
+    }
+  }
   return {
     workspaceId: runId,
     repoRoot,
     worktreePath,
     branch: branchName,
     base: resolvedBase,
+    protectedRemotes,
   };
 }
 

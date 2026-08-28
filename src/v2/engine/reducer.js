@@ -139,6 +139,7 @@ export function applyEvent(state, event) {
         digest: data.digest,
         status: data.status,
         grade: data.grade,
+        ...(data.findings ? { findings: data.findings } : {}),
       });
       break;
     }

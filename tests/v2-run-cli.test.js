@@ -32,6 +32,7 @@ test("run start, status, and stop work end to end through the CLI", () => {
       "work: WORK-CLI",
       "run: RUN-CLI",
       `workflow: ${PRESET}`,
+      "riskPreset: fast",
       "entry: build",
       "stopAt:",
       "  - review",
@@ -67,4 +68,23 @@ test("run start, status, and stop work end to end through the CLI", () => {
 
   const stopAgain = cli(["stop", "--repo", root, "--run", "RUN-CLI"]);
   assert.match(stopAgain, /already terminal: CANCELLED/);
+
+  const eventsOut = cli(["events", "--repo", root, "--run", "RUN-CLI"]);
+  assert.match(eventsOut, /1\t.*\tRUN_CREATED/);
+  assert.match(eventsOut, /RUN_COMPACTED/);
+
+  const replayOut = cli(["replay", "--repo", root, "--run", "RUN-CLI"]);
+  assert.match(replayOut, /chain OK: \d+ events verified/);
+  assert.match(replayOut, /terminal: CANCELLED/);
+
+  const doctorOut = cli(["doctor", "--config", join(root, "run-config.yaml")]);
+  assert.match(doctorOut, /risk preset: fast/);
+  assert.match(doctorOut, /merge-evidence-floor.*LOCAL_ENFORCED \(approve gate/);
+  assert.match(doctorOut, /builder: env allowlist/);
+  assert.match(doctorOut, /no remotes/);
+
+  writeFileSync(join(root, "delivery", "work", "WORK-CLI", "plan.md"), "the plan\n");
+  const acceptOut = cli(["accept", "--repo", root, "--work", "WORK-CLI", "--artifact", "plan", "--by", "owner"]);
+  assert.match(acceptOut, /accepted plan as A-WORK-CLI-\d+/);
+  assert.match(acceptOut, /digest: sha256:/);
 });

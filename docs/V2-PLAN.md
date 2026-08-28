@@ -262,6 +262,8 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 - 强制等级报告；三个 Risk Preset（fast/standard/controlled）+ `legacy-four-gates` 迁移预设；
 - UI 真渲染 Gate（spec approval subject 含渲染证据）；resume/replay 补全。
 
+> **进展（2026-08-28）**：M3 完成——Policy Engine（八算子 + 三值逻辑）四类全接线；Protected Actions 落到能力剥离（Worker env 白名单 + worktree pushurl 保护）；`doctor` 逐条报告声明 vs 实际强制等级（SERVER_ENFORCED 一律报本地不可验证）；四个 Risk Preset + UI 真渲染 Gate + `accept`/`events`/`replay`。M2 DoD #1 复核 ✓，#20 收窄至 coverage 字段纪律挂 M4。跟踪见 [`V2-ITERATION-05.md`](V2-ITERATION-05.md)。进入 M4。
+
 ### M4 — evals、度量与试点（2–3 周）
 
 - 确定性测试套件（B WP5.1）+ 行为 evals（B WP5.2 九目录）；

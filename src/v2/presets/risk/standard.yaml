@@ -1,0 +1,28 @@
+# Standard lane: the plan must be an accepted artifact (digest-bound) before
+# build starts; merge stays a human decision behind the evidence floor.
+kind: risk-preset
+version: 1
+name: standard
+policies:
+  - kind: policy
+    version: 1
+    name: plan-accepted
+    type: pre
+    appliesTo: build
+    enforcement: LOCAL_ENFORCED
+    rule:
+      artifact.accepted:
+        artifact: plan
+  - kind: policy
+    version: 1
+    name: merge-evidence-floor
+    type: transition
+    appliesTo: enter-wait-merge
+    enforcement: LOCAL_ENFORCED
+    rule:
+      all:
+        - evidence.exists:
+            kind: command
+            minGrade: L2
+        - finding.maxSeverity:
+            atMost: P2

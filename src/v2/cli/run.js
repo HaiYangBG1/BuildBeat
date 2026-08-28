@@ -3,14 +3,17 @@
 // Deliberately thin — all facts live in the event ledger; this file only
 // parses input, wires adapters, and renders derived state.
 
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 import { createShellAdapter } from "../adapters/shell.js";
+import { loadRiskPreset } from "../engine/risk-preset.js";
 import { loadWorkflow } from "../engine/workflow.js";
 import { parseYamlSubset } from "../engine/yaml-subset.js";
-import { approveRun, listInbox, rejectRun } from "../runtime/decisions.js";
+import { parsePolicyDoc } from "../policy/policy.js";
+import { acceptArtifact, approveRun, listInbox, rejectRun } from "../runtime/decisions.js";
 import { writeRunRecord } from "../runtime/run-record.js";
 import { resumeRun, startRun } from "../runtime/orchestrator.js";
 import { EventLedger } from "../storage/event-ledger.js";
@@ -25,8 +28,12 @@ Usage:
   run.js resume --config <run-config.yaml>
   run.js status --repo <path> --run <RUN-ID>
   run.js inbox --repo <path>
-  run.js approve --repo <path> --run <RUN-ID> --transition <t> [--by <name>]
+  run.js approve --repo <path> --run <RUN-ID> --transition <t> [--by <name>] [--config <run-config.yaml>]
   run.js reject --repo <path> --run <RUN-ID> [--transition <t>] [--reason <text>] [--by <name>]
+  run.js accept --repo <path> --work <WORK-ID> --artifact <plan|intent|spec> [--by <name>]
+  run.js doctor --config <run-config.yaml>
+  run.js events --repo <path> --run <RUN-ID>
+  run.js replay --repo <path> --run <RUN-ID>
   run.js stop --repo <path> --run <RUN-ID> --reason <text>
 `;
 
@@ -115,6 +122,19 @@ function loadRunConfig(flags, command) {
     return `sha256:${createHash("sha256").update(readFileSync(filePath, "utf8"), "utf8").digest("hex")}`;
   };
 
+  const policies = [];
+  let presetStopAt = null;
+  let riskPreset = "standard";
+  if (config.riskPreset) {
+    const preset = loadRiskPreset(config.riskPreset);
+    policies.push(...preset.policies);
+    presetStopAt = preset.stopAt;
+    riskPreset = preset.name;
+  }
+  for (const policyPath of config.policies ?? []) {
+    policies.push(parsePolicyDoc(parseYamlSubset(readFileSync(resolve(configDir, policyPath), "utf8"))));
+  }
+
   return {
     repoRoot,
     workflow,
@@ -123,8 +143,11 @@ function loadRunConfig(flags, command) {
     runId: config.run,
     base: config.base ?? "HEAD",
     entry: config.entry ?? workflow.entry,
-    stopAt: config.stopAt ?? [],
+    stopAt: config.stopAt ?? presetStopAt ?? [],
     adapters,
+    adapterConfigs: config.workers ?? {},
+    policies,
+    riskPreset,
     maxAttemptsPerStep: config.maxAttemptsPerStep ?? 4,
     stepTimeoutMs: config.stepTimeoutMs,
     planDigest: digestOfWorkFile("plan.md"),
@@ -177,9 +200,11 @@ function commandApprove(flags) {
   if (!flags.repo || !flags.run || !flags.transition) {
     throw new Error("approve requires --repo, --run and --transition");
   }
+  const policies = flags.config ? loadRunConfig(flags, "approve").policies : [];
   const result = approveRun(resolve(flags.repo), flags.run, {
     by: flags.by ?? "human",
     transition: flags.transition,
+    policies,
   });
   if (!result.approved) {
     console.log("NOT approved: the subject changed since the request; a refreshed request was filed");
@@ -189,6 +214,9 @@ function commandApprove(flags) {
   console.log(`approved ${result.transition} as ${result.decisionRef}`);
   console.log(`  candidate: ${result.subject.candidate}`);
   console.log(`  planDigest: ${result.subject.planDigest}`);
+  for (const warning of result.warnings ?? []) {
+    console.log(`  advisory: ${warning}`);
+  }
   if (result.terminal) {
     console.log("run is terminal: SUCCEEDED (merge itself stays a manual external action)");
   } else {
@@ -206,6 +234,101 @@ function commandReject(flags) {
     reason: flags.reason,
   });
   console.log(`rejected as ${result.decisionRef}; run cancelled and compacted`);
+}
+
+function commandAccept(flags) {
+  if (!flags.repo || !flags.work || !flags.artifact) {
+    throw new Error("accept requires --repo, --work and --artifact");
+  }
+  const result = acceptArtifact(resolve(flags.repo), flags.work, flags.artifact, {
+    by: flags.by ?? "human",
+  });
+  console.log(`accepted ${flags.artifact} as ${result.decisionRef}`);
+  console.log(`  digest: ${result.digest}`);
+  console.log("  note: editing the artifact after acceptance makes this acceptance stale");
+}
+
+function commandDoctor(flags) {
+  const options = loadRunConfig(flags, "doctor");
+  console.log(`risk preset: ${options.riskPreset}`);
+  console.log(`stopAt boundaries: ${options.stopAt.length > 0 ? options.stopAt.join(", ") : "(none)"}`);
+  console.log("policies (declared vs actually achieved enforcement):");
+  if (options.policies.length === 0) {
+    console.log("  (none configured)");
+  }
+  for (const policy of options.policies) {
+    let actual;
+    if (policy.enforcement === "ADVISORY") {
+      actual = "ADVISORY (prompt-level only; nothing stops a worker)";
+    } else if (policy.enforcement === "SERVER_ENFORCED") {
+      actual = "UNVERIFIED (branch protection/CI cannot be verified from here; not claiming it)";
+    } else if (policy.type === "transition") {
+      actual = "LOCAL_ENFORCED (approve gate refuses the stamp)";
+    } else {
+      actual = "LOCAL_ENFORCED (runner gate before/after the step)";
+    }
+    console.log(`  ${policy.name}: type=${policy.type} appliesTo=${policy.appliesTo} declared=${policy.enforcement} actual=${actual}`);
+  }
+  console.log("worker isolation:");
+  for (const [worker, spec] of Object.entries(options.adapterConfigs)) {
+    const mode = spec.inheritEnv === true
+      ? "WARNING inherit (worker sees the full host env; credential isolation is ADVISORY only)"
+      : "env allowlist (host credential env vars withheld from the worker)";
+    console.log(`  ${worker}: ${mode}`);
+  }
+  let remotes = [];
+  try {
+    remotes = execFileSync("git", ["-C", options.repoRoot, "remote"], { encoding: "utf8" })
+      .split("\n")
+      .filter(Boolean);
+  } catch {
+    remotes = [];
+  }
+  if (remotes.length > 0) {
+    console.log(
+      `push protection: worktree pushurl override is applied at workspace creation for: ${remotes.join(", ")}`,
+    );
+  } else {
+    console.log("push protection: repository has no remotes (nothing to protect)");
+  }
+  console.log("kernel capabilities: merge/deploy/publish have no call path in the runner (invariant 20)");
+}
+
+function commandEvents(flags) {
+  if (!flags.repo || !flags.run) {
+    throw new Error("events requires --repo and --run");
+  }
+  const ledger = EventLedger.open(ledgerPathFor(flags.repo, flags.run));
+  for (const event of ledger.events) {
+    const detail =
+      event.data.step ??
+      event.data.transition ??
+      event.data.policy ??
+      event.data.status ??
+      "";
+    console.log(`${event.seq}\t${event.ts}\t${event.type}\t${detail}`);
+  }
+  if (ledger.corruption) {
+    console.log(
+      `WARNING: ledger corrupted after seq=${ledger.corruption.afterSeq} at line ${ledger.corruption.atLine}: ${ledger.corruption.reason}`,
+    );
+  }
+}
+
+function commandReplay(flags) {
+  if (!flags.repo || !flags.run) {
+    throw new Error("replay requires --repo and --run");
+  }
+  const ledger = EventLedger.open(ledgerPathFor(flags.repo, flags.run));
+  if (ledger.corruption) {
+    console.log(
+      `chain BROKEN after seq=${ledger.corruption.afterSeq}: ${ledger.corruption.reason}; ` +
+        "state below reflects the valid prefix only",
+    );
+  } else {
+    console.log(`chain OK: ${ledger.events.length} events verified (digest/prev/seq)`);
+  }
+  printState(ledger.state, { corruption: null });
 }
 
 function commandStatus(flags) {
@@ -257,6 +380,14 @@ function main() {
       commandApprove(flags);
     } else if (command === "reject") {
       commandReject(flags);
+    } else if (command === "accept") {
+      commandAccept(flags);
+    } else if (command === "doctor") {
+      commandDoctor(flags);
+    } else if (command === "events") {
+      commandEvents(flags);
+    } else if (command === "replay") {
+      commandReplay(flags);
     } else if (command === "status") {
       commandStatus(flags);
     } else if (command === "stop") {

@@ -6,9 +6,10 @@
 // as a DECISION_RECORDED event and as a line in the Git plane
 // (delivery/work/<work>/decisions.jsonl).
 
-import { appendFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
+import { evaluatePolicies, sha256Text } from "../policy/policy.js";
 import { EventLedger } from "../storage/event-ledger.js";
 import { acquireLock, readback, releaseLock } from "../workspace/workspace-manager.js";
 import { writeRunRecord } from "./run-record.js";
@@ -51,7 +52,7 @@ function recordDecisionFile(repoRoot, work, line) {
   appendFileSync(join(dir, "decisions.jsonl"), `${JSON.stringify(line)}\n`, "utf8");
 }
 
-export function approveRun(repoRoot, runId, { by = "human", transition, ts } = {}) {
+export function approveRun(repoRoot, runId, { by = "human", transition, ts, policies } = {}) {
   const ledger = openWaiting(repoRoot, runId);
   const pending = ledger.state.pendingHuman;
   if (!transition) {
@@ -91,6 +92,47 @@ export function approveRun(repoRoot, runId, { by = "human", transition, ts } = {
       });
       return { approved: false, refreshed: true, subject: ledger.state.pendingHuman.subject };
     }
+
+    // Transition policies are enforced at the moment of stamping: an
+    // approval that a LOCAL_ENFORCED policy forbids is refused, not logged.
+    const policyRows = evaluatePolicies(
+      policies ?? [],
+      { type: "transition", appliesTo: pending.transition },
+      {
+        state: ledger.state,
+        workDir: join(repoRoot, "delivery", "work", ledger.state.run.work),
+        worktreePath: bound.worktreePath,
+        readWorktree: () => readback(bound.worktreePath),
+      },
+    );
+    for (const row of policyRows) {
+      ledger.append({
+        type: "POLICY_EVALUATED",
+        actor: KERNEL,
+        ts: when,
+        data: {
+          policy: row.policy,
+          phase: "transition",
+          result: row.result,
+          enforcement: row.enforcement,
+          reason: row.reason,
+        },
+      });
+    }
+    const refused = policyRows.filter(
+      (row) => row.enforcement !== "ADVISORY" && row.result !== "PASS",
+    );
+    if (refused.length > 0) {
+      throw new DecisionError(
+        `approval refused by policy: ${refused
+          .map((row) => `${row.policy} (${row.reason})`)
+          .join("; ")}`,
+      );
+    }
+    const warnings = policyRows
+      .filter((row) => row.enforcement === "ADVISORY" && row.result !== "PASS")
+      .map((row) => `${row.policy}: ${row.reason}`);
+
     const decisionRef = `D-${runId}-${ledger.state.decisions.length + 1}`;
     ledger.append({
       type: "DECISION_RECORDED",
@@ -132,11 +174,39 @@ export function approveRun(repoRoot, runId, { by = "human", transition, ts } = {
       terminal,
       transition: pending.transition,
       subject: pending.subject,
+      warnings,
       state: ledger.state,
     };
   } finally {
     releaseLock(repoRoot, runId);
   }
+}
+
+// Accepts a work artifact (plan, intent, spec) by binding a decision to the
+// file's current digest in the Git plane. If the file changes afterwards,
+// artifact.accepted evaluates false again — acceptance cannot go stale
+// silently (closes MVP DoD #1 with staleness included).
+export function acceptArtifact(repoRoot, workId, artifact, { by = "human", ts } = {}) {
+  const filePath = join(repoRoot, "delivery", "work", workId, `${artifact}.md`);
+  if (!existsSync(filePath)) {
+    throw new DecisionError(`artifact file missing: ${filePath}`);
+  }
+  const digest = sha256Text(readFileSync(filePath, "utf8"));
+  const decisionsPath = join(repoRoot, "delivery", "work", workId, "decisions.jsonl");
+  const count = existsSync(decisionsPath)
+    ? readFileSync(decisionsPath, "utf8").split("\n").filter(Boolean).length
+    : 0;
+  const when = ts ?? new Date().toISOString();
+  const decisionRef = `A-${workId}-${count + 1}`;
+  recordDecisionFile(repoRoot, workId, {
+    ts: when,
+    decisionRef,
+    decision: "approved",
+    transition: `accept-${artifact}`,
+    subject: { artifact, digest },
+    by,
+  });
+  return { decisionRef, digest };
 }
 
 export function rejectRun(repoRoot, runId, { by = "human", transition, reason, ts } = {}) {

@@ -16,6 +16,7 @@ import { join } from "node:path";
 
 import { nextStep } from "../engine/workflow.js";
 import { collectCommandEvidence } from "../evidence/collector.js";
+import { evaluatePolicies } from "../policy/policy.js";
 import { EventLedger, canonicalJson } from "../storage/event-ledger.js";
 import {
   acquireLock,
@@ -96,6 +97,14 @@ function makeContext(options, ledger, workspace) {
   };
   context.maxAttemptsFor = (step) =>
     workflow.budgets?.maxAttempts?.[step] ?? maxAttemptsPerStep;
+  context.policies = options.policies ?? [];
+  context.policyCtx = () => ({
+    state: ledger.state,
+    workDir: join(repoRoot, "delivery", "work", ledger.state.run?.work ?? ""),
+    worktreePath: workspace.worktreePath,
+    readWorktree: () =>
+      existsSync(workspace.worktreePath) ? readback(workspace.worktreePath) : null,
+  });
   context.subjectNow = () => {
     const candidate = ledger.state.workspaces[workspace.workspaceId]?.candidate ?? workspace.base;
     const lastEvidence = ledger.state.evidence[ledger.state.evidence.length - 1];
@@ -114,6 +123,39 @@ function makeContext(options, ledger, workspace) {
     });
   };
   return context;
+}
+
+// Evaluates configured policies of `type` for `appliesTo`, records every
+// verdict as a POLICY_EVALUATED event, and reports what the kernel must do.
+// ADVISORY failures are recorded but never gate (doctor reports the gap).
+function runPolicyGate(context, type, appliesTo) {
+  const rows = evaluatePolicies(context.policies, { type, appliesTo }, context.policyCtx());
+  for (const row of rows) {
+    context.ledger.append({
+      type: "POLICY_EVALUATED",
+      actor: KERNEL,
+      ts: context.now(),
+      data: {
+        policy: row.policy,
+        phase: type,
+        result: row.result,
+        enforcement: row.enforcement,
+        reason: row.reason,
+      },
+    });
+  }
+  const enforced = rows.filter((row) => row.enforcement !== "ADVISORY" && row.result !== "PASS");
+  if (enforced.length === 0) {
+    return { action: "continue", rows };
+  }
+  if (enforced.some((row) => row.result === "BLOCK")) {
+    return { action: "block", rows: enforced };
+  }
+  return { action: "wait", rows: enforced };
+}
+
+function policyReasons(rows) {
+  return rows.map((row) => `policy ${row.policy}: ${row.reason}`);
 }
 
 // Records fingerprint/policy/transition bookkeeping for a finished step and
@@ -213,6 +255,22 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
       context.waitHuman(`enter-${step}`, [
         `no adapter configured for worker ${stepDef.worker ?? "(none)"}; attended handoff`,
       ]);
+      return;
+    }
+
+    const preGate = runPolicyGate(context, "pre", step);
+    if (preGate.action === "block") {
+      ledger.append({
+        type: "RUN_TERMINAL",
+        actor: KERNEL,
+        ts: now(),
+        data: { status: "FAILED", reason: `pre policy blocked ${step}` },
+      });
+      writeRunRecord({ repoRoot: context.repoRoot, ledger, ts: now() });
+      return;
+    }
+    if (preGate.action === "wait") {
+      context.waitHuman(`resume-${step}`, policyReasons(preGate.rows));
       return;
     }
 
@@ -350,6 +408,7 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
           digest: sha256(canonicalJson(envelope)),
           status: blockingFindings.length > 0 ? "failed" : "passed",
           grade: "L2",
+          findings: envelope.findings,
         },
       });
     }
@@ -373,6 +432,24 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
             candidate: tree.head,
           },
         });
+      }
+    }
+
+    if (stepStatus === "succeeded") {
+      const postGate = runPolicyGate(context, "post", step);
+      if (postGate.action === "block") {
+        ledger.append({
+          type: "RUN_TERMINAL",
+          actor: KERNEL,
+          ts: now(),
+          data: { status: "FAILED", reason: `post policy blocked ${step}` },
+        });
+        writeRunRecord({ repoRoot: context.repoRoot, ledger, ts: now() });
+        return;
+      }
+      if (postGate.action === "wait") {
+        context.waitHuman(`resume-${step}`, policyReasons(postGate.rows));
+        return;
       }
     }
 
