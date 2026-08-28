@@ -74,8 +74,15 @@ export function parseEnvelope(raw) {
   }
   let doc = raw;
   if (typeof raw === "string") {
+    // Agents habitually wrap JSON in markdown fences; strip one outer fence
+    // but stay strict about the JSON inside.
+    let text = raw.trim();
+    const fenced = text.match(/^```(?:json)?\s*\n([\s\S]*?)\n?```$/);
+    if (fenced) {
+      text = fenced[1].trim();
+    }
     try {
-      doc = JSON.parse(raw);
+      doc = JSON.parse(text);
     } catch {
       return { envelope: null, error: "worker envelope is not valid JSON" };
     }

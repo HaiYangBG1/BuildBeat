@@ -8,7 +8,7 @@ import test from "node:test";
 import { createMockAdapter } from "../src/v2/adapters/mock.js";
 import { createShellAdapter } from "../src/v2/adapters/shell.js";
 import { loadWorkflow } from "../src/v2/engine/workflow.js";
-import { startRun } from "../src/v2/runtime/orchestrator.js";
+import { parseEnvelope, startRun } from "../src/v2/runtime/orchestrator.js";
 
 const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 const WORKFLOW = loadWorkflow(PRESET_PATH);
@@ -98,6 +98,14 @@ test("a reviewer that writes to the workspace is blocked, not merged", () => {
   assert.ok(
     state.policyLog.some((entry) => entry.result === "BLOCK" && entry.phase === "action"),
   );
+});
+
+test("parseEnvelope tolerates one markdown fence but stays strict inside", () => {
+  const fenced = parseEnvelope('```json\n{"status":"succeeded","findings":[]}\n```');
+  assert.equal(fenced.error, null);
+  assert.deepEqual(fenced.envelope.findings, []);
+  const bad = parseEnvelope("```json\nnot json\n```");
+  assert.match(bad.error, /not valid JSON/);
 });
 
 test("an invalid worker envelope is invalid-output and fails closed", () => {
