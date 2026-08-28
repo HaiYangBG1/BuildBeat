@@ -9,7 +9,7 @@
 | 1 | 2026-08-27 | ChickAI：额度耗尽仍可登录网站，模型发送禁用且不补发 Key | 含 UI + 生产发布 | 5（人工阶段；含发布重构） | PASS：冻结 oracle 在 `9d571b3` 非零 | `0.17.85` 已上线；unit 158/158、UI5 3/3、typecheck/lint/build；两阶段双 reviewer 无 P0/P1；两实例同 revision、Healthy/0 重启 | 1（reviewer P1 迫使单阶段改两阶段；非 loop ledger） | `UNVERIFIED` | 候选成功不代表发布安全：独立 reviewer 抓出新旧 Pod 混跑可绕 Agent/Excel 的 P1，先发 `0.17.84` 铺硬墙、再发 `0.17.85` 开功能；全过程仍由当前会话人工编排 |
 | 2 | 2026-08-27 | Tide：悬浮球空闲缩入左侧并半透明隐藏 | 小功能 | 1（人工实现轮次） | PASS：冻结 oracle 在 `e5c130d` 非零 | Node 3/3；Rollup build/syntax/diff PASS；截图已留 | `UNVERIFIED`（未走 loop ledger） | `UNVERIFIED` | 原目录无 Git，先建立本地可回滚基线；未做 fresh-context reviewer |
 | 3 | 2026-08-27～28 | AI 底座：`WP-B1-AUTHZ` Gate3 非生产证据推进 | legacy v1.21 + 多仓真实项目；仅作激活失败观察 | `MANUAL_OUTSIDE_LOOP` | `UNQUALIFIED` | 写者 L4 已到 `9d258ee`，但无自动 Run/恢复/审批 ledger | 1（用户主动纠正主线） | `UNVERIFIED` | `V2-D1A` 已要求下一项任务进 Loop，实际仍被当前会话手工推进；不倒算自动 Run，作为第三次激活失败负向证据。见 [`evidence/2026-08-28-m1-runtime-gap.md`](evidence/2026-08-28-m1-runtime-gap.md) |
-| 4 | 待定（仅选择 B 时） | AI 底座：下一项自然发生、已授权的低风险非生产开发任务 | 合格自动 Run 候选 | `WAITING_TASK` | `UNVERIFIED` | `UNVERIFIED` | `UNVERIFIED` | `UNVERIFIED` | 选择 B 才继续等待；不补造需求、不回放旧 candidate |
+| 4 | 已关闭（2026-08-28） | AI 底座：下一项自然发生、已授权的低风险非生产开发任务 | 合格自动 Run 候选 | `CLOSED` | `N/A` | `N/A` | `N/A` | `N/A` | `V2-D2=A` 已拍板，本行随 M-1 关闭；不补造需求、不回放旧 candidate |
 
 > 第 1～3 行均是**真实流程观察**，但都不是 `pilot/loop.sh` 的有效 run record；第 3 行尤其发生在 `V2-D1A` 之后，证明“选定目标 + 写下协议”仍不能自动激活 Loop。attempts 仅表示人工阶段，不进入自动 Run 平均值；token 与费用继续保持 `UNVERIFIED`。第 4 行不是既成任务，只表示选择 B 后的等待路径。
 
@@ -106,4 +106,4 @@
 - 推荐结论：**(a) 完整内核**；决策卡见 [`../docs/V2-D2-DECISION-CARD.md`](../docs/V2-D2-DECISION-CARD.md)。
 - 依据：继续增加手工案例不能改变激活、恢复与审批状态缺失；完整内核仍按纵切止损，不等于一次性实现全部 M1～M3。
 - 各缺口去向：M1 关闭 Run/event/recovery 最小纵切；M2 关闭 Approval stale 与 fix/review loop；M3 完成 policy/protected actions。
-- 决定日期与拍板人：`PENDING`。
+- 决定日期与拍板人：2026-08-28，项目所有者；`V2-D2=A`（完整内核）。主判据为重复 CRITICAL 缺口；暂定覆盖率 45.8% 按本文件口径仅作旁证，不作分叉依据。

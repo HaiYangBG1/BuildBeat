@@ -1,7 +1,7 @@
 # `V2-D2` 决策卡：M-1 分叉
 
 > 日期：2026-08-28
-> 状态：`READY_FOR_DECISION=true` / `V2-D2=PENDING`
+> 状态：`V2-D2=A`（2026-08-28 项目所有者拍板，完整内核）
 > 决策人：项目所有者
 > 证据：[`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../pilot/evidence/2026-08-28-m1-runtime-gap.md) · [`pilot/metrics.md`](../pilot/metrics.md)
 
@@ -31,3 +31,7 @@
 
 - `A`：完整内核，进入 M0/M1。
 - `B`：继续等待下一项真实任务，M-1 保持开放。
+
+## 拍板结果（2026-08-28）
+
+项目所有者选择 **A**。主判据为重复出现的 CRITICAL 运行缺口（自动激活 `0/3`、F5 恢复缺失、F6 Approval 对象缺失）；「已确认事实」中的暂定覆盖率 45.8% 混合了 fixture 与人工候选证据，按 [`pilot/metrics.md`](../pilot/metrics.md) 的口径仅作旁证，不作为分叉依据。M-1 关闭，进入 M0；台账见 [`V2-DECISIONS.md`](V2-DECISIONS.md)。

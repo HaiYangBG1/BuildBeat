@@ -208,7 +208,7 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 
 ## 8. 里程碑（重排：试点先行 → 纵切优先，每段独立止损）
 
-总窗口 **5–15 周，由 M-1 结论决定**（单人 + AI 辅助）。仓库策略采纳 B：`v1-maintenance` 分支冻结 1.x（只修安全/严重缺陷），`v2` 分支开发，npm `latest` 留 v1、`next` 发 v2 预发布。
+总窗口 **~12–15 周**（`V2-D2=A` 已决完整内核，2026-08-28；单人 + AI 辅助）。仓库策略采纳 B：`v1-maintenance` 分支冻结 1.x（只修安全/严重缺陷），`v2` 分支开发，npm `latest` 留 v1、`next` 发 v2 预发布。
 
 ### M-1 — 人肉内核试点（1–2 周，先于一切工程投入）★ 收尾新增
 
@@ -222,7 +222,7 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
   - **结论 (b)** 可组装能力覆盖率 ≥80%、三轮平均计划外介入 ≤2，且无重复的未处置 CRITICAL 运行缺口 → M1–M3 收缩为**薄内核**（只造 approval staleness、统一证据台账、policy/gate 检查器三件），总窗口 ~5–8 周；
   - 未跑场景一律记 `UNVERIFIED`，不得按通过计分；中间态默认少造，将存疑能力挂到 M4 复验。
 
-> **进展（2026-08-28）**：ChickAI、Tide 与 `V2-D1A` 后续的 AI 底座 `WP-B1-AUTHZ` 推进均未激活 `pilot/loop.sh`，自动 Run ledger 为 `0/3`；第三项不倒算合格自动 Run，只作为重复激活失败的负向证据。F5 已确认只能 fail-closed、不能恢复，F6 已确认没有持久化 Approval 对象或 stale 事件；暂定可组装覆盖率仍为 45.8%。[`V2-D2-DECISION-CARD.md`](V2-D2-DECISION-CARD.md) 已就绪并推荐完整内核，当前等待项目所有者 A/B；`V2-D2` 尚未生效。明细见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)、[`pilot/metrics.md`](../pilot/metrics.md) 与 [`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../pilot/evidence/2026-08-28-m1-runtime-gap.md)。
+> **进展（2026-08-28）**：ChickAI、Tide 与 `V2-D1A` 后续的 AI 底座 `WP-B1-AUTHZ` 推进均未激活 `pilot/loop.sh`，自动 Run ledger 为 `0/3`；第三项不倒算合格自动 Run，只作为重复激活失败的负向证据。F5 已确认只能 fail-closed、不能恢复，F6 已确认没有持久化 Approval 对象或 stale 事件；暂定可组装覆盖率仍为 45.8%。[`V2-D2-DECISION-CARD.md`](V2-D2-DECISION-CARD.md) 推荐完整内核，项目所有者已于 2026-08-28 拍板 **`V2-D2=A`**：M-1 关闭，进入 M0；主判据为重复 CRITICAL 缺口，暂定覆盖率仅旁证（台账见 [`V2-DECISIONS.md`](V2-DECISIONS.md)）。明细见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)、[`pilot/metrics.md`](../pilot/metrics.md) 与 [`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../pilot/evidence/2026-08-28-m1-runtime-gap.md)。
 
 ### M0 — 核心重置（1 周）
 
