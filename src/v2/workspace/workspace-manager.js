@@ -98,10 +98,19 @@ export function readback(worktreePath) {
 // Paths changed relative to base: committed diff plus anything dirty in the
 // tree. Rename lines keep only the new path.
 export function listChangedPaths(worktreePath, base) {
-  const committed = git(worktreePath, ["diff", "--name-only", `${base}..HEAD`])
+  // core.quotepath=off: git otherwise octal-escapes and quotes non-ASCII
+  // paths, which would defeat the allowedPaths prefix check (real incident:
+  // a Chinese board filename was reported as out of scope).
+  const committed = git(worktreePath, [
+    "-c",
+    "core.quotepath=off",
+    "diff",
+    "--name-only",
+    `${base}..HEAD`,
+  ])
     .split("\n")
     .filter(Boolean);
-  const dirty = git(worktreePath, ["status", "--porcelain"])
+  const dirty = git(worktreePath, ["-c", "core.quotepath=off", "status", "--porcelain"])
     .split("\n")
     .filter(Boolean)
     .map((line) => {

@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -111,4 +111,20 @@ test("listChangedPaths sees committed and dirty changes relative to base", () =>
   writeFileSync(join(workspace.worktreePath, "dirty.txt"), "b\n");
   const changed = listChangedPaths(workspace.worktreePath, workspace.base).sort();
   assert.deepEqual(changed, ["committed.txt", "dirty.txt"]);
+});
+
+test("listChangedPaths reports non-ASCII paths unescaped (real incident: scope check)", () => {
+  // git quotepath octal-escapes non-ASCII names by default; the scope check
+  // must see the plain UTF-8 path or an in-scope Chinese filename blocks.
+  const { root } = fixtureRepo();
+  const workspace = createWorkspace({ repoRoot: root, runId: "RUN-I5B", base: "HEAD" });
+  const board = join(workspace.worktreePath, "pm");
+  mkdirSync(board, { recursive: true });
+  writeFileSync(join(board, "登录二期看板.md"), "# 看板\n");
+  git(workspace.worktreePath, ["add", "-A"]);
+  git(workspace.worktreePath, ["commit", "-qm", "board"]);
+  writeFileSync(join(board, "脏文件.md"), "wip\n");
+  const changed = listChangedPaths(workspace.worktreePath, workspace.base).sort();
+  assert.deepEqual(changed, ["pm/登录二期看板.md", "pm/脏文件.md"]);
+  assert.ok(changed.every((path) => path.startsWith("pm/")));
 });
