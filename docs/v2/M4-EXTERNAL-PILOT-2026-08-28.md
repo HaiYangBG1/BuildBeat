@@ -29,15 +29,11 @@
 - fixer 未配置真实 Agent（verify 若失败将停为 attended handoff）——本轮未触发；
 - 不 merge、不 push、不部署、不改生产 `sys_client`；生产切换硬门（提案 §4）未授权、未执行。
 
-## 4. 待项目所有者
+## 4. 合并决定（已批准）
 
-inbox 中 `RUN-CLI-DW-01` 停在 `enter-wait-merge`（candidate `f97f122`，planDigest 绑定，screenshot 证据在册）。批准命令（merge-evidence-floor + ui-render-merge-gate 会在盖章瞬间强制）：
+项目所有者于 2026-08-28 批准：`D-RUN-CLI-DW-01-1`（merge-evidence-floor 与 ui-render-merge-gate 在盖章瞬间均为 PASS）。Run 终态 `SUCCEEDED`，压实为 `delivery/work/WORK-CLI-DW-01/runs/RUN-CLI-DW-01/run-record.json`，最终台账 34 事件链校验通过；worktree 已清理，candidate `f97f122` 保留在 `run/RUN-CLI-DW-01` 分支可达。
 
-```bash
-node src/v2/cli/run.js approve --repo "/Users/zhouhaiyang/Documents/Obsidian Vault/AI底座/底座/ruoyi-ai" --run RUN-CLI-DW-01 --transition enter-wait-merge --by haiyangbg --config "/Users/zhouhaiyang/Documents/Obsidian Vault/AI底座/底座/ruoyi-ai/delivery/work/WORK-CLI-DW-01/run-config.yaml"
-```
-
-批准仅表示 merge-ready；将候选并入工作分支、与既有人工候选合流、契约同步与生产切换均为后续人工决定。
+批准仅表示 merge-ready；将候选并入工作分支、与既有人工候选合流、契约同步与生产切换（提案 §4 硬门）均为后续人工决定，本 Run 未执行任何一项。
 
 ## 5. 对 M4 退出指标的回填
 
