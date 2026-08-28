@@ -35,6 +35,10 @@
 
 批准仅表示 merge-ready；将候选并入工作分支、与既有人工候选合流、契约同步与生产切换（提案 §4 硬门）均为后续人工决定，本 Run 未执行任何一项。
 
+## 4.1 生产切换（2026-08-28 当日晚，所有者逐步授权后完成）
+
+candidate `f97f122` 经 cherry-pick 到生产血统（`codeup/master`，规避了本地分支上未批准的 registry 在途工作与已部署内网文档的双向分叉）→ 全量验证（Surefire 全套 + Portal 29/29 + 零残留）→ 按提案 §4 硬门完成生产切换：只读盘点（唯一 `cli-dwh` 行 / 零 Nacos 覆盖 / 零真实消费方登录记录）→ **有界双行窗口**破解新旧健康门顺序死锁（先 INSERT `cli-dw` 镜像行 → 云效 Run #31 双批发布 SUCCESS → 软删旧行收口）→ L4 全绿（`cli-dw` 200 ×2、`cli-dwh` 400 ×2、`/index` 200 全程无扰动）。证据：meta 仓 `pm/archive/登录二期/evidence/2026-08-28-LXJ-AUTH-CLI-DW-01-生产切换.md`。
+
 ## 5. 对 M4 退出指标的回填
 
 - 试点 Run 自动到达 `WAITING_HUMAN`：**2/2（self-host + 外部各一）= 100% ≥ 70%** ✓；
