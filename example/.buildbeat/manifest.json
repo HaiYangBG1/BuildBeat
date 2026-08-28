@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "scaffoldVersion": "v2.0",
+  "scaffoldVersion": "v1.21",
   "cliVersion": "2.0.0-beta.1",
   "layout": "default",
   "installedAt": "2026-08-25T00:00:00.000Z",
@@ -15,7 +15,7 @@
     },
     "BUILDBEAT.md": {
       "policy": "replace-if-unmodified",
-      "baselineSha256": "186122bc800d3e091c4c40e10c232ab89a5f89189a66e602056e62bdc3cec34b"
+      "baselineSha256": "d411b53917a12e9d53f2b02e8a16292a90570d743943b183316ab0b4c69b254f"
     },
     "CLAUDE.md": {
       "policy": "replace-if-unmodified",

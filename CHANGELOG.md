@@ -12,6 +12,8 @@
 - **文档十件套**（`docs/v2/guide/`）：快速开始 / Workflow / Policy / Adapter / Worker 合同 / Evidence / Approval / v1 迁移半天手工 runbook / 安全边界 / 故障恢复
 - **`buildbeat-v2 metrics`**：本地只读六指标；行为 evals 九场景卡进 `npm test` 单入口
 - **v1 迁移**：半天手工 runbook（不猜旧状态、单向迁移、禁止双写）；`legacy-four-gates` 风险预设保留 v1 四 Gate 完整形态
+- **v1 冻结的两处诚实修正**（prepublish 门抓出）：manifest `cliVersion` 校验接受 prerelease（否则 v1 CLI 装在 beta 包里自坏）；`SCAFFOLD_VERSION` 钉死 `v1.21` 字面量、与包版本解耦——脚手架内容束未变，存量安装不应看到虚构的跨大版本升级
+- **发布道**：publish workflow 增加 prerelease 通道（prerelease tag 只能从其发布分支的 origin tip 发、强制 dist-tag `next`、verify 回读 dist-tag 路由；stable 通道 main-only 原样），配对契约进 `tests/publish-workflow.test.js` 永久回归
 
 ## v1.21.0 — 2026-08-25
 

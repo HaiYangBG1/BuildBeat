@@ -67,8 +67,9 @@ mkdir -p "$PROJECT" "$CLI_PROJECT" "$FAKE_BIN"
 # version marker is rendered without creating lifecycle ownership metadata.
 cp -R "$REPO_ROOT/templates/." "$PROJECT/"
 prepare_file_bus "$PROJECT"
-CLI_VERSION="$(node "$REPO_ROOT/bin/buildbeat.js" --version)"
-SCAFFOLD_VERSION="v${CLI_VERSION%.*}"
+# The scaffold bundle version is pinned in src/constants.js (frozen v1
+# surface), decoupled from the package version since the v2 line.
+SCAFFOLD_VERSION="$(node -e "import('$REPO_ROOT/src/constants.js').then((m) => process.stdout.write(m.SCAFFOLD_VERSION))")"
 sed \
   -e "s/v<X.Y>/$SCAFFOLD_VERSION/" \
   -e 's/<yyyy-mm-dd>/2026-08-25/' \

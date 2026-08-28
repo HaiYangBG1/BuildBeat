@@ -987,19 +987,27 @@ def check_execution_contracts() -> list[str]:
     return errors
 
 
+def bundled_scaffold_version() -> str | None:
+    """The frozen scaffold bundle version pinned in src/constants.js."""
+    constants = (ROOT / "src/constants.js").read_text(encoding="utf-8")
+    match = re.search(r'export const SCAFFOLD_VERSION = "(v\d+\.\d+)"', constants)
+    return match.group(1) if match else None
+
+
 def check_example_version() -> list[str]:
-    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    # The teaching example tracks the scaffold content bundle, which is frozen
+    # independently of the (now v2) package version.
+    scaffold_version = bundled_scaffold_version()
     example = (ROOT / "example/BUILDBEAT.md").read_text(encoding="utf-8")
-    latest_match = re.search(r"^## (v\d+\.\d+)", changelog, re.MULTILINE)
     example_match = re.search(r"本项目使用 BuildBeat `(v\d+\.\d+)`", example)
-    if latest_match is None:
-        return ["CHANGELOG.md: no release heading found"]
+    if scaffold_version is None:
+        return ["src/constants.js: SCAFFOLD_VERSION must be a pinned v<major>.<minor> literal"]
     if example_match is None:
         return ["example/BUILDBEAT.md: no installed version found"]
-    if latest_match.group(1) != example_match.group(1):
+    if scaffold_version != example_match.group(1):
         return [
             "example/BUILDBEAT.md: installed version "
-            f"{example_match.group(1)} does not match latest changelog {latest_match.group(1)}"
+            f"{example_match.group(1)} does not match the bundled scaffold {scaffold_version}"
         ]
     return []
 
@@ -1027,12 +1035,7 @@ def check_example_manifest() -> list[str]:
 
     package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     cli_version = package.get("version")
-    scaffold_version = (
-        f"v{'.'.join(cli_version.split('.')[:2])}"
-        if isinstance(cli_version, str)
-        and re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?", cli_version)
-        else None
-    )
+    scaffold_version = bundled_scaffold_version()
     if manifest.get("schemaVersion") != 2:
         errors.append(f"{relative}: teaching manifest must use schema 2")
     if manifest.get("cliVersion") != cli_version:

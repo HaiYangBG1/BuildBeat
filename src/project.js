@@ -171,7 +171,12 @@ export function validateManifest(data, target) {
   if (typeof data.scaffoldVersion !== "string" || !/^v\d+\.\d+(?:\.\d+)?$/.test(data.scaffoldVersion)) {
     addIssue("manifest.invalid_scaffold_version", "Manifest scaffoldVersion is missing or invalid.");
   }
-  if (typeof data.cliVersion !== "string" || !/^\d+\.\d+\.\d+$/.test(data.cliVersion)) {
+  // Three-part SemVer with an optional pre-release tag: v2 ships beta package
+  // versions (e.g. 2.0.0-beta.1) while the v1 scaffold surface stays frozen.
+  if (
+    typeof data.cliVersion !== "string" ||
+    !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/.test(data.cliVersion)
+  ) {
     addIssue("manifest.invalid_cli_version", "Manifest cliVersion is missing or invalid.");
   }
   if (!["default", "compact"].includes(data.layout)) {

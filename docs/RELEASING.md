@@ -7,7 +7,7 @@ Release evidence at source package version `@haiyangbg/buildbeat@2.0.0-beta.1` (
 ## Release invariants
 
 1. One npm version maps to one immutable annotated Git tag and one exact source commit. Never move a published version's tag.
-2. `CLI_VERSION` comes from `package.json`; the scaffold version is its major/minor pair. A CLI patch release such as `1.16.3` does not invent a scaffold upgrade beyond `v1.16`.
+2. `CLI_VERSION` comes from `package.json`; the scaffold version is the pinned `SCAFFOLD_VERSION` literal in `src/constants.js` and tracks the frozen v1 scaffold content bundle, not the CLI. Since the v2 package line it stays at `v1.21` until the scaffold surface itself changes — a package release never invents a scaffold upgrade.
 3. Publish only from a clean worktree whose `HEAD`, tag target, tested commit, and packed artifact all match.
 4. `publishConfig.registry` stays pinned to `https://registry.npmjs.org/`; a developer's mirror configuration must not redirect a public release.
 5. A successful `npm publish` response is not enough. Registry metadata, tarball contents, an isolated install, the executable version, and a read-only command must be checked independently.

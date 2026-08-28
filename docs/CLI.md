@@ -127,7 +127,7 @@ Schema 2 is the first write-capable shape targeted by Wave 1:
 ```json
 {
   "schemaVersion": 2,
-  "scaffoldVersion": "v2.0",
+  "scaffoldVersion": "v1.21",
   "cliVersion": "2.0.0-beta.1",
   "layout": "default",
   "installedAt": "2026-08-24T00:00:00.000Z",
