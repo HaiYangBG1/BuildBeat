@@ -245,6 +245,8 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 - **验收**：真实项目上 `build → verify` 两步由 Shell Adapter 驱动跑通，证据全部来自回读。
 - **止损**：纵切显示单人维护成本过高 → 降级为"单步推进 + 审批收件箱"半自动形态，M2 以后重排。
 
+> **进展（2026-08-28）**：M1 验收通过——BuildBeat 仓库 self-host，Shell Adapter 驱动 build（真实 candidate `30b3a0d`）→ verify（真实测试 20/20 回读），停在 `WAITING_HUMAN` 后终态压实；`resume`（F5 纵切）同迭代关闭。证据见 [`v2/M1-ACCEPTANCE-2026-08-28.md`](v2/M1-ACCEPTANCE-2026-08-28.md)，跟踪见 [`V2-ITERATION-03.md`](V2-ITERATION-03.md)。进入 M2。
+
 ### M2 — 自动修复环（2–3 周）★ MVP 承诺在此达成
 
 - Verify 失败 → Fix → Verify 循环；Review（fresh-context 只读 Reviewer Worker，v1 reviewer 机制迁入）→ P0/P1 回 Fix；
