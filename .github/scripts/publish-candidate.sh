@@ -17,9 +17,21 @@ if [[ "$package_name" != "@haiyangbg/buildbeat" ]]; then
   echo "BUILDBEAT_PACKAGE_NAME must be @haiyangbg/buildbeat." >&2
   exit 2
 fi
-if [[ ! "$package_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "BUILDBEAT_PACKAGE_VERSION must use MAJOR.MINOR.PATCH." >&2
+if [[ ! "$package_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]]; then
+  echo "BUILDBEAT_PACKAGE_VERSION must use MAJOR.MINOR.PATCH with an optional pre-release suffix." >&2
   exit 2
+fi
+dist_tag="${BUILDBEAT_DIST_TAG:-}"
+if [[ "$package_version" == *-* ]]; then
+  if [[ "$dist_tag" != "next" ]]; then
+    echo "Pre-release versions must publish on dist-tag next; latest never moves on a pre-release." >&2
+    exit 2
+  fi
+else
+  if [[ "$dist_tag" != "latest" ]]; then
+    echo "Stable versions must publish on dist-tag latest." >&2
+    exit 2
+  fi
 fi
 if [[ ! "$candidate_integrity" =~ ^sha512-[A-Za-z0-9+/]+={0,2}$ ]]; then
   echo "BUILDBEAT_CANDIDATE_INTEGRITY must be a sha512 integrity value." >&2
@@ -55,7 +67,8 @@ if [[ -n "$existing_integrity" ]]; then
 fi
 
 publish_status=0
-npm publish "$candidate_tarball" --access public --registry="$official_registry" || publish_status=$?
+npm publish "$candidate_tarball" --access public --tag "$dist_tag" \
+  --registry="$official_registry" || publish_status=$?
 if ((publish_status == 0)); then
   exit 0
 fi

@@ -1138,9 +1138,13 @@ def check_publish_workflow() -> list[str]:
         "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
         "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
         "npm install --global npm@11.19.0",
-        'test "$GITHUB_REF" = "refs/heads/main"',
+        # Channel-aware ancestry guard: stable releases stay pinned to main;
+        # pre-releases must sit on the exact origin tip of the dispatching
+        # release branch and are forced onto dist-tag next.
+        'test "$dispatch_branch" = "main"',
         'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
-        'test "$(git rev-parse HEAD)" = "$(git rev-parse refs/remotes/origin/main)"',
+        'test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/remotes/origin/$dispatch_branch")"',
+        'dist_tag=next',
         "bash .github/scripts/publish-candidate.sh",
         "needs: publish",
         "dist.attestations.url",
