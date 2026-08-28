@@ -1,0 +1,2 @@
+{"ts":"2026-08-28T04:22:50.324Z","decisionRef":"A-WORK-SELF-001-1","decision":"approved","transition":"accept-intent","subject":{"artifact":"intent","digest":"sha256:56dd063188eb73679183a5463592c6b20cf4e02212ffdb4fca6783dbd9101ffd"},"by":"claude-delegated"}
+{"ts":"2026-08-28T04:22:50.372Z","decisionRef":"A-WORK-SELF-001-2","decision":"approved","transition":"accept-plan","subject":{"artifact":"plan","digest":"sha256:a0e3e86fc9792f1b97ac88ec03cdb94ec17cc8bc8d31b147771df453425bca63"},"by":"claude-delegated"}

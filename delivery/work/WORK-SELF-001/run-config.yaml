@@ -1,0 +1,25 @@
+# Self-host pilot run config (M4 T4). Paths resolve relative to this file.
+repo: ../../..
+work: WORK-SELF-001
+run: RUN-SELF-001
+workflow: ../../../src/v2/presets/software-delivery.yaml
+riskPreset: standard
+entry: build
+allowedPaths:
+  - delivery/work/WORK-SELF-001
+workers:
+  builder:
+    command: bash
+    args:
+      - -lc
+      - 'printf "# Self-host marker\n\nrun: RUN-SELF-001\nproduced-by: buildbeat v2 runner (shell adapter)\n" > delivery/work/WORK-SELF-001/selfhost-marker.md && git add -A && git commit -qm "WORK-SELF-001: selfhost marker candidate"'
+  verifier:
+    command: bash
+    args:
+      - -lc
+      - node --test tests/v2-event-ledger.test.js tests/v2-reducer.test.js
+  reviewer:
+    command: bash
+    args:
+      - -lc
+      - 'printf "{\"status\":\"succeeded\",\"findings\":[]}" > "$BUILDBEAT_OUTPUT"'
