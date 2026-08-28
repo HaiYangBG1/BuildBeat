@@ -80,6 +80,34 @@ test("finding.maxSeverity is unverified without review evidence and strict with 
   assert.equal(evaluateRule({ "finding.maxSeverity": { atMost: "P1" } }, withP1).ok, true);
 });
 
+test("candidate-scoped gates ignore findings and evidence of superseded candidates", () => {
+  const history = ctx({
+    state: {
+      evidence: [
+        { kind: "review", subject: "old-sha", status: "failed", grade: "L2", findings: [{ severity: "P1", summary: "fixed later" }] },
+        { kind: "review", subject: "new-sha", status: "passed", grade: "L2", findings: [] },
+        { kind: "command", subject: "old-sha", status: "passed", grade: "L2" },
+      ],
+      steps: {},
+      budgets: {},
+      approvals: [],
+    },
+    candidate: "new-sha",
+  });
+  assert.equal(
+    evaluateRule({ "finding.maxSeverity": { atMost: "P2" } }, history).ok,
+    true,
+    "the blocked-then-fixed round must not poison the final candidate",
+  );
+  assert.equal(
+    evaluateRule({ "evidence.exists": { kind: "command", minGrade: "L2" } }, history).ok,
+    false,
+    "evidence about a superseded candidate does not satisfy the current one",
+  );
+  const unscoped = { ...history, candidate: null };
+  assert.equal(evaluateRule({ "finding.maxSeverity": { atMost: "P2" } }, unscoped).ok, false);
+});
+
 test("artifact.accepted binds to the digest and goes stale on edits", () => {
   const repo = mkdtempSync(join(tmpdir(), "bb-v2-acc-"));
   const workDir = join(repo, "delivery", "work", "W");

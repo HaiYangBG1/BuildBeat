@@ -156,7 +156,13 @@ export function evaluateRule(rule, ctx) {
       if (minRank === undefined) {
         return { ok: "unverified", why: `unknown grade ${arg.minGrade}` };
       }
-      const hit = ctx.state.evidence.some(
+      // When the context names a candidate (e.g. a merge approval), only
+      // evidence about that candidate counts — facts about superseded
+      // candidates must not satisfy a gate for the current one.
+      const scoped = ctx.candidate
+        ? ctx.state.evidence.filter((item) => item.subject === ctx.candidate)
+        : ctx.state.evidence;
+      const hit = scoped.some(
         (item) =>
           item.kind === arg.kind &&
           item.status === "passed" &&
@@ -166,7 +172,7 @@ export function evaluateRule(rule, ctx) {
         ? { ok: true, why: `evidence ${arg.kind} present` }
         : {
             ok: false,
-            why: `no passed evidence of kind ${arg.kind}${arg.minGrade ? ` at grade >= ${arg.minGrade}` : ""}`,
+            why: `no passed evidence of kind ${arg.kind}${arg.minGrade ? ` at grade >= ${arg.minGrade}` : ""}${ctx.candidate ? " for the current candidate" : ""}`,
           };
     }
     case "artifact.accepted": {
@@ -236,9 +242,21 @@ export function evaluateRule(rule, ctx) {
       if (atMostRank === undefined) {
         return { ok: "unverified", why: `unknown severity ${arg.atMost}` };
       }
-      const reviews = ctx.state.evidence.filter((item) => item.kind === "review");
+      // Findings against superseded candidates are history, not verdicts:
+      // a blocked round-1 review that the fix loop already addressed must
+      // not poison the gate for the final candidate. When the context
+      // names a candidate, judge only reviews of that candidate.
+      const reviews = ctx.state.evidence.filter(
+        (item) =>
+          item.kind === "review" && (!ctx.candidate || item.subject === ctx.candidate),
+      );
       if (reviews.length === 0) {
-        return { ok: "unverified", why: "no review evidence to judge findings" };
+        return {
+          ok: "unverified",
+          why: ctx.candidate
+            ? "no review evidence for the current candidate"
+            : "no review evidence to judge findings",
+        };
       }
       const findings = reviews.flatMap((item) => item.findings ?? []);
       const tooSevere = findings.filter(

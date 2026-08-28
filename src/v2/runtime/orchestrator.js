@@ -137,6 +137,7 @@ function makeContext(options, ledger, workspace) {
   context.allowedPaths = options.allowedPaths ?? null;
   context.policyCtx = () => ({
     state: ledger.state,
+    candidate: ledger.state.workspaces[workspace.workspaceId]?.candidate ?? null,
     workDir: join(repoRoot, "delivery", "work", ledger.state.run?.work ?? ""),
     worktreePath: workspace.worktreePath,
     readWorktree: () =>

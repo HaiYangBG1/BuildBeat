@@ -100,6 +100,7 @@ export function approveRun(repoRoot, runId, { by = "human", transition, ts, poli
       { type: "transition", appliesTo: pending.transition },
       {
         state: ledger.state,
+        candidate: pending.subject.candidate,
         workDir: join(repoRoot, "delivery", "work", ledger.state.run.work),
         worktreePath: bound.worktreePath,
         readWorktree: () => readback(bound.worktreePath),

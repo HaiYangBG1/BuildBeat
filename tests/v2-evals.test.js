@@ -181,6 +181,54 @@ test("eval no-progress: the second identical failure stops the loop", () => {
   assert.match(state.pendingHuman.reasons[0], /fingerprint/);
 });
 
+// Permanent regression (real incident 2026-08-28, chickAI pilot): the merge
+// gate refused two legitimately fixed candidates because finding.maxSeverity
+// counted P1 findings from blocked-then-fixed review rounds on superseded
+// candidates. Gates must judge the current candidate only.
+test("eval evidence-required regression: superseded-candidate findings do not poison the merge gate", () => {
+  const { root } = fixtureRepo();
+  const result = run(
+    root,
+    "RUN-E9R",
+    {
+      builder: shell("shell:builder", "echo v1 > f.txt && git add -A && git commit -qm v1"),
+      verifier: createMockAdapter({ verify: ["succeed", "succeed"] }),
+      fixer: shell("shell:fixer", "echo v2 > f.txt && git add -A && git commit -qm v2"),
+      reviewer: createMockAdapter({
+        review: [
+          {
+            behavior: "succeed",
+            envelope: { status: "succeeded", findings: [{ severity: "P1", summary: "blocked round" }] },
+          },
+          { behavior: "succeed", envelope: { status: "succeeded", findings: [] } },
+        ],
+      }),
+    },
+    { stopAt: [] },
+  );
+  assert.equal(result.state.pendingHuman.transition, "enter-wait-merge");
+  const floor = {
+    name: "merge-evidence-floor",
+    type: "transition",
+    appliesTo: "enter-wait-merge",
+    enforcement: "LOCAL_ENFORCED",
+    onFail: "WAIT_HUMAN",
+    rule: {
+      all: [
+        { "evidence.exists": { kind: "command", minGrade: "L2" } },
+        { "finding.maxSeverity": { atMost: "P2" } },
+      ],
+    },
+  };
+  const approved = approveRun(root, "RUN-E9R", {
+    by: "owner",
+    transition: "enter-wait-merge",
+    policies: [floor],
+  });
+  assert.equal(approved.approved, true);
+  assert.equal(approved.terminal, true);
+});
+
 test("eval evidence-required: the stamp is refused until the evidence floor is met", () => {
   const { root } = fixtureRepo();
   const started = run(root, "RUN-E9", {
