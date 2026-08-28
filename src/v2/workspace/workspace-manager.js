@@ -95,6 +95,22 @@ export function readback(worktreePath) {
   return { head, dirty: status !== "" };
 }
 
+// Paths changed relative to base: committed diff plus anything dirty in the
+// tree. Rename lines keep only the new path.
+export function listChangedPaths(worktreePath, base) {
+  const committed = git(worktreePath, ["diff", "--name-only", `${base}..HEAD`])
+    .split("\n")
+    .filter(Boolean);
+  const dirty = git(worktreePath, ["status", "--porcelain"])
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => {
+      const path = line.slice(3);
+      return path.includes(" -> ") ? path.split(" -> ")[1] : path;
+    });
+  return [...new Set([...committed, ...dirty])];
+}
+
 export function pinCandidate(workspace) {
   const { head, dirty } = readback(workspace.worktreePath);
   if (dirty) {

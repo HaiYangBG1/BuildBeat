@@ -21,6 +21,7 @@ import { EventLedger, canonicalJson } from "../storage/event-ledger.js";
 import {
   acquireLock,
   createWorkspace,
+  listChangedPaths,
   readback,
   releaseLock,
 } from "../workspace/workspace-manager.js";
@@ -37,6 +38,34 @@ export class OrchestratorError extends Error {
 
 function sha256(text) {
   return `sha256:${createHash("sha256").update(text, "utf8").digest("hex")}`;
+}
+
+// MVP is single project, single active run: driving a run takes a
+// repository-wide lock in addition to the per-run lock.
+const ACTIVE_LOCK = "active-run";
+
+function lockActive(repoRoot) {
+  try {
+    acquireLock(repoRoot, ACTIVE_LOCK);
+  } catch {
+    throw new OrchestratorError(
+      "another run is active in this repository (MVP allows a single active run)",
+    );
+  }
+}
+
+function withRunLocks(repoRoot, runId, fn) {
+  lockActive(repoRoot);
+  try {
+    acquireLock(repoRoot, runId);
+    try {
+      return fn();
+    } finally {
+      releaseLock(repoRoot, runId);
+    }
+  } finally {
+    releaseLock(repoRoot, ACTIVE_LOCK);
+  }
 }
 
 export function parseEnvelope(raw) {
@@ -98,6 +127,7 @@ function makeContext(options, ledger, workspace) {
   context.maxAttemptsFor = (step) =>
     workflow.budgets?.maxAttempts?.[step] ?? maxAttemptsPerStep;
   context.policies = options.policies ?? [];
+  context.allowedPaths = options.allowedPaths ?? null;
   context.policyCtx = () => ({
     state: ledger.state,
     workDir: join(repoRoot, "delivery", "work", ledger.state.run?.work ?? ""),
@@ -413,6 +443,38 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
       });
     }
 
+    // Scope enforcement (B §10: out-of-scope changes stop the loop): any
+    // path changed outside the allowed set means this candidate cannot
+    // proceed, whatever the exit code said.
+    if (!stepDef.readonly && context.allowedPaths) {
+      const changed = listChangedPaths(workspace.worktreePath, workspace.base);
+      const violations = changed.filter(
+        (path) =>
+          !context.allowedPaths.some(
+            (prefix) =>
+              path === prefix || path.startsWith(prefix.endsWith("/") ? prefix : `${prefix}/`),
+          ),
+      );
+      if (violations.length > 0) {
+        ledger.append({
+          type: "POLICY_EVALUATED",
+          actor: KERNEL,
+          ts: now(),
+          data: {
+            policy: "workspace.scope",
+            phase: "action",
+            result: "BLOCK",
+            enforcement: "LOCAL_ENFORCED",
+            reason: `out-of-scope changes: ${violations.slice(0, 5).join(", ")}`,
+          },
+        });
+        context.waitHuman(`resume-${step}`, [
+          `worker changed paths outside the allowed scope: ${violations.slice(0, 5).join(", ")}`,
+        ]);
+        return;
+      }
+    }
+
     if (stepStatus === "succeeded" && !stepDef.readonly) {
       if (tree.dirty) {
         context.waitHuman(`resume-${step}`, [
@@ -503,8 +565,7 @@ export function startRun(options) {
     throw new OrchestratorError(`run ${runId} already has a ledger; use resumeRun`);
   }
 
-  acquireLock(repoRoot, runId);
-  try {
+  return withRunLocks(repoRoot, runId, () => {
     const workspace = createWorkspace({ repoRoot, runId, base });
     const context = makeContext(options, ledger, workspace);
     const now = context.now;
@@ -539,9 +600,7 @@ export function startRun(options) {
     });
     drive(context, entry);
     return { runId, workId, ledgerPath, state: ledger.state, workspace };
-  } finally {
-    releaseLock(repoRoot, runId);
-  }
+  });
 }
 
 function resumeStepFromTransition(transition) {
@@ -593,8 +652,7 @@ export function resumeRun(options) {
     base: bound.base,
   };
 
-  acquireLock(repoRoot, runId);
-  try {
+  return withRunLocks(repoRoot, runId, () => {
     const context = makeContext(options, ledger, workspace);
     const now = context.now;
 
@@ -684,7 +742,5 @@ export function resumeRun(options) {
       drive(context, startStep);
     }
     return { runId, ledgerPath, state: ledger.state, resumed: true, reason: null };
-  } finally {
-    releaseLock(repoRoot, runId);
-  }
+  });
 }

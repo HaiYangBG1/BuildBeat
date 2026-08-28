@@ -14,6 +14,7 @@ import { loadWorkflow } from "../engine/workflow.js";
 import { parseYamlSubset } from "../engine/yaml-subset.js";
 import { parsePolicyDoc } from "../policy/policy.js";
 import { acceptArtifact, approveRun, listInbox, rejectRun } from "../runtime/decisions.js";
+import { computeMetrics, renderMetrics } from "../runtime/metrics.js";
 import { writeRunRecord } from "../runtime/run-record.js";
 import { resumeRun, startRun } from "../runtime/orchestrator.js";
 import { EventLedger } from "../storage/event-ledger.js";
@@ -34,6 +35,7 @@ Usage:
   run.js doctor --config <run-config.yaml>
   run.js events --repo <path> --run <RUN-ID>
   run.js replay --repo <path> --run <RUN-ID>
+  run.js metrics --repo <path> [--json true]
   run.js stop --repo <path> --run <RUN-ID> --reason <text>
 `;
 
@@ -150,6 +152,7 @@ function loadRunConfig(flags, command) {
     riskPreset,
     maxAttemptsPerStep: config.maxAttemptsPerStep ?? 4,
     stepTimeoutMs: config.stepTimeoutMs,
+    allowedPaths: config.allowedPaths,
     planDigest: digestOfWorkFile("plan.md"),
     intentDigest: digestOfWorkFile("intent.md"),
   };
@@ -331,6 +334,18 @@ function commandReplay(flags) {
   printState(ledger.state, { corruption: null });
 }
 
+function commandMetrics(flags) {
+  if (!flags.repo) {
+    throw new Error("metrics requires --repo");
+  }
+  const summary = computeMetrics(resolve(flags.repo));
+  if (flags.json === "true") {
+    console.log(JSON.stringify(summary, null, 2));
+    return;
+  }
+  console.log(renderMetrics(summary));
+}
+
 function commandStatus(flags) {
   if (!flags.repo || !flags.run) {
     throw new Error("status requires --repo and --run");
@@ -388,6 +403,8 @@ function main() {
       commandEvents(flags);
     } else if (command === "replay") {
       commandReplay(flags);
+    } else if (command === "metrics") {
+      commandMetrics(flags);
     } else if (command === "status") {
       commandStatus(flags);
     } else if (command === "stop") {
