@@ -2,6 +2,13 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## v2.0.0-beta.2 — 2026-08-28
+
+> 主题：aiplatform-meta（底座）v2 迁移试点抓出的内核修复。
+> **发布状态**：同 beta.1 流程（OIDC Trusted Publishing，dist-tag `next`；`latest` 保持 v1.21.0）。
+
+- **fix(v2) 范围门中文路径误拦**：git `core.quotepath` 默认把非 ASCII 路径转义为带引号的八进制串，`listChangedPaths` 直接喂给 allowedPaths 前缀检查导致范围内中文文件被判越界（真实事故：底座 `RUN-META-V2-01` 被 `pm/登录二期看板.md` 阻断）。读回改用 `core.quotepath=off`，中文路径永久回归进 `tests/v2-invariants.test.js`
+
 ## v2.0.0-beta.1 — 2026-08-28
 
 > 主题：BuildBeat v2 首个 Beta——确定性内核 + Agent Loop Runtime。事件溯源台账（hash 链、损坏截断、终态压实进 Git 面）、Policy 门（8 算子三值逻辑、`UNVERIFIED` 永不当 PASS）、隔离 Workspace（push 物理封禁、`allowedPaths` 越界即停、Reviewer 只读快照强制）、Shell Adapter 厂商中立接任意 CLI Agent（codex 实证）、digest 绑定人批与 `APPROVAL_STALE`。MVP 承诺兑现：Build–Verify–Fix–Review 自动闭环，停在合并决定，带证据交人。
