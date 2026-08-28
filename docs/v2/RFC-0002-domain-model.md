@@ -1,6 +1,6 @@
 # RFC-0002：BuildBeat v2 领域模型
 
-> 状态：`DRAFT_FOR_M0_EXIT`（待项目所有者评审定稿）
+> 状态：`FINAL`（2026-08-28 项目所有者定稿，`V2-D3`）
 > 日期：2026-08-28
 > 上游：[`V2-PLAN.md`](../V2-PLAN.md) §3–4；报告 B §6 / §13 / §14（经基线裁决修订）
 > 需求来源：[`pilot/metrics.md`](../../pilot/metrics.md) 卡点 1–5；[`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../../pilot/evidence/2026-08-28-m1-runtime-gap.md)

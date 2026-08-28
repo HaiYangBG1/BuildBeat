@@ -1,6 +1,6 @@
 # RFC-0001：BuildBeat v2 产品定位
 
-> 状态：`DRAFT_FOR_M0_EXIT`（待项目所有者评审定稿；三份 RFC + [`SPEC-0001-events-v1.md`](SPEC-0001-events-v1.md) 定稿即 M0 退出）
+> 状态：`FINAL`（2026-08-28 项目所有者定稿，`V2-D3`；M0 随三份 RFC 与 [`SPEC-0001-events-v1.md`](SPEC-0001-events-v1.md) 定稿退出）
 > 日期：2026-08-28
 > 上游：[`V2-PLAN.md`](../V2-PLAN.md)（执行基线，`V2-D0=B`）；内核范围：完整内核（`V2-D2=A`，[`V2-DECISIONS.md`](../V2-DECISIONS.md)）
 > 需求来源：M-1 试点记录——[`pilot/metrics.md`](../../pilot/metrics.md)（能力矩阵 + 卡点 1–5）、[`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../../pilot/evidence/2026-08-28-m1-runtime-gap.md)（F5/F6）、[`V2-ITERATION-01.md`](../V2-ITERATION-01.md)

@@ -1,6 +1,6 @@
 # RFC-0003：BuildBeat v2 Workflow 与 Policy
 
-> 状态：`DRAFT_FOR_M0_EXIT`（待项目所有者评审定稿；§8 observe/bands schema 随本 RFC 定稿一并冻结）
+> 状态：`FINAL`（2026-08-28 项目所有者定稿，`V2-D3`；§8 observe/bands schema 已随定稿冻结）
 > 日期：2026-08-28
 > 上游：[`V2-PLAN.md`](../V2-PLAN.md) §3.2–3.7；报告 B §8–11 / WP1.4–1.5 / WP4.3–4.5
 > 需求来源：[`pilot/metrics.md`](../../pilot/metrics.md) 卡点 3/5、故障矩阵 F1–F6；[`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../../pilot/evidence/2026-08-28-m1-runtime-gap.md)

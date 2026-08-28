@@ -232,7 +232,7 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 - v1 冻结 + 分支建立；本文档拍板即 M0 的人工 Gate。
 - **退出**：核心名词、MVP 范围、旧概念处置（保留/转换/删除）无歧义。
 
-> **进展（2026-08-28）**：三份 RFC 草案与事件格式规格已就绪——[`v2/RFC-0001-product-definition.md`](v2/RFC-0001-product-definition.md)（含自研面逐项"厂商结构性不做"标注）、[`v2/RFC-0002-domain-model.md`](v2/RFC-0002-domain-model.md)（含核心名词消歧与 v1 概念处置表）、[`v2/RFC-0003-workflow-policy.md`](v2/RFC-0003-workflow-policy.md)（含 observe/bands schema 冻结）、[`v2/SPEC-0001-events-v1.md`](v2/SPEC-0001-events-v1.md)（定稿即 FROZEN）。待项目所有者评审定稿，定稿即 M0 退出；跟踪见 [`V2-ITERATION-02.md`](V2-ITERATION-02.md)。
+> **进展（2026-08-28）**：三份 RFC 草案与事件格式规格已就绪——[`v2/RFC-0001-product-definition.md`](v2/RFC-0001-product-definition.md)（含自研面逐项"厂商结构性不做"标注）、[`v2/RFC-0002-domain-model.md`](v2/RFC-0002-domain-model.md)（含核心名词消歧与 v1 概念处置表）、[`v2/RFC-0003-workflow-policy.md`](v2/RFC-0003-workflow-policy.md)（含 observe/bands schema 冻结）、[`v2/SPEC-0001-events-v1.md`](v2/SPEC-0001-events-v1.md)（定稿即 FROZEN）。项目所有者已于 2026-08-28 定稿（`V2-D3`），M0 退出，SPEC-0001 进入 FROZEN；进入 M1，跟踪见 [`V2-ITERATION-02.md`](V2-ITERATION-02.md) 与 [`V2-ITERATION-03.md`](V2-ITERATION-03.md)。
 
 ### M1 — 最小纵切（2–3 周）
 

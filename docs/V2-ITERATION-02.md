@@ -1,6 +1,6 @@
 # v2 迭代 02：M0 核心重置
 
-> 状态：**RFC 草案就绪，待 M0 退出评审（人工门）**
+> 状态：**已完成——M0 于 2026-08-28 退出（项目所有者定稿，`V2-D3`）**
 > 上游：[`V2-PLAN.md`](V2-PLAN.md) §8 M0；`V2-D2=A`（[`V2-DECISIONS.md`](V2-DECISIONS.md)）
 > 时间盒：**≤1 周**（自 2026-08-28 起算）
 
@@ -15,7 +15,7 @@ M0 退出：核心名词、MVP 范围、旧概念处置（保留/转换/删除�
 - [x] **T3 Workflow/Policy RFC**：[`v2/RFC-0003-workflow-policy.md`](v2/RFC-0003-workflow-policy.md)——Workflow 文件模型、GateResult、Policy 四类 + 算子 + 强制等级、Approval/stale 流程、Loop 终止默认值、Risk Preset，**含 observe/bands schema 冻结**（裁决 #6）。
 - [x] **T4 事件格式 v1**：[`v2/SPEC-0001-events-v1.md`](v2/SPEC-0001-events-v1.md)——信封、损坏处理、reducer 合同、初始事件类型注册表；定稿即 FROZEN，此后 additive-only（裁决 #8）。
 - [x] **T5 v1 冻结与分支**：`v1-maintenance` / `v2` 分支已于 `V2-D0` 时建立，npm `latest` 留 v1；无新增动作。
-- [ ] **T6 M0 退出评审（人工门）**：项目所有者审阅上述四份文档；定稿（含修改后定稿）即 M0 退出，`V2-D2=A` 台账行的"M0 退出评审"随之关闭，进入 M1。
+- [x] **T6 M0 退出评审（人工门）**：项目所有者于 2026-08-28 定稿四份文档（`V2-D3`）；M0 退出，`V2-D2=A` 台账行的"M0 退出评审"关闭，进入 M1。
 
 ## 需求来源纪律
 
@@ -29,4 +29,4 @@ M0 退出：核心名词、MVP 范围、旧概念处置（保留/转换/删除�
 
 ## 完成定义
 
-四份文档由项目所有者定稿；歧义清单清零；[`V2-PLAN.md`](V2-PLAN.md) §8 M0 标记完成后进入迭代 03（M1 最小纵切：events store + reducer + workflow parser + Workspace Manager + Mock/Shell Adapter + Evidence Collector v0 + `run start/status/stop`）。
+四份文档由项目所有者定稿；歧义清单清零；[`V2-PLAN.md`](V2-PLAN.md) §8 M0 标记完成后进入迭代 03（M1 最小纵切：events store + reducer + workflow parser + Workspace Manager + Mock/Shell Adapter + Evidence Collector v0 + `run start/status/stop`）。**已于 2026-08-28 达成**；迭代 03 见 [`V2-ITERATION-03.md`](V2-ITERATION-03.md)。
