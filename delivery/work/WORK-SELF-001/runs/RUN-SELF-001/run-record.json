@@ -1,0 +1,95 @@
+{
+  "run": "RUN-SELF-001",
+  "work": "WORK-SELF-001",
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 31,
+    "lastDigest": "sha256:453f8d1f2c080baeabd08c6a0b736b0cd40982881d30355eb6587fb5c6280777"
+  },
+  "startedAt": "2026-08-28T04:23:17.740Z",
+  "finishedAt": "2026-08-28T04:41:43.489Z",
+  "attempts": {
+    "build": 1,
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 3,
+      "remaining": 3
+    }
+  },
+  "workspaces": {
+    "RUN-SELF-001": {
+      "repo": "/Users/zhouhaiyang/Documents/Obsidian Vault/AI底座/solobaton",
+      "branch": "run/RUN-SELF-001",
+      "worktreePath": "/Users/zhouhaiyang/Documents/Obsidian Vault/AI底座/solobaton/.buildbeat/worktrees/RUN-SELF-001",
+      "base": "daf9d79ee813c67a44f80739edbff10866b0bbc9",
+      "candidate": "59673e2faa19d3aa67339837f16f0db44d6a29cb"
+    }
+  },
+  "evidence": [
+    {
+      "ref": "/Users/zhouhaiyang/Documents/Obsidian Vault/AI底座/solobaton/.buildbeat/runtime/runs/RUN-SELF-001/logs/build-1.log",
+      "kind": "command",
+      "subject": "59673e2faa19d3aa67339837f16f0db44d6a29cb",
+      "digest": "sha256:53da95e66a0ecd07dfb853da00d4d5122ce49ab11640eb38eae22cda6432ec61",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": "/Users/zhouhaiyang/Documents/Obsidian Vault/AI底座/solobaton/.buildbeat/runtime/runs/RUN-SELF-001/logs/verify-1.log",
+      "kind": "command",
+      "subject": "59673e2faa19d3aa67339837f16f0db44d6a29cb",
+      "digest": "sha256:00a3b2b2892c9323a8924227aabff63ddb20dec341696f996f7fe4c31b9c377b",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": "/Users/zhouhaiyang/Documents/Obsidian Vault/AI底座/solobaton/.buildbeat/runtime/runs/RUN-SELF-001/logs/review-1.log",
+      "kind": "command",
+      "subject": "59673e2faa19d3aa67339837f16f0db44d6a29cb",
+      "digest": "sha256:27f3821fe8493f80eee22b683a8e8fc391fc7fc47011e7a2caf24caafdeba7b9",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": "/Users/zhouhaiyang/Documents/Obsidian Vault/AI底座/solobaton/.buildbeat/runtime/runs/RUN-SELF-001/outputs/review-1.json",
+      "kind": "review",
+      "subject": "59673e2faa19d3aa67339837f16f0db44d6a29cb",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "59673e2faa19d3aa67339837f16f0db44d6a29cb",
+        "planDigest": "sha256:a0e3e86fc9792f1b97ac88ec03cdb94ec17cc8bc8d31b147771df453425bca63",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-SELF-001-1"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-SELF-001-1",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "59673e2faa19d3aa67339837f16f0db44d6a29cb",
+        "planDigest": "sha256:a0e3e86fc9792f1b97ac88ec03cdb94ec17cc8bc8d31b147771df453425bca63",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
