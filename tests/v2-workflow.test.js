@@ -21,6 +21,8 @@ test("yaml subset parses maps, lists, and scalar types", () => {
       "  - plain",
       "  - id: one",
       "    count: 2",
+      "scripts:",
+      "  - 'echo a: b && run: c'",
     ].join("\n"),
   );
   assert.deepEqual(doc, {
@@ -31,6 +33,7 @@ test("yaml subset parses maps, lists, and scalar types", () => {
     quoted: "a: b",
     nested: { inner: "value" },
     items: ["plain", { id: "one", count: 2 }],
+    scripts: ["echo a: b && run: c"],
   });
 });
 

@@ -125,9 +125,11 @@ function parseList(lines, start, indent) {
     if (childLines.length === 0) {
       throw new YamlSubsetError("empty list item", line.lineNo);
     }
-    if (childLines.length === 1 && !childLines[0].content.includes(":")) {
-      result.push(parseScalar(childLines[0].content, childLines[0].lineNo));
-    } else if (childLines[0].content.includes(":")) {
+    const first = childLines[0].content;
+    const quotedScalar = first.startsWith('"') || first.startsWith("'");
+    if (childLines.length === 1 && (quotedScalar || !first.includes(":"))) {
+      result.push(parseScalar(first, childLines[0].lineNo));
+    } else if (!quotedScalar && first.includes(":")) {
       result.push(parseMapFromLines(childLines, itemIndent));
     } else {
       throw new YamlSubsetError("unsupported list item shape", line.lineNo);

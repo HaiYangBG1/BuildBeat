@@ -271,6 +271,8 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 - Self-host 试点（BuildBeat builds BuildBeat）+ 外部试点 ≥2（一个有真实测试的单仓项目 + 一个含 UI 变更的项目，建议从老乡鸡底座选）；
 - **退出指标**（B M5 表采纳）：状态转换可追溯 100%、stale Approval 复用 0、超预算继续运行 0、试点 Run 自动到达 WAITING_HUMAN ≥70%、证据完整率 ≥95%、Reviewer 改代码 0。
 
+> **进展（2026-08-28）**：工程面完成——九场景行为 evals（[`evals/`](../evals/README.md)）、`metrics` v0、Scope 越界即停、单活动 Run 锁、Adapter 故障路径回归；Self-host 试点 `RUN-SELF-001` 真实跑通并停在合并决定（真实 remote 上实测推送保护、抓到并修复一个 YAML 解析真实缺陷），证据与六指标核验见 [`v2/M4-SELFHOST-2026-08-28.md`](v2/M4-SELFHOST-2026-08-28.md)。**外部试点 ≥2 待项目所有者点名（D6），回填指标后 M4 关闭**；跟踪见 [`V2-ITERATION-06.md`](V2-ITERATION-06.md)。
+
 ### M5 — 闭环起步、迁移与 Beta（2–3 周）
 
 - observe v0：drift-check/live-status 接入为 Evidence Provider，bands 前两层（log / 只读诊断）上线，自动 Intent 草稿入队；
