@@ -5,7 +5,7 @@
 ## v2.0.0-beta.2 — 2026-08-28
 
 > 主题：aiplatform-meta（底座）v2 迁移试点抓出的内核修复。
-> **发布状态**：同 beta.1 流程（OIDC Trusted Publishing，dist-tag `next`；`latest` 保持 v1.21.0）。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.2` 已于 2026-08-28 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33175013599，双 job success）；`latest` 保持 v1.21.0。独立回读：dist-tag 路由、integrity、SLSA provenance、隔离安装全过，证据见 [`docs/V2.0.0-BETA.2-RELEASE-EVIDENCE-2026-08-28.md`](docs/V2.0.0-BETA.2-RELEASE-EVIDENCE-2026-08-28.md)。
 
 - **fix(v2) 范围门中文路径误拦**：git `core.quotepath` 默认把非 ASCII 路径转义为带引号的八进制串，`listChangedPaths` 直接喂给 allowedPaths 前缀检查导致范围内中文文件被判越界（真实事故：底座 `RUN-META-V2-01` 被 `pm/登录二期看板.md` 阻断）。读回改用 `core.quotepath=off`，中文路径永久回归进 `tests/v2-invariants.test.js`
 
