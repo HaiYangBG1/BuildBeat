@@ -19,7 +19,10 @@ function git(cwd, args) {
     return execFileSync("git", ["-C", cwd, ...args], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-    }).trim();
+    // Preserve porcelain's fixed-width leading status columns. Trimming the
+    // first leading space turns " M file" into "M file" and makes the
+    // downstream slice(3) drop the first path character.
+    }).trimEnd();
   } catch (error) {
     const stderr = error.stderr ? String(error.stderr).trim() : error.message;
     throw new WorkspaceError(`git ${args.join(" ")} failed: ${stderr}`);

@@ -113,6 +113,15 @@ test("listChangedPaths sees committed and dirty changes relative to base", () =>
   assert.deepEqual(changed, ["committed.txt", "dirty.txt"]);
 });
 
+test("listChangedPaths preserves the first dirty tracked path character", () => {
+  const { root } = fixtureRepo();
+  const workspace = createWorkspace({ repoRoot: root, runId: "RUN-I5A", base: "HEAD" });
+  writeFileSync(join(workspace.worktreePath, "README.md"), "changed\n");
+  writeFileSync(join(workspace.worktreePath, "z-last.txt"), "dirty\n");
+  const changed = listChangedPaths(workspace.worktreePath, workspace.base).sort();
+  assert.deepEqual(changed, ["README.md", "z-last.txt"]);
+});
+
 test("listChangedPaths reports non-ASCII paths unescaped (real incident: scope check)", () => {
   // git quotepath octal-escapes non-ASCII names by default; the scope check
   // must see the plain UTF-8 path or an in-scope Chinese filename blocks.
