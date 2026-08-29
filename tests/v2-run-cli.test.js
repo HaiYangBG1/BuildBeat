@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-const CLI = join(import.meta.dirname, "..", "src", "v2", "cli", "run.js");
+const CLI = join(import.meta.dirname, "..", "bin", "buildbeat-v2.js");
 const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 
 function git(cwd, args) {

@@ -19,7 +19,7 @@ import {
   triageIntent,
 } from "../src/v2/observe/observe.js";
 
-const CLI = join(import.meta.dirname, "..", "src", "v2", "cli", "run.js");
+const CLI = join(import.meta.dirname, "..", "bin", "buildbeat-v2.js");
 
 function makeRepo() {
   const root = mkdtempSync(join(tmpdir(), "bb-v2-obs-"));
