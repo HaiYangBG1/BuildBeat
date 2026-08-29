@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -61,6 +61,12 @@ test("build then verify reaches the review boundary and waits for a human", () =
   assert.equal(state.evidence.length, 2);
   assert.ok(state.evidence.every((item) => item.status === "passed"));
   assert.ok(state.lastCheckpoint);
+  assert.equal(state.workspaces["RUN-T1"].repo, ".");
+  assert.equal(state.workspaces["RUN-T1"].worktreePath, ".buildbeat/worktrees/RUN-T1");
+  assert.ok(
+    state.evidence.every((item) => item.ref.startsWith(".buildbeat/runtime/runs/RUN-T1/")),
+  );
+  assert.doesNotMatch(readFileSync(result.ledgerPath, "utf8"), new RegExp(root));
 
   const reopened = EventLedger.open(result.ledgerPath);
   assert.equal(reopened.corruption, null);
@@ -129,7 +135,7 @@ test("shell adapters drive a real build and verify with read-back evidence", () 
   assert.equal(workspace.candidate, git(result.workspace.worktreePath, ["rev-parse", "HEAD"]));
   assert.equal(state.evidence.length, 2);
   assert.ok(state.evidence.every((item) => item.status === "passed"));
-  assert.ok(state.evidence.every((item) => existsSync(item.ref)));
+  assert.ok(state.evidence.every((item) => existsSync(join(root, item.ref))));
 });
 
 test("a successful step that leaves the tree dirty is a human stop, not a candidate", () => {

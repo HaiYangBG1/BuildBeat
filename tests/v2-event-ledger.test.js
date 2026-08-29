@@ -4,7 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { EventInputError, GENESIS_DIGEST } from "../src/v2/domain/event-registry.js";
+import {
+  EventInputError,
+  GENESIS_DIGEST,
+  validateEventInput,
+} from "../src/v2/domain/event-registry.js";
 import { IllegalEventError } from "../src/v2/engine/reducer.js";
 import { EventLedger, LedgerError, eventDigest } from "../src/v2/storage/event-ledger.js";
 
@@ -175,6 +179,32 @@ test("write side rejects unknown types and missing or invalid data fields", () =
         actor: KERNEL,
         ts: TS,
         data: { policy: "p", phase: "post", result: "MAYBE", enforcement: "ADVISORY", reason: "r" },
+      }),
+    EventInputError,
+  );
+});
+
+test("write side rejects absolute and traversal runtime references", () => {
+  assert.throws(
+    () =>
+      validateEventInput("WORKSPACE_BOUND", KERNEL, {
+        workspaceId: "main",
+        repo: "/private/host/repo",
+        branch: "run/RUN-001",
+        worktreePath: ".buildbeat/worktrees/RUN-001",
+        base: "abc1234",
+      }),
+    EventInputError,
+  );
+  assert.throws(
+    () =>
+      validateEventInput("EVIDENCE_RECORDED", KERNEL, {
+        evidenceRef: "../outside.log",
+        kind: "test",
+        subject: "abc1234",
+        digest: "sha256:e",
+        status: "passed",
+        grade: "L2",
       }),
     EventInputError,
   );

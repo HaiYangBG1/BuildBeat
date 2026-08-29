@@ -6,7 +6,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 
 import { createShellAdapter } from "../adapters/shell.js";
 import { loadRiskPreset } from "../engine/risk-preset.js";
@@ -18,6 +18,7 @@ import { acceptArtifact, approveRun, listInbox, rejectRun } from "../runtime/dec
 import { computeMetrics, renderMetrics } from "../runtime/metrics.js";
 import { writeRunRecord } from "../runtime/run-record.js";
 import { resumeRun, startRun } from "../runtime/orchestrator.js";
+import { toRepoRef } from "../runtime/repo-ref.js";
 import { EventLedger } from "../storage/event-ledger.js";
 import { acquireLock, releaseLock } from "../workspace/workspace-manager.js";
 
@@ -82,7 +83,8 @@ function printState(state, ledger) {
     console.log(`step ${step}: ${info.status} (attempts ${info.attempts})`);
   }
   for (const item of state.evidence) {
-    console.log(`evidence [${item.status}/${item.grade}] ${item.kind} ${item.ref}`);
+    const ref = isAbsolute(item.ref) ? "<legacy-absolute-evidence-ref>" : item.ref;
+    console.log(`evidence [${item.status}/${item.grade}] ${item.kind} ${ref}`);
   }
   if (state.pendingHuman) {
     console.log(`waiting on human: ${state.pendingHuman.transition}`);
@@ -165,7 +167,7 @@ function loadRunConfig(flags, command) {
 function commandStart(flags) {
   const options = loadRunConfig(flags, "start");
   const result = startRun(options);
-  console.log(`ledger: ${result.ledgerPath}`);
+  console.log(`ledger: ${toRepoRef(options.repoRoot, result.ledgerPath)}`);
   printState(result.state, { corruption: null });
 }
 
@@ -175,7 +177,7 @@ function commandResume(flags) {
   if (!result.resumed) {
     console.log(`nothing to resume: ${result.reason}`);
   }
-  console.log(`ledger: ${result.ledgerPath}`);
+  console.log(`ledger: ${toRepoRef(options.repoRoot, result.ledgerPath)}`);
   printState(result.state, { corruption: null });
 }
 
@@ -393,7 +395,7 @@ function commandObserve(rest) {
       throw new Error("observe run requires --config <observe.yaml>");
     }
     const result = runObserveCycle({ configPath: flags.config });
-    console.log(`observe cycle ${result.cycle} finished (ledger: ${result.ledgerPath})`);
+    console.log(`observe cycle ${result.cycle} finished (ledger: ${result.ledgerRef})`);
     for (const row of result.results) {
       const bands = row.bands.length > 0 ? ` bands=${row.bands.join(",")}` : "";
       const intent = row.intent ? ` intent=${row.intent.outcome}:${row.intent.intentRef}` : "";

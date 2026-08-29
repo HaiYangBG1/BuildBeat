@@ -22,6 +22,7 @@ import { collectCommandEvidence } from "../evidence/collector.js";
 import { EventLedger } from "../storage/event-ledger.js";
 import { loadObserveConfig, severityRank } from "./observe-config.js";
 import { OBSERVE_REDUCER } from "./observe-reducer.js";
+import { toRepoRef } from "../runtime/repo-ref.js";
 
 const OBSERVE_IDS = { run: "OBSERVE", work: "OBSERVE" };
 const KERNEL_ACTOR = { kind: "kernel", id: "observe" };
@@ -142,7 +143,7 @@ function recordEvidence({ ledger, config, cycle, provider, execResult, kind, ste
     type: "EVIDENCE_RECORDED",
     actor: { kind: "provider", id: provider.id },
     data: {
-      evidenceRef: record.location,
+      evidenceRef: toRepoRef(config.repoRoot, record.location),
       kind: record.kind,
       subject: record.subject,
       digest: record.digest,
@@ -350,7 +351,13 @@ export function runObserveCycle({ configPath, now = new Date().toISOString() }) 
     data: { cycle, providersRun: config.providers.length },
     ...OBSERVE_IDS,
   });
-  return { cycle, ledgerPath: ledger.path, results, state: ledger.state };
+  return {
+    cycle,
+    ledgerPath: ledger.path,
+    ledgerRef: toRepoRef(config.repoRoot, ledger.path),
+    results,
+    state: ledger.state,
+  };
 }
 
 export function triageIntent({ repoRoot, intentRef, action, by = "unknown", note, now = new Date().toISOString() }) {

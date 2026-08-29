@@ -13,6 +13,7 @@ import { evaluatePolicies, sha256Text } from "../policy/policy.js";
 import { EventLedger } from "../storage/event-ledger.js";
 import { acquireLock, readback, releaseLock } from "../workspace/workspace-manager.js";
 import { writeRunRecord } from "./run-record.js";
+import { resolveRepoRef } from "./repo-ref.js";
 
 const KERNEL = { kind: "kernel", id: "orchestrator" };
 
@@ -68,10 +69,11 @@ export function approveRun(repoRoot, runId, { by = "human", transition, ts, poli
   acquireLock(repoRoot, runId);
   try {
     const bound = ledger.state.workspaces[runId];
-    if (!bound || !existsSync(bound.worktreePath)) {
+    const worktreePath = bound ? resolveRepoRef(repoRoot, bound.worktreePath) : null;
+    if (!bound || !existsSync(worktreePath)) {
       throw new DecisionError(`worktree missing for ${runId}; cannot verify the approval subject`);
     }
-    const tree = readback(bound.worktreePath);
+    const tree = readback(worktreePath);
     const when = ts ?? new Date().toISOString();
     if (tree.dirty || tree.head !== pending.subject.candidate) {
       const lastEvidence = ledger.state.evidence[ledger.state.evidence.length - 1];
@@ -102,8 +104,8 @@ export function approveRun(repoRoot, runId, { by = "human", transition, ts, poli
         state: ledger.state,
         candidate: pending.subject.candidate,
         workDir: join(repoRoot, "delivery", "work", ledger.state.run.work),
-        worktreePath: bound.worktreePath,
-        readWorktree: () => readback(bound.worktreePath),
+        worktreePath,
+        readWorktree: () => readback(worktreePath),
       },
     );
     for (const row of policyRows) {

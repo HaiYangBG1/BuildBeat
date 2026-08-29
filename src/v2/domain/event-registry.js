@@ -1,6 +1,8 @@
 // Initial event type registry v1 per docs/v2/SPEC-0001-events-v1.md §4.
 // Semantics are frozen; the registry and per-type data may only grow additively.
 
+import { isAbsolute } from "node:path";
+
 import {
   ACTOR_KINDS,
   BUDGET_KINDS,
@@ -58,6 +60,23 @@ const EVENT_ENUMS = {
   TRIAGE_RECORDED: { action: TRIAGE_ACTIONS },
 };
 
+const REPO_REF_FIELDS = {
+  WORKSPACE_BOUND: ["repo", "worktreePath"],
+  EVIDENCE_RECORDED: ["evidenceRef"],
+  RUN_COMPACTED: ["runRecordRef"],
+  INTENT_DRAFTED: ["intentRef"],
+  TRIAGE_RECORDED: ["intentRef"],
+};
+
+function unsafeRepoRef(value) {
+  return (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    isAbsolute(value) ||
+    /(^|[\\/])\.\.([\\/]|$)/.test(value)
+  );
+}
+
 export class EventInputError extends Error {
   constructor(message) {
     super(message);
@@ -85,6 +104,11 @@ export function validateEventInput(type, actor, data) {
   for (const field of required) {
     if (data[field] === undefined) {
       throw new EventInputError(`event ${type} missing required data field: ${field}`);
+    }
+  }
+  for (const field of REPO_REF_FIELDS[type] ?? []) {
+    if (unsafeRepoRef(data[field])) {
+      throw new EventInputError(`event ${type} field ${field} must be a repository-relative reference`);
     }
   }
   const enums = EVENT_ENUMS[type];

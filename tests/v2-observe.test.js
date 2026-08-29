@@ -4,6 +4,7 @@
 // dismiss feeds back into drafting. Runtime stays deletable (invariant 23).
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -17,6 +18,8 @@ import {
   runObserveCycle,
   triageIntent,
 } from "../src/v2/observe/observe.js";
+
+const CLI = join(import.meta.dirname, "..", "src", "v2", "cli", "run.js");
 
 function makeRepo() {
   const root = mkdtempSync(join(tmpdir(), "bb-v2-obs-"));
@@ -117,8 +120,20 @@ test("passing provider records evidence and triggers no bands", () => {
   assert.equal(state.cycles, 1);
   assert.equal(state.evidence.length, 1);
   assert.equal(state.evidence[0].status, "passed");
+  assert.ok(state.evidence[0].ref.startsWith(".buildbeat/runtime/observe/"));
+  assert.doesNotMatch(readFileSync(openObserveLedger(root).path, "utf8"), new RegExp(root));
   assert.equal(state.bands.length, 0);
   assert.equal(readIntentDrafts(root).length, 0);
+});
+
+test("observe CLI prints a repository-relative ledger reference", () => {
+  const root = makeRepo();
+  const configPath = writeConfig(root, { probeExit: 0 });
+  const output = execFileSync("node", [CLI, "observe", "run", "--config", configPath], {
+    encoding: "utf8",
+  });
+  assert.match(output, /ledger: \.buildbeat\/runtime\/observe\/events\.jsonl/);
+  assert.doesNotMatch(output, new RegExp(root));
 });
 
 test("failing provider walks log/diagnose/intent and only enqueues a draft", () => {

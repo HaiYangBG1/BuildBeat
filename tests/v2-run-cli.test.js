@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -54,16 +54,25 @@ test("run start, status, and stop work end to end through the CLI", () => {
   assert.match(startOut, /status: WAITING_HUMAN/);
   assert.match(startOut, /waiting on human: enter-review/);
   assert.match(startOut, /candidate (?!\(none\))/);
+  assert.doesNotMatch(startOut, new RegExp(root));
 
   const statusOut = cli(["status", "--repo", root, "--run", "RUN-CLI"]);
   assert.match(statusOut, /status: WAITING_HUMAN/);
   assert.match(statusOut, /step build: SUCCEEDED/);
   assert.match(statusOut, /step verify: SUCCEEDED/);
+  assert.doesNotMatch(statusOut, new RegExp(root));
 
   const stopOut = cli(["stop", "--repo", root, "--run", "RUN-CLI", "--reason", "test-cancel"]);
   assert.match(stopOut, /cancelled and compacted/);
   assert.ok(
     existsSync(join(root, "delivery", "work", "WORK-CLI", "runs", "RUN-CLI", "run-record.json")),
+  );
+  assert.doesNotMatch(
+    readFileSync(
+      join(root, "delivery", "work", "WORK-CLI", "runs", "RUN-CLI", "run-record.json"),
+      "utf8",
+    ),
+    new RegExp(root),
   );
 
   const stopAgain = cli(["stop", "--repo", root, "--run", "RUN-CLI"]);

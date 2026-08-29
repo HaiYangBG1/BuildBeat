@@ -26,6 +26,7 @@ import {
   releaseLock,
 } from "../workspace/workspace-manager.js";
 import { writeRunRecord } from "./run-record.js";
+import { resolveRepoRef, toRepoRef } from "./repo-ref.js";
 
 const KERNEL = { kind: "kernel", id: "orchestrator" };
 
@@ -359,7 +360,7 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
       actor: KERNEL,
       ts: now(),
       data: {
-        evidenceRef: evidence.location,
+        evidenceRef: toRepoRef(context.repoRoot, evidence.location),
         kind: evidence.kind,
         subject: evidence.subject,
         digest: evidence.digest,
@@ -440,7 +441,7 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
         actor: KERNEL,
         ts: now(),
         data: {
-          evidenceRef: outputPath,
+          evidenceRef: toRepoRef(context.repoRoot, outputPath),
           kind: "review",
           subject: tree.head,
           digest: sha256(canonicalJson(envelope)),
@@ -600,9 +601,9 @@ export function startRun(options) {
       ts: now(),
       data: {
         workspaceId: workspace.workspaceId,
-        repo: repoRoot,
+        repo: toRepoRef(repoRoot, repoRoot),
         branch: workspace.branch,
-        worktreePath: workspace.worktreePath,
+        worktreePath: toRepoRef(repoRoot, workspace.worktreePath),
         base: workspace.base,
       },
     });
@@ -647,15 +648,16 @@ export function resumeRun(options) {
   if (!bound) {
     throw new OrchestratorError(`run ${runId} has no bound workspace; cannot resume`);
   }
-  if (!existsSync(bound.worktreePath)) {
+  const worktreePath = resolveRepoRef(repoRoot, bound.worktreePath);
+  if (!existsSync(worktreePath)) {
     throw new OrchestratorError(
-      `worktree missing: ${bound.worktreePath}; recovery requires a human decision`,
+      "worktree missing; recovery requires a human decision",
     );
   }
   const workspace = {
     workspaceId: runId,
     repoRoot,
-    worktreePath: bound.worktreePath,
+    worktreePath,
     branch: bound.branch,
     base: bound.base,
   };

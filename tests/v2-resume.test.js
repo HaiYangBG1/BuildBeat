@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import test from "node:test";
 
 import { createMockAdapter } from "../src/v2/adapters/mock.js";
@@ -52,9 +52,9 @@ function crashedRun(runId, upTo) {
   append("RUN_STARTED", {});
   append("WORKSPACE_BOUND", {
     workspaceId: runId,
-    repo: root,
+    repo: ".",
     branch: workspace.branch,
-    worktreePath: workspace.worktreePath,
+    worktreePath: relative(root, workspace.worktreePath),
     base,
   });
   if (upTo === "in-flight-build") {
@@ -101,6 +101,12 @@ test("resume closes an in-flight step as crashed and fails closed without a rout
   assert.ok(
     existsSync(join(root, "delivery", "work", "WORK-RUN-R1", "runs", "RUN-R1", "run-record.json")),
   );
+  const record = readFileSync(
+    join(root, "delivery", "work", "WORK-RUN-R1", "runs", "RUN-R1", "run-record.json"),
+    "utf8",
+  );
+  assert.doesNotMatch(record, new RegExp(root));
+  assert.equal(JSON.parse(record).workspaces["RUN-R1"].worktreePath, ".buildbeat/worktrees/RUN-R1");
 });
 
 test("resume continues from the last checkpoint through the remaining steps", () => {

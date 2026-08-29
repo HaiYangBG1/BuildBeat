@@ -8,6 +8,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
 import { canonicalJson } from "../storage/event-ledger.js";
+import { normalizeRepoRef } from "./repo-ref.js";
 
 const KERNEL = { kind: "kernel", id: "orchestrator" };
 
@@ -22,6 +23,20 @@ export function writeRunRecord({ repoRoot, ledger, ts }) {
   for (const [step, info] of Object.entries(state.steps)) {
     attempts[step] = info.attempts;
   }
+  const workspaces = Object.fromEntries(
+    Object.entries(state.workspaces).map(([id, workspace]) => [
+      id,
+      {
+        ...workspace,
+        repo: normalizeRepoRef(repoRoot, workspace.repo),
+        worktreePath: normalizeRepoRef(repoRoot, workspace.worktreePath),
+      },
+    ]),
+  );
+  const evidence = state.evidence.map((item) => ({
+    ...item,
+    ref: normalizeRepoRef(repoRoot, item.ref),
+  }));
   const record = {
     run: first.run,
     work: first.work,
@@ -31,11 +46,11 @@ export function writeRunRecord({ repoRoot, ledger, ts }) {
     finishedAt: last.ts,
     attempts,
     budgets: state.budgets,
-    workspaces: state.workspaces,
-    evidence: state.evidence,
+    workspaces,
+    evidence,
     decisions: state.decisions,
     approvals: state.approvals,
-    unverified: state.evidence
+    unverified: evidence
       .filter((item) => item.status === "unverified")
       .map((item) => item.ref),
   };
