@@ -112,6 +112,21 @@ test("a failure with no transition terminates and compacts the run", () => {
   assert.ok(existsSync(recordPath));
 });
 
+test("a verify failure on its final attempt stops for a human instead of starting fix", () => {
+  const { root } = fixtureRepo();
+  const result = run(
+    root,
+    "RUN-T4B",
+    mockAdapters({ build: ["succeed"], verify: ["fail"], fix: ["succeed"] }),
+    { maxAttemptsPerStep: 1 },
+  );
+  const state = result.state;
+  assert.equal(state.run.status, "WAITING_HUMAN");
+  assert.equal(state.steps.verify.attempts, 1);
+  assert.equal(state.steps.fix, undefined, "fix never started");
+  assert.match(state.pendingHuman.reasons[0], /budget exhausted/);
+});
+
 test("shell adapters drive a real build and verify with read-back evidence", () => {
   const { root, base } = fixtureRepo();
   const adapters = {

@@ -220,6 +220,14 @@ function settleOutcome(context, step, outcome, tree, exec) {
       ]);
       return null;
     }
+    // A step that failed its final attempt can never run again, so routing
+    // to fix would spend a worker on a candidate nothing can verify.
+    if ((ledger.state.steps[step]?.attempts ?? 0) >= context.maxAttemptsFor(step)) {
+      context.waitHuman(`resume-${step}`, [
+        `budget exhausted: ${step} failed its final attempt (maxAttempts=${context.maxAttemptsFor(step)}); not routing to fix`,
+      ]);
+      return null;
+    }
   }
   const to = nextStep(workflow, step, outcome);
   let result = "PASS";
