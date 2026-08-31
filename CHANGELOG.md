@@ -2,6 +2,19 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## 未发布（beta.3 候选）
+
+> 主题：三十轮部署战役（底座 WORK-C0-HEALTH-NONPROD-01，DEPLOY-01~30 + L4 之夜）的机制回灌。战役复盘：`底座/pm/2026-09-01-BuildBeat三十轮复盘.md`。
+
+- **发现分诊门**（复盘改革条 4）：run 配置 `reviewTriage: required` 后，review 的 P0/P1 finding 不再自动派 fixer——停 `WAITING_HUMAN`（kind `finding-triage`）待人逐指纹裁决，approve `enter-fix` 才放行。finding 是处方不是事实；自动路由处方在战役振荡期连烧四轮
+- **锚定审查与裁决台账**（改革条 3）：finding 全部落 Git 面 `delivery/work/<id>/review-findings.jsonl`（指纹=严重度+正文规范化 hash）；`findings list` / `findings adjudicate --action accept|dismiss` 人裁决；`dismiss` 后同指纹不再阻断（重提记 `RE-RAISED` 可见）、严重度升级自动重开；Reviewer input 注入历史裁决锚（`anchor`）、fixer input 注入带裁决状态的工单（`findings`）。裁决记忆在 Git 面，删 runtime 不丢
+- **环境契约 `requires:`**：run 配置声明信封依赖的二进制与最低版本，Run 启动前 fail-closed 全量核验、一次报清（真实事故：vendored-only `rg`、bash 3.2、新 shell 解析 Node 14 各烧整轮才见真因）；`doctor` 同步报告
+- **review 轮数预算原生化**（改革条 1 的机制化）：官方预设 `budgets.maxAttempts.review: 2`——第三轮 review 启动前即停人批，无需 prompt 约束兜底
+- **`preflight` 预检通道**：`preflight --config <cfg> --step <id>` 在主 checkout 干跑某步 worker 命令，分钟级打到首个失败边界再进 Run；无 worktree、无台账、零证据（横幅明示 dry signal；`BUILDBEAT_PREFLIGHT=1`），Run 必须复现才算数
+- **fix(v2) 崩溃恢复不再误路由**：被中断的步现在重跑自身（丢失尝试仍计预算），不再按步骤失败走 failure 边——真实事故（deploy-18）：宿主超时杀掉 verify worker，crash 被路由去 fix，fixer 面对零 verifier 证据白烧一轮。交互式 shell 里 `start` 现在提示脱离启动（nohup/setsid）
+- 战役期间已并入的内核修复一并随本版发布：预算守卫（final attempt 失败不再派 fix，deploy-14）、porcelain 状态列保护、runtime 证据引用仓库相对化、Node <20 清晰报错（各见对应 commit）
+- 指南更新：验证金字塔警示与"真缺陷类清零即升层"（06）、分诊门与锚定审查（07）、环境契约与 review 预算（02）、崩溃重跑语义与启动纪律（10）
+
 ## v2.0.0-beta.2 — 2026-08-28
 
 > 主题：aiplatform-meta（底座）v2 迁移试点抓出的内核修复。

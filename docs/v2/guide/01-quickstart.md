@@ -80,6 +80,8 @@ buildbeat-v2 approve --repo . --run RUN-DEMO-1 --transition enter-wait-merge --b
 
 批准即 merge-ready；合并/推送/发布永远是你的动作，Runner 不代劳。被 findings 阻断时会自动路由 fix→verify 重走，超预算或指纹重复则停下交还给你（[Approval 指南](07-approval-guide.md)、[Recovery](10-recovery.md)）。
 
+想让 finding 先过你的手再派 fixer：run 配置加 `reviewTriage: required`，配套 `findings list` / `findings adjudicate` 逐指纹裁决（dismiss 后同指纹不再阻断）；正式起 Run 前可用 `preflight --step <id>` 在主 checkout 分钟级干跑单步（不产证据）；信封的环境依赖用 `requires:` 声明，启动前 fail-closed 核验。详见 [Approval 指南](07-approval-guide.md)、[Evidence 指南](06-evidence-guide.md)、[Workflow 指南](02-workflow-guide.md)。
+
 ## 5. observe：让系统盯生产（v0）
 
 ```bash

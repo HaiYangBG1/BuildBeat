@@ -32,3 +32,20 @@ merge 批准只表示 **merge-ready**：真正的合并、push、发布是你在
 ## 人批点由 Risk Preset 决定
 
 `fast` 仅 Merge；`standard` Plan+Merge；`controlled` Intent+Plan+Merge+Release；`legacy-four-gates` 为 v1 四 Gate 完整形态（迁移期用，见 [迁移指南](08-migration-v1.md)）。待批项强制携带 findings 摘要与理由——防"秒批"退化；人批等待时长进 `metrics`。
+
+## 发现分诊门与锚定审查（beta.3）
+
+来自三十轮部署战役最大的结构性教训：**finding 是处方不是事实**，无记忆 fresh reviewer 会开出互斥处方并翻案早已接受的设计，自动路由 fixer 让振荡直接烧钱。两个机制配套：
+
+1. **分诊门**：run 配置 `reviewTriage: required` 后，review 产出 P0/P1 finding 不再自动派 fixer，而是停 `WAITING_HUMAN`（kind `finding-triage`），待批理由逐条列出 finding 指纹。人先裁决、再 `approve --transition enter-fix` 放行（或 `reject` 终止 Run）。
+2. **裁决台账**：finding 全部落 Git 面 `delivery/work/<id>/review-findings.jsonl`（指纹 = 严重度+正文规范化 hash）：
+
+   ```bash
+   buildbeat-v2 findings list --repo . --work WORK-X
+   buildbeat-v2 findings adjudicate --repo . --work WORK-X --fingerprint <fp> --action dismiss --by <名字> --note "<为什么>"
+   ```
+
+   `dismiss` 后同指纹不再阻断（重提会以 `RE-RAISED` 记账可见，但不重启循环）；**严重度升级=新指纹，自动重新阻断**——压噪不压真信号，与 observe 的 dismiss 回调同一原则。
+3. **锚定注入**：Reviewer（readonly 步）的 `BUILDBEAT_INPUT` 带 `anchor`（历史 finding+裁决全表），信封 prompt 应告知 reviewer"已裁决的结论不得翻案"；fixer 等写入步的 input 带 `findings`（上一轮 review 的 finding 及其裁决状态）——fixer 只修 accepted/open，不猜。
+
+裁决记忆在 Git 面，删 runtime 不丢（不变量 23 同款测试覆盖）。
