@@ -140,6 +140,9 @@ export function applyEvent(state, event) {
         status: data.status,
         grade: data.grade,
         ...(data.findings ? { findings: data.findings } : {}),
+        ...(data.suppressedFingerprints
+          ? { suppressedFingerprints: data.suppressedFingerprints }
+          : {}),
       });
       break;
     }

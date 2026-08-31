@@ -3,7 +3,7 @@
 // Deliberately thin — all facts live in the event ledger; this file only
 // parses input, wires adapters, and renders derived state.
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
@@ -15,6 +15,13 @@ import { parseYamlSubset } from "../engine/yaml-subset.js";
 import { parsePolicyDoc } from "../policy/policy.js";
 import { observeStatus, runObserveCycle, triageIntent } from "../observe/observe.js";
 import { acceptArtifact, approveRun, listInbox, rejectRun } from "../runtime/decisions.js";
+import { checkRequires } from "../runtime/env-contract.js";
+import {
+  adjudicateFinding,
+  findingsAccountRef,
+  latestAdjudications,
+  readFindingsAccount,
+} from "../runtime/findings.js";
 import { computeMetrics, renderMetrics } from "../runtime/metrics.js";
 import { writeRunRecord } from "../runtime/run-record.js";
 import { resumeRun, startRun } from "../runtime/orchestrator.js";
@@ -42,6 +49,9 @@ Usage:
   run.js observe run --config <observe.yaml>
   run.js observe status --repo <path>
   run.js observe triage --repo <path> --intent <ref> --action <fix_now|schedule|dismiss> [--by <name>] [--note <text>]
+  run.js preflight --config <run-config.yaml> --step <id>
+  run.js findings list --repo <path> --work <WORK-ID>
+  run.js findings adjudicate --repo <path> --work <WORK-ID> --fingerprint <fp> --action <accept|dismiss> [--by <name>] [--note <text>]
 `;
 
 function parseFlags(argv) {
@@ -143,6 +153,10 @@ function loadRunConfig(flags, command) {
     policies.push(parsePolicyDoc(parseYamlSubset(readFileSync(resolve(configDir, policyPath), "utf8"))));
   }
 
+  if (config.reviewTriage !== undefined && !["required", "off"].includes(config.reviewTriage)) {
+    throw new Error(`reviewTriage must be "required" or "off", got: ${config.reviewTriage}`);
+  }
+
   return {
     repoRoot,
     workflow,
@@ -159,6 +173,8 @@ function loadRunConfig(flags, command) {
     maxAttemptsPerStep: config.maxAttemptsPerStep ?? 4,
     stepTimeoutMs: config.stepTimeoutMs,
     allowedPaths: config.allowedPaths,
+    requires: config.requires ?? [],
+    reviewTriage: config.reviewTriage === "required" ? "required" : null,
     planDigest: digestOfWorkFile("plan.md"),
     intentDigest: digestOfWorkFile("intent.md"),
   };
@@ -166,6 +182,12 @@ function loadRunConfig(flags, command) {
 
 function commandStart(flags) {
   const options = loadRunConfig(flags, "start");
+  if (process.stdout.isTTY) {
+    // Run launch discipline (real incident: a host-tool timeout killed a
+    // verify worker mid-run): anything longer than minutes belongs in a
+    // detached process, not an interactive foreground shell.
+    console.log("tip: long runs should be started detached (nohup/setsid); interactive shells die with their host");
+  }
   const result = startRun(options);
   console.log(`ledger: ${toRepoRef(options.repoRoot, result.ledgerPath)}`);
   printState(result.state, { corruption: null });
@@ -301,6 +323,116 @@ function commandDoctor(flags) {
     console.log("push protection: repository has no remotes (nothing to protect)");
   }
   console.log("kernel capabilities: merge/deploy/publish have no call path in the runner (invariant 20)");
+  if (options.requires.length > 0) {
+    console.log("environment contract (requires):");
+    const check = checkRequires(options.requires);
+    for (const row of check.checked) {
+      console.log(`  ${row.command}: OK${row.version ? ` (${row.version})` : ""}`);
+    }
+    for (const problem of check.problems) {
+      console.log(`  PROBLEM ${problem}`);
+    }
+  } else {
+    console.log("environment contract: none declared (implicit PATH facts stay unchecked)");
+  }
+}
+
+// Preflight: run one step's configured worker command directly in the main
+// checkout — no worktree, no ledger, no evidence. Minute-level dry loops
+// against the first failure boundary before a full run is what turned the
+// deploy campaign's idle phase around; the output is a dry signal only and a
+// Run must reproduce anything it finds.
+function commandPreflight(flags) {
+  const options = loadRunConfig(flags, "preflight");
+  if (!flags.step) {
+    throw new Error("preflight requires --step");
+  }
+  const stepDef = options.workflow.steps.find((candidate) => candidate.id === flags.step);
+  if (!stepDef) {
+    throw new Error(`step not in workflow: ${flags.step}`);
+  }
+  const spec = stepDef.worker ? options.adapterConfigs[stepDef.worker] : null;
+  if (!spec) {
+    throw new Error(`step ${flags.step} has no configured worker command to preflight`);
+  }
+  if (options.requires.length > 0) {
+    const check = checkRequires(options.requires);
+    for (const problem of check.problems) {
+      console.log(`requires PROBLEM: ${problem}`);
+    }
+  }
+  const fill = (text) =>
+    String(text)
+      .replaceAll("{workspace}", options.repoRoot)
+      .replaceAll("{step}", flags.step)
+      .replaceAll("{worker}", stepDef.worker);
+  const args = (spec.args ?? []).map(fill);
+  let env;
+  if (spec.inheritEnv === true) {
+    env = { ...process.env };
+  } else {
+    env = {};
+    for (const key of ["PATH", "HOME", "LANG", "LC_ALL", "TMPDIR", "TERM", "USER", "SHELL"]) {
+      if (process.env[key] !== undefined) {
+        env[key] = process.env[key];
+      }
+    }
+  }
+  Object.assign(env, spec.env ?? {});
+  env.BUILDBEAT_PREFLIGHT = "1";
+  console.log(`PREFLIGHT (dry signal, never evidence): step ${flags.step} -> ${spec.command} ${args.join(" ")}`);
+  console.log(`cwd: main checkout (no worktree, no ledger, no evidence written)`);
+  const result = spawnSync(spec.command, args, {
+    cwd: options.repoRoot,
+    stdio: "inherit",
+    env,
+    timeout: spec.timeoutMs,
+  });
+  if (result.error) {
+    throw new Error(`preflight could not run the command: ${result.error.message}`);
+  }
+  const exitCode = result.status ?? 1;
+  console.log(`preflight exit=${exitCode} — a Run must reproduce this before it counts`);
+  process.exitCode = exitCode;
+}
+
+function commandFindings(rest) {
+  const [sub, ...args] = rest;
+  const flags = parseFlags(args);
+  if (sub === "list") {
+    if (!flags.repo || !flags.work) {
+      throw new Error("findings list requires --repo and --work");
+    }
+    const rows = readFindingsAccount(resolve(flags.repo), flags.work);
+    const findings = rows.filter((row) => row.kind === "finding");
+    if (findings.length === 0) {
+      console.log(`no recorded findings (${findingsAccountRef(flags.work)})`);
+      return;
+    }
+    const adjudicated = latestAdjudications(rows);
+    for (const row of findings) {
+      const verdict = adjudicated.get(row.fingerprint);
+      const status = verdict ? `${verdict.action} by ${verdict.by}` : "open";
+      const reRaised = row.reRaised ? " RE-RAISED" : "";
+      console.log(`[${row.severity} ${row.fingerprint}] (${status})${reRaised} ${row.summary}`);
+    }
+  } else if (sub === "adjudicate") {
+    if (!flags.repo || !flags.work || !flags.fingerprint || !flags.action) {
+      throw new Error("findings adjudicate requires --repo, --work, --fingerprint and --action");
+    }
+    const row = adjudicateFinding(resolve(flags.repo), flags.work, {
+      fingerprint: flags.fingerprint,
+      action: flags.action,
+      by: flags.by,
+      note: flags.note,
+    });
+    console.log(`adjudicated ${row.fingerprint} -> ${row.action} ([${row.severity}] ${row.summary})`);
+    if (row.action === "dismiss") {
+      console.log("dismissed: this fingerprint no longer blocks; an escalated severity reopens on its own");
+    }
+  } else {
+    throw new Error(`findings subcommand must be list|adjudicate, got: ${sub ?? "(none)"}`);
+  }
 }
 
 function commandEvents(flags) {
@@ -447,9 +579,9 @@ function commandObserve(rest) {
 
 function main() {
   const [command, ...rest] = process.argv.slice(2);
-  if (command === "observe") {
+  if (command === "observe" || command === "findings") {
     try {
-      commandObserve(rest);
+      (command === "observe" ? commandObserve : commandFindings)(rest);
     } catch (error) {
       console.error(`error: ${error.message}`);
       process.exitCode = 1;
@@ -482,6 +614,8 @@ function main() {
       commandStatus(flags);
     } else if (command === "stop") {
       commandStop(flags);
+    } else if (command === "preflight") {
+      commandPreflight(flags);
     } else {
       process.stdout.write(USAGE);
       process.exitCode = command ? 2 : 0;

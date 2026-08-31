@@ -79,6 +79,38 @@ test("blocking review findings route to fix, a clean re-review reaches the merge
   assert.ok(state.policyLog.some((entry) => entry.result === "ROUTE"));
 });
 
+test("the preset caps review at two rounds; the third stops for a human", () => {
+  // Deploy-campaign charter, now a native budget: two review rounds per run,
+  // then a human — endless fresh-review loops burned four rounds before a
+  // person stopped them.
+  const { root } = fixtureRepo();
+  const mock = createMockAdapter({
+    build: ["succeed"],
+    verify: ["succeed", "succeed", "succeed"],
+    fix: ["succeed", "succeed"],
+    review: [
+      {
+        behavior: "succeed",
+        envelope: { status: "succeeded", findings: [{ severity: "P0", summary: "issue one" }] },
+      },
+      {
+        behavior: "succeed",
+        envelope: { status: "succeeded", findings: [{ severity: "P0", summary: "issue two" }] },
+      },
+    ],
+  });
+  const result = run(root, "RUN-RL4", {
+    builder: mock,
+    verifier: mock,
+    fixer: mock,
+    reviewer: mock,
+  });
+  const state = result.state;
+  assert.equal(state.steps.review.attempts, 2);
+  assert.equal(state.run.status, "WAITING_HUMAN");
+  assert.match(state.pendingHuman.reasons[0], /budget exhausted: review would exceed maxAttempts=2/);
+});
+
 test("a reviewer that writes to the workspace is blocked, not merged", () => {
   const { root } = fixtureRepo();
   const mock = createMockAdapter({ build: ["succeed"], verify: ["succeed"] });

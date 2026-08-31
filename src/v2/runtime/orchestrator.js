@@ -26,6 +26,14 @@ import {
   releaseLock,
 } from "../workspace/workspace-manager.js";
 import { writeRunRecord } from "./run-record.js";
+import { assertRequires } from "./env-contract.js";
+import {
+  buildAnchor,
+  fingerprintFinding,
+  latestAdjudications,
+  readFindingsAccount,
+  recordReviewFindings,
+} from "./findings.js";
 import { resolveRepoRef, toRepoRef } from "./repo-ref.js";
 
 const KERNEL = { kind: "kernel", id: "orchestrator" };
@@ -136,6 +144,7 @@ function makeContext(options, ledger, workspace) {
     workflow.budgets?.maxAttempts?.[step] ?? maxAttemptsPerStep;
   context.policies = options.policies ?? [];
   context.allowedPaths = options.allowedPaths ?? null;
+  context.reviewTriage = options.reviewTriage ?? null;
   context.policyCtx = () => ({
     state: ledger.state,
     candidate: ledger.state.workspaces[workspace.workspaceId]?.candidate ?? null,
@@ -346,11 +355,35 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
     const outputsDir = join(context.runtimeDir, "runs", ledger.state.run.id, "outputs");
     mkdirSync(outputsDir, { recursive: true });
     const outputPath = join(outputsDir, `${step}-${attempt}.json`);
+    // Anchored review: readonly (reviewer) steps receive the adjudicated
+    // findings history so a fresh reviewer inherits settled verdicts instead
+    // of re-litigating them; writing steps get the latest review findings
+    // with their adjudication status (the fixer's worklist).
+    const input = { workId: ledger.state.run.work, runId: ledger.state.run.id, step, attempt };
+    const anchor = buildAnchor(context.repoRoot, ledger.state.run.work);
+    if (anchor && stepDef.readonly) {
+      input.anchor = anchor;
+    } else if (anchor) {
+      const lastReview = [...ledger.state.evidence]
+        .reverse()
+        .find((item) => item.kind === "review");
+      if (lastReview?.findings?.length) {
+        const adjudicated = latestAdjudications(
+          readFindingsAccount(context.repoRoot, ledger.state.run.work),
+        );
+        input.findings = lastReview.findings.map((finding) => ({
+          severity: finding.severity,
+          summary: finding.summary,
+          fingerprint: fingerprintFinding(finding),
+          adjudication: adjudicated.get(fingerprintFinding(finding))?.action ?? "open",
+        }));
+      }
+    }
     const exec = adapter.execute({
       step,
       worker: stepDef.worker,
       workspacePath: workspace.worktreePath,
-      input: { workId: ledger.state.run.work, runId: ledger.state.run.id, step, attempt },
+      input,
       timeoutMs: context.stepTimeoutMs,
       outputPath,
     });
@@ -441,9 +474,26 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
 
     let blockingFindings = [];
     if (envelope?.findings) {
-      blockingFindings = envelope.findings.filter(
-        (finding) => finding.severity === "P0" || finding.severity === "P1",
+      recordReviewFindings(context.repoRoot, ledger.state.run.work, {
+        run: ledger.state.run.id,
+        step,
+        attempt,
+        findings: envelope.findings,
+        ts: now(),
+      });
+      // A fingerprint a human dismissed stays visible in the evidence but no
+      // longer blocks: settled verdicts do not reopen without a human.
+      const adjudicated = latestAdjudications(
+        readFindingsAccount(context.repoRoot, ledger.state.run.work),
       );
+      const suppressed = [];
+      blockingFindings = envelope.findings.filter((finding) => {
+        if (adjudicated.get(fingerprintFinding(finding))?.action === "dismiss") {
+          suppressed.push(fingerprintFinding(finding));
+          return false;
+        }
+        return finding.severity === "P0" || finding.severity === "P1";
+      });
       ledger.append({
         type: "EVIDENCE_RECORDED",
         actor: KERNEL,
@@ -456,6 +506,7 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
           status: blockingFindings.length > 0 ? "failed" : "passed",
           grade: "L2",
           findings: envelope.findings,
+          ...(suppressed.length > 0 ? { suppressedFingerprints: suppressed } : {}),
         },
       });
     }
@@ -540,7 +591,29 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
     } else {
       outcome = "succeeded";
     }
-    step = settleOutcome(context, step, outcome, tree, exec);
+    const routed = settleOutcome(context, step, outcome, tree, exec);
+    // Finding triage gate (reviewTriage: required): blocking findings stop
+    // for a human verdict before any fixer runs. Findings are prescriptions,
+    // not facts — auto-routing them to a fixer burned four oscillation
+    // rounds in the deploy campaign before a human stopped the loop.
+    if (routed && outcome === "findings-blocking" && context.reviewTriage === "required") {
+      context.waitHuman(
+        `enter-${routed}`,
+        [
+          `review found ${blockingFindings.length} blocking finding(s); triage before ${routed} runs`,
+          ...blockingFindings
+            .slice(0, 5)
+            .map(
+              (finding) =>
+                `[${finding.severity} ${fingerprintFinding(finding)}] ${finding.summary.slice(0, 200)}`,
+            ),
+          `adjudicate fingerprints (findings adjudicate), then approve enter-${routed} or reject the run`,
+        ],
+        "finding-triage",
+      );
+      return;
+    }
+    step = routed;
   }
 }
 
@@ -576,6 +649,11 @@ export function startRun(options) {
   }
   if (!workflowDigest) {
     throw new OrchestratorError("workflowDigest is required (pin what you run)");
+  }
+  // Environment contract first: a missing or too-old binary fails the start
+  // with a readable cause instead of burning a run on an implicit PATH fact.
+  if (options.requires?.length) {
+    assertRequires(options.requires);
   }
   const { ledger, ledgerPath } = openLedgerFor(repoRoot, runId);
   if (ledger.events.length > 0) {
@@ -634,6 +712,9 @@ export function resumeRun(options) {
   const { repoRoot, workflow, workflowDigest, runId, planDigest } = options;
   if (!repoRoot || !runId) {
     throw new OrchestratorError("repoRoot and runId are required");
+  }
+  if (options.requires?.length) {
+    assertRequires(options.requires);
   }
   const { ledger, ledgerPath } = openLedgerFor(repoRoot, runId);
   const state = ledger.state;
@@ -737,12 +818,12 @@ export function resumeRun(options) {
         ]);
         return { runId, ledgerPath, state: ledger.state, resumed: true, reason: null };
       }
-      startStep = settleOutcome(context, step, "failed", tree, {
-        command: "(interrupted)",
-        exitCode: null,
-        stdout: "",
-        stderr: "process lost before completion",
-      });
+      // An interrupted attempt says nothing about the candidate, so the step
+      // itself reruns (the lost attempt still counts against its budget)
+      // instead of settling as a step failure — routing a crash through the
+      // failure edge dispatched a fixer with no verifier evidence (real
+      // incident: deploy-18's verify worker was killed by a host timeout).
+      startStep = step;
     } else if (tree.dirty) {
       context.waitHuman("resume-run", [
         "worktree is dirty at resume with no step in flight; human triage required",
