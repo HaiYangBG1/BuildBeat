@@ -20,12 +20,14 @@ const WORKFLOW = loadWorkflow(PRESET_PATH);
 // everywhere. Freshly-written executable fixtures or heavyweight children
 // (node) made the probe itself time out under a loaded host (macOS assesses
 // new executables on first exec), which is not what this test is about.
+// The undetectable case probes `git rev-parse` (silent, exit 0 in a repo):
+// GNU `true --version` prints a version on Linux, BSD true does not.
 test("checkRequires verifies presence and minimum versions, reporting all problems", () => {
   const result = checkRequires([
     { command: "git", min: "1" },
     { command: "git", min: "999" },
     { command: "definitely-not-a-command-xyz" },
-    { command: "true", min: "1.0" },
+    { command: "git", versionFlag: "rev-parse", min: "1.0" },
   ]);
   assert.equal(result.ok, false);
   assert.equal(result.checked.length, 1, "only the satisfiable entry passes");
