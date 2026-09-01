@@ -5,7 +5,7 @@
 ## v2.0.0-beta.3 — 2026-09-01
 
 > 主题：三十轮部署战役（底座 WORK-C0-HEALTH-NONPROD-01，DEPLOY-01~30 + L4 之夜）的机制回灌。战役复盘：`底座/pm/2026-09-01-BuildBeat三十轮复盘.md`。
-> **发布状态**：同 beta.1/beta.2 流程（OIDC Trusted Publishing，dist-tag `next`；`latest` 保持 v1.21.0）。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.3` 已于 2026-09-01 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33460544343，双 job success）；`latest` 保持 v1.21.0。独立回读（直连 npmjs.org）：dist-tag 路由、integrity、签名+attestation、隔离安装全过，证据见 [`docs/V2.0.0-BETA.3-RELEASE-EVIDENCE-2026-09-01.md`](docs/V2.0.0-BETA.3-RELEASE-EVIDENCE-2026-09-01.md)。
 
 - **发现分诊门**（复盘改革条 4）：run 配置 `reviewTriage: required` 后，review 的 P0/P1 finding 不再自动派 fixer——停 `WAITING_HUMAN`（kind `finding-triage`）待人逐指纹裁决，approve `enter-fix` 才放行。finding 是处方不是事实；自动路由处方在战役振荡期连烧四轮
 - **锚定审查与裁决台账**（改革条 3）：finding 全部落 Git 面 `delivery/work/<id>/review-findings.jsonl`（指纹=严重度+正文规范化 hash）；`findings list` / `findings adjudicate --action accept|dismiss` 人裁决；`dismiss` 后同指纹不再阻断（重提记 `RE-RAISED` 可见）、严重度升级自动重开；Reviewer input 注入历史裁决锚（`anchor`）、fixer input 注入带裁决状态的工单（`findings`）。裁决记忆在 Git 面，删 runtime 不丢
