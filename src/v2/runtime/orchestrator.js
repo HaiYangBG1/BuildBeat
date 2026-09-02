@@ -11,7 +11,7 @@
 // anything changed goes APPROVAL_STALE and back to WAITING_HUMAN.
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { nextStep } from "../engine/workflow.js";
@@ -27,6 +27,8 @@ import {
 } from "../workspace/workspace-manager.js";
 import { writeRunRecord } from "./run-record.js";
 import { assertRequires } from "./env-contract.js";
+import { materialisePrompt } from "./envelope.js";
+import { cacheKey, findReusableEvidence, lastReviewedCandidate, treeHash } from "./cache.js";
 import {
   buildAnchor,
   fingerprintFinding,
@@ -145,6 +147,10 @@ function makeContext(options, ledger, workspace) {
   context.policies = options.policies ?? [];
   context.allowedPaths = options.allowedPaths ?? null;
   context.reviewTriage = options.reviewTriage ?? null;
+  context.envelope = options.envelope ?? null;
+  context.cache = options.cache ?? {};
+  context.redact = options.redact ?? [];
+  context.adapterConfigs = options.adapterConfigs ?? {};
   context.policyCtx = () => ({
     state: ledger.state,
     candidate: ledger.state.workspaces[workspace.workspaceId]?.candidate ?? null,
@@ -379,14 +385,76 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
         }));
       }
     }
-    const exec = adapter.execute({
-      step,
+    // Envelope (C6): the worker's prompt, materialised into the run
+    // directory and handed over as BUILDBEAT_PROMPT / input.envelope.
+    const prompt = materialisePrompt({
+      envelope: context.envelope,
       worker: stepDef.worker,
-      workspacePath: workspace.worktreePath,
-      input,
-      timeoutMs: context.stepTimeoutMs,
-      outputPath,
+      runtimeDir: context.runtimeDir,
+      runId: ledger.state.run.id,
+      step,
+      attempt,
+      repoRoot: context.repoRoot,
     });
+    if (prompt) {
+      input.envelope = { promptRef: prompt.ref, file: prompt.file, digest: context.envelope.digest, vars: context.envelope.vars };
+    }
+    // Incremental review (C7): tell a reviewer which candidate the last
+    // review saw when it is an ancestor of this one.
+    if (stepDef.readonly) {
+      const head = before.head;
+      const lastReviewed = lastReviewedCandidate(context.repoRoot, ledger.state.run.work, workspace.worktreePath, head);
+      if (lastReviewed) {
+        input.lastReviewed = lastReviewed;
+      }
+    }
+    // Verification reuse (C7): same tree + same worker + same envelope that
+    // already passed is referenced, not re-run. Failures always re-run.
+    let stepCacheKey = null;
+    let reused = null;
+    if (context.cache[step] === "tree") {
+      const current = readback(workspace.worktreePath);
+      if (!current.dirty) {
+        stepCacheKey = cacheKey({
+          tree: treeHash(workspace.worktreePath),
+          worker: stepDef.worker,
+          adapterSpec: context.adapterConfigs[stepDef.worker] ?? null,
+          adapterName: adapter.name,
+          envelopeDigest: context.envelope?.digest ?? null,
+        });
+        reused = findReusableEvidence(context.repoRoot, stepCacheKey);
+      }
+    }
+    let exec;
+    if (reused) {
+      const at = now();
+      exec = {
+        adapter: "cache",
+        command: `reuse ${reused.run} ${reused.evidenceRef}`,
+        exitCode: 0,
+        signal: null,
+        stdout: `REUSED: identical tree/worker/envelope already passed in ${reused.run} (${reused.evidenceRef}, ${reused.digest}); not re-run`,
+        stderr: "",
+        timedOut: false,
+        spawnError: null,
+        startedAt: at,
+        finishedAt: at,
+      };
+    } else {
+      exec = adapter.execute({
+        step,
+        worker: stepDef.worker,
+        workspacePath: workspace.worktreePath,
+        input,
+        timeoutMs: context.stepTimeoutMs,
+        outputPath,
+        // Live output streams + marker land in the run directory so `status`
+        // can answer "is it still doing something" while the step runs.
+        liveDir: join(context.runtimeDir, "runs", ledger.state.run.id),
+        promptPath: prompt?.path ?? null,
+        vars: context.envelope?.vars ?? null,
+      });
+    }
     const tree = readback(workspace.worktreePath);
     const evidence = collectCommandEvidence({
       runtimeDir: context.runtimeDir,
@@ -395,6 +463,8 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
       attempt,
       execResult: exec,
       subject: tree.head,
+      grade: reused ? reused.grade : stepDef.grade ?? "L2",
+      redact: context.redact,
     });
     ledger.append({
       type: "EVIDENCE_RECORDED",
@@ -407,6 +477,8 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
         digest: evidence.digest,
         status: evidence.status,
         grade: evidence.grade,
+        ...(stepCacheKey ? { cacheKey: stepCacheKey } : {}),
+        ...(reused ? { reused: { run: reused.run, evidenceRef: reused.evidenceRef, digest: reused.digest } } : {}),
       },
     });
 
@@ -617,6 +689,57 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
   }
 }
 
+// Supersede (iteration 08, C2): a new Run for the same Work makes any older
+// Run still waiting on a human moot — the human would be approving a
+// candidate nobody intends to merge. Real incident: two WAITING_HUMAN runs
+// sat in the chickDEV inbox for a day after their successor had already
+// shipped. Only WAITING_HUMAN runs are touched; RUNNING ones are protected
+// by the active lock, terminal ones are already settled.
+function supersedeWaitingRuns(repoRoot, workId, newRunId, now) {
+  const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
+  const superseded = [];
+  const skipped = [];
+  if (!existsSync(runsDir)) {
+    return { superseded, skipped };
+  }
+  for (const entry of readdirSync(runsDir).sort()) {
+    if (entry === newRunId) {
+      continue;
+    }
+    const ledgerPath = join(runsDir, entry, "events.jsonl");
+    if (!existsSync(ledgerPath)) {
+      continue;
+    }
+    const ledger = EventLedger.open(ledgerPath);
+    const state = ledger.state;
+    if (ledger.corruption || !state.run || state.run.work !== workId) {
+      continue;
+    }
+    if (state.terminal || state.run.status !== "WAITING_HUMAN") {
+      continue;
+    }
+    try {
+      acquireLock(repoRoot, entry);
+    } catch {
+      skipped.push({ run: entry, reason: "locked by another process" });
+      continue;
+    }
+    try {
+      ledger.append({
+        type: "RUN_TERMINAL",
+        actor: KERNEL,
+        ts: now(),
+        data: { status: "SUPERSEDED", reason: `superseded by ${newRunId} (same work ${workId})` },
+      });
+      writeRunRecord({ repoRoot, ledger, ts: now() });
+      superseded.push(entry);
+    } finally {
+      releaseLock(repoRoot, entry);
+    }
+  }
+  return { superseded, skipped };
+}
+
 function openLedgerFor(repoRoot, runId) {
   const ledgerPath = join(repoRoot, ".buildbeat", "runtime", "runs", runId, "events.jsonl");
   const ledger = EventLedger.open(ledgerPath);
@@ -664,6 +787,10 @@ export function startRun(options) {
     const workspace = createWorkspace({ repoRoot, runId, base });
     const context = makeContext(options, ledger, workspace);
     const now = context.now;
+    const supersession =
+      options.supersede === "off"
+        ? { superseded: [], skipped: [] }
+        : supersedeWaitingRuns(repoRoot, workId, runId, now);
     ledger.append({
       type: "RUN_CREATED",
       actor: KERNEL,
@@ -678,6 +805,8 @@ export function startRun(options) {
         entry,
         planDigest: planDigest ?? "UNVERIFIED",
         intentDigest: intentDigest ?? "UNVERIFIED",
+        ...(supersession.superseded.length > 0 ? { supersedes: supersession.superseded } : {}),
+        ...(options.envelope ? { envelopeDigest: options.envelope.digest, envelopeSource: options.envelope.source } : {}),
       },
     });
     ledger.append({ type: "RUN_STARTED", actor: KERNEL, ts: now(), data: {} });
@@ -694,7 +823,15 @@ export function startRun(options) {
       },
     });
     drive(context, entry);
-    return { runId, workId, ledgerPath, state: ledger.state, workspace };
+    return {
+      runId,
+      workId,
+      ledgerPath,
+      state: ledger.state,
+      workspace,
+      superseded: supersession.superseded,
+      supersedeSkipped: supersession.skipped,
+    };
   });
 }
 

@@ -1,0 +1,36 @@
+# Release readback lane (iteration 08, C8). The kernel still has no deploy
+# capability (invariant 20): every production action stays a human's. What
+# this lane fixes is the bookkeeping around it — the ChickDev go-live was
+# ledgered by hand as forty "step N readback" commits. Here each step is a
+# read-only command that proves the world is in the expected state; every
+# failure stops for a human (maxAttempts 1, no fix edge), and evidence is
+# graded L4 because it was read from the real environment.
+#
+# Shape: preflight (before the action) → [human performs the action; the
+# risk preset "release" stops here] → apply-readback (proves it happened) →
+# observe (proves it is healthy) → wait-close (human closes the window).
+kind: workflow
+version: 1
+name: release-readback
+entry: preflight
+steps:
+  - id: preflight
+    worker: readback
+    readonly: true
+    grade: L4
+  - id: apply-readback
+    worker: readback
+    readonly: true
+    grade: L4
+  - id: observe
+    worker: observe
+    readonly: true
+    grade: L4
+  - id: wait-close
+terminal:
+  - wait-close
+budgets:
+  maxAttempts:
+    preflight: 1
+    apply-readback: 1
+    observe: 1

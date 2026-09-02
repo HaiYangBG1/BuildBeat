@@ -143,6 +143,8 @@ export function applyEvent(state, event) {
         ...(data.suppressedFingerprints
           ? { suppressedFingerprints: data.suppressedFingerprints }
           : {}),
+        ...(data.cacheKey ? { cacheKey: data.cacheKey } : {}),
+        ...(data.reused ? { reused: data.reused } : {}),
       });
       break;
     }

@@ -43,3 +43,7 @@ Adapter 只报告事实：exitCode / signal / timedOut / spawnError / stdout / s
 ## 何时写专用 Adapter
 
 只有当 Shell 表达不了（需要流式交互、会话保持）才写专用 Adapter；按 M3 裁决，先用 Shell 接一切，等真实试点证明不够再说。
+
+## 实时输出（迭代 08）
+
+编排器给 Shell Adapter 传 `liveDir` 时，子进程的 stdout/stderr 直接写到 `<liveDir>/<step>-<attempt>.{stdout,stderr}.live`（fd 直连，不经父进程缓冲），并写 `live.json`（`step / attempt / worker / command / startedAt`）。步返回后 Adapter 读回两份流作为 `stdout` / `stderr`，删掉实时文件——结果形状不变，证据收集器照旧。自写 Adapter 若想被 `status` 的"最后输出距今"识别，产出同名文件即可；不产出则 `status` 只显示已用时间。

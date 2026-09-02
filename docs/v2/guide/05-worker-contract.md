@@ -35,3 +35,13 @@
 - prompt 里明确引用 `delivery/work/<id>/plan.md`，让 Worker 的目标与被批准的 digest 是同一份文件；
 - builder 的提交动作可以由包装脚本机械执行（M4 试点即如此：codex 只改文件，`git commit` 在包装层）；
 - reviewer 的 prompt 要求"只输出信封 JSON"，并用 `-o`/重定向落到 `$BUILDBEAT_OUTPUT`。
+
+## 迭代 08：输入里多了什么
+
+- `BUILDBEAT_PROMPT`（环境变量，文件路径）与 `input.envelope`（`promptRef / file / digest / vars`）：run 配置 `envelope:` 声明的 prompt 已由内核替换变量并落盘，worker 直接 `cat "$BUILDBEAT_PROMPT"`，不再自己 `git show`。
+- `input.lastReviewed`（仅 readonly 步）：`{candidate, run, evidenceRef, range}`——上一次 review 看过的候选与到当前候选的 `range`；reviewer 可只审增量，但**已裁决结论不得翻案**（`anchor` 仍在）。
+- `input.findings`（写入步）与 `input.anchor`（readonly 步）不变。
+
+## 所有者可见命名不由 worker 决定（迭代 08）
+
+builder / planner 在实现中会顺手起名：域名、服务名、环境名、自停时长、窗口时长。**凡所有者以后要看见或念出来的名字与参数，不是实现细节，是门前决策项**：写进 intent，或攒进门前决策卡给推荐值与理由，人批后再落地。真实事故：一个 `readmodel-nonprod` 的名字让所有者连问四轮才改成他能理解的 `platform-health`。prompt 里写明这条，reviewer 清单里把"引入了未经批准的可见命名"记为 P2。

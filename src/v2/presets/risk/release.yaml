@@ -1,0 +1,21 @@
+# Release lane (iteration 08, C8): pairs with the release-readback workflow.
+# Automation stops before apply-readback — that pause is where the human
+# performs the production action — and the window may only close behind L4
+# evidence read from the real environment. (No finding floor: the lane has
+# no reviewer step, and a rule that cannot be satisfied is not a gate.)
+kind: risk-preset
+version: 1
+name: release
+stopAt:
+  - apply-readback
+policies:
+  - kind: policy
+    version: 1
+    name: close-evidence-floor
+    type: transition
+    appliesTo: enter-wait-close
+    enforcement: LOCAL_ENFORCED
+    rule:
+      evidence.exists:
+        kind: command
+        minGrade: L4

@@ -49,3 +49,36 @@ merge 批准只表示 **merge-ready**：真正的合并、push、发布是你在
 3. **锚定注入**：Reviewer（readonly 步）的 `BUILDBEAT_INPUT` 带 `anchor`（历史 finding+裁决全表），信封 prompt 应告知 reviewer"已裁决的结论不得翻案"；fixer 等写入步的 input 带 `findings`（上一轮 review 的 finding 及其裁决状态）——fixer 只修 accepted/open，不猜。
 
 裁决记忆在 Git 面，删 runtime 不丢（不变量 23 同款测试覆盖）。
+
+## 等待要能找到人（迭代 08）
+
+底座 58 个 Run 里 32 个被取消，多数是在 `WAITING_HUMAN` 挂满一天后批量清掉；人批平均等 7～12 小时。原因不是人慢，是**没人知道有东西等他**。三件事配套：
+
+1. **下一句该说什么**：`status` 与 `inbox` 在每个等待后面直接给出可复制的命令（`approve` / `reject`，分诊时加 `findings list|adjudicate`）；`inbox` 按 Work 分组并显示已等待时长。输出里的 `--repo` 只在项目内给相对路径，项目外给 `<repo-path>` 占位——本机绝对路径永不进输出。
+2. **同 Work 新 Run 取代旧等待**：`start` 时同一 Work 下仍在等待的旧 Run 记 `SUPERSEDED`（终态、压成 run-record），新 Run 的 `RUN_CREATED.data.supersedes` 记血统；inbox 只剩活的等待。不想要这个行为就在 run 配置写 `supersede: off`。RUNNING 的 Run 不受影响（active 锁），被别的进程锁住的旧 Run 跳过并明示。
+3. **通知出站**：Git 面 `.buildbeat/notify.yaml`：
+
+   ```yaml
+   kind: notify
+   version: 1
+   channels:
+     - id: owner
+       type: dingtalk          # 或 webhook
+       urlEnv: BUILDBEAT_NOTIFY_URL   # URL 只能来自环境变量；写 url 直接拒绝
+       events:
+         - HUMAN_REQUESTED
+         - RUN_TERMINAL
+         - STALLED
+   ```
+
+   Run 停在人批或到终态时由 CLI 出站；订阅 `STALLED` 时 `start`/`resume` 会派一个脱离的 `watch` 进程盯 worker 输出静默（阈值 `stallAfterMs`，默认 15 分钟）。发送失败只记 `runs/<RUN>/notify.log` 与屏幕，**永不影响 Run**；载荷只有标识、原因、候选 SHA 与下一句命令，零日志零候选内容。钉钉自定义机器人需配置关键词（默认 `BuildBeat`）。`doctor` 报告通道与环境变量是否就位。
+
+通知不是审批通道：拍板仍只能在 CLI 完成，digest 绑定不变。
+
+## 从「等我批」到「到哪了」：overview（迭代 08）
+
+`inbox` 只知道哪个 Run 在等人；`buildbeat-v2 overview --repo .` 按 Work 回答「走到哪、下一步该谁」——intent/plan 是否被接受（接受后改过即 `stale`）、最新 Run 状态与候选、候选是否已合入当前分支、未裁决 P0/P1 数、是否有 `env-facts.md`，每行附下一句命令。运行时被删后由 Git 面 run-record 补足。会话开场先跑它，再回答用户「当前进度」。
+
+## 可见命名是门前决策项（迭代 08）
+
+审批三级里 `BATCH_AT_GATE` 明确包含：域名、服务名、环境名、自停时长、窗口时长等**所有者以后要看见或念出来的名字与参数**。worker 顺手定的名字进不了台账；planner 在 intent 里列出并给推荐值，人一次批。

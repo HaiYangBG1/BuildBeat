@@ -42,3 +42,7 @@
 ## 完整率
 
 `buildbeat-v2 metrics` 输出证据完整率（有证据的步/应有证据的步）；M4/M5 退出线 ≥95%，试点实测 100%。
+
+## 运行中的读数 ≠ 证据（迭代 08）
+
+Shell Adapter 在步运行期间把 worker 的 stdout/stderr 实时流到 `.buildbeat/runtime/runs/<RUN>/<step>-<n>.{stdout,stderr}.live`，并留 `live.json`（命令、开始时间）。它们是**读数**：`status` 拿来回答"还在动吗、动了多久、最后一次输出是什么时候"，步一结束就收回；证据日志仍由回读生成、digest 仍绑最终日志。耗时同理——每步耗时、同仓历史中位数（`metrics` 的 `typical step duration`）都从台账时间戳推导，不进台账、不进 run-record。

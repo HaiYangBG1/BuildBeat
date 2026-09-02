@@ -59,13 +59,13 @@
 
 | type | actor | data 最小集 | 语义 |
 |---|---|---|---|
-| `RUN_CREATED` | kernel | `workflowRef, workflowDigest, base, riskPreset` | Run 登记（卡点 5 的回应：没有本事件的工作不得计入 v2 闭环） |
+| `RUN_CREATED` | kernel | `workflowRef, workflowDigest, base, riskPreset`；additive（迭代 08）：`supersedes?`（本 Run 起跑时被记为 `SUPERSEDED` 的同 Work 旧 Run id 列表）、`envelopeDigest?` / `envelopeSource?`（run 配置 `envelope:` 的 digest 与来源） | Run 登记（卡点 5 的回应：没有本事件的工作不得计入 v2 闭环） |
 | `RUN_STARTED` | kernel | —— | 进入 RUNNING |
 | `WORKSPACE_BOUND` | kernel | `workspaceId, repo, branch, worktreePath, base` | 一个 Run 可多次（多仓绑定，卡点 2/4） |
 | `STEP_STARTED` | kernel | `step, attempt, worker, adapter, workspaceId` | Step 开跑 |
 | `STEP_FINISHED` | kernel | `step, attempt, status ∈ {succeeded,failed,blocked,invalid-output,timeout,crashed}, exitCode?` | Adapter 异常退出也必须落此事件（不变量 15） |
 | `CANDIDATE_PINNED` | kernel | `workspaceId, base, candidate` | candidate 由 Git 回读后固定 |
-| `EVIDENCE_RECORDED` | kernel/provider | `evidenceRef, kind, subject, digest, status, grade` | 指向满足 Evidence Contract 的记录 |
+| `EVIDENCE_RECORDED` | kernel/provider | `evidenceRef, kind, subject, digest, status, grade`；additive（迭代 08）：`cacheKey?`（树+命令+信封的复用键）、`reused? {run, evidenceRef, digest}`（本记录引用了哪次已通过的证据而未重跑） | 指向满足 Evidence Contract 的记录 |
 | `POLICY_EVALUATED` | kernel | `policy, phase ∈ {pre,post,transition,action}, result ∈ GateResult, enforcement, reason` | 每次 Policy 裁决可解释 |
 | `TRANSITION` | kernel | `from, to, cause` | 每次状态转换一条（不变量 5） |
 | `FAILURE_FINGERPRINT` | kernel | `step, command, exitCode, errorDigest, diffDigest` | 无进展/相同失败检测的输入 |

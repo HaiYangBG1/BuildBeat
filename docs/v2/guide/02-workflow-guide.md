@@ -54,6 +54,20 @@ run 配置还可声明（beta.3，皆来自三十轮部署战役的真实事故�
 
 官方预设自带 `budgets.maxAttempts.review: 2`（战役章程"每 Run 2 轮 review 封顶"的原生化）：第三轮 review 在启动前即停 `WAITING_HUMAN`，理由写明预算耗尽。项目可用自己的 workflow 文件覆盖；机制就是每步 `maxAttempts`，无需新概念。
 
+## 迭代 08 新增的 run 配置段
+
+- **`envelope:`** —— `prompts:`（目录，相对 run 配置）+ `vars:`（`{vars.x}` 替换）+ 可选 `pin: <sha>`（从该提交读 prompt，冻结信封）。内核按 `<component>-<worker>.md` → `<worker>.md` 取 prompt，落到 `runs/<RUN>/prompts/<step>-<n>.md`，以 `BUILDBEAT_PROMPT`（路径）和 `input.envelope`（`promptRef / file / digest / vars`）交给 worker；worker args 里可用 `{prompt}` 与 `{vars.x}`。`RUN_CREATED` 记 `envelopeDigest`。
+- **`start --attempt new`** —— `run:` 写家族名（`RUN-X`），内核编成 `RUN-X-01/02…`（扫运行时面与 Git 面 run-record，删 runtime 也不撞号）；同 Work 旧的等待自动作废（[Approval 指南](07-approval-guide.md)）。
+- **`cache:`** —— `verify: tree`：同 `HEAD^{tree}` + 同 worker 命令 + 同信封 digest 且**已通过**的 verify 复用证据（台账 `reused`，status 标 `(reused from RUN-X)`）；失败、脏树不复用。verifier 依赖树外事物（远端、时间）的项目不要开。
+- **增量审查** —— readonly 步的 input 带 `lastReviewed {candidate, run, evidenceRef, range}`（同 Work 最近一次 review 的候选且为当前候选祖先）；reviewer prompt 可要求只审 `range` 内 diff，锚定裁决照旧（`anchor`）。
+- **`redact:`** —— 正则列表，证据日志落盘前替换为 `<REDACTED>`；digest 绑脱敏后文本。实时流（`.live`）不脱敏、步结束即删。
+- **`requires:` 的 `probe:` 条目** —— `probe: <shell 命令>` + 可选 `expect: <正则>` + `name:`；退出码非 0 或输出不匹配即 fail-closed，与二进制版本项一次报清。把踩出来的环境事实（Redis ≥ 7、目标机 Python 版本、端口可达）写成 probe，下窗不重踩；叙述性事实放 `delivery/work/<ID>/env-facts.md`。
+- **step `grade:`** —— workflow 步骤可声明该步命令证据的等级（L0–L4，默认 L2）。
+
+## 上线回读车道：`release-readback` + `riskPreset: release`
+
+内核没有部署能力（不变量 20），生产动作永远是人的。这条车道只把动作前后的**回读**记成 L4 台账：`preflight`（动作前只读检查）→ 停 `enter-apply-readback`（人做动作）→ `apply-readback`（证明动作生效）→ `observe`（证明健康）→ `wait-close`（人关窗）。三个回读步全部 `readonly`、`grade: L4`、`maxAttempts 1`：任一步失败即停人批，没有 fix 边。风险预设 `release` 提供 `stopAt: apply-readback` 与关窗证据门（L4 命令证据）。worker 是任意回读脚本（curl 健康、读版本、比对配置指纹），退出码就是结论。ChickDev 上线那天四十条手工 readback 提交，就是这条车道该做的事。
+
 ## 修改纪律
 
 预设是产品的一部分：改 `software-delivery.yaml` 前先想清是不是项目差异——项目差异用自己的 workflow 文件（run 配置 `workflow:` 指过去），不改官方预设。schema additive-only，破坏性改法升 `version`。

@@ -1,6 +1,6 @@
 ---
 name: buildbeat
-description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工程交付协议:帮助一个或多个端到端 Builder 通过 Git 文件总线、四个人工 Gate 和可验证证据闭环需求/功能工作包;产品/全栈/测试是可调用的 AI 专业视角,不是人类岗位流水线。包含会话路由/文件总线/三轨/任务包/审批分层/核查门/决策台账/换期压缩仪式/开工护栏脚本/机器闸 pre-commit:gitleaks+bus-check --strict/引导式 Bootstrap:自查代码+少量提问/接管存量项目仪式/已发布 legacy CLI v0 只读证据与源码候选 init/adopt 受控写入、schema 2 机械 upgrade/证据分级 L0-L4。当用户要为新的中大型项目搭多会话协作架构、**要给已有的存量老项目套上协作流程(接管)**、提到"BuildBeat/Solobaton/协作总线/Builder/人在回路/多 session 协作/AI 团队流程/项目骨架 bootstrap",或抱怨"多个 AI 会话信息不同步、任务过早结束、审批打断过多、review 过于频繁、验收漏验、文档腐烂、返工螺旋"时使用。
+description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工程交付协议:帮助一个或多个端到端 Builder 通过 Git 文件总线、四个人工 Gate 和可验证证据闭环需求/功能工作包;产品/全栈/测试是可调用的 AI 专业视角,不是人类岗位流水线。包含会话路由/文件总线/三轨/任务包/审批分层/核查门/决策台账/换期压缩仪式/开工护栏脚本/机器闸 pre-commit:gitleaks+bus-check --strict/引导式 Bootstrap:自查代码+少量提问/接管存量项目仪式/已发布 legacy CLI v0 只读证据与源码候选 init/adopt 受控写入、schema 2 机械 upgrade/证据分级 L0-L4。**v2 运行时**(`buildbeat-v2`,由会话调用而非用户手敲):Work 目录 intent/plan digest 绑定接受、隔离 worktree 内 Build→Verify→Review→Fix 自动闭环停在合并决定、overview/inbox/status 回答"到哪了/谁批/卡没卡"、发现分诊与锚定审查、verify 复用、信封与 attempt 自动编号、release-readback 上线回读车道、observe 生产体检、通知出站、gc 打扫。当用户在 AI 会话里说"当前进度/开工/怎么样了/批准/上线/打扫卫生",或要为新的中大型项目搭多会话协作架构、**要给已有的存量老项目套上协作流程(接管)**、提到"BuildBeat/Solobaton/协作总线/Builder/人在回路/多 session 协作/AI 团队流程/项目骨架 bootstrap",或抱怨"多个 AI 会话信息不同步、任务过早结束、审批打断过多、review 过于频繁、验收漏验、文档腐烂、返工螺旋"时使用。
 ---
 
 # BuildBeat —— 面向人和 AI 会话的工程交付协议
@@ -11,6 +11,77 @@ description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工�
 
 - **用**:项目要跑多期迭代,或存在多个仓/部署单元/AI 上下文;一个或多个 Builder 需要让需求、契约、状态、Gate 与证据长期同步。
 - **不用**:单仓小任务、一次性脚本、预计一周内收尾的事——直接开一个会话干完,上总线纯属 ceremony(对应 §5 快轨思想)。
+
+## 0.5 v2 驾驶手册 —— Skill 是入口,CLI 是它调用的引擎
+
+> 绝大多数人在 Claude Code / Codex / Cursor 这类 AI 会话里使用 BuildBeat,而不是亲手敲 `buildbeat-v2`。所以**这一节是给会话读的**:用户说一句人话,会话按下表调命令、读输出、按格式收口。用户不需要知道任何命令;会话不得把命令名当成对用户的要求。§1–§10 是方法论正文,v1 文件总线(`pm/NOW.md`、看板、`pm/status/*`)在 v2 项目里已冻结只读,**禁止双写**。
+> 装载方式不变:项目根 `AGENTS.md`(v2 模板 [templates/v2/AGENTS.md](templates/v2/AGENTS.md))被任意会话自动装载,`CLAUDE.md` 只是一行指针。运行时 `npm i -g @haiyangbg/buildbeat@next`,Node ≥ 20;没装 CLI 时本节的"会话背后调什么"一列改为会话手工维护同名文件(`delivery/work/<ID>/` 与 `decisions.jsonl`),方法论不因此失效。
+
+### 0.5.1 用户一句话 → 会话做什么
+
+| 用户说 | 会话背后调什么 | 会话回给用户什么 |
+|---|---|---|
+| 「当前进度」「待办是什么」「X 上线了吗」「离上线还差多远」 | `buildbeat-v2 overview --repo .`(每个 Work 的阶段 + 下一步该谁)+ `observe status --repo .` | 每件事一句:走到哪、卡在谁、下一步;**不列命令** |
+| 「有什么要我拍板」 | `buildbeat-v2 inbox --repo .` | 逐项:等什么、证据在哪、推荐 A/B;用户回「批准/拒绝」后会话调 `approve`/`reject` |
+| 「开个 Work:〔目标〕」 | 写 `delivery/work/<ID>/intent.md`(为什么做)+ `plan.md`(怎么做)+ `run-config.yaml`;给用户看摘要 | 「看完说接受」;用户说「接受」→ `accept --artifact intent` / `--artifact plan`(digest 绑定) |
+| 「开工」「再来一轮」 | `buildbeat-v2 start --config <run-config.yaml> --attempt new`(自动编号 RUN-X-01/02…,自动作废同 Work 的旧等待;**用 nohup/setsid 脱离启动**) | 「已起 RUN-X-02,停在合并决定时会通知/我会告诉你」 |
+| 「怎么样了」「卡住了吗」「正常吗」 | `buildbeat-v2 status --repo . --run <RUN>` | 一句:在跑第几步、跑了多久、历史通常多久、最后一次输出几分钟前;`STALLED` 就说「疑似卡住,建议停/等」 |
+| 「批准 RUN-X」「拒绝,原因…」 | `approve --transition <t> --by <用户名>` / `reject --reason` → 若非终态再 `resume` | 「批准=merge-ready;合并/push/部署要你另说」 |
+| 「这条 finding 不算,那条接受」 | `findings list` / `findings adjudicate --action dismiss|accept` → `approve --transition enter-fix` | 裁决结果一句 |
+| 「上线」「做生产动作」 | 用 `release-readback` 预设 + `riskPreset: release` 开 Run:preflight 回读 → 停 `enter-apply-readback` | 「回读全绿,现在轮到你做〔动作〕;做完说一声」→ 用户说「做完了」→ `approve enter-apply-readback` → 回读+观察 → 停关窗 |
+| 「打扫卫生」 | `buildbeat-v2 gc --repo .`(先出计划)→ 用户点头 → `--apply true` | 清了几个工作树、留了哪些分支及为什么 |
+| 「生产报警」「体检」 | `observe run --config .buildbeat/observe.yaml` → 看 `delivery/observe/intents/` | 草稿一句 + 「fix_now / schedule / dismiss 你选」 |
+
+### 0.5.2 会话必须遵守的读法
+
+- **能实查的不问人**:`overview` / `status` / `inbox` / `metrics` / `observe status` 全是只读,先跑再答;不信文档、不信上游转述。
+- **数字要落地**:`status` 给了耗时和历史中位数,回答「正常吗」必须带对比("verify 已 14 分钟,历史中位 6 分钟,最后输出 2 分钟前,还在动");没数据就说没数据。
+- **输出里的 `next:` 行是给会话的**,会话据此调命令,不把命令原文丢给用户;用户只需要回「批准 / 拒绝 / 接受 / 做完了 / A / B」。
+- **人批三级**(§AGENTS 2.5):`STOP_NOW` 只用于跨发布门 / 扩范围 / 改冻结契约 / 不可逆外部动作 / 接受风险;可逆取舍攒到门前一次批 2～5 个;事实与派生约束自己定。**所有者以后要看见或念出来的名字与参数(域名、服务名、环境名、自停时长、窗口时长)属于门前决策项,不由 worker 顺手定**——真实事故:一个 `readmodel-nonprod` 的名字让所有者连问四轮才改成他能理解的。
+- **环境事实是交付物**:跑出来的"目标机 Python 3.6 / Redis 必须 ≥7 / 端口 8080 被占"写进 `delivery/work/<ID>/env-facts.md`,并尽量转成 run-config `requires:` 的 `probe:` 条目,下窗直接引用,禁止口口相传。
+- **收口格式**统一「已做 → 未做 → 下一步」,各一句,证据紧跟事项(§6.4);中间探索不套模板。
+
+### 0.5.3 写 run-config 时的最小样板(会话代写,用户不用看)
+
+```yaml
+repo: ../../..
+work: WORK-X
+run: RUN-X                 # 家族名;start --attempt new 自动编成 RUN-X-01/02…
+workflow: <buildbeat>/src/v2/presets/software-delivery.yaml
+riskPreset: standard       # fast | standard | controlled | release(配 release-readback 预设)
+entry: build
+allowedPaths:
+  - src
+  - tests
+reviewTriage: required     # P0/P1 先过人分诊再派 fixer
+cache:
+  verify: tree             # 同树+同命令+同信封已通过就复用证据(标 REUSED)
+envelope:
+  prompts: prompts         # prompts/<component>-<worker>.md 或 <worker>.md;内核喂给 worker($BUILDBEAT_PROMPT)
+  vars:
+    component: auth
+  # pin: <meta 提交 sha>    # 冻结信封时钉住
+requires:
+  - command: node
+    min: "20"
+  - probe: "redis-cli -h $REDIS_HOST ping"
+    expect: PONG
+    name: redis-reachable
+redact:
+  - "(?i)(token|secret|password)=[^\\s]+"
+workers:
+  builder:
+    command: codex
+    args: [exec, -s, workspace-write, "按 $BUILDBEAT_PROMPT 实施,改动后 git commit"]
+  verifier:
+    command: bash
+    args: [-lc, "npm test"]
+  reviewer:
+    command: codex
+    args: [exec, -s, read-only, "只读审查;若 BUILDBEAT_INPUT 里有 lastReviewed 只看 range 内 diff;JSON 信封写入 $BUILDBEAT_OUTPUT"]
+```
+
+(严格 YAML 子集:上面为省行用了行内 `[]`,实际文件要写成块列表。)通知通道另放 `.buildbeat/notify.yaml`(URL 只能来自环境变量),见 [docs/v2/guide/07-approval-guide.md](docs/v2/guide/07-approval-guide.md);十件套指南索引 [docs/v2/guide/README.md](docs/v2/guide/README.md)。
 
 ## 1. 四根支柱(命根子,所有零件都为它们服务)
 
@@ -302,7 +373,8 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 
 | 模板 | 用途 |
 |---|---|
-| [templates/AGENTS.md](templates/AGENTS.md) | 工作区路由 + 十条规则 + 红线(开放标准,每会话自动装载) |
+| [templates/v2/AGENTS.md](templates/v2/AGENTS.md) / [templates/v2/指挥台.md](templates/v2/指挥台.md) | **v2 项目用这两份**:一页流程 + 视角路由 + 十一条规则(含可见命名进决策卡)+ 红线;指挥台是"用户一句话 → 会话调什么"的操作卡 |
+| [templates/AGENTS.md](templates/AGENTS.md) | v1 工作区路由 + 十条规则 + 红线(开放标准,每会话自动装载) |
 | [templates/CLAUDE.md](templates/CLAUDE.md) | 一行指针 → `AGENTS.md`(兼容只认此名的工具;🔴 不复制内容) |
 | [templates/ARCHITECTURE.md](templates/ARCHITECTURE.md) | 全栈总图骨架(架构/基础设施/凭据位置/子项目索引) |
 | [templates/指挥台.md](templates/指挥台.md) | 给人看的一页操作卡 |

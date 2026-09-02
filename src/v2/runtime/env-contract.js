@@ -49,8 +49,42 @@ export function checkRequires(requires) {
   const problems = [];
   const checked = [];
   for (const entry of requires ?? []) {
+    // Probe entries (iteration 08, C10): an environment fact that is not a
+    // binary version — "Redis answers PING on the target", "python on the
+    // host is >= 3.9" — expressed as a shell command whose exit code (and
+    // optionally output) must match. Absorbed from the first-proof rerun:
+    // Redis < 7 and Python 3.6 on the target burned a window each because
+    // nothing checked them before the run.
+    if (entry && typeof entry === "object" && typeof entry.probe === "string" && entry.probe.length > 0) {
+      const label = entry.name ?? entry.probe;
+      const run = spawnSync("bash", ["-lc", entry.probe], { encoding: "utf8", timeout: entry.timeoutMs ?? 30_000 });
+      if (run.error) {
+        problems.push(`${label}: probe could not run (${run.error.code ?? run.error.message})`);
+        continue;
+      }
+      const output = `${run.stdout ?? ""}\n${run.stderr ?? ""}`;
+      if (run.status !== 0) {
+        problems.push(`${label}: probe exited ${run.status}${output.trim() ? ` — ${output.trim().split("\n").slice(-1)[0].slice(0, 160)}` : ""}`);
+        continue;
+      }
+      if (entry.expect !== undefined) {
+        let matcher;
+        try {
+          matcher = new RegExp(String(entry.expect));
+        } catch {
+          problems.push(`${label}: expect ${JSON.stringify(entry.expect)} is not a valid regular expression`);
+          continue;
+        }
+        if (!matcher.test(output)) {
+          problems.push(`${label}: probe output does not match expect ${JSON.stringify(entry.expect)}`);
+          continue;
+        }
+      }
+      checked.push({ command: label, version: null, probe: true });
+      continue;
+    }
     if (!entry || typeof entry !== "object" || typeof entry.command !== "string" || entry.command.length === 0) {
-      problems.push(`requires entries need a command name, got: ${JSON.stringify(entry)}`);
+      problems.push(`requires entries need a command name or a probe, got: ${JSON.stringify(entry)}`);
       continue;
     }
     // A generous timeout: a missing binary fails instantly (ENOENT), while a

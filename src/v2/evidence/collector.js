@@ -17,21 +17,32 @@ export function collectCommandEvidence({
   kind = "command",
   grade = "L2",
   coverage = null,
+  redact = [],
 }) {
   const logsDir = join(runtimeDir, "runs", runId, "logs");
   mkdirSync(logsDir, { recursive: true });
   const logName = `${step}-${attempt}.log`;
   const logPath = join(logsDir, logName);
+  // Redaction (iteration 08, C6): patterns from the run config are applied
+  // to worker output before it becomes evidence. The digest binds the
+  // redacted text — what is on disk is what was hashed.
+  const scrub = (text) => {
+    let out = String(text ?? "");
+    for (const pattern of redact) {
+      out = out.replace(pattern, "<REDACTED>");
+    }
+    return out;
+  };
   const logBody = [
-    `command: ${execResult.command}`,
+    `command: ${scrub(execResult.command)}`,
     `exitCode: ${execResult.exitCode}`,
     `signal: ${execResult.signal}`,
     `timedOut: ${execResult.timedOut}`,
     `spawnError: ${execResult.spawnError}`,
     "--- stdout ---",
-    execResult.stdout,
+    scrub(execResult.stdout),
     "--- stderr ---",
-    execResult.stderr,
+    scrub(execResult.stderr),
   ].join("\n");
   writeFileSync(logPath, logBody, "utf8");
   const digest = `sha256:${createHash("sha256").update(logBody, "utf8").digest("hex")}`;

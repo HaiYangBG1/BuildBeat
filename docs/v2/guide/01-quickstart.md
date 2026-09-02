@@ -82,6 +82,10 @@ buildbeat-v2 approve --repo . --run RUN-DEMO-1 --transition enter-wait-merge --b
 
 想让 finding 先过你的手再派 fixer：run 配置加 `reviewTriage: required`，配套 `findings list` / `findings adjudicate` 逐指纹裁决（dismiss 后同指纹不再阻断）；正式起 Run 前可用 `preflight --step <id>` 在主 checkout 分钟级干跑单步（不产证据）；信封的环境依赖用 `requires:` 声明，启动前 fail-closed 核验。详见 [Approval 指南](07-approval-guide.md)、[Evidence 指南](06-evidence-guide.md)、[Workflow 指南](02-workflow-guide.md)。
 
+跑起来之后三件事不用再问 AI：`status` 会说每步跑了多久、历史上通常多久、worker 最后一次输出是什么时候（无输出超过 15 分钟标 `STALLED`）；`status` / `inbox` 在每个等待后面直接给出可复制的下一句命令；`.buildbeat/notify.yaml` 配一条钉钉或 webhook 通道，Run 停下来会来找你。同一个 Work 再起新 Run 时旧的等待自动作废，终态 Run 留下的工作树用 `gc --repo .` 清（默认只出计划）。详见 [Approval 指南](07-approval-guide.md) 与 [故障恢复](10-recovery.md)。
+
+「到哪了」问 `buildbeat-v2 overview --repo .`：每个 Work 的阶段与下一步该谁。`start --attempt new` 让一份 run 配置跑到底（自动编号 `RUN-X-01/02…`）；`envelope:` 让内核喂 prompt、`cache: {verify: tree}` 让同树同命令的 verify 不重跑、`requires:` 的 `probe:` 把环境事实前置核验，见 [Workflow 指南](02-workflow-guide.md)。**在 AI 会话里用 BuildBeat 的人不需要记这些命令**：`SKILL.md` §0.5 是给会话读的驾驶手册，用户说「当前进度 / 开工 / 怎么样了 / 批准 / 上线 / 打扫卫生」即可。
+
 ## 5. observe：让系统盯生产（v0）
 
 ```bash

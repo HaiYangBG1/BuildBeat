@@ -27,7 +27,8 @@ const TOP_FIELDS = new Set([
   "policies",
   "budgets",
 ]);
-const STEP_FIELDS = new Set(["id", "worker", "optional", "requiredWhen", "readonly"]);
+const STEP_FIELDS = new Set(["id", "worker", "optional", "requiredWhen", "readonly", "grade"]);
+const EVIDENCE_GRADES = new Set(["L0", "L1", "L2", "L3", "L4"]);
 const TRANSITION_FIELDS = new Set(["from", "on", "to"]);
 
 function rejectUnknownFields(object, allowed, where) {
@@ -82,6 +83,11 @@ export function parseWorkflow(text) {
     if (raw.readonly !== undefined && typeof raw.readonly !== "boolean") {
       throw new WorkflowError(`step ${id} readonly must be a boolean`);
     }
+    // Evidence grade a step's command evidence is recorded at (iteration 08:
+    // release readbacks run against the real environment and are L4).
+    if (raw.grade !== undefined && !EVIDENCE_GRADES.has(raw.grade)) {
+      throw new WorkflowError(`step ${id} grade must be one of L0-L4`);
+    }
     stepIds.add(id);
     steps.push({
       id,
@@ -89,6 +95,7 @@ export function parseWorkflow(text) {
       optional: raw.optional ?? false,
       requiredWhen: raw.requiredWhen ?? null,
       readonly: raw.readonly ?? false,
+      grade: raw.grade ?? "L2",
     });
   }
 

@@ -6,6 +6,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { EventLedger } from "../storage/event-ledger.js";
+import { formatMs, typicalDurations } from "./liveness.js";
 
 export function computeMetrics(repoRoot) {
   const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
@@ -105,6 +106,9 @@ export function computeMetrics(repoRoot) {
   summary.autoReachedHumanRate = measurable === 0 ? null : autoReached / measurable;
   summary.evidenceCompleteness =
     summary.finishedSteps === 0 ? null : evidencedSteps / summary.finishedSteps;
+  // Typical step duration (median over finished attempts, crashes and
+  // timeouts excluded): the number behind "is this taking too long".
+  summary.stepDurations = typicalDurations(repoRoot);
   return summary;
 }
 
@@ -136,5 +140,9 @@ export function renderMetrics(summary) {
     lines.push("approval waits: (none recorded)");
   }
   lines.push(`stale approvals: ${summary.staleApprovals}; budget stops: ${summary.budgetStops}`);
+  const durations = Object.entries(summary.stepDurations ?? {})
+    .map(([step, row]) => `${step}=${formatMs(row.medianMs)} (n=${row.samples})`)
+    .join(" ");
+  lines.push(`typical step duration (median): ${durations || "(no finished attempts)"}`);
   return lines.join("\n");
 }

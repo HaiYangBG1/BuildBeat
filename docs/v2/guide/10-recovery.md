@@ -54,4 +54,25 @@ rm -rf .buildbeat/runtime/
 
 ## 诊断入口
 
-`buildbeat-v2 doctor --config <run-config>`：配置可解析、workflow 无出口环、adapter env 姿态、digest 可算。`events`/`replay`/`metrics` 全部只读，可随时跑。
+`buildbeat-v2 doctor --config <run-config>`：配置可解析、workflow 无出口环、adapter env 姿态、digest 可算、supersede 与 stall 阈值、通知通道与环境变量是否就位。`events`/`replay`/`metrics` 全部只读，可随时跑。
+
+## "是不是卡住了"（迭代 08）
+
+先看 `buildbeat-v2 status --repo . --run <RUN>`：在飞步骤有已用时间、同仓历史中位数、worker 命令、最后一次输出距今多久与末三行输出。无输出超过阈值（默认 15 分钟，`--stall-after <分钟>` 或 run 配置 `stallAfterMs`）标 `STALLED`——**只标不杀**。判断口径：
+
+- 有输出在持续 → 等（对照 `typical` 看是否已远超中位数）；
+- STALLED 且 worker 是 Agent CLI → 多半在长推理或等一个永远不来的交互，`stop --reason` 后按崩溃恢复重跑（中断的步重跑自身）；
+- STALLED 且 worker 是脚本 → 看末三行，通常是等外部资源（端口、锁、网络）。
+
+想不盯屏就订阅 `STALLED` 通知（[Approval 指南](07-approval-guide.md)）。`watch --repo . --run <RUN> --once true` 可手工探测一次。
+
+## 打扫卫生：gc（迭代 08）
+
+终态 Run 会留下工作树、`run/*` 分支和偶尔的锁。`buildbeat-v2 gc --repo .` 默认只出计划，`--apply true` 执行：
+
+- 只动**终态且已压成 run-record** 的 Run（Git 面有账才动运行时面）；
+- 工作树可删（提交都在分支上）；脏工作树不带 `--force true` 不动；
+- 分支只在候选**已可从其他 ref 到达**（已合并 / 打 tag / 在远端）或 Run 未产出候选时删；否则明示"仅此分支可达，保留"——它是证据的最后一根线；
+- 终态 Run 的残留 `locks/<RUN>.lock` 一并清；`active-run` 锁仍按上文人工处置。
+
+gc 永不写台账（终态后只允许 `RUN_COMPACTED`），所以随时可跑、可重复。

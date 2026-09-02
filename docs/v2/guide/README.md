@@ -16,3 +16,5 @@
 | 10 | [故障恢复手册](10-recovery.md) | 台账损坏、Run 中断、锁、runtime 全删重建 |
 
 observe v0（探测→分层响应→Intent 草稿→人分诊）在 [快速开始 §5](01-quickstart.md) 与 [Evidence 指南](06-evidence-guide.md) 中覆盖；schema 冻结见 [`RFC-0003 §8`](../RFC-0003-workflow-policy.md)。
+
+迭代 08 起：`SKILL.md` §0.5 是给 AI 会话读的 v2 驾驶手册（用户一句话 → 会话调什么），v2 项目的装载入口模板在 [`templates/v2/`](../../../templates/v2/AGENTS.md)。
