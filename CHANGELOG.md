@@ -2,10 +2,10 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
-## Unreleased — v2.0.0-beta.4（迭代 08：等待要能找到人）
+## v2.0.0-beta.4 — 2026-09-03（迭代 08：等待要能找到人）
 
 > 主题：试点工作区 2026-08-28～09-02 全部驾驶会话与 58 个 Run 台账的复盘回灌（复盘文档见迭代 08 记录）。台账数字：58 个 Run 成功 7、失败 17、取消 32，其中多数取消是在 WAITING_HUMAN 挂满一天后批量清掉；人批平均等 7～12 小时。beta.3 治的是"审查循环烧钱"，本版治的是**人看不见 Run 在干什么、等的人不知道有东西等他、每次都要手工打扫**。
-> **发布状态**：未发布（源码在 `v2` 分支；`npm publish` 是独立生产动作，须所有者单独授权）。
+> **发布状态**：所有者 2026-09-03 授权（「发布 beta.4 吧，授权也一起」）；发布与独立回读证据在发布后回填到 `docs/V2.0.0-BETA.4-RELEASE-EVIDENCE-2026-09-03.md`。
 
 - **运行中可见性（C1）**：Shell Adapter 把 worker 的 stdout/stderr **实时**流到 `.buildbeat/runtime/runs/<RUN>/<step>-<n>.{stdout,stderr}.live`，并留 `live.json` 标记（命令、开始时间）；步结束即收回，证据日志仍由回读生成。`status` 现在显示每步耗时（本次 / 累计 / 同仓同步骤历史中位数 `typical … n=`）、在飞步骤的已用时间、worker 命令、最后一次输出距今多久与末三行输出；无输出超过阈值（默认 15 分钟，run 配置 `stallAfterMs` 或 `status --stall-after <分钟>`）标 **STALLED**（只标不杀）。`metrics` 增加每步中位耗时。真实事故：所有者一场会话里问了十余次"半小时了正常吗 / 十分钟了是卡住了吗"，而 status 只有步骤和次数
 - **同 Work 新 Run 自动取代旧的等待（C2）**：`start` 时同一 Work 下仍在 `WAITING_HUMAN` 的旧 Run 记 `RUN_TERMINAL SUPERSEDED` 并压成 run-record（Git 面），新 Run 的 `RUN_CREATED.data.supersedes` 记血统；inbox 只剩活的等待。run 配置 `supersede: off` 关闭。真实事故：试点子仓两个旧 Run 在 inbox 挂了一天，而后继者早已上线
@@ -20,6 +20,8 @@
 - **环境事实（C10）**：`requires:` 新增 `probe:` 条目（shell 命令 + 可选 `expect` 正则 + `name`），启动前与二进制版本一起 fail-closed 核验；Work 目录 `env-facts.md` 约定（`overview` 显示 ✓）。真实事故：目标机 Python 3.6 / Redis <7 各烧一窗，同族缺陷第五次出现
 - **Skill 才是入口（所有者 2026-09-02 指出）**：`SKILL.md` 新增 §0.5「v2 驾驶手册」——用户一句话 → 会话调哪条命令 → 回给用户什么；frontmatter 加 v2 触发词；新增 `templates/v2/AGENTS.md`（一页流程 + 视角路由 + 十一条规则 + 红线，蒸馏自试点工作区手写版）与 `templates/v2/指挥台.md`（日常六句话）。此前根目录 SKILL.md 与 plugin SKILL.md 里 v2 出现次数为零，会话装载到的仍是 v1 三域口径
 - 测试：新增 `v2-liveness` / `v2-supersede` / `v2-gc` / `v2-notify` / `v2-envelope` / `v2-cache` / `v2-overview` / `v2-release-lane` 八组 19 项（含 CLI 端到端与本地 HTTP 接收端）
+- **指南第 0 篇「怎么和会话说话」**：`docs/v2/guide/00-how-to-talk.md`——给用户看的一页，按项目阶段（未开始 → 立项定方案 → 准备执行 → 执行推进 → 验收合并 → 上线 → 完结换期复盘）列出你说什么、会话做什么、你得到什么；通用场景，不预设工具或第二个 agent
+- **仓库脱敏**：公司名、本机路径、试点工作区/子仓/产品/服务名、内部 Work/Run 编号、远端平台名全部替换为通用试点标签（历史文档、发布证据、试点记录、源码注释一并处理）；两份试点文档改名。开源仓里任何文字都应"换个公司、换个工具、只有一个会话"仍成立
 - 边界：编排器仍是同步 spawnSync（STALLED 通知由独立 `watch` 进程完成）；`release` 预设无 finding 门（车道里没有 reviewer，不设满足不了的规则）；钉钉通道只支持关键词模式
 
 ## v2.0.0-beta.3 — 2026-09-01

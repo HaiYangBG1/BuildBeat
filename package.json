@@ -1,6 +1,6 @@
 {
   "name": "@haiyangbg/buildbeat",
-  "version": "2.0.0-beta.3",
+  "version": "2.0.0-beta.4",
   "description": "BuildBeat: a Git-based, human-gated engineering delivery protocol for humans and AI sessions.",
   "type": "module",
   "bin": {
