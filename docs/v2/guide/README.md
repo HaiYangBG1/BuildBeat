@@ -4,6 +4,7 @@
 
 | # | 文档 | 一句话 |
 |---|---|---|
+| 0 | [怎么和会话说话](00-how-to-talk.md) | **给用户看的**：项目从未开始到换期，每个阶段你说什么、会话做什么、你得到什么 |
 | 1 | [快速开始](01-quickstart.md) | 5 分钟：装 beta → 写 run 配置 → 跑到合并决定 |
 | 2 | [Workflow 编写指南](02-workflow-guide.md) | 步序、显式转换、readonly、terminal |
 | 3 | [Policy 指南](03-policy-guide.md) | 四类 Policy、8 算子、三值逻辑、强制等级 |

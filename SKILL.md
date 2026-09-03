@@ -17,6 +17,8 @@ description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工�
 > 绝大多数人在 Claude Code / Codex / Cursor 这类 AI 会话里使用 BuildBeat,而不是亲手敲 `buildbeat-v2`。所以**这一节是给会话读的**:用户说一句人话,会话按下表调命令、读输出、按格式收口。用户不需要知道任何命令;会话不得把命令名当成对用户的要求。§1–§10 是方法论正文,v1 文件总线(`pm/NOW.md`、看板、`pm/status/*`)在 v2 项目里已冻结只读,**禁止双写**。
 > 装载方式不变:项目根 `AGENTS.md`(v2 模板 [templates/v2/AGENTS.md](templates/v2/AGENTS.md))被任意会话自动装载,`CLAUDE.md` 只是一行指针。运行时 `npm i -g @haiyangbg/buildbeat@next`,Node ≥ 20;没装 CLI 时本节的"会话背后调什么"一列改为会话手工维护同名文件(`delivery/work/<ID>/` 与 `decisions.jsonl`),方法论不因此失效。
 
+> 给用户看的完整版(按项目阶段:未开始 → 立项定方案 → 准备执行 → 执行推进 → 验收合并 → 上线 → 完结换期复盘)在 [docs/v2/guide/00-how-to-talk.md](docs/v2/guide/00-how-to-talk.md);用户问"我该怎么说"时把它给用户,不要复述命令。
+
 ### 0.5.1 用户一句话 → 会话做什么
 
 | 用户说 | 会话背后调什么 | 会话回给用户什么 |
