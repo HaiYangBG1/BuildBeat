@@ -5,7 +5,7 @@
 ## v2.0.0-beta.4 — 2026-09-03（迭代 08：等待要能找到人）
 
 > 主题：试点工作区 2026-08-28～09-02 全部驾驶会话与 58 个 Run 台账的复盘回灌（复盘文档见迭代 08 记录）。台账数字：58 个 Run 成功 7、失败 17、取消 32，其中多数取消是在 WAITING_HUMAN 挂满一天后批量清掉；人批平均等 7～12 小时。beta.3 治的是"审查循环烧钱"，本版治的是**人看不见 Run 在干什么、等的人不知道有东西等他、每次都要手工打扫**。
-> **发布状态**：所有者 2026-09-03 授权（「发布 beta.4 吧，授权也一起」）；发布与独立回读证据在发布后回填到 `docs/V2.0.0-BETA.4-RELEASE-EVIDENCE-2026-09-03.md`。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.4` 已于 2026-09-03 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33728863042，双 job success；所有者授权「发布 beta.4 吧，授权也一起」）；`latest` 保持 v1.21.0。独立回读（直连 npmjs.org）：dist-tag 路由、integrity、attestation、隔离安装、`doctor` 有界 JSON 全过，证据见 [`docs/V2.0.0-BETA.4-RELEASE-EVIDENCE-2026-09-03.md`](docs/V2.0.0-BETA.4-RELEASE-EVIDENCE-2026-09-03.md)。
 
 - **运行中可见性（C1）**：Shell Adapter 把 worker 的 stdout/stderr **实时**流到 `.buildbeat/runtime/runs/<RUN>/<step>-<n>.{stdout,stderr}.live`，并留 `live.json` 标记（命令、开始时间）；步结束即收回，证据日志仍由回读生成。`status` 现在显示每步耗时（本次 / 累计 / 同仓同步骤历史中位数 `typical … n=`）、在飞步骤的已用时间、worker 命令、最后一次输出距今多久与末三行输出；无输出超过阈值（默认 15 分钟，run 配置 `stallAfterMs` 或 `status --stall-after <分钟>`）标 **STALLED**（只标不杀）。`metrics` 增加每步中位耗时。真实事故：所有者一场会话里问了十余次"半小时了正常吗 / 十分钟了是卡住了吗"，而 status 只有步骤和次数
 - **同 Work 新 Run 自动取代旧的等待（C2）**：`start` 时同一 Work 下仍在 `WAITING_HUMAN` 的旧 Run 记 `RUN_TERMINAL SUPERSEDED` 并压成 run-record（Git 面），新 Run 的 `RUN_CREATED.data.supersedes` 记血统；inbox 只剩活的等待。run 配置 `supersede: off` 关闭。真实事故：试点子仓两个旧 Run 在 inbox 挂了一天，而后继者早已上线
