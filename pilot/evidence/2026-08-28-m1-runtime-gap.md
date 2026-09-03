@@ -6,9 +6,9 @@
 
 ## 1. 为什么补这份证据
 
-`V2-D1A` 已要求 AI 底座的下一项自然任务从干净 oracle 进入 `pilot/loop.sh`。随后 `WP-B1-AUTHZ` 又由当前会话直接人工推进到 Gate3 写者 L4：meta 分支 `codex/wp-b1-authz-gate2-5` 的最新记录为 `9d258ee`，但没有 Run 登记、自动 attempts ledger、恢复点或 Approval 对象。用户在下一轮询问中主动指出主线应是升级 BuildBeat v2，才把目标拉回。
+`V2-D1A` 已要求 AI 试点工作区的下一项自然任务从干净 oracle 进入 `pilot/loop.sh`。随后 `WP-B1-AUTHZ` 又由当前会话直接人工推进到 Gate3 写者 L4：meta 分支 `codex/wp-b1-authz-gate2-5` 的最新记录为 `9d258ee`，但没有 Run 登记、自动 attempts ledger、恢复点或 Approval 对象。用户在下一轮询问中主动指出主线应是升级 BuildBeat v2，才把目标拉回。
 
-这项业务推进不倒算为第三个合格自动 Run；它保留为第三次“真实任务发生，但 Loop 没有被激活”的负向证据。ChickAI、Tide 与本次 AI 底座任务均重复了同一缺口：协议工件存在，不会自动触发 Runner，人仍是节拍器。
+这项业务推进不倒算为第三个合格自动 Run；它保留为第三次“真实任务发生，但 Loop 没有被激活”的负向证据。pilot-app、Tide 与本次 AI 试点工作区任务均重复了同一缺口：协议工件存在，不会自动触发 Runner，人仍是节拍器。
 
 ## 2. F5：验证中断后的恢复
 

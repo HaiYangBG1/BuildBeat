@@ -52,7 +52,7 @@ merge 批准只表示 **merge-ready**：真正的合并、push、发布是你在
 
 ## 等待要能找到人（迭代 08）
 
-底座 58 个 Run 里 32 个被取消，多数是在 `WAITING_HUMAN` 挂满一天后批量清掉；人批平均等 7～12 小时。原因不是人慢，是**没人知道有东西等他**。三件事配套：
+试点工作区 58 个 Run 里 32 个被取消，多数是在 `WAITING_HUMAN` 挂满一天后批量清掉；人批平均等 7～12 小时。原因不是人慢，是**没人知道有东西等他**。三件事配套：
 
 1. **下一句该说什么**：`status` 与 `inbox` 在每个等待后面直接给出可复制的命令（`approve` / `reject`，分诊时加 `findings list|adjudicate`）；`inbox` 按 Work 分组并显示已等待时长。输出里的 `--repo` 只在项目内给相对路径，项目外给 `<repo-path>` 占位——本机绝对路径永不进输出。
 2. **同 Work 新 Run 取代旧等待**：`start` 时同一 Work 下仍在等待的旧 Run 记 `SUPERSEDED`（终态、压成 run-record），新 Run 的 `RUN_CREATED.data.supersedes` 记血统；inbox 只剩活的等待。不想要这个行为就在 run 配置写 `supersede: off`。RUNNING 的 Run 不受影响（active 锁），被别的进程锁住的旧 Run 跳过并明示。

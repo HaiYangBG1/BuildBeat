@@ -27,7 +27,7 @@
 
 ## B. 真实多仓 / 扫描边界刷新
 
-刷新对象为 `<本机路径>/AI底座/底座`。为避免改动一个约 `4.6G` 且带本地在途工作的真实协调仓，本次建立只读投影：复制 meta/subrepo Git object、`pm/`、`contracts/`、项目脚本及四个已发现子仓 `ai-admin`、`chickDEV`、`lxj-CLI`、`ruoyi-ai` 的顶层版本来源；只用当前候选 `bus-check.sh` 替换投影中的检查器。原仓零写入、零 stage、零 commit。
+刷新对象为 `<本机路径>/<试点工作区>`。为避免改动一个约 `4.6G` 且带本地在途工作的真实协调仓，本次建立只读投影：复制 meta/subrepo Git object、`pm/`、`contracts/`、项目脚本及四个已发现子仓 `ai-admin`、`pilot-web`、`pilot-cli`、`pilot-backend` 的顶层版本来源；只用当前候选 `bus-check.sh` 替换投影中的检查器。原仓零写入、零 stage、零 commit。
 
 首轮刷新发现当前检查器把 legacy prose 中实际留在根内的 `../contracts/...` 链接误判为 traversal。源码随后收窄为：canonical Gate/evidence 仍只接受仓根相对路径；只有 scoped legacy prose 可以解析 `../` / `./`，且 realpath 必须留在协调根内，symlink/权限边界仍不跟随。新增“根内 parent link 通过、根外逃逸阻断”回归后，Shell 套件为 `222/222`。
 

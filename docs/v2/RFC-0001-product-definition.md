@@ -64,8 +64,8 @@ v1 进入 `v1-maintenance` 维护线，只修安全与严重缺陷；npm `latest
 | 2 | **事件台账 + reducer + 终态压实**（events.jsonl、state 重建、run-record） | 厂商日志是私有格式、随会话消亡、不落 Git；工具中立、可重放、可审计的交付台账没有厂商会提供 | 卡点 1：attempts/token/费用无统一 ledger；度量表全列 `UNVERIFIED` |
 | 3 | **中断恢复**（checkpoint、resume、恢复点裁决） | 厂商的 session resume 只恢复自家会话上下文，不恢复跨 Worker 的交付状态（该继续 Verify、回 Build 还是废弃候选） | F5 = `RECOVERY_MISSING`：重开只能 fail-closed，需人读现场 |
 | 4 | **Approval 对象与 stale 检测**（transition + candidate + planDigest + evidenceDigest 绑定） | 厂商审批是工具内 UI 动作，不产生持久化、跨工具、绑定 digest 的审批对象，更不会在对象变化时自动失效 | F6 = `APPROVAL_STALE_MISSING`；卡点 3：单阶段生产滚动 P1 正是"审批未绑定 rollout plan"的真实事故形态 |
-| 5 | **Policy/Gate 语义检查器 + 强制等级报告**（四类 Policy、`doctor` 报告实际强制等级） | 厂商各有权限系统，但没人会检查"你声称的规则实际达到哪级强制"并跨工具编译到 hook/CI | 边界节：提示词禁令只算 `ADVISORY`；ChickAI 会话始终持有生产能力，未被机器剥离 |
-| 6 | **多 Workspace 绑定**（一个 Work 绑定多仓 candidate 到同一 Decision） | 厂商 Workspace 即"当前打开的仓"；跨 meta 仓 + 代码仓的原子绑定是协议层需求 | 卡点 2、卡点 4：ChickAI 与 AI 底座均为 meta+代码多仓，单仓 loop 无法原子关联 |
+| 5 | **Policy/Gate 语义检查器 + 强制等级报告**（四类 Policy、`doctor` 报告实际强制等级） | 厂商各有权限系统，但没人会检查"你声称的规则实际达到哪级强制"并跨工具编译到 hook/CI | 边界节：提示词禁令只算 `ADVISORY`；pilot-app 会话始终持有生产能力，未被机器剥离 |
+| 6 | **多 Workspace 绑定**（一个 Work 绑定多仓 candidate 到同一 Decision） | 厂商 Workspace 即"当前打开的仓"；跨 meta 仓 + 代码仓的原子绑定是协议层需求 | 卡点 2、卡点 4：pilot-app 与 AI 试点工作区均为 meta+代码多仓，单仓 loop 无法原子关联 |
 | 7 | **统一 Evidence Contract**（回读制证据、grade L0–L4、manifest digest） | 厂商各自产出日志与测试结果，但"什么算证据、谁回读、怎么分级"的合同必须工具中立 | 能力矩阵"证据来源、digest 与未验证范围"= PARTIAL：事后人工汇总、截图无 digest |
 
 ### 7.2 组装面（一律不自研）

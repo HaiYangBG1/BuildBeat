@@ -1,13 +1,13 @@
-# M-1 第三目标项目摸底：AI 底座
+# M-1 第三目标项目摸底：AI 试点工作区
 
 > 日期：2026-08-28
 > 状态：**已观察到第三次自动激活失败；仍未形成有效自动 run**
-> 授权来源：项目所有者明确指定 `AI底座/底座` 作为第三个真实例子
+> 授权来源：项目所有者明确指定 `<试点工作区>` 作为第三个真实例子
 
 ## 为什么选它
 
 - 开发活跃，存在连续的真实工作包、Gate、独立测试、reviewer 与非生产/生产证据，不需要制造演示需求。
-- 是 meta + `ruoyi-ai` + `chickDEV` + 其它子仓的多仓项目，能直接验证 v2 当前最薄弱的跨 workspace 证据绑定。
+- 是 meta + `pilot-backend` + `pilot-web` + 其它子仓的多仓项目，能直接验证 v2 当前最薄弱的跨 workspace 证据绑定。
 - 从 legacy Solobaton 迁来，目标工作树当前记录 BuildBeat `v1.21` 手工语义迁移，但没有 schema 2 `.buildbeat/manifest.json`，适合验证旧项目旁路接入，而不是只验证全新项目。
 
 ## 2026-08-28 只读事实
@@ -21,14 +21,14 @@
 ### 项目现场
 
 - meta 仓：`main` 相对 `origin/main` ahead 83，且 `AGENTS.md`、`BUILDBEAT.md` 与运维脚本存在在途修改；`bus-check` 还生成了未跟踪的 Python cache。试点不得覆盖或顺手提交这些用户改动。
-- `ruoyi-ai` 当前主 worktree 有另一工作项的 4 个在途文件；`chickDEV` main 相对远端 ahead 3。两个仓另有 clean 的 `codex/wp-b1-authz` worktree。
+- `pilot-backend` 当前主 worktree 有另一工作项的 4 个在途文件；`pilot-web` main 相对远端 ahead 3。两个仓另有 clean 的 `codex/wp-b1-authz` worktree。
 - `bus-check` 本次只证明本地总线可解析；它同时报告 L3 marker stale、四个子仓未登记多仓 map、live-status 失败、生产只读未授权和 drift coverage 不完整，不能外推成线上/生产已验证。
 
 ### 当前真实工作包
 
 - `WP-B1-AUTHZ` exact candidate：
-  - backend `ruoyi-ai@7685836a313d6a23a58cf697731850d05fdc6692`
-  - frontend `chickDEV@f2ee3450206b1d16e50f61b86b199e6ec58e7127`
+  - backend `pilot-backend@7685836a313d6a23a58cf697731850d05fdc6692`
+  - frontend `pilot-web@f2ee3450206b1d16e50f61b86b199e6ec58e7127`
 - `WP-B1-AUTHZ` 后续已在独立 meta 分支 `codex/wp-b1-authz-gate2-5` 推进到 `9d258ee`：Gate2.5 通过，`G3-AUTHZ-00～04=WRITER_PASS`，当前下一 owner 为测试域独立复跑。
 - 这段推进发生在 `V2-D1A` 之后，但没有进入 `pilot/loop.sh`，因此不倒算为自动 Run；它证明接力描述修正了，自动激活/ledger/恢复问题仍未解决。证据归纳见 [`../evidence/2026-08-28-m1-runtime-gap.md`](../evidence/2026-08-28-m1-runtime-gap.md)。
 

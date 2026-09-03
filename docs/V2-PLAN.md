@@ -222,7 +222,7 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
   - **结论 (b)** 可组装能力覆盖率 ≥80%、三轮平均计划外介入 ≤2，且无重复的未处置 CRITICAL 运行缺口 → M1–M3 收缩为**薄内核**（只造 approval staleness、统一证据台账、policy/gate 检查器三件），总窗口 ~5–8 周；
   - 未跑场景一律记 `UNVERIFIED`，不得按通过计分；中间态默认少造，将存疑能力挂到 M4 复验。
 
-> **进展（2026-08-28）**：ChickAI、Tide 与 `V2-D1A` 后续的 AI 底座 `WP-B1-AUTHZ` 推进均未激活 `pilot/loop.sh`，自动 Run ledger 为 `0/3`；第三项不倒算合格自动 Run，只作为重复激活失败的负向证据。F5 已确认只能 fail-closed、不能恢复，F6 已确认没有持久化 Approval 对象或 stale 事件；暂定可组装覆盖率仍为 45.8%。[`V2-D2-DECISION-CARD.md`](V2-D2-DECISION-CARD.md) 推荐完整内核，项目所有者已于 2026-08-28 拍板 **`V2-D2=A`**：M-1 关闭，进入 M0；主判据为重复 CRITICAL 缺口，暂定覆盖率仅旁证（台账见 [`V2-DECISIONS.md`](V2-DECISIONS.md)）。明细见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)、[`pilot/metrics.md`](../pilot/metrics.md) 与 [`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../pilot/evidence/2026-08-28-m1-runtime-gap.md)。
+> **进展（2026-08-28）**：pilot-app、Tide 与 `V2-D1A` 后续的 AI 试点工作区 `WP-B1-AUTHZ` 推进均未激活 `pilot/loop.sh`，自动 Run ledger 为 `0/3`；第三项不倒算合格自动 Run，只作为重复激活失败的负向证据。F5 已确认只能 fail-closed、不能恢复，F6 已确认没有持久化 Approval 对象或 stale 事件；暂定可组装覆盖率仍为 45.8%。[`V2-D2-DECISION-CARD.md`](V2-D2-DECISION-CARD.md) 推荐完整内核，项目所有者已于 2026-08-28 拍板 **`V2-D2=A`**：M-1 关闭，进入 M0；主判据为重复 CRITICAL 缺口，暂定覆盖率仅旁证（台账见 [`V2-DECISIONS.md`](V2-DECISIONS.md)）。明细见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)、[`pilot/metrics.md`](../pilot/metrics.md) 与 [`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../pilot/evidence/2026-08-28-m1-runtime-gap.md)。
 
 ### M0 — 核心重置（1 周）
 
@@ -268,14 +268,14 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 
 - 确定性测试套件（B WP5.1）+ 行为 evals（B WP5.2 九目录）；
 - `buildbeat metrics` v0；
-- Self-host 试点（BuildBeat builds BuildBeat）+ 外部试点 ≥2（一个有真实测试的单仓项目 + 一个含 UI 变更的项目，建议从所有者所在企业的 AI 底座选）；
+- Self-host 试点（BuildBeat builds BuildBeat）+ 外部试点 ≥2（一个有真实测试的单仓项目 + 一个含 UI 变更的项目，建议从一个真实企业工作区选）；
 - **退出指标**（B M5 表采纳）：状态转换可追溯 100%、stale Approval 复用 0、超预算继续运行 0、试点 Run 自动到达 WAITING_HUMAN ≥70%、证据完整率 ≥95%、Reviewer 改代码 0。
 
 > **进展（2026-08-28）**：工程面完成——九场景行为 evals（[`evals/`](../evals/README.md)）、`metrics` v0、Scope 越界即停、单活动 Run 锁、Adapter 故障路径回归；Self-host 试点 `RUN-SELF-001` 真实跑通并停在合并决定（真实 remote 上实测推送保护、抓到并修复一个 YAML 解析真实缺陷），证据与六指标核验见 [`v2/M4-SELFHOST-2026-08-28.md`](v2/M4-SELFHOST-2026-08-28.md)。**外部试点 ≥2 待项目所有者点名（D6），回填指标后 M4 关闭**；跟踪见 [`V2-ITERATION-06.md`](V2-ITERATION-06.md)。
 >
-> **进展（2026-08-28 补）**：外部试点完成——所有者点名的真实需求 `LXJ-AUTH-CLI-DW-01`（ruoyi-ai）由 codex CLI 经 Shell Adapter 全自动 5.2 分钟推进到合并决定（15 文件干净候选、JDK17 全量真实测试、只读 review、portal 页真渲染截图 + UI 门），证据见 [`v2/M4-EXTERNAL-PILOT-2026-08-28.md`](v2/M4-EXTERNAL-PILOT-2026-08-28.md)。六退出指标全部达标（自动到达率 2/2）；仅余 D6 口径（1 项目覆盖双验收面是否即满足"≥2"）待所有者定夺后 M4 关闭。
+> **进展（2026-08-28 补）**：外部试点完成——所有者点名的真实需求 `LXJ-AUTH-PILOT-EXT-01`（pilot-backend）由 codex CLI 经 Shell Adapter 全自动 5.2 分钟推进到合并决定（15 文件干净候选、JDK17 全量真实测试、只读 review、portal 页真渲染截图 + UI 门），证据见 [`v2/M4-EXTERNAL-PILOT-2026-08-28.md`](v2/M4-EXTERNAL-PILOT-2026-08-28.md)。六退出指标全部达标（自动到达率 2/2）；仅余 D6 口径（1 项目覆盖双验收面是否即满足"≥2"）待所有者定夺后 M4 关闭。
 >
-> **进展（2026-08-28 再补）：M4 关闭。** 第二外部项目 chickAI Bug 看板积压批处理（[`v2/M4-CHICKAI-PILOT-2026-08-28.md`](v2/M4-CHICKAI-PILOT-2026-08-28.md)）：钉钉 AI 表格读积压 → 两个 bug 各一 Run，其中 RUN-CHICK-0037 走出**完整 Build–Verify–Fix–Review 闭环**（reviewer 以 P1/P2 真实阻断、codex fixer 修复、二轮全绿）。外部项目数 2，D6 原文满足；六指标 4/4 Run 同向达标。进入 M5。
+> **进展（2026-08-28 再补）：M4 关闭。** 第二外部项目 pilot-app Bug 看板积压批处理（[`v2/M4-PILOT-APP-2026-08-28.md`](v2/M4-PILOT-APP-2026-08-28.md)）：钉钉 AI 表格读积压 → 两个 bug 各一 Run，其中 RUN-CHICK-0037 走出**完整 Build–Verify–Fix–Review 闭环**（reviewer 以 P1/P2 真实阻断、codex fixer 修复、二轮全绿）。外部项目数 2，D6 原文满足；六指标 4/4 Run 同向达标。进入 M5。
 
 ### M5 — 闭环起步、迁移与 Beta（2–3 周）
 
@@ -325,8 +325,8 @@ B §24 的 1–20 原样进入测试矩阵。追加：
 | D3 | spec 步默认策略 | UI 项目强制、其余可选、快轨跳过 | 裁决 #3 |
 | D4 | 首个专用 Adapter | M3 末按试点主力工具定（此前 Shell Adapter 已可驱动任意 CLI agent） | 裁决 #5 |
 | D5 | v1 手写状态处置 | 迁移即一步到位废除，无过渡双轨 | A-D4 原结论，B 同向 |
-| D6 | 试点组合（M4） | Self-host + 底座内一个有测试的单仓项目 + 一个含 UI 项目 | 合并 A-D5 与 B-WP5.3/5.4 |
-| D7 / `V2-D1` + `V2-D1A` | **M-1 试点工作项与第三目标项目（已决）** | 首批为 ChickAI 额度耗尽仍可登录（含 UI）与 Tide 悬浮球空闲收纳（小功能）；第三目标项目为 `AI底座/底座`，具体使用其下一项自然发生、已授权、低风险的非生产开发任务 | 执行细则见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)；既有候选只作回放证据，授权边界仍是不 merge、不 push、不发布、不部署 |
+| D6 | 试点组合（M4） | Self-host + 试点工作区内一个有测试的单仓项目 + 一个含 UI 项目 | 合并 A-D5 与 B-WP5.3/5.4 |
+| D7 / `V2-D1` + `V2-D1A` | **M-1 试点工作项与第三目标项目（已决）** | 首批为 pilot-app 额度耗尽仍可登录（含 UI）与 Tide 悬浮球空闲收纳（小功能）；第三目标项目为 `<试点工作区>`，具体使用其下一项自然发生、已授权、低风险的非生产开发任务 | 执行细则见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)；既有候选只作回放证据，授权边界仍是不 merge、不 push、不发布、不部署 |
 
 ---
 

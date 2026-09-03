@@ -4,7 +4,7 @@
 
 ## Unreleased — v2.0.0-beta.4（迭代 08：等待要能找到人）
 
-> 主题：底座 2026-08-28～09-02 全部驾驶会话与 58 个 Run 台账的复盘回灌（复盘文档见迭代 08 记录）。台账数字：58 个 Run 成功 7、失败 17、取消 32，其中多数取消是在 WAITING_HUMAN 挂满一天后批量清掉；人批平均等 7～12 小时。beta.3 治的是"审查循环烧钱"，本版治的是**人看不见 Run 在干什么、等的人不知道有东西等他、每次都要手工打扫**。
+> 主题：试点工作区 2026-08-28～09-02 全部驾驶会话与 58 个 Run 台账的复盘回灌（复盘文档见迭代 08 记录）。台账数字：58 个 Run 成功 7、失败 17、取消 32，其中多数取消是在 WAITING_HUMAN 挂满一天后批量清掉；人批平均等 7～12 小时。beta.3 治的是"审查循环烧钱"，本版治的是**人看不见 Run 在干什么、等的人不知道有东西等他、每次都要手工打扫**。
 > **发布状态**：未发布（源码在 `v2` 分支；`npm publish` 是独立生产动作，须所有者单独授权）。
 
 - **运行中可见性（C1）**：Shell Adapter 把 worker 的 stdout/stderr **实时**流到 `.buildbeat/runtime/runs/<RUN>/<step>-<n>.{stdout,stderr}.live`，并留 `live.json` 标记（命令、开始时间）；步结束即收回，证据日志仍由回读生成。`status` 现在显示每步耗时（本次 / 累计 / 同仓同步骤历史中位数 `typical … n=`）、在飞步骤的已用时间、worker 命令、最后一次输出距今多久与末三行输出；无输出超过阈值（默认 15 分钟，run 配置 `stallAfterMs` 或 `status --stall-after <分钟>`）标 **STALLED**（只标不杀）。`metrics` 增加每步中位耗时。真实事故：所有者一场会话里问了十余次"半小时了正常吗 / 十分钟了是卡住了吗"，而 status 只有步骤和次数
@@ -12,19 +12,19 @@
 - **`gc`：打扫运行时面（C3）**：`buildbeat-v2 gc --repo .` 默认只出计划；`--apply true` 执行。规则 fail-closed 向保留：只动**终态且已压成 run-record** 的 Run；工作树可删（提交都在分支上）；分支只在候选**已可从其他 ref 到达**（合并 / 打 tag / 远端）或 Run 未产出候选时删，否则明示"仅此分支可达，保留"；脏工作树不带 `--force` 不动；终态 Run 的残留锁一并清。台账不写（终态后只允许 `RUN_COMPACTED`）。真实事故：两个子仓残留 16 个工作树，所有者原话"你先打扫一下卫生"
 - **人批通知出站（C4）**：Git 面 `.buildbeat/notify.yaml` 声明通道（`type: webhook|dingtalk`，URL 只能来自 `urlEnv` 指定的环境变量，写 `url` 直接拒绝），订阅 `HUMAN_REQUESTED` / `RUN_TERMINAL` / `STALLED`。Run 停在人批或终态时由 CLI 出站；失败只记 `notify.log` 与屏幕，**永不影响 Run**；载荷只有标识、原因、候选 SHA 与下一句可复制命令，零日志零候选内容。订阅 `STALLED` 时 `start`/`resume` 自动派一个脱离的 `watch` 进程盯输出静默（编排器在 spawnSync 里看不了表），Run 离开 RUNNING 或父进程退出即自行结束；`watch --once true` 可手工单次探测。`doctor` 报告通道与环境变量是否就位
 - **"下一句该说什么"**：`status` / `inbox` / 通知在每个等待后面直接给出可复制的 `approve` / `reject`（分诊时加 `findings list|adjudicate`）命令；`inbox` 按 Work 分组并显示已等待时长。输出里 `--repo` 只在项目内给相对路径，项目外给 `<repo-path>` 占位——本机绝对路径永不进输出（既有不变量，测试守着）
-- **Work 级总览 `overview`（C5）**：`buildbeat-v2 overview --repo . [--work <ID>] [--json true]` 按 Work 回答「走到哪、下一步该谁」：intent/plan 是否被接受（接受后改过即 `stale`）、Run 数、最新 Run 状态与候选、候选是否已合入当前分支、未裁决 P0/P1 数、是否有 `env-facts.md`；阶段机 `NO_INTENT → INTENT_DRAFT → PLAN_DRAFT/PLAN_STALE → READY_TO_RUN → RUNNING → WAITING_HUMAN/MERGE_DECISION → MERGE_READY → MERGED`，每行附下一句命令。运行时被删后由 Git 面 run-record 补足。所有者原话：「当前代办是什么，从每一个系统的进度说」「ChickDev 上线了吗，离上线还有多远」
+- **Work 级总览 `overview`（C5）**：`buildbeat-v2 overview --repo . [--work <ID>] [--json true]` 按 Work 回答「走到哪、下一步该谁」：intent/plan 是否被接受（接受后改过即 `stale`）、Run 数、最新 Run 状态与候选、候选是否已合入当前分支、未裁决 P0/P1 数、是否有 `env-facts.md`；阶段机 `NO_INTENT → INTENT_DRAFT → PLAN_DRAFT/PLAN_STALE → READY_TO_RUN → RUNNING → WAITING_HUMAN/MERGE_DECISION → MERGE_READY → MERGED`，每行附下一句命令。运行时被删后由 Git 面 run-record 补足。所有者原话：「当前代办是什么，从每一个系统的进度说」「pilot-web 上线了吗，离上线还有多远」
 - **信封一等公民（C6）**：run 配置 `envelope:`（`prompts:` 目录 + `vars:` + 可选 `pin: <sha>`）——内核按 `<component>-<worker>.md` / `<worker>.md` 取 prompt、替换 `{vars.x}`、落到 `runs/<RUN>/prompts/<step>-<n>.md` 并以 `BUILDBEAT_PROMPT` 与 `input.envelope` 交给 worker；worker args 支持 `{prompt}` 与 `{vars.x}`；`RUN_CREATED` 记 `envelopeDigest`/`envelopeSource`（additive）。`start --attempt new` 自动编号 `RUN-X-01/02…`（扫运行时面与 Git 面 run-record），一份 config 跑到底，不再每次重试新建 config。`redact:` 正则列表在证据落盘前脱敏（digest 绑脱敏后文本）。真实事故：三源 runner 的 Work 每个 Run 手写 34 行 yaml + 10 KB worker.sh + 4 份 prompt，worker 命令是 `git show <meta sha>:path | bash -s` 咒语，Run ID 手工编到 -30
-- **verify 复用与增量审查（C7）**：run 配置 `cache: {verify: tree}` 后，同树（`HEAD^{tree}`）+ 同 worker 命令 + 同信封 digest 且**已通过**的 verify 不再跑——证据引用来源 Run（`EVIDENCE_RECORDED.reused`，additive），status 标 `(reused from RUN-X)`；失败永不复用，脏树不复用。readonly（reviewer）步的 input 注入 `lastReviewed {candidate, run, range}`（同 Work 最近一次 review 的候选且为当前候选祖先），prompt 可据此只审增量。瘦身计划 A1/B3；底座信封侧自建缓存 25→13 分钟的内核化
+- **verify 复用与增量审查（C7）**：run 配置 `cache: {verify: tree}` 后，同树（`HEAD^{tree}`）+ 同 worker 命令 + 同信封 digest 且**已通过**的 verify 不再跑——证据引用来源 Run（`EVIDENCE_RECORDED.reused`，additive），status 标 `(reused from RUN-X)`；失败永不复用，脏树不复用。readonly（reviewer）步的 input 注入 `lastReviewed {candidate, run, range}`（同 Work 最近一次 review 的候选且为当前候选祖先），prompt 可据此只审增量。瘦身计划 A1/B3；试点工作区信封侧自建缓存 25→13 分钟的内核化
 - **合并后车道（C8）**：官方预设 `release-readback`（preflight → apply-readback → observe → wait-close，全部 readonly、`grade: L4`、`maxAttempts 1`）+ 风险预设 `release`（`stopAt: apply-readback`，关窗要求 L4 命令证据）。生产动作仍是人的（不变量 20）；这条车道只把「做之前回读 → 人做 → 做之后回读 → 观察 → 人关窗」记成台账，任一步失败即停人批。workflow step 新增 `grade:` 字段（additive）。真实事故：试点项目上线当天 meta 仓约 40 条「Gate4 step N readback」手工提交
 - **可见命名进决策卡（C9，指南层）**：域名、服务名、环境名、自停时长、窗口时长等所有者以后要看见或念出来的名字与参数默认 `BATCH_AT_GATE`，不由 worker 顺手定——写进 v2 AGENTS 模板第 ⑪ 条、Skill 驾驶手册与 Worker 合同。真实事故：一个按内部术语起的服务名让所有者连问四轮
 - **环境事实（C10）**：`requires:` 新增 `probe:` 条目（shell 命令 + 可选 `expect` 正则 + `name`），启动前与二进制版本一起 fail-closed 核验；Work 目录 `env-facts.md` 约定（`overview` 显示 ✓）。真实事故：目标机 Python 3.6 / Redis <7 各烧一窗，同族缺陷第五次出现
-- **Skill 才是入口（所有者 2026-09-02 指出）**：`SKILL.md` 新增 §0.5「v2 驾驶手册」——用户一句话 → 会话调哪条命令 → 回给用户什么；frontmatter 加 v2 触发词；新增 `templates/v2/AGENTS.md`（一页流程 + 视角路由 + 十一条规则 + 红线，蒸馏自底座手写版）与 `templates/v2/指挥台.md`（日常六句话）。此前根目录 SKILL.md 与 plugin SKILL.md 里 v2 出现次数为零，会话装载到的仍是 v1 三域口径
+- **Skill 才是入口（所有者 2026-09-02 指出）**：`SKILL.md` 新增 §0.5「v2 驾驶手册」——用户一句话 → 会话调哪条命令 → 回给用户什么；frontmatter 加 v2 触发词；新增 `templates/v2/AGENTS.md`（一页流程 + 视角路由 + 十一条规则 + 红线，蒸馏自试点工作区手写版）与 `templates/v2/指挥台.md`（日常六句话）。此前根目录 SKILL.md 与 plugin SKILL.md 里 v2 出现次数为零，会话装载到的仍是 v1 三域口径
 - 测试：新增 `v2-liveness` / `v2-supersede` / `v2-gc` / `v2-notify` / `v2-envelope` / `v2-cache` / `v2-overview` / `v2-release-lane` 八组 19 项（含 CLI 端到端与本地 HTTP 接收端）
 - 边界：编排器仍是同步 spawnSync（STALLED 通知由独立 `watch` 进程完成）；`release` 预设无 finding 门（车道里没有 reviewer，不设满足不了的规则）；钉钉通道只支持关键词模式
 
 ## v2.0.0-beta.3 — 2026-09-01
 
-> 主题：三十轮部署战役（底座 WORK-C0-HEALTH-NONPROD-01，DEPLOY-01~30 + L4 之夜）的机制回灌。战役复盘：`底座/pm/2026-09-01-BuildBeat三十轮复盘.md`。
+> 主题：三十轮部署战役（试点 WORK-PILOT-DEPLOY-01，DEPLOY-01~30 + L4 之夜）的机制回灌。战役复盘：`试点工作区的部署战役复盘文档`。
 > **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.3` 已于 2026-09-01 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33460544343，双 job success）；`latest` 保持 v1.21.0。独立回读（直连 npmjs.org）：dist-tag 路由、integrity、签名+attestation、隔离安装全过，证据见 [`docs/V2.0.0-BETA.3-RELEASE-EVIDENCE-2026-09-01.md`](docs/V2.0.0-BETA.3-RELEASE-EVIDENCE-2026-09-01.md)。
 
 - **发现分诊门**（复盘改革条 4）：run 配置 `reviewTriage: required` 后，review 的 P0/P1 finding 不再自动派 fixer——停 `WAITING_HUMAN`（kind `finding-triage`）待人逐指纹裁决，approve `enter-fix` 才放行。finding 是处方不是事实；自动路由处方在战役振荡期连烧四轮
@@ -38,16 +38,16 @@
 
 ## v2.0.0-beta.2 — 2026-08-28
 
-> 主题：aiplatform-meta（底座）v2 迁移试点抓出的内核修复。
+> 主题：meta 试点仓v2 迁移试点抓出的内核修复。
 > **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.2` 已于 2026-08-28 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33175013599，双 job success）；`latest` 保持 v1.21.0。独立回读：dist-tag 路由、integrity、SLSA provenance、隔离安装全过，证据见 [`docs/V2.0.0-BETA.2-RELEASE-EVIDENCE-2026-08-28.md`](docs/V2.0.0-BETA.2-RELEASE-EVIDENCE-2026-08-28.md)。
 
-- **fix(v2) 范围门中文路径误拦**：git `core.quotepath` 默认把非 ASCII 路径转义为带引号的八进制串，`listChangedPaths` 直接喂给 allowedPaths 前缀检查导致范围内中文文件被判越界（真实事故：底座 `RUN-META-V2-01` 被 `pm/登录二期看板.md` 阻断）。读回改用 `core.quotepath=off`，中文路径永久回归进 `tests/v2-invariants.test.js`
+- **fix(v2) 范围门中文路径误拦**：git `core.quotepath` 默认把非 ASCII 路径转义为带引号的八进制串，`listChangedPaths` 直接喂给 allowedPaths 前缀检查导致范围内中文文件被判越界（真实事故：试点工作区 `RUN-META-V2-01` 被 `pm/登录二期看板.md` 阻断）。读回改用 `core.quotepath=off`，中文路径永久回归进 `tests/v2-invariants.test.js`
 
 ## v2.0.0-beta.1 — 2026-08-28
 
 > 主题：BuildBeat v2 首个 Beta——确定性内核 + Agent Loop Runtime。事件溯源台账（hash 链、损坏截断、终态压实进 Git 面）、Policy 门（8 算子三值逻辑、`UNVERIFIED` 永不当 PASS）、隔离 Workspace（push 物理封禁、`allowedPaths` 越界即停、Reviewer 只读快照强制）、Shell Adapter 厂商中立接任意 CLI Agent（codex 实证）、digest 绑定人批与 `APPROVAL_STALE`。MVP 承诺兑现：Build–Verify–Fix–Review 自动闭环，停在合并决定，带证据交人。
 > **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.1` 已于 2026-08-28 经 GitHub Actions OIDC / Trusted Publishing 发布到 dist-tag `next`；`latest` 保持 v1.21.0，v1 CLI 与文件冻结随包分发（脚手架束钉 `v1.21`）。v2 入口为独立 bin `buildbeat-v2`。registry exact artifact、SLSA provenance、dist-tag 路由、隔离安装、签名审计均已独立回读，证据见 [`docs/V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md`](docs/V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md)。
-> **试点证据**：self-host（RUN-SELF-001）+ 两个外部真实项目（ruoyi-ai RUN-CLI-DW-01 全自动 5.2 分钟到合并决定；chickAI 看板积压含完整 reviewer 阻断→fixer 修复闭环），六退出指标全达标；见 `docs/v2/M4-*.md`。
+> **试点证据**：self-host（RUN-SELF-001）+ 两个外部真实项目（pilot-backend RUN-PILOT-EXT-01 全自动 5.2 分钟到合并决定；pilot-app 看板积压含完整 reviewer 阻断→fixer 修复闭环），六退出指标全达标；见 `docs/v2/M4-*.md`。
 
 - **observe v0**（RFC-0003 §8 冻结契约的实现）：drift-check/live-status 类探针接为 Evidence Provider（采不到即 `unverified`，同一 Evidence Contract 与链校验台账）；bands log→只读诊断→Intent 草稿三层分层响应；草稿只入队 Git 面绝不自动执行；`observe triage` 人分诊，`dismiss` 回调阈值防告警疲劳；分诊记忆活在 Git 面，runtime 可删（不变量 23 有测试）
 - **文档十件套**（`docs/v2/guide/`）：快速开始 / Workflow / Policy / Adapter / Worker 合同 / Evidence / Approval / v1 迁移半天手工 runbook / 安全边界 / 故障恢复
@@ -120,7 +120,7 @@
 - **Phase 2-B STACK 漂移候选**：Confirmed STACK 新增 `buildbeat-stack-baseline:v1` 精确集合并只读兼容旧 `solobaton-stack-baseline:v1`；`bus-check` 比对 `.nvmrc` / `package.json#engines.node`、npm/pnpm/yarn/bun lockfile 种类与 Dockerfile FROM，确定矛盾进 `stack.drift` conflict，缺源/解析/权限/符号链接/截断边界进 `stack.unverified`；不猜自然语言、不回显原始值、不修改项目文件，matching/conflict/unverified 三类 fixture 已将 Shell 回归扩至 `166/166`
 - **Phase 2-B Claude 插件分发候选**：新增 `buildbeat-plugins` marketplace 与独立 `buildbeat` 插件 `0.1.0`；插件以 marketplace 内相对符号链接复用 canonical SKILL/templates/docs/example，安装缓存解引用为自包含副本，并刻意排除 npm CLI 顶层 `bin/`。隔离配置回归覆盖严格校验、marketplace 添加、插件安装/启用、缓存同源与二次校验；CI 无 Claude CLI 时只证明静态打包，不冒充安装证据
 - **分发入口证据边界**：中英 README 首屏加入 Claude plugin 与 scoped npm 路径；legacy `solobaton@latest` 不再承载写入入口，`npx --yes --package=@haiyangbg/buildbeat@latest buildbeat init my-project` 只有在 scoped artifact 完成官方 registry 回读后才宣称可用
-- **WP2.7 安全前置**：新增 `standards-partial` fixture，证明仅启用 Confirmed CODE/REVIEW 时缺失 STACK/DESIGN 合法，Shell 回归增至 `176/176`；只读 dry-run 排除 partial 且碰撞的 `chickAI` 与 dirty legacy 安装的 `底座` 作为 Wave 1 adopt 目标
+- **WP2.7 安全前置**：新增 `standards-partial` fixture，证明仅启用 Confirmed CODE/REVIEW 时缺失 STACK/DESIGN 合法，Shell 回归增至 `176/176`；只读 dry-run 排除 partial 且碰撞的 `pilot-app` 与 dirty legacy 安装的 `试点工作区` 作为 Wave 1 adopt 目标
 - **WP2.7 真实目录本地写入**：获用户点名后，分别保留 init dry-run 零写、交互拒绝零写、default init apply、Tide compact adopt 与 Skill-only 手动 Bootstrap 证据；三个实际骨架完成项目语义渲染，验证套件及离线 `bus-check --strict` exit 0，可选 standards/ADR 均未被为了全绿而生成
 - **存量保护证据**：Tide 接管前后原 83 个文件的聚合 SHA-256 完全一致；剥离唯一 managed fragment 后，原 `.gitignore` 的 173 字节与 SHA-256 完全一致。没有运行构建、浏览器加载、发布或部署，静态保护证据不得外推为业务验证
 - **浏览器扩展 UI 探测修复**：真实 Tide 试点暴露 `hasUi=false` 假阴性；项目扫描现在解析嵌套 Manifest V2/V3 的 action/content/options 等 UI 信号，Tide 重探测为 `hasUi=true`，并加入不依赖 `index.html` 或前端框架包的 Node 回归
@@ -317,7 +317,7 @@
 - **修沙盘时间线硬伤**:Gate3 拍板改 06-19(此前 06-18,早于 P1 发现日,因果倒置);回写落点 ④→⑤;P1 归属统一为"走查发现";README 双语示例块同步
 - **修 drift-check 基线保护**:`--update-baseline` 任一应用查询失败即拒绝落盘并 exit 1(此前平台 CLI 全失败会用空基线**覆盖好基线**,漂移信号永久丢失);检测模式全失败改报"无法判定"而非谎报"无漂移";APPS 数组清空不再 unbound variable 崩
 - **bus-check 检测诚实化**:NOW 缺失/占位符时如实报"无法判定/跳过"而非打假 ✅;新增当期看板坏指针告警;meta 仓仅本地领先时提示 git push(此前误导性提示 pull)
-- 中文 README:去掉作者本机路径前缀 `AI底座/`;首句"活塞"歧义改"活儿都塞";示例块与脚本实际输出逐字对齐;§6 树补 gitignore.template(中英同)
+- 中文 README:去掉作者本机路径前缀 `<试点工作区>/`;首句"活塞"歧义改"活儿都塞";示例块与脚本实际输出逐字对齐;§6 树补 gitignore.template(中英同)
 - 英文版:SSOT 统一为 single source of truth 并展开缩写;补漏译(开工四步行/P1 bug 名/或无上游/若干从句);5 处措辞修正(主语错位/It.2 等)
 - 口径统一:SKILL"两个后端"改"多个"(与 README 一致);SKILL §6 归档清单补"需求";lessons 第 4 条解药行随域改名;模板/沙盘内 lessons 引用注明"solobaton lessons"出处(拷入新项目后不再悬空)
 

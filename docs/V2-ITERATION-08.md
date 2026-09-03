@@ -6,12 +6,12 @@
 
 ## 输入：复盘了什么
 
-- 底座 2026-08-28～09-02 的全部 Claude / Codex 驾驶会话（8-30「当前进度极其缓慢」、9-1「Codex 进度好像又卡住了」、9-2「当前代办是什么，从每一个系统的进度说」、9-1「这个服务名字怎么起的」）
-- `ruoyi-ai` 与 `chickDEV` 两个子仓的 58 个 Run 台账（`buildbeat-v2 metrics` + 逐 Run events）
+- 试点工作区 2026-08-28～09-02 的全部 Claude / Codex 驾驶会话（8-30「当前进度极其缓慢」、9-1「Codex 进度好像又卡住了」、9-2「当前代办是什么，从每一个系统的进度说」、9-1「这个服务名字怎么起的」）
+- `pilot-backend` 与 `pilot-web` 两个子仓的 58 个 Run 台账（`buildbeat-v2 metrics` + 逐 Run events）
 - `pm/2026-09-01-BuildBeat三十轮复盘.md`、`pm/2026-09-01-首证复跑卡点经验.md`、`pm/2026-08-31-验证优化与瘦身计划.md`
 - 所有者 2026-09-02 两次拍板：「你说的我认可」（C1–C4 先做）→「继续下一轮，直到全部完成」；并指出**大部分人在其他 AI agent 里用 BuildBeat，Skill 才是真正入口，CLI 是被 Skill 调用的**
 
-| 底座两个子仓的 Run | 数量 |
+| 试点工作区两个子仓的 Run | 数量 |
 |---|---|
 | 总数 | 58 |
 | 成功 | 7 |
@@ -39,7 +39,7 @@
 
 ## 完成定义
 
-`npm test` 全绿（含新增 8 组测试）；`check:docs` 通过；对底座真实子仓跑 `gc`（计划模式）、`inbox`、`overview` 的输出符合预期且未改动任何东西（两个挂了 21 小时的 chickDEV 旧 Run 由所有者授权后 `stop`）。
+`npm test` 全绿（含新增 8 组测试）；`check:docs` 通过；对试点工作区真实子仓跑 `gc`（计划模式）、`inbox`、`overview` 的输出符合预期且未改动任何东西（两个挂了 21 小时的 pilot-web 旧 Run 由所有者授权后 `stop`）。
 
 ## 边界（如实声明）
 
@@ -57,6 +57,6 @@
 | # | 项 | 一句话 |
 |---|---|---|
 | N1 | 编排器异步化 | 进程内 STALLED、并行 Run、去掉 `watch` 子进程 |
-| N2 | `overview` 跨仓 | meta 仓一次看所有子仓的 Work（底座是 meta + 3 子仓） |
+| N2 | `overview` 跨仓 | meta 仓一次看所有子仓的 Work（试点工作区是 meta + 3 子仓） |
 | N3 | 钉钉签名模式 | `secret` 也走 env，HMAC 签名 |
 | N4 | Skill 的 Bootstrap v2 | §8 引导式 Bootstrap 直接生成 v2 骨架（`delivery/`、`.buildbeat/`、v2 AGENTS） |

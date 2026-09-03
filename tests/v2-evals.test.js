@@ -181,7 +181,7 @@ test("eval no-progress: the second identical failure stops the loop", () => {
   assert.match(state.pendingHuman.reasons[0], /fingerprint/);
 });
 
-// Permanent regression (real incident 2026-08-28, chickAI pilot): the merge
+// Permanent regression (real incident 2026-08-28, pilot-app pilot): the merge
 // gate refused two legitimately fixed candidates because finding.maxSeverity
 // counted P1 findings from blocked-then-fixed review rounds on superseded
 // candidates. Gates must judge the current candidate only.
