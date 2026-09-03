@@ -1,6 +1,6 @@
 # Release readback lane (iteration 08, C8). The kernel still has no deploy
 # capability (invariant 20): every production action stays a human's. What
-# this lane fixes is the bookkeeping around it — the ChickDev go-live was
+# this lane fixes is the bookkeeping around it — a pilot go-live was
 # ledgered by hand as forty "step N readback" commits. Here each step is a
 # read-only command that proves the world is in the expected state; every
 # failure stops for a human (maxAttempts 1, no fix edge), and evidence is

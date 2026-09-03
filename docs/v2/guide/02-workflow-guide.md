@@ -66,7 +66,7 @@ run 配置还可声明（beta.3，皆来自三十轮部署战役的真实事故�
 
 ## 上线回读车道：`release-readback` + `riskPreset: release`
 
-内核没有部署能力（不变量 20），生产动作永远是人的。这条车道只把动作前后的**回读**记成 L4 台账：`preflight`（动作前只读检查）→ 停 `enter-apply-readback`（人做动作）→ `apply-readback`（证明动作生效）→ `observe`（证明健康）→ `wait-close`（人关窗）。三个回读步全部 `readonly`、`grade: L4`、`maxAttempts 1`：任一步失败即停人批，没有 fix 边。风险预设 `release` 提供 `stopAt: apply-readback` 与关窗证据门（L4 命令证据）。worker 是任意回读脚本（curl 健康、读版本、比对配置指纹），退出码就是结论。ChickDev 上线那天四十条手工 readback 提交，就是这条车道该做的事。
+内核没有部署能力（不变量 20），生产动作永远是人的。这条车道只把动作前后的**回读**记成 L4 台账：`preflight`（动作前只读检查）→ 停 `enter-apply-readback`（人做动作）→ `apply-readback`（证明动作生效）→ `observe`（证明健康）→ `wait-close`（人关窗）。三个回读步全部 `readonly`、`grade: L4`、`maxAttempts 1`：任一步失败即停人批，没有 fix 边。风险预设 `release` 提供 `stopAt: apply-readback` 与关窗证据门（L4 命令证据）。worker 是任意回读脚本（curl 健康、读版本、比对配置指纹），退出码就是结论。试点项目上线那天的四十条手工 readback 提交，就是这条车道该做的事。
 
 ## 修改纪律
 

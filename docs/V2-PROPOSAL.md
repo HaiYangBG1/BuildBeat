@@ -254,7 +254,7 @@ gates:
 | WP1.3 | human Gate 异步审批：`.pending` 工件 + `buildbeat approve` + `inbox` | 审批落 decisions.md，闭环等文件恢复流转 |
 | WP1.4 | `buildbeat watch`：监听工件事件自动触发下一步 | 真实项目从 intent.md 提交到 merge 候选，人仅两次介入 |
 | WP1.5 | `buildbeat status` 派生视图 v0 | 与手工盘点一致，无手写状态文件 |
-| WP1.6 | 真实项目试点（建议从老乡鸡底座里选一个单仓小项目） | 试点记录入库（沿用 v1 的 PILOT 文档传统） |
+| WP1.6 | 真实项目试点（建议从所有者所在企业的 AI 底座里选一个单仓小项目） | 试点记录入库（沿用 v1 的 PILOT 文档传统） |
 
 **止损**：试点显示 loop 开销 > 收益（solo 小项目场景），则 Runner 降级为"半自动"——只做 `run --stage` 单步 + inbox，watch 缓建；协议层成果不受影响。
 
@@ -312,7 +312,7 @@ gates:
 | D2 | Runner 载体 | **扩展现有 `@haiyangbg/buildbeat` CLI**（复用 Node 地基与发布链） | 新仓另起：边界干净但分裂维护面 |
 | D3 | 首个 agent adapter | **按你日常主力工具定**（cursor-agent 或 claude -p） | 双 adapter 齐发验证接口普适性，成本 +30% |
 | D4 | v1 手写状态废除节奏 | **v2 新项目直接无手写状态**；v1 项目迁移时一步到位 | 过渡期双轨（手写+派生并存）——强烈不建议，等于自造 SSOT 腐烂 |
-| D5 | Phase 1 试点项目 | 老乡鸡底座内选一个单仓、有测试、迭代活跃的小项目 | 用 BuildBeat 仓库自举：戏剧性强但元问题（用未验证的引擎改引擎）风险高 |
+| D5 | Phase 1 试点项目 | 所有者所在企业的 AI 底座内选一个单仓、有测试、迭代活跃的小项目 | 用 BuildBeat 仓库自举：戏剧性强但元问题（用未验证的引擎改引擎）风险高 |
 
 ---
 

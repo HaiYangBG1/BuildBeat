@@ -692,7 +692,7 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
 // Supersede (iteration 08, C2): a new Run for the same Work makes any older
 // Run still waiting on a human moot — the human would be approving a
 // candidate nobody intends to merge. Real incident: two WAITING_HUMAN runs
-// sat in the chickDEV inbox for a day after their successor had already
+// sat in a pilot repo's inbox for a day after their successor had already
 // shipped. Only WAITING_HUMAN runs are touched; RUNNING ones are protected
 // by the active lock, terminal ones are already settled.
 function supersedeWaitingRuns(repoRoot, workId, newRunId, now) {

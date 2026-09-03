@@ -24,16 +24,16 @@
   },
   "workspaces": {
     "RUN-M1-ACCEPT-01": {
-      "repo": "/Users/zhouhaiyang/Documents/Obsidian Vault/AI底座/solobaton",
+      "repo": ".",
       "branch": "run/RUN-M1-ACCEPT-01",
-      "worktreePath": "/Users/zhouhaiyang/Documents/Obsidian Vault/AI底座/solobaton/.buildbeat/worktrees/RUN-M1-ACCEPT-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-M1-ACCEPT-01",
       "base": "74e78826117fdb4e7e81cdf7e387d3d3c549da36",
       "candidate": "30b3a0d6a03e60a1b5fbe6082c0270cf853ebdd7"
     }
   },
   "evidence": [
     {
-      "ref": "/Users/zhouhaiyang/Documents/Obsidian Vault/AI底座/solobaton/.buildbeat/runtime/runs/RUN-M1-ACCEPT-01/logs/build-1.log",
+      "ref": ".buildbeat/runtime/runs/RUN-M1-ACCEPT-01/logs/build-1.log",
       "kind": "command",
       "subject": "30b3a0d6a03e60a1b5fbe6082c0270cf853ebdd7",
       "digest": "sha256:771867a0c8b0cf29d371f717eee5bce65e2a36bd6d033514d2c85a79e282088f",
@@ -41,7 +41,7 @@
       "grade": "L2"
     },
     {
-      "ref": "/Users/zhouhaiyang/Documents/Obsidian Vault/AI底座/solobaton/.buildbeat/runtime/runs/RUN-M1-ACCEPT-01/logs/verify-1.log",
+      "ref": ".buildbeat/runtime/runs/RUN-M1-ACCEPT-01/logs/verify-1.log",
       "kind": "command",
       "subject": "30b3a0d6a03e60a1b5fbe6082c0270cf853ebdd7",
       "digest": "sha256:c80ae84d7deb0f2e1a354c7071f301dd38cdcce53d07d9ce79cd093e91867efa",

@@ -1,6 +1,6 @@
 // Work-level overview (iteration 08, C5): "where is this thing, and who
 // moves next" — the question the owner opened three sessions with
-// ("ChickDev 上线了吗 / 离上线还差多远 / 从每个系统说待办") and that inbox,
+// ("X 上线了吗 / 离上线还差多远 / 从每个系统说待办") and that inbox,
 // which only knows about runs waiting on a human, cannot answer.
 //
 // Everything here is derived: work directories and decision ledgers in the
