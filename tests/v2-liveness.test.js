@@ -113,7 +113,11 @@ test("shell adapter without liveDir keeps the buffered behaviour", () => {
 
 test("timeline, typical durations and stall detection derive from the ledger and live files only", () => {
   const root = mkdtempSync(join(tmpdir(), "bb-v2-live-"));
-  const origin = Date.parse("2026-09-02T10:00:00.000Z");
+  // Anchored to the real clock: the CLI half of this test reads the live
+  // files with Date.now(), so the fixture's "20 minutes ago" must be 20
+  // minutes before *now*, not before a fixed date (a fixed date made the
+  // relaxed-threshold assertion flip once the calendar moved on).
+  const origin = Date.now() - (400_000 + 25 * 60_000);
   // An older run gives build a history: 5 min and 7 min → median 6 min.
   const older = runningLedger(root, "RUN-OLD", { origin: origin - 86_400_000 });
   older.ledger.append({ type: "STEP_FINISHED", actor: KERNEL, ts: older.at(430_000), data: { step: "verify", attempt: 1, status: "failed" } });
@@ -164,12 +168,12 @@ test("timeline, typical durations and stall detection derive from the ledger and
   // CLI status renders the same facts; the raw absolute path never leaks.
   const statusOut = cli(["status", "--repo", root, "--run", "RUN-NOW"]);
   assert.match(statusOut, /step build: SUCCEEDED \(attempts 1\) \[last 5m, typical 6m n=2\]/);
-  assert.match(statusOut, /in flight: verify attempt 1 since 2026-09-02T10:06:40\.000Z \(elapsed .*typical 30s n=1\)/);
+  assert.match(statusOut, /in flight: verify attempt 1 since \S+ \(elapsed .*typical 30s n=1\)/);
   assert.match(statusOut, /worker: bash -lc npm test/);
   assert.match(statusOut, /STALLED: no output for/);
   assert.match(statusOut, /\| still going/);
   assert.doesNotMatch(statusOut, new RegExp(root));
-  const relaxedOut = cli(["status", "--repo", root, "--run", "RUN-NOW", "--stall-after", "600"]);
+  const relaxedOut = cli(["status", "--repo", root, "--run", "RUN-NOW", "--stall-after", "30"]);
   assert.doesNotMatch(relaxedOut, /STALLED/);
 
   // watch --once reports the stall exactly once per attempt and exits.
