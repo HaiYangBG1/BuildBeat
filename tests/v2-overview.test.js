@@ -132,7 +132,7 @@ test("overview derives each work's stage and next move from the Git and runtime 
   assert.match(out, /WORK-G  MERGED/);
   assert.match(out, /WORK-H  CLOSED/);
   assert.match(out, /intent ✓ · plan ✓ · runs 1/);
-  assert.match(out, /next: release\/deploy stays a human action/);
+  assert.match(out, /next: candidate \w{7} \(RUN-[A-Z0-9-]+\) is on main; release\/deploy stays a human action/);
   assert.doesNotMatch(out, new RegExp(root));
   const one = execFileSync("node", [CLI, "overview", "--repo", root, "--work", "WORK-A", "--json", "true"], { encoding: "utf8" });
   assert.equal(JSON.parse(one).length, 1);

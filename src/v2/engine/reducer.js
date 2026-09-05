@@ -219,6 +219,7 @@ export function applyEvent(state, event) {
           transition: data.transition,
           subject: data.subject,
           stale: false,
+          ...(data.resumeAt ? { resumeAt: data.resumeAt } : {}),
         });
       }
       next.pendingHuman = null;

@@ -41,6 +41,7 @@ export function writeRunRecord({ repoRoot, ledger, ts }) {
   const record = {
     run: first.run,
     work: first.work,
+    workflow: state.run?.workflowRef ?? null,
     terminal: state.terminal,
     events: { from: first.seq, to: last.seq, lastDigest: last.digest },
     startedAt: first.ts,

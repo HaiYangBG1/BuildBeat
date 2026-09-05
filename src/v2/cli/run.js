@@ -17,11 +17,11 @@ import { fileURLToPath } from "node:url";
 
 import { createShellAdapter } from "../adapters/shell.js";
 import { loadRiskPreset } from "../engine/risk-preset.js";
-import { loadWorkflow } from "../engine/workflow.js";
+import { loadWorkflow, nextStep } from "../engine/workflow.js";
 import { parseYamlSubset } from "../engine/yaml-subset.js";
 import { parsePolicyDoc } from "../policy/policy.js";
 import { observeStatus, runObserveCycle, triageIntent } from "../observe/observe.js";
-import { acceptArtifact, approveRun, listInbox, rejectRun } from "../runtime/decisions.js";
+import { acceptArtifact, adoptCandidate, approveRun, listInbox, rejectRun } from "../runtime/decisions.js";
 import { checkRequires } from "../runtime/env-contract.js";
 import {
   adjudicateFinding,
@@ -31,7 +31,7 @@ import {
 } from "../runtime/findings.js";
 import { loadEnvelope, nextAttemptId } from "../runtime/envelope.js";
 import { applyGc, planGc } from "../runtime/gc.js";
-import { computeOverview, renderOverview } from "../runtime/overview.js";
+import { artifactStatus, computeOverview, readJsonl, renderOverview } from "../runtime/overview.js";
 import {
   DEFAULT_STALL_AFTER_MS,
   describeLiveness,
@@ -59,7 +59,7 @@ const USAGE = `BuildBeat v2 runtime
 
 Usage:
   run.js start --config <run-config.yaml> [--attempt new]
-  run.js resume --config <run-config.yaml>
+  run.js resume --config <run-config.yaml> [--adopt <sha> --by <name>]   # --adopt: hand fix committed in the worktree; skip fix, resume at verify
   run.js status --repo <path> --run <RUN-ID> [--stall-after <minutes>]
   run.js inbox --repo <path>
   run.js overview --repo <path> [--work <WORK-ID>] [--json true]
@@ -477,6 +477,15 @@ async function commandStart(flags) {
 
 async function commandResume(flags) {
   const options = loadRunConfig(flags, "resume");
+  if (flags.adopt !== undefined) {
+    const resumeAt = nextStep(options.workflow, "fix", "succeeded") ?? "verify";
+    const adopted = adoptCandidate(options.repoRoot, options.runId, {
+      sha: flags.adopt,
+      by: flags.by ?? "human",
+      resumeAt,
+    });
+    console.log(`adopted ${adopted.adopted} as candidate (${adopted.decisionRef}, answers ${adopted.transition}); resuming at ${adopted.resumeAt}`);
+  }
   const watching = spawnStallWatcher(options.repoRoot, options.runId, options.stallAfterMs);
   if (watching) {
     console.log(`stall watcher armed (no output for ${formatMs(options.stallAfterMs)} notifies STALLED)`);
@@ -587,6 +596,26 @@ function commandAccept(flags) {
   console.log("  note: editing the artifact after acceptance makes this acceptance stale");
 }
 
+// Artifacts a policy rule requires to be accepted (artifact.accepted leaves
+// anywhere under all/any/not).
+function artifactsRequiredBy(rule, found = []) {
+  if (!rule || typeof rule !== "object") {
+    return found;
+  }
+  for (const [key, value] of Object.entries(rule)) {
+    if (key === "artifact.accepted" && value && typeof value.artifact === "string") {
+      found.push(value.artifact);
+    } else if (Array.isArray(value)) {
+      for (const item of value) {
+        artifactsRequiredBy(item, found);
+      }
+    } else if (value && typeof value === "object") {
+      artifactsRequiredBy(value, found);
+    }
+  }
+  return found;
+}
+
 function commandDoctor(flags) {
   const options = loadRunConfig(flags, "doctor");
   console.log(`risk preset: ${options.riskPreset}`);
@@ -645,6 +674,36 @@ function commandDoctor(flags) {
   console.log(`budgets (maxAttempts per step; approving resume-<step> after exhaustion grants +1): ${budgetLines.join(", ")}`);
   if (options.budgets.reviewRoundsPerWork !== undefined) {
     console.log(`budgets.reviewRoundsPerWork: ${options.budgets.reviewRoundsPerWork} (counted across every run of the work, superseded ones included)`);
+  }
+  // Same preconditions start's first gate will read (real incident, twice:
+  // doctor passed, start stopped at build because plan.md was not mirrored
+  // into the repository the run was started in).
+  const workDir = join(options.repoRoot, "delivery", "work", options.workId);
+  const decisions = readJsonl(join(workDir, "decisions.jsonl"));
+  console.log(`work artifacts in this repository (delivery/work/${options.workId}):`);
+  const artifactState = {};
+  for (const artifact of ["intent", "plan"]) {
+    const status = artifactStatus(workDir, decisions, artifact);
+    artifactState[artifact] = status;
+    const label = !status.exists
+      ? "MISSING"
+      : status.stale
+        ? "accepted but edited since (stale)"
+        : status.accepted
+          ? `accepted${status.by ? ` by ${status.by}` : ""}`
+          : "draft (not accepted)";
+    console.log(`  ${artifact}.md: ${label}`);
+  }
+  for (const policy of options.policies) {
+    for (const artifact of artifactsRequiredBy(policy.rule)) {
+      const status = artifactState[artifact] ?? artifactStatus(workDir, decisions, artifact);
+      if (!status.accepted) {
+        console.log(
+          `  WARNING policy ${policy.name} (${policy.type} ${policy.appliesTo}) needs an accepted ${artifact}.md; start will stop at ${policy.appliesTo}` +
+            (!status.exists ? " (file missing here: mirror it into this repository, then accept)" : " (accept it first)"),
+        );
+      }
+    }
   }
   if (options.requires.length > 0) {
     console.log("environment contract (requires):");

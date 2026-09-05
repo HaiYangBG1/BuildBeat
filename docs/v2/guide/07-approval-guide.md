@@ -79,6 +79,20 @@ merge 批准只表示 **merge-ready**：真正的合并、push、发布是你在
 
 `inbox` 只知道哪个 Run 在等人；`buildbeat-v2 overview --repo .` 按 Work 回答「走到哪、下一步该谁」——intent/plan 是否被接受（接受后改过即 `stale`）、最新 Run 状态与候选、候选是否已合入当前分支、未裁决 P0/P1 数、是否有 `env-facts.md`，每行附下一句命令。运行时被删后由 Git 面 run-record 补足。会话开场先跑它，再回答用户「当前进度」。
 
+**阶段判定的真相修正（迭代 09）**：候选只要合入了当前分支，Work 就是 `MERGED`，哪怕最新 Run 是 CANCELLED（试点一条应用登录 Run 因预算问题被取消，候选却已在生产，overview 曾报 `STOPPED_CANCELLED` 并催重试）；`release-readback` 车道成功关窗的 Work 显示 `RELEASED`，不再说 "nothing to merge"；已合并 / 已发布 / 已关闭的 Work 不再提示未裁决 finding 数。`overview` 每个 Work 还多一行 `cost:`（见 [Workflow 指南](02-workflow-guide.md) 的 Work 级预算）。
+
+## 你自己改好了：`resume --adopt`（迭代 09）
+
+Run 停在 `enter-fix` / `resume-fix` 时，驾驶会话或人常常已经在 Run 的 worktree 里把问题修掉并提交了。此时再 `approve` 会派一个无事可做的 fixer，再多跑一次 verify（试点一条前端 Run 因此跑到 verify 第 5 次、fix 第 3 次）。改用：
+
+```bash
+buildbeat-v2 resume --config <run-config.yaml> --adopt <sha> --by <名字>
+```
+
+内核回读 worktree：树必须干净、HEAD 必须就是 `<sha>`（前缀 7 位起），否则拒绝；然后以人为 actor 落 `CANDIDATE_PINNED`（`adopted: true`）、以该提交为 subject 记 `DECISION_RECORDED`（`adopted`、`resumeAt`），并从 verify 继续（预设里 fix 成功后的下一步）。台账里看得出这一版候选是谁供的。合并决定处不接受 adopt。
+
+`doctor` 现在还打印本仓 `delivery/work/<ID>/` 里 intent / plan 的存在与接受状态，并对每条要求 `artifact.accepted` 的 policy 预告"start 会停在哪一步"——此前两次 doctor 通过、start 却被"plan 未镜像到子仓"挡住。
+
 ## 可见命名是门前决策项（迭代 08）
 
 审批三级里 `BATCH_AT_GATE` 明确包含：域名、服务名、环境名、自停时长、窗口时长等**所有者以后要看见或念出来的名字与参数**。worker 顺手定的名字进不了台账；planner 在 intent 里列出并给推荐值，人一次批。

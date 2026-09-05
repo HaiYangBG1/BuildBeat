@@ -26,9 +26,10 @@ description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工�
 | 「当前进度」「待办是什么」「X 上线了吗」「离上线还差多远」 | `buildbeat-v2 overview --repo .`(每个 Work 的阶段 + 下一步该谁 + `cost:` 已花的 Run/review 轮/等人次数/worker 时长)+ `observe status --repo .` | 每件事一句:走到哪、卡在谁、下一步;**不列命令**;花费超过 intent 止损线的 Work 要主动说「已 N 轮 review / N 小时,继续还是砍」 |
 | 「有什么要我拍板」 | `buildbeat-v2 inbox --repo .` | 逐项:等什么、证据在哪、推荐 A/B;用户回「批准/拒绝」后会话调 `approve`/`reject` |
 | 「开个 Work:〔目标〕」 | 写 `delivery/work/<ID>/intent.md`(为什么做 + **止损线**:最多几个 Run / 几轮 review / 几小时,越线先问人)+ `plan.md`(怎么做)+ `run-config.yaml`(`budgets.reviewRoundsPerWork` 对应止损线);给用户看摘要 | 「看完说接受」;用户说「接受」→ `accept --artifact intent` / `--artifact plan`(digest 绑定) |
-| 「开工」「再来一轮」 | `buildbeat-v2 start --config <run-config.yaml> --attempt new`(自动编号 RUN-X-01/02…,自动作废同 Work 的旧等待;**用 nohup/setsid 脱离启动**) | 「已起 RUN-X-02,停在合并决定时会通知/我会告诉你」 |
+| 「开工」「再来一轮」 | 先 `buildbeat-v2 doctor --config <run-config.yaml>`(会报本仓 intent/plan 是否存在且已接受、哪条 policy 会把 start 挡在哪步、每步预算),再 `start --config <run-config.yaml> --attempt new`(自动编号 RUN-X-01/02…,自动作废同 Work 的旧等待;**用 nohup/setsid 脱离启动**) | 「已起 RUN-X-02,停在合并决定时会通知/我会告诉你」 |
 | 「怎么样了」「卡住了吗」「正常吗」 | `buildbeat-v2 status --repo . --run <RUN>` | 一句:在跑第几步、跑了多久、历史通常多久、最后一次输出几分钟前;`STALLED` 就说「疑似卡住,建议停/等」;停在 kind `infra` 就说「worker 环境/后端故障,不是代码问题,恢复后我重跑,预算不扣」 |
 | 「批准 RUN-X」「拒绝,原因…」 | `approve --transition <t> --by <用户名>` / `reject --reason` → 若非终态再 `resume` | 「批准=merge-ready;合并/push/部署要你另说」 |
+| 会话自己在 Run 的 worktree 里把 finding 修完并提交了(Run 停在 enter-fix / resume-fix) | `resume --config <cfg> --adopt <sha> --by <会话名>`(跳过 fixer,从 verify 续跑;树必须干净、HEAD 必须是该 sha) | 「我已手修并提交 <sha>,验证重跑中」;**不要**为了让 fixer 空跑而 approve enter-fix |
 | 「这条 finding 不算,那条接受」 | `findings list` / `findings adjudicate --action dismiss|accept` → `approve --transition enter-fix` | 裁决结果一句 |
 | 「上线」「做生产动作」 | 用 `release-readback` 预设 + `riskPreset: release` 开 Run:preflight 回读 → 停 `enter-apply-readback` | 「回读全绿,现在轮到你做〔动作〕;做完说一声」→ 用户说「做完了」→ `approve enter-apply-readback` → 回读+观察 → 停关窗 |
 | 「打扫卫生」 | `buildbeat-v2 gc --repo .`(先出计划)→ 用户点头 → `--apply true` | 清了几个工作树、留了哪些分支及为什么 |

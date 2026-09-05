@@ -22,7 +22,7 @@ function sha256File(path) {
   return `sha256:${createHash("sha256").update(readFileSync(path, "utf8"), "utf8").digest("hex")}`;
 }
 
-function readJsonl(path) {
+export function readJsonl(path) {
   if (!existsSync(path)) {
     return [];
   }
@@ -39,7 +39,7 @@ function readJsonl(path) {
     .filter(Boolean);
 }
 
-function artifactStatus(workDir, decisions, artifact) {
+export function artifactStatus(workDir, decisions, artifact) {
   const path = join(workDir, `${artifact}.md`);
   if (!existsSync(path)) {
     return { exists: false, accepted: false, stale: false };
@@ -94,6 +94,8 @@ function runsFor(repoRoot, workId) {
         candidate: state.workspaces[state.run.id]?.candidate ?? null,
         createdAt: ledger.events[0]?.ts ?? null,
         lastAt: ledger.events[ledger.events.length - 1]?.ts ?? null,
+        workflow: state.run.workflowRef ?? null,
+        steps: Object.keys(state.steps),
         state,
         source: "runtime",
       });
@@ -119,6 +121,8 @@ function runsFor(repoRoot, workId) {
           candidate: record.workspaces?.[entry]?.candidate ?? null,
           createdAt: record.startedAt ?? null,
           lastAt: record.finishedAt ?? null,
+          workflow: record.workflow ?? null,
+          steps: Object.keys(record.attempts ?? {}),
           state: null,
           source: "run-record",
         });
@@ -157,10 +161,16 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
     const runs = runsFor(repoRoot, workId);
     const live = runs.filter((run) => run.status !== "SUPERSEDED");
     const latest = live[live.length - 1] ?? null;
-    let merged = false;
-    if (latest?.candidate) {
-      merged = isAncestor(repoRoot, latest.candidate, mainRef);
-    }
+    // "Merged" is a fact about any candidate of the work, not only the
+    // latest run's: a pilot's shipped candidate sat behind a CANCELLED run
+    // (its in-run review budget ran out and closure happened elsewhere) and
+    // overview reported the shipped work as STOPPED_CANCELLED.
+    const mergedRun =
+      [...runs].reverse().find((run) => run.candidate && isAncestor(repoRoot, run.candidate, mainRef)) ?? null;
+    const merged = Boolean(mergedRun);
+    const RELEASE_STEPS = ["preflight", "apply-readback", "observe"];
+    const isReleaseLane = (run) =>
+      Boolean(run) && (run.workflow === "release-readback" || run.steps.some((step) => RELEASE_STEPS.includes(step)));
 
     // A Work is closed by an explicit row in decisions.jsonl:
     //   {"transition":"close-work","decision":"closed"|"cancelled","subject":{"result":"..."}}
@@ -202,16 +212,21 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
       stage = latest.pendingHuman?.kind === "final-decision" ? "MERGE_DECISION" : "WAITING_HUMAN";
       const replies = latest.state ? nextReply({ repoLabel, state: latest.state }) : [];
       next = replies[0] ?? `buildbeat-v2 inbox --repo ${repoLabel}`;
+    } else if (latest.status === "SUCCEEDED" && isReleaseLane(latest)) {
+      // A release-readback lane that reached wait-close and was approved is
+      // a closed release window, not "nothing to merge".
+      stage = "RELEASED";
+      next = `release window closed by ${latest.id}; close the work with a decisions.jsonl row {"transition":"close-work","decision":"closed","subject":{"result":"released"}}`;
+    } else if (merged) {
+      stage = "MERGED";
+      next =
+        `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release/deploy stays a human action; then buildbeat-v2 gc --repo ${repoLabel}` +
+        (latest.status !== "SUCCEEDED" ? `   # latest run ${latest.id} ended ${latest.status} after the merge` : "");
     } else if (latest.status === "SUCCEEDED") {
-      if (merged) {
-        stage = "MERGED";
-        next = `release/deploy stays a human action; then buildbeat-v2 gc --repo ${repoLabel}`;
-      } else {
-        stage = "MERGE_READY";
-        next = latest.candidate
-          ? `merge ${latest.candidate.slice(0, 7)} (run/${latest.id}) into ${mainRef} — manual, then push`
-          : "run succeeded without a candidate; nothing to merge";
-      }
+      stage = "MERGE_READY";
+      next = latest.candidate
+        ? `merge ${latest.candidate.slice(0, 7)} (run/${latest.id}) into ${mainRef} — manual, then push`
+        : "run succeeded without a candidate; nothing to merge";
     } else {
       stage = `STOPPED_${latest.status}`;
       next = plan.accepted
@@ -231,6 +246,7 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
         ? { id: latest.id, status: latest.status, candidate: latest.candidate, at: latest.lastAt, source: latest.source, terminalReason: latest.terminal?.reason ?? null, waiting: latest.pendingHuman?.transition ?? null }
         : null,
       merged,
+      mergedCandidate: mergedRun?.candidate ?? null,
       next,
     });
   }
@@ -255,7 +271,8 @@ export function renderOverview(rows) {
   for (const row of rows) {
     lines.push(`${row.work}  ${row.stage}`);
     const parts = [`intent ${mark(row.intent)}`, `plan ${mark(row.plan)}`, `runs ${row.runs}`];
-    if (row.openFindings > 0) {
+    const settled = ["MERGED", "RELEASED", "CLOSED", "CANCELLED"].includes(row.stage);
+    if (row.openFindings > 0 && !settled) {
       // Unadjudicated, not necessarily unresolved: a fixer may have closed
       // them without anyone recording a verdict. The number says "nobody
       // ruled on these", which is exactly what a human should know.
@@ -271,7 +288,9 @@ export function renderOverview(rows) {
       lines.push(`  cost: ${renderWorkCost(row.cost)}`);
     }
     if (row.latest) {
-      const cand = row.latest.candidate ? ` candidate ${row.latest.candidate.slice(0, 7)}${row.merged ? " (merged)" : ""}` : "";
+      const cand = row.latest.candidate
+        ? ` candidate ${row.latest.candidate.slice(0, 7)}${row.latest.candidate === row.mergedCandidate ? " (merged)" : ""}`
+        : "";
       const wait = row.latest.waiting ? ` waiting ${row.latest.waiting}` : "";
       const why = row.latest.terminalReason ? ` — ${row.latest.terminalReason.slice(0, 100)}` : "";
       lines.push(`  latest ${row.latest.id} ${row.latest.status}${cand}${wait} @ ${row.latest.at ?? "?"}${why}`);

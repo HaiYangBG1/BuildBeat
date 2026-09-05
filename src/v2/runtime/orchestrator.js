@@ -992,7 +992,9 @@ export function resumeRun(options) {
         });
         return { runId, ledgerPath, state: ledger.state, resumed: true, stale: true, reason: null };
       }
-      const step = resumeStepFromTransition(approval.transition);
+      // An adopted candidate names where to resume (verify, by convention):
+      // the fixer step the request was waiting on has nothing left to do.
+      const step = approval.resumeAt ?? resumeStepFromTransition(approval.transition);
       if (!step || !context.workflow.stepIds.has(step)) {
         throw new OrchestratorError(
           `cannot derive a resume step from approved transition ${approval.transition}`,

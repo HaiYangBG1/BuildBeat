@@ -185,6 +185,86 @@ export function approveRun(repoRoot, runId, { by = "human", transition, ts, poli
   }
 }
 
+// A human (or the driving session) supplies the candidate: the fix was made
+// by hand in the run's worktree and committed, so the fixer step has nothing
+// to do. The pending request is answered with the adopted commit as its
+// subject and the run resumes at `resumeAt` (verify, by convention). Real
+// incident: hand fixes inside a run cost a no-op fixer and an extra verify
+// each time (a frontend run reached verify #5 and fix #3 for three hand
+// fixes). The commit must already be the worktree HEAD: git is read back,
+// the claim is not trusted.
+export function adoptCandidate(repoRoot, runId, { sha, by = "human", resumeAt, ts } = {}) {
+  if (!sha || typeof sha !== "string" || sha.length < 7) {
+    throw new DecisionError("adopt requires a commit sha (at least 7 characters)");
+  }
+  if (!resumeAt) {
+    throw new DecisionError("adopt requires the step to resume at (resumeAt)");
+  }
+  const ledger = openWaiting(repoRoot, runId);
+  const pending = ledger.state.pendingHuman;
+  if (pending.kind === "final-decision") {
+    throw new DecisionError("adopt is for a run waiting before fix/verify, not at the merge decision");
+  }
+  acquireLock(repoRoot, runId);
+  try {
+    const bound = ledger.state.workspaces[runId];
+    const worktreePath = bound ? resolveRepoRef(repoRoot, bound.worktreePath) : null;
+    if (!bound || !existsSync(worktreePath)) {
+      throw new DecisionError(`worktree missing for ${runId}; cannot adopt a candidate`);
+    }
+    const tree = readback(worktreePath);
+    if (tree.dirty) {
+      throw new DecisionError("worktree is dirty; commit the hand fix before adopting it");
+    }
+    if (!tree.head.startsWith(sha)) {
+      throw new DecisionError(`worktree HEAD is ${tree.head}, not ${sha}; adopt what git reads back`);
+    }
+    const when = ts ?? new Date().toISOString();
+    const lastEvidence = ledger.state.evidence[ledger.state.evidence.length - 1];
+    if (bound.candidate !== tree.head) {
+      ledger.append({
+        type: "CANDIDATE_PINNED",
+        actor: { kind: "human", id: by },
+        ts: when,
+        data: { workspaceId: runId, base: bound.base, candidate: tree.head, adopted: true },
+      });
+    }
+    const subject = {
+      candidate: tree.head,
+      planDigest: ledger.state.run.planDigest,
+      evidenceDigest: lastEvidence?.digest ?? "UNVERIFIED",
+    };
+    const decisionRef = `D-${runId}-${ledger.state.decisions.length + 1}`;
+    ledger.append({
+      type: "DECISION_RECORDED",
+      actor: { kind: "human", id: by },
+      ts: when,
+      data: {
+        decision: "approved",
+        transition: pending.transition,
+        subject,
+        decisionRef,
+        adopted: tree.head,
+        resumeAt,
+      },
+    });
+    recordDecisionFile(repoRoot, ledger.state.run.work, {
+      ts: when,
+      run: runId,
+      decisionRef,
+      decision: "approved",
+      transition: pending.transition,
+      subject,
+      by,
+      adopted: tree.head,
+      resumeAt,
+    });
+    return { adopted: tree.head, decisionRef, transition: pending.transition, resumeAt, state: ledger.state };
+  } finally {
+    releaseLock(repoRoot, runId);
+  }
+}
+
 // Accepts a work artifact (plan, intent, spec) by binding a decision to the
 // file's current digest in the Git plane. If the file changes afterwards,
 // artifact.accepted evaluates false again — acceptance cannot go stale
