@@ -12,6 +12,8 @@ BuildBeat（旧称 Solobaton）是一套面向人和 AI 会话的、**file-first
 
 BuildBeat 最初蒸馏自一个人指挥 4 个 AI 会话、持续多期交付复杂产品的实践；这说明了方法的来源，不限定使用人数。一个 Builder 可以使用，多个 Builder 也可以共享同一 Git 项目并按需求/工作包分别闭环。
 
+**当前主线是 v2**（`@haiyangbg/buildbeat@next`，2.0.0-beta.5）：在 v1 的文件总线与人工 Gate 之上加了一个由 AI 会话调用的交付运行时 `buildbeat-v2`——隔离 worktree 内 Build → Verify → Review → Fix 自动闭环、停在合并决定，`overview` / `inbox` / `status` 回答「到哪了、谁批、卡没卡」。见下文 [v2 运行时](#v2-运行时buildbeat-v2当前主线dist-tag-next) 与 [`docs/v2/guide/`](docs/v2/guide/README.md)。稳定分发 `@latest` 仍是 v1.21.0。
+
 ## 解决什么问题
 
 当一个项目同时打开多个 AI Coding 会话，最容易失控的不是代码生成，而是交付状态：
@@ -82,6 +84,22 @@ npm uninstall --global @haiyangbg/buildbeat       # 只移除全局 CLI 包
 已拷出的 v1.16 legacy 项目不得手写、复制或重命名 manifest 来伪造 schema 2 所有权。默认继续按 CHANGELOG 手工维护；如果确需进入机械升级，按 [v1.16 legacy 迁移指南](docs/LEGACY-V1.16-MIGRATION.md) 在专用 Git 分支受控重建基线。
 
 旧 `solobaton@latest` 固定在 legacy v0 只读能力，并迁移提示到本 scoped package；它不会获得新的项目写入或升级能力。写入式首屏命令必须使用 `@haiyangbg/buildbeat`，并且仍先展示计划、受 Git/碰撞/所有权检查约束，不能跨人工 Gate。
+
+### v2 运行时：`buildbeat-v2`（当前主线，dist-tag `next`）
+
+v2 把「一个工作包怎么从接受走到合并、上线」做成了机器可核验的 Run：`delivery/work/<ID>/` 里的 intent / plan 被 digest 绑定接受后，`buildbeat-v2 start` 在隔离 git worktree 里按官方预设跑 Build → Verify → Review → Fix，候选由 git 回读而不是 worker 自述，只读 reviewer 由机器强制，超预算、同指纹重复失败、worker 基础设施故障都停下来等人；合并、push、部署永远是人批之后的人类动作（内核没有这些调用路径）。上线用 `release-readback` 车道把「做之前回读 → 人做 → 做之后回读 → 观察 → 人关窗」记成 L4 证据；`observe` 做生产只读体检；`gc` 打扫；`.buildbeat/notify.yaml` 把等待推到钉钉或 webhook。
+
+它不创建 Agent、不管理模型：worker 是你在 run 配置里写的任意命令（Codex / Claude Code / 一段脚本都行），内核只负责台账、隔离、证据和门。
+
+```bash
+npm install --global @haiyangbg/buildbeat@next   # v2 预发布；latest 仍是 v1.21.0
+buildbeat-v2 overview --repo .                     # 每个 Work 走到哪、花了多少、下一步该谁
+buildbeat-v2 inbox --repo .                        # 谁在等你批，下一句该说什么
+buildbeat-v2 start --config delivery/work/WORK-X/run-config.yaml --attempt new
+buildbeat-v2 status --repo . --run RUN-X-01        # 在跑第几步、跑了多久、历史通常多久、卡没卡
+```
+
+在 AI 会话里用的人不需要记这些命令：[`SKILL.md`](SKILL.md) §0.5 是给会话读的驾驶手册，用户说「当前进度 / 开工 / 怎么样了 / 批准 / 上线 / 打扫卫生」即可。用户视角的一页在 [`docs/v2/guide/00-how-to-talk.md`](docs/v2/guide/00-how-to-talk.md)，十件套指南索引在 [`docs/v2/guide/README.md`](docs/v2/guide/README.md)，从 v1 文件总线迁移见 [`docs/v2/guide/08-migration-v1.md`](docs/v2/guide/08-migration-v1.md)。每个 beta 的内容与发布证据见 [`CHANGELOG.md`](CHANGELOG.md) 与 `docs/V2.0.0-BETA.*-RELEASE-EVIDENCE-*.md`；每条机制背后的真实事故在 [`lessons.md`](lessons.md)。
 
 ### 手动安装
 
@@ -242,7 +260,8 @@ Skill-only、legacy npm v0 和 scoped BuildBeat 1.21 是三个不同可用面；
 
 ## 继续阅读
 
-- [`SKILL.md`](SKILL.md)：方法论与 Bootstrap 的唯一完整入口；
+- [`SKILL.md`](SKILL.md)：方法论与 Bootstrap 的唯一完整入口，§0.5 是 v2 驾驶手册；
+- [`docs/v2/guide/README.md`](docs/v2/guide/README.md)：v2 运行时十件套指南（怎么和会话说话、快速开始、workflow / policy / adapter / worker 合同 / 证据 / 审批 / 从 v1 迁移 / 安全边界 / 恢复）；
 - [`example/`](example/)：虚构「简账」项目一期收尾的协议教学快照（可执行脚本仍引用模板 SSOT）；
 - [`lessons.md`](lessons.md)：真实反模式、根因与解法；
 - [`docs/ROADMAP.md`](docs/ROADMAP.md)：新版产品方向、设计原则与 2026-08-24 生效的 CLI 执行修订；

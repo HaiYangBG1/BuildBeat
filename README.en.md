@@ -12,6 +12,8 @@ Requirements, boards, contracts, decisions, status, and verification evidence li
 
 BuildBeat began with one person coordinating four AI sessions across a complex, multi-iteration product. That is its origin, not an audience limit. One Builder can use it, or several Builders can share one Git project and close separate requirement/work packages end to end.
 
+**v2 is the current line** (`@haiyangbg/buildbeat@next`, 2.0.0-beta.5): on top of the v1 file bus and human Gates it adds `buildbeat-v2`, a delivery runtime driven by AI sessions — an automatic Build → Verify → Review → Fix loop inside an isolated worktree that stops at the merge decision, with `overview` / `inbox` / `status` answering "where is it, who decides, is it stuck". See [the v2 runtime](#the-v2-runtime-buildbeat-v2-current-line-dist-tag-next) below and [`docs/v2/guide/`](docs/v2/guide/README.md). The stable distribution `@latest` is still v1.21.0.
+
 > **Language note:** `SKILL.md`, the scaffold templates, and script output are currently Chinese-first. The delivery protocol is language-independent, and a project can translate its generated scaffold during bootstrap.
 
 ## The problem it solves
@@ -84,6 +86,22 @@ Package-manager install, update, and removal operations manage only the **CLI pa
 Copied v1.16 legacy projects must not hand-author, copy, or rename a manifest to fabricate schema 2 ownership. Continue with manual CHANGELOG-based maintenance by default; if mechanical upgrades are genuinely required, use the [v1.16 legacy migration guide](docs/LEGACY-V1.16-MIGRATION.md) to rebuild the baseline under review on a dedicated Git branch.
 
 The old `solobaton@latest` package stays on the legacy read-only v0 capability and points users to this scoped package; it does not gain project writes or upgrades. A write-enabled first-screen command must use `@haiyangbg/buildbeat`, still shows its plan first, and remains subject to Git, collision, ownership, and human-Gate boundaries.
+
+### The v2 runtime: `buildbeat-v2` (current line, dist-tag `next`)
+
+v2 turns "how a work package goes from accepted to merged to released" into a machine-verifiable Run: once the intent / plan under `delivery/work/<ID>/` are accepted by digest, `buildbeat-v2 start` drives Build → Verify → Review → Fix in an isolated git worktree under the official preset. The candidate is what git reads back, never what a worker claims; the read-only reviewer is enforced by the kernel; exhausted budgets, repeated identical failures and worker-infrastructure failures all stop for a human; merge, push and deploy remain human actions after approval (the kernel has no call path for them). Go-live uses the `release-readback` lane to ledger "read back before → human acts → read back after → observe → human closes the window" as L4 evidence; `observe` runs read-only production health checks; `gc` cleans up; `.buildbeat/notify.yaml` pushes waits to DingTalk or a webhook.
+
+It does not create agents or manage models: a worker is whatever command you put in the run config (Codex, Claude Code, a script); the kernel owns only the ledger, isolation, evidence and gates.
+
+```bash
+npm install --global @haiyangbg/buildbeat@next   # v2 pre-release; latest is still v1.21.0
+buildbeat-v2 overview --repo .                     # where each work is, what it has cost, who moves next
+buildbeat-v2 inbox --repo .                        # what is waiting on you, and the exact reply
+buildbeat-v2 start --config delivery/work/WORK-X/run-config.yaml --attempt new
+buildbeat-v2 status --repo . --run RUN-X-01        # which step, for how long, typical duration, stalled or not
+```
+
+People driving BuildBeat from an AI session do not need these commands: [`SKILL.md`](SKILL.md) §0.5 is the driving manual the session reads; the user says "progress / start / how is it going / approve / go live / clean up". The one-page user view is [`docs/v2/guide/00-how-to-talk.md`](docs/v2/guide/00-how-to-talk.md), the ten-guide index is [`docs/v2/guide/README.md`](docs/v2/guide/README.md), and migration from the v1 file bus is [`docs/v2/guide/08-migration-v1.md`](docs/v2/guide/08-migration-v1.md) (Chinese). Each beta's content and release evidence is in [`CHANGELOG.md`](CHANGELOG.md) and `docs/V2.0.0-BETA.*-RELEASE-EVIDENCE-*.md`; the real incident behind every mechanism is in [`lessons.md`](lessons.md).
 
 ### Manual installation
 
@@ -244,7 +262,8 @@ Skill-only, legacy npm v0, and scoped BuildBeat 1.21 are distinct availability s
 
 ## Continue reading
 
-- [`SKILL.md`](SKILL.md): the single complete entry point for the methodology and bootstrap;
+- [`SKILL.md`](SKILL.md): the single complete entry point for the methodology and bootstrap; §0.5 is the v2 driving manual;
+- [`docs/v2/guide/README.md`](docs/v2/guide/README.md): the ten v2 runtime guides (how to talk to a session, quickstart, workflow / policy / adapter / worker contract / evidence / approval / migration from v1 / security boundaries / recovery);
 - [`example/`](example/): the protocol teaching snapshot of a fictional project after one completed iteration (executable scripts still reference the template SSOT);
 - [`lessons.md`](lessons.md): real anti-patterns, root causes, and fixes;
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): the new product direction, design principles, and the CLI execution amendment effective on 2026-08-24;
