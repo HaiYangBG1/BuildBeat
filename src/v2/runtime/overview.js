@@ -161,9 +161,20 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
       merged = isAncestor(repoRoot, latest.candidate, mainRef);
     }
 
+    // A Work is closed by an explicit row in decisions.jsonl:
+    //   {"transition":"close-work","decision":"closed"|"cancelled","subject":{"result":"..."}}
+    // A live run (RUNNING / WAITING_HUMAN) contradicts a closure and wins, so a
+    // stale close row can never hide something that still needs a human.
+    const closure = [...decisions].reverse().find((row) => row.transition === "close-work");
+    const liveRun = latest && (latest.status === "RUNNING" || latest.status === "WAITING_HUMAN");
+
     let stage;
     let next;
-    if (!intent.exists) {
+    if (closure && !liveRun) {
+      stage = closure.decision === "cancelled" ? "CANCELLED" : "CLOSED";
+      const result = typeof closure.subject?.result === "string" && closure.subject.result.length > 0 ? closure.subject.result : "see decisions.jsonl";
+      next = `${stage.toLowerCase()} @ ${closure.ts ?? "?"}: ${result.slice(0, 160)}`;
+    } else if (!intent.exists) {
       stage = "NO_INTENT";
       next = `write delivery/work/${workId}/intent.md (what and why), then plan.md`;
     } else if (!latest) {
@@ -181,7 +192,7 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
         next =
           configs.length > 0
             ? `buildbeat-v2 start --config delivery/work/${workId}/${configs[0]} --attempt new`
-            : `no run-config in delivery/work/${workId}: write one, or record the work as closed in decisions.jsonl if it was doc-only`;
+            : `no run-config in delivery/work/${workId}: write one, or close it with a decisions.jsonl row {"transition":"close-work","decision":"closed","subject":{"result":"..."}} if it was doc-only`;
       }
     } else if (latest.status === "RUNNING") {
       stage = "RUNNING";

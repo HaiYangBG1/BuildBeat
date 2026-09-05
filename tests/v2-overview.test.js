@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -56,6 +56,23 @@ test("overview derives each work's stage and next move from the Git and runtime 
   acceptArtifact(root, "WORK-C", "intent", { by: "owner" });
   acceptArtifact(root, "WORK-C", "plan", { by: "owner" });
   writeFileSync(join(dirC, "plan.md"), "# plan WORK-C edited after acceptance\n");
+  const dirH = work(root, "WORK-H");
+  acceptArtifact(root, "WORK-H", "intent", { by: "owner" });
+  acceptArtifact(root, "WORK-H", "plan", { by: "owner" });
+  writeFileSync(
+    join(dirH, "decisions.jsonl"),
+    readFileSync(join(dirH, "decisions.jsonl"), "utf8") +
+      JSON.stringify({ ts: "2026-09-03T12:34:05Z", decision: "closed", transition: "close-work", subject: { result: "doc-only work shipped via main" }, by: "owner" }) +
+      "\n",
+  );
+  const dirI = work(root, "WORK-I");
+  acceptArtifact(root, "WORK-I", "intent", { by: "owner" });
+  writeFileSync(
+    join(dirI, "decisions.jsonl"),
+    readFileSync(join(dirI, "decisions.jsonl"), "utf8") +
+      JSON.stringify({ ts: "2026-09-05T04:05:00Z", decision: "cancelled", transition: "close-work", subject: { result: "cost > benefit" }, by: "owner" }) +
+      "\n",
+  );
   work(root, "WORK-D");
   acceptArtifact(root, "WORK-D", "intent", { by: "owner" });
   acceptArtifact(root, "WORK-D", "plan", { by: "owner" });
@@ -91,6 +108,11 @@ test("overview derives each work's stage and next move from the Git and runtime 
   assert.equal(rows["WORK-C"].stage, "PLAN_STALE");
   assert.equal(rows["WORK-C"].plan.stale, true);
   assert.equal(rows["WORK-D"].stage, "READY_TO_RUN");
+  assert.match(rows["WORK-D"].next, /close it with a decisions.jsonl row/);
+  assert.equal(rows["WORK-H"].stage, "CLOSED");
+  assert.match(rows["WORK-H"].next, /^closed @ 2026-09-03T12:34:05Z: doc-only work shipped via main$/);
+  assert.equal(rows["WORK-I"].stage, "CANCELLED");
+  assert.match(rows["WORK-I"].next, /^cancelled @ .*cost > benefit$/);
   assert.equal(rows["WORK-D"].envFacts, true);
   assert.equal(rows["WORK-E"].stage, "MERGE_DECISION");
   assert.match(rows["WORK-E"].next, /approve --repo \. --run RUN-E1 --transition enter-wait-merge/);
@@ -108,6 +130,7 @@ test("overview derives each work's stage and next move from the Git and runtime 
 
   const out = execFileSync("node", [CLI, "overview", "--repo", root], { encoding: "utf8" });
   assert.match(out, /WORK-G  MERGED/);
+  assert.match(out, /WORK-H  CLOSED/);
   assert.match(out, /intent ✓ · plan ✓ · runs 1/);
   assert.match(out, /next: release\/deploy stays a human action/);
   assert.doesNotMatch(out, new RegExp(root));

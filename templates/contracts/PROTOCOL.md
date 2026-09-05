@@ -13,6 +13,10 @@
 <!-- buildbeat-multirepo-map:v1
 repo=<代码子仓1>|contract=contracts/PROTOCOL.md|deployment=<bus-baseline.json app 名或 n/a>
 -->
+<!-- map 行格式:repo=<子仓路径>|contract=<contracts/*.md 或 n/a>|deployment=<bus-baseline.json app 名或 n/a>[|changelog=<该仓内模块 CHANGELOG 路径>]
+     · changelog= 给多模块仓用(根下没有 CHANGELOG,由某个模块 CHANGELOG 承载契约版本);缺省 <repo>/CHANGELOG.md。
+     · contract=n/a 表示该仓没有契约版本域(如只读存量前端、npm 包 semver 与契约版本不同域),只登记不核对;不得拿它掩盖真实的契约关系。
+     · 被核对的 CHANGELOG 首个已发布 H2 须以契约快照版本开头,如 `## [v1.3 · Deployed 2026-09-05 · <sha> · <流水线>]`。 -->
 
 ---
 

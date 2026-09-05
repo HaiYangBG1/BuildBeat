@@ -2,6 +2,13 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+> 来源：试点工作区 2026-09-05 收尾清理回灌。
+
+- **`overview` 认得「已关闭」的 Work**：`delivery/work/<ID>/decisions.jsonl` 里一行 `{"transition":"close-work","decision":"closed"|"cancelled","subject":{"result":"…"}}` 即让该 Work 显示 `CLOSED` / `CANCELLED` 并带关闭时间与结果，不再把 12 个已关闭的 Work 报成 `READY_TO_RUN` 并催写 run-config；仍有 `RUNNING` / `WAITING_HUMAN` 的 Run 时活 Run 优先，关闭行藏不住待办。`READY_TO_RUN` 的 `next:` 提示改成给出这行的精确形状（此前只说「record the work as closed」却没有任何读者）。
+- **`bus-check` 多仓 map 适配多模块仓与无契约版本域的仓**：`buildbeat-multirepo-map:v1` 行可选第 4 字段 `changelog=<repo 内模块 CHANGELOG 路径>`（根下没有 CHANGELOG 的多模块仓由某个模块 CHANGELOG 承载契约版本），`contract=n/a` 表示该仓没有契约版本域（只读存量前端、npm 包 semver 与契约版本不同域），只登记不核对。越出本仓的 `changelog=` 路径、非 `contracts/*.md` 且非 `n/a` 的契约值仍判 map 无效；被核对的 CHANGELOG 首个已发布 H2 须以契约快照版本开头（`## [v1.3 · Deployed …]`）。模板 `contracts/PROTOCOL.md` 注释与脚本测试同步。
+
 ## v2.0.0-beta.4 — 2026-09-03（迭代 08：等待要能找到人）
 
 > 主题：试点工作区 2026-08-28～09-02 全部驾驶会话与 58 个 Run 台账的复盘回灌（复盘文档见迭代 08 记录）。台账数字：58 个 Run 成功 7、失败 17、取消 32，其中多数取消是在 WAITING_HUMAN 挂满一天后批量清掉；人批平均等 7～12 小时。beta.3 治的是"审查循环烧钱"，本版治的是**人看不见 Run 在干什么、等的人不知道有东西等他、每次都要手工打扫**。
