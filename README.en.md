@@ -12,7 +12,7 @@ Requirements, boards, contracts, decisions, status, and verification evidence li
 
 BuildBeat began with one person coordinating four AI sessions across a complex, multi-iteration product. That is its origin, not an audience limit. One Builder can use it, or several Builders can share one Git project and close separate requirement/work packages end to end.
 
-**v2 is the current line** (`@haiyangbg/buildbeat@next`, 2.0.0-beta.5): on top of the v1 file bus and human Gates it adds `buildbeat-v2`, a delivery runtime driven by AI sessions — an automatic Build → Verify → Review → Fix loop inside an isolated worktree that stops at the merge decision, with `overview` / `inbox` / `status` answering "where is it, who decides, is it stuck". See [the v2 runtime](#the-v2-runtime-buildbeat-v2-current-line-dist-tag-next) below and [`docs/v2/guide/`](docs/v2/guide/README.md). The stable distribution `@latest` is still v1.21.0.
+**v2 is the current line** (`@haiyangbg/buildbeat@latest`, 2.0.0): on top of the v1 file bus and human Gates it adds `buildbeat-v2`, a delivery runtime driven by AI sessions — an automatic Build → Verify → Review → Fix loop inside an isolated worktree that stops at the merge decision, with `overview` / `inbox` / `status` answering "where is it, who decides, is it stuck". See [the v2 runtime](#the-v2-runtime-buildbeat-v2-current-line) below and [`docs/v2/guide/`](docs/v2/guide/README.md). Since 2.0.0 `@latest` is v2: the v1 `buildbeat` lifecycle commands are unchanged and `buildbeat-v2` is a second executable in the same package; `@next` is for later pre-releases.
 
 > **Language note:** `SKILL.md`, the scaffold templates, and script output are currently Chinese-first. The delivery protocol is language-independent, and a project can translate its generated scaffold during bootstrap.
 
@@ -87,14 +87,14 @@ Copied v1.16 legacy projects must not hand-author, copy, or rename a manifest to
 
 The old `solobaton@latest` package stays on the legacy read-only v0 capability and points users to this scoped package; it does not gain project writes or upgrades. A write-enabled first-screen command must use `@haiyangbg/buildbeat`, still shows its plan first, and remains subject to Git, collision, ownership, and human-Gate boundaries.
 
-### The v2 runtime: `buildbeat-v2` (current line, dist-tag `next`)
+### The v2 runtime: `buildbeat-v2` (current line)
 
 v2 turns "how a work package goes from accepted to merged to released" into a machine-verifiable Run: once the intent / plan under `delivery/work/<ID>/` are accepted by digest, `buildbeat-v2 start` drives Build → Verify → Review → Fix in an isolated git worktree under the official preset. The candidate is what git reads back, never what a worker claims; the read-only reviewer is enforced by the kernel; exhausted budgets, repeated identical failures and worker-infrastructure failures all stop for a human; merge, push and deploy remain human actions after approval (the kernel has no call path for them). Go-live uses the `release-readback` lane to ledger "read back before → human acts → read back after → observe → human closes the window" as L4 evidence; `observe` runs read-only production health checks; `gc` cleans up; `.buildbeat/notify.yaml` pushes waits to DingTalk or a webhook.
 
 It does not create agents or manage models: a worker is whatever command you put in the run config (Codex, Claude Code, a script); the kernel owns only the ledger, isolation, evidence and gates.
 
 ```bash
-npm install --global @haiyangbg/buildbeat@next   # v2 pre-release; latest is still v1.21.0
+npm install --global @haiyangbg/buildbeat@latest # since 2.0.0 latest is v2; pre-releases use @next
 buildbeat-v2 overview --repo .                     # where each work is, what it has cost, who moves next
 buildbeat-v2 inbox --repo .                        # what is waiting on you, and the exact reply
 buildbeat-v2 start --config delivery/work/WORK-X/run-config.yaml --attempt new

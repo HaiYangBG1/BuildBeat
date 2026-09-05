@@ -1,6 +1,6 @@
 # BuildBeat CLI lifecycle contract
 
-Status: **BuildBeat `1.21.0` independently verified scoped distribution** · canonical package `@haiyangbg/buildbeat` · canonical executable `buildbeat` · legacy package `solobaton@1.16.3` remains the independently verified read-only v0 · Node.js 20+ · zero third-party runtime dependencies. The 1.21 release keeps the verified 1.20 lifecycle command and safety boundaries, and adds the standard domain-response contract to the Skill and managed scaffold. The genuine lifecycle version-increment pilot remains archived in [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md); exact 1.21 registry and supply-chain evidence is archived in [`V1.21-RELEASE-EVIDENCE-2026-08-25.md`](V1.21-RELEASE-EVIDENCE-2026-08-25.md).
+Status: **BuildBeat `2.0.0` scoped distribution (stable `latest`; the v1 lifecycle CLI `buildbeat` is unchanged, the v2 delivery runtime `buildbeat-v2` ships alongside it — see `docs/v2/guide/`)** · previous independently verified stable `1.21.0` · canonical package `@haiyangbg/buildbeat` · canonical executable `buildbeat` · legacy package `solobaton@1.16.3` remains the independently verified read-only v0 · Node.js 20+ · zero third-party runtime dependencies. The 1.21 release keeps the verified 1.20 lifecycle command and safety boundaries, and adds the standard domain-response contract to the Skill and managed scaffold. The genuine lifecycle version-increment pilot remains archived in [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md); exact 1.21 registry and supply-chain evidence is archived in [`V1.21-RELEASE-EVIDENCE-2026-08-25.md`](V1.21-RELEASE-EVIDENCE-2026-08-25.md).
 
 The CLI does not replace `SKILL.md`. The Skill owns code-aware reasoning, minimal questions, project semantics, and human Gates. The CLI owns deterministic inspection, scaffold mechanics, manifest/hash bookkeeping, and bounded mechanical upgrade in the current scoped distribution. Synchronous file-bus checks remain authoritative in the project-local scripts specified by [`CHECKS.md`](CHECKS.md).
 
@@ -47,6 +47,7 @@ The target command whitelist is intentionally small:
 |---|---|---|
 | legacy `solobaton@1.16.3` | `doctor`, `init --dry-run`, `adopt --dry-run`, `version` | independently verified read-only v0; deprecated distribution ID after scoped migration |
 | BuildBeat `1.21.0` | `doctor`, `init`, `adopt`, `upgrade`, `version` | unchanged Phase 0–3 command set; writes remain bounded by the transaction and human-Gate contracts below |
+| BuildBeat `2.0.0` | same `buildbeat` command set; second executable `buildbeat-v2` (run / overview / inbox / status / approve / observe / gc …) | `buildbeat` lifecycle and safety boundaries unchanged; `buildbeat-v2` is the v2 runtime documented in [`v2/guide/README.md`](v2/guide/README.md) and never merges, pushes, deploys or publishes (invariant 20); the managed scaffold version stays `v1.21` (templates unchanged), so `upgrade` reports up-to-date for 1.21 scaffolds; the manifest `cliVersion` is a record, not an upgrade trigger |
 
 `help`, `--help`, and `--version` are meta entry points. `diff` and `uninstall` stay reserved and return `command_not_available`; `gate`, `adr`, `standards`, `check`, and other workflow commands are outside the approved CLI scope. HELP text and regression tests must lock this boundary.
 
@@ -128,7 +129,7 @@ Schema 2 is the first write-capable shape targeted by Wave 1:
 {
   "schemaVersion": 2,
   "scaffoldVersion": "v1.21",
-  "cliVersion": "2.0.0-beta.5",
+  "cliVersion": "2.0.0",
   "layout": "default",
   "installedAt": "2026-08-24T00:00:00.000Z",
   "files": {
