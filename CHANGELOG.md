@@ -4,7 +4,7 @@
 
 ## v2.0.0 — 2026-09-05（正式版：v2 成为 `latest`）
 
-> **发布状态**：所有者 2026-09-05 授权（「正式发布」）；从 `main` 以稳定 tag `v2.0.0` 发布到 dist-tag `latest`，发布与独立回读证据在发布后回填到 `docs/V2.0.0-RELEASE-EVIDENCE-2026-09-05.md`。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.0` 已于 2026-09-05 从 `main`（PR #22，tip `95e780e`，tag `v2.0.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 33974396871，双 job success；所有者授权「正式发布」）。独立回读（直连 npmjs.org）：`latest` = 2.0.0、integrity、attestation、隔离安装、`doctor` 有界 JSON 全过，GitHub Release v2.0.0 标 Latest，证据见 [`docs/V2.0.0-RELEASE-EVIDENCE-2026-09-05.md`](docs/V2.0.0-RELEASE-EVIDENCE-2026-09-05.md)。
 
 - **内容与 `2.0.0-beta.5` 同源**（迭代 01～09 的全部 v2 运行时、Skill §0.5 驾驶手册、`templates/v2/`、十件套指南、lessons #1–#25），外加 README 中英文的「当前主线是 v2」段与 `docs/CLI.md` 的 2.0.0 状态行。
 - **对拷出项目意味着什么**：v1 文件总线、`buildbeat` 生命周期命令（`doctor` / `init` / `adopt` / `upgrade` / `version`）与安全边界**不变**，schema 仍是 2；`npm install --global @haiyangbg/buildbeat@latest` 现在同时给出 `buildbeat` 与 `buildbeat-v2`。骨架版本仍是 `v1.21`（模板未变，`buildbeat upgrade` 对 1.21 骨架报 up-to-date，不需要 `--major`）；manifest 里的 `cliVersion` 只是记录，不触发升级。v2 运行时是可选叠加：按 [`docs/v2/guide/08-migration-v1.md`](docs/v2/guide/08-migration-v1.md) 建 `delivery/work/` 与 run 配置即可，不动现有 `pm/` 与 `contracts/`。
