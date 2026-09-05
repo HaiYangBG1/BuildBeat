@@ -70,6 +70,17 @@ budgets:
 
 **按 Work 累计的 review 轮数（迭代 09）**：每 Run 的预算挡不住"每轮一个新 Run"——试点一个 Work 跑了 21 个 Run、9 轮 review，2 轮封顶从未触发。`budgets.reviewRoundsPerWork: N` 让内核在 review 步起跑前统计本 Work **所有** Run（含已作废、含已压成 run-record 的）的 review 轮数，达到 N 即停 `WAITING_HUMAN`（kind `work-review-cap`，transition `enter-review`）：批准即再审一轮（台账 `BUDGET_EXTENDED scope=work`），拒绝则按手头证据合并或关闭。`overview` 每个 Work 多一行 `cost: review rounds · findings · human waits · worker 时长`，run-record 也带 `cost` 块——"继续还是砍"之前先看这一行；intent 里的止损线（最多几个 Run / 几轮 review / 几小时）就对着它核。
 
+## 工作树在仓内：把 `.buildbeat/` 排除出测试收集（迭代 09）
+
+Run 的隔离工作树在 `<repo>/.buildbeat/worktrees/<RUN>/`，运行时台账在 `<repo>/.buildbeat/runtime/`。两者都不入 git（模板 `.gitignore` 已排除；尊重 `.gitignore` 的工具如 `rg`、`gitleaks` 随之不再走进去），但**测试框架按文件系统收集用例**：试点合并后的主干 vitest 把残留工作树里旧候选的用例一起跑了，噪声直到 `gc` 才消失。在项目里加：
+
+- vitest：`test.exclude: ['**/node_modules/**', '**/.buildbeat/**']`
+- jest：`testPathIgnorePatterns: ['/node_modules/', '/.buildbeat/']`
+- pytest：`norecursedirs = .buildbeat`
+- Maven / Gradle 只收集 `src/**`，不受影响；Playwright 的 `testDir` 指到具体目录即可。
+
+`start` 被「another run is active」挡住时，CLI 现在打印持锁的 Run、它在哪一步、最后一次事件多久前，以及可复制的 `status` 命令；仓级单活动 Run 锁本身没放开——工作树已隔离，锁只剩台账与合并安全的意义，等真出现第二次多小时排队再动。
+
 ## 基础设施故障与候选缺陷分开算（迭代 09）
 
 worker 的超时、崩溃、非信封输出，以及 worker 主动以退出码 **75** 结束（约定：verify / 包装脚本发现环境不满足——命令不在 PATH、端口被占、后端 404、沙箱禁止监听——就 `exit 75`），内核一律判 `infra`：`STEP_FINISHED.data.infra = true`，不记失败指纹、不派 fixer、该步预算不扣（`steps[step].infraAttempts` 抵回），停 `WAITING_HUMAN`（kind `infra`）。人批准 `resume-<step>` 重跑，拒绝结束。其余非零退出仍是候选失败，走 `on: failed` 边。

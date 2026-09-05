@@ -51,7 +51,7 @@ import { writeRunRecord } from "../runtime/run-record.js";
 import { resumeRun, startRun } from "../runtime/orchestrator.js";
 import { toRepoRef } from "../runtime/repo-ref.js";
 import { EventLedger } from "../storage/event-ledger.js";
-import { acquireLock, releaseLock } from "../workspace/workspace-manager.js";
+import { acquireLock, listHeldRunLocks, releaseLock } from "../workspace/workspace-manager.js";
 
 const KERNEL = { kind: "kernel", id: "cli" };
 
@@ -457,7 +457,36 @@ async function commandStart(flags) {
   if (watching) {
     console.log(`stall watcher armed (no output for ${formatMs(options.stallAfterMs)} notifies STALLED)`);
   }
-  const result = startRun(options);
+  let result;
+  try {
+    result = startRun(options);
+  } catch (error) {
+    if (/another run is active/.test(error.message ?? "")) {
+      // Say who holds the repository and how to watch it: a pilot session
+      // waited 3h23m behind another work's run with nothing but the lock
+      // message to go on ("二十分钟了哎").
+      const label = repoLabelFor(options.repoRoot);
+      const holders = listHeldRunLocks(options.repoRoot);
+      if (holders.length === 0) {
+        console.error("blocked by: a stale active-run lock with no run holding it (a killed process?); `gc` clears locks of terminal runs, or remove .buildbeat/runtime/locks/active-run.lock after checking no driver process is alive");
+      }
+      for (const holder of holders) {
+        const ledgerPath = join(options.repoRoot, ".buildbeat", "runtime", "runs", holder, "events.jsonl");
+        let summary = "(no ledger found)";
+        if (existsSync(ledgerPath)) {
+          const ledger = EventLedger.open(ledgerPath);
+          const state = ledger.state;
+          const step = state.currentStep ? `step ${state.currentStep} attempt ${state.steps[state.currentStep]?.attempts ?? "?"}` : "between steps";
+          const since = ledger.events[ledger.events.length - 1]?.ts;
+          summary = `${state.run?.work ?? "?"} ${state.run?.status ?? "?"} ${step}${since ? `, last event ${formatMs(Date.now() - Date.parse(since))} ago` : ""}`;
+        }
+        console.error(`blocked by ${holder}: ${summary}`);
+        console.error(`  watch it: buildbeat-v2 status --repo ${label} --run ${holder}`);
+      }
+      console.error("queue position: next after the holder(s) above stop or wait on a human (the repository allows one driving run at a time; worktrees are already isolated)");
+    }
+    throw error;
+  }
   const repoLabel = repoLabelFor(options.repoRoot);
   for (const run of result.superseded ?? []) {
     console.log(`superseded ${run} (was waiting on a human for the same work; now SUPERSEDED)`);

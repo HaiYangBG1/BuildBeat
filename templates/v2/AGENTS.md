@@ -14,7 +14,8 @@
 5. **observe 盯生产**：`buildbeat-v2 observe run --config .buildbeat/observe.yaml` 一次=一轮只读体检；异常分层（落账→只读诊断→intent 草稿入队 `delivery/observe/intents/`），草稿**绝不自动执行**，人用 `observe triage` 分诊。
 6. **拍板台账**：平台级真实决策包一行进 `pm/decisions.md`；Run 级批准落各 Work 的 `decisions.jsonl`；finding 裁决落 `review-findings.jsonl`。契约在 `contracts/`。
 7. **通知**：`.buildbeat/notify.yaml` 配一条通道（URL 只能来自环境变量），Run 停在人批 / 终态 / 疑似卡住会来找人。
-8. **打扫**：终态 Run 留下的工作树用 `buildbeat-v2 gc --repo .` 清（默认只出计划）。
+8. **打扫**：终态 Run 留下的工作树用 `buildbeat-v2 gc --repo .` 清（默认只出计划）。工作树在仓内 `.buildbeat/worktrees/`：`.gitignore` 排除 `.buildbeat/runtime/` 与 `.buildbeat/worktrees/`，测试框架的收集范围也要排除 `**/.buildbeat/**`（vitest `exclude`、jest `testPathIgnorePatterns`、pytest `norecursedirs`），否则主干测试会把旧候选的用例一起跑。
+9. **worker 环境事实（写进 worker prompt / 信封）**：worker 的沙箱通常**不能监听端口**，需要起服务或绑定 loopback 的集成测试交给 verify 步，worker 只跑单测与静态检查，不要反复尝试；PATH 只认 POSIX 工具（`grep -E` 不用 `rg`，`find` 不用 `fd`）或在 `requires:` 里声明；verify / 包装脚本发现环境不满足（命令不在 PATH、端口被占、后端 404）就 `exit 75`，内核会当基础设施故障停人、不派 fixer、不扣预算。
 
 ## 1. 工作包路由 —— Builder 端到端负责，会话按 AI 视角隔离
 

@@ -4,7 +4,17 @@
 
 ## Unreleased
 
-> 来源：试点工作区 2026-09-05 收尾清理回灌。
+> 来源：试点工作区 2026-09-03～09-05（beta.4 之后）全部驾驶会话、约 60 个 worker 会话与两个子仓 50 个 Run 台账的复盘回灌（迭代 09，lessons #23–#25），以及 2026-09-05 收尾清理回灌。台账数字：50 个 Run 成功 12、作废 16、取消 17、失败 5，支撑 7 次生产发布；所有者问"多久了正常吗"从十余次降到 1 次。
+
+- **预算续批不再死循环，run 配置可覆盖预算（迭代 09 A1）**：预算耗尽停人后批准 `resume-<step>`，内核落 `BUDGET_EXTENDED`（台账事实，可重放）给该步 +1 再跑，不再立刻重问；run 配置 `budgets.maxAttempts.<step>` 覆盖预设（run config > preset > `maxAttemptsPerStep`）；`doctor` 打印每步生效上限与来源。真实事故：两条应用登录 Run 因预设 2 轮改不动且批了没用而以 CANCELLED 收场，候选却已在生产
+- **worker 基础设施故障停人，不杀 Run、不派 fixer、不扣预算（迭代 09 A2）**：timeout / crashed / invalid-output / 退出码 75（`EX_TEMPFAIL`，verify 或包装脚本的"环境不可用"信号）判 `infra`：`STEP_FINISHED.data.infra`、`steps[step].infraAttempts` 抵回预算、不记失败指纹、停 `WAITING_HUMAN`（kind `infra`，`resume-<step>`）。没有转移边的失败结果也改为停人；终态 FAILED 只剩 policy BLOCK。mock 适配器新增 `env-fail`。真实事故：worker 后端 404 与非 JSON 输出两天杀 5 个 Run；PATH / 端口 / 负载类 verify 失败派了 5 次 fixer
+- **Work 级成本与跨 Run 的 review 轮数上限（迭代 09 A3）**：`overview` 每个 Work 一行 `cost: review rounds · findings · human waits · [infra failures] · worker 时长`（运行时台账优先，run-record 新增 `cost` 块兜底）；`budgets.reviewRoundsPerWork` 跨本 Work 所有 Run（含作废）累计，达标在 review 起跑前停人（kind `work-review-cap`，`enter-review`），批准即多审一轮（`BUDGET_EXTENDED scope=work`）。intent 模板与 Skill 加"止损线"。真实事故：一个 Work 21 个 Run、9 轮 review，每 Run 2 轮封顶从未触发；另一个烧了 10 个 Run 一天后被砍
+- **overview 真相修正（迭代 09 B1）**：任一候选已在当前分支即 `MERGED`（最新 Run 是 CANCELLED 也一样，`next:` 注明）；`release-readback` 车道成功关窗显示 `RELEASED`，不再说 "nothing to merge"；已合并/已发布/已关闭的 Work 不再提示未裁决 finding；run-record 新增 `workflow`
+- **`doctor` 读 start 第一道门会读的事实（迭代 09 B2）**：打印本仓 `delivery/work/<ID>/` 的 intent / plan 存在与接受状态，对每条 `artifact.accepted` 类 policy 预告 start 会停在哪一步（文件缺失时提示先镜像）
+- **`resume --adopt <sha> --by <名字>`（迭代 09 B3）**：人或驾驶会话在 Run 的 worktree 里手修并提交后，跳过 fixer 从 verify 续跑；内核回读 git（树干净、HEAD = sha），以人为 actor 落 `CANDIDATE_PINNED`（`adopted`）与 `DECISION_RECORDED`（`adopted` / `resumeAt`）
+- **起跑被仓锁挡住时说清在等谁（迭代 09 C）**：`start` 遇 "another run is active" 打印持锁 Run、所在步与最后事件时间、可复制的 `status` 命令；锁本身未放开
+- **模板与指南**：`.gitignore` 模板排除 `.buildbeat/runtime/` 与 `.buildbeat/worktrees/`，指南给出 vitest / jest / pytest 排除写法（试点主干测试曾把残留工作树的用例一起跑）；v2 AGENTS 模板第 ⑨ 条 worker 环境事实（沙箱不能监听端口、PATH 只认 POSIX、环境不满足 `exit 75`）；Skill 驾驶手册：首次写 run-config 问一句要不要启用通知（试点未启用，一张合并卡隔夜等 9.5 小时）、`infra` 停人时怎么答、手修用 adopt、开工前先 doctor
+- 测试：新增 `v2-budget` / `v2-infra` / `v2-work-cost` / `v2-overview-stages` / `v2-doctor-work` / `v2-adopt` / `v2-active-lock` 七组 25 项；既有 `invalid-output` / 无转移边 / metrics 三处断言按新语义改写
 
 - **`overview` 认得「已关闭」的 Work**：`delivery/work/<ID>/decisions.jsonl` 里一行 `{"transition":"close-work","decision":"closed"|"cancelled","subject":{"result":"…"}}` 即让该 Work 显示 `CLOSED` / `CANCELLED` 并带关闭时间与结果，不再把 12 个已关闭的 Work 报成 `READY_TO_RUN` 并催写 run-config；仍有 `RUNNING` / `WAITING_HUMAN` 的 Run 时活 Run 优先，关闭行藏不住待办。`READY_TO_RUN` 的 `next:` 提示改成给出这行的精确形状（此前只说「record the work as closed」却没有任何读者）。
 - **`bus-check` 多仓 map 适配多模块仓与无契约版本域的仓**：`buildbeat-multirepo-map:v1` 行可选第 4 字段 `changelog=<repo 内模块 CHANGELOG 路径>`（根下没有 CHANGELOG 的多模块仓由某个模块 CHANGELOG 承载契约版本），`contract=n/a` 表示该仓没有契约版本域（只读存量前端、npm 包 semver 与契约版本不同域），只登记不核对。越出本仓的 `changelog=` 路径、非 `contracts/*.md` 且非 `n/a` 的契约值仍判 map 无效；被核对的 CHANGELOG 首个已发布 H2 须以契约快照版本开头（`## [v1.3 · Deployed …]`）。模板 `contracts/PROTOCOL.md` 注释与脚本测试同步。

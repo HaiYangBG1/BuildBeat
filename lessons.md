@@ -145,3 +145,20 @@
 **解药**:map 行可选 `changelog=<仓内模块路径>`;`contract=n/a` 只登记不核对(注释里写清不得拿它掩盖真实契约关系);被核对的 CHANGELOG 首个已发布标题以契约版本开头(`## [v1.3 · Deployed …]`),Deployed·sha 信息保留在版本号之后。登记后两个有契约的仓 ✅、两个无版本域的仓一行登记,把契约版本临时改成 v1.4 能触发 conflict,门确实在守。
 **同批发现**:`overview` 的 `next:` 让人"record the work as closed in decisions.jsonl",但代码里没有任何读者,12 个已关闭 Work 常年显示 `READY_TO_RUN`——提示里出现的每个动作都要有读它的代码,否则是给人挖坑。
 
+## 23. 预算是刹车不是墙:人批了内核当没批,按 Run 计的预算又被"每轮一个新 Run"绕过
+
+**症状**:review 预算(预设 2 轮)耗尽后停人,人批准 `resume-review`,内核在下一轮起跑前再判一次"超预算",同一请求立刻回来;run-config 改不动预设里的数。驾驶会话只好在 Run 外另找 reviewer 做 closure,两条已上生产的应用登录 Run 都以 CANCELLED 收场。另一头,像素风 Work 每修一轮就起一个新 Run,21 个 Run、9 轮 review、22 条 finding,每 Run 2 轮的封顶一次没触发;驾驶会话口头"止损"三次才真正停手。platform-health 烧了 10 个 Run 约一天,所有者在 Gate4 后才以"成本太高"砍掉,此前没有任何地方能看到花了多少。
+**根因**:预算只是一个数,不是一个可以被人延展的台账事实;预算的计数单位(Run)和人的决策单位(Work)不一致;成本只在事后复盘时才被算出来。
+**解药**:批准预算耗尽的 `resume-<step>` 即落 `BUDGET_EXTENDED`,该步上限 +1;run-config `budgets:` 覆盖预设;`budgets.reviewRoundsPerWork` 跨本 Work 所有 Run(含作废、含已压账)累计 review 轮数,达标在 review 起跑前停人;`overview` 每个 Work 一行 `cost:`(review 轮 / finding / 等人次 / worker 时长),intent 模板加止损线。通用原则:**预算的计数单位要和人做决定的单位一致,预算耗尽后的人批必须改变内核状态,否则人批等于没批。**
+
+## 24. worker 基础设施故障被当成候选失败:杀 Run、派 fixer、烧预算
+
+**症状**:worker 后端断服(review 退出码 97)、reviewer 输出不是 JSON、fix 步超时,三种都走"no transition for (review, failed)"直接终态 FAILED,两天 5 个 Run 这样死;驾驶会话为了等后端恢复手写探针,每两分钟起一个"Reply with exactly: OK"会话,共 14 次。另一类:verify 因 PATH 缺 rg、端口 4173 撞车、宿主负载 280、守卫误报被判失败,5 次派了 fixer 去修一个没问题的候选。
+**根因**:step 状态词汇里已有 timeout / crashed / invalid-output,但路由把它们和"候选没过"一起压成 `failed`;verify 脚本没有办法告诉内核"是环境不行不是代码不行";没有边的失败一律终态。
+**解药**:timeout / crashed / invalid-output / 退出码 75(`EX_TEMPFAIL`,约定为"环境不可用")判 `infra`:不记失败指纹、不派 fixer、不扣预算(`infraAttempts` 抵回),停 `WAITING_HUMAN`(kind `infra`)等后端恢复;没有转移边的失败也停人而不终态,终态 FAILED 只剩 policy BLOCK。模板 worker 合同写清三条环境事实(沙箱不能监听端口、PATH 只认 POSIX、环境不满足 `exit 75`)。通用原则:**先问"这次失败说的是候选还是环境",再决定谁来修;答不上来的失败交给人,不交给 fixer。**
+
+## 25. 台账说的和人看到的不是一回事:已上线显示为取消、已发布显示为"没东西可合"、doctor 过了 start 却被挡
+
+**症状**:候选已合入生产的 Work 因最后一个 Run 是 CANCELLED 而显示 `STOPPED_CANCELLED`,`next:` 催重试;四个已关窗的 release 车道 Work 显示 `MERGE_READY`、"nothing to merge";已合并的 Work 仍报 14 条未裁决 finding;`doctor` 通过两次,`start` 都被"plan 未镜像到子仓"的 policy 挡在 build;驾驶会话在 worktree 里手修并提交后,只能批准 enter-fix 让 fixer 空跑再多一次 verify(前端 Run 因此 verify 5 次、fix 3 次)。
+**根因**:阶段判定只看最后一个 Run 的终态,不看候选是否已在主干;overview 不认识 release 车道;doctor 检查的是配置合法性,不是 start 第一道门会读的事实;内核只认 worker 产出的候选,没有"人供候选"的入口。
+**解药**:候选合入主干即 `MERGED`(哪怕最新 Run 取消),release 车道成功关窗即 `RELEASED`,已合并/已发布/已关闭不再提示未裁决数;`doctor` 打印本仓 intent/plan 存在与接受状态,并按 policy 预告 start 会停在哪一步;`resume --adopt <sha>` 以人为 actor 钉候选、从 verify 续跑。**同批发现**:仓内 `.buildbeat/worktrees/` 会被 vitest 等按文件系统收集的框架当成测试目录(模板 gitignore 与指南补排除);`start` 被仓锁挡住时只说"another run is active",现在打印持锁 Run 与 `status` 命令,锁本身未放开。通用原则:**任何"到哪了"的读数都必须从事实(主干、车道、门)推导,而不是从最后一条记录的状态字段抄。**

@@ -4,7 +4,7 @@
 // deleted here — the pinned candidate must stay reachable for evidence.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 export class WorkspaceError extends Error {
@@ -42,6 +42,19 @@ export function acquireLock(repoRoot, runId) {
     throw error;
   }
   return lockPath;
+}
+
+// Run ids currently holding a lock in this repository (the repository-wide
+// active-run marker excluded): who a blocked `start` is queued behind.
+export function listHeldRunLocks(repoRoot) {
+  const lockDir = join(repoRoot, ".buildbeat", "runtime", "locks");
+  if (!existsSync(lockDir)) {
+    return [];
+  }
+  return readdirSync(lockDir)
+    .filter((entry) => entry.endsWith(".lock") && entry !== "active-run.lock")
+    .map((entry) => entry.slice(0, -".lock".length))
+    .sort();
 }
 
 export function releaseLock(repoRoot, runId) {
