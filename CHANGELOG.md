@@ -4,7 +4,7 @@
 
 ## v2.0.0-beta.5 — 2026-09-05（迭代 09：预算是刹车、故障分开算、成本看得见）
 
-> **发布状态**：所有者 2026-09-05 授权（「发，并且迭代5轮可以直接切换到线上版本了」）；发布与独立回读证据在发布后回填到 `docs/V2.0.0-BETA.5-RELEASE-EVIDENCE-2026-09-05.md`。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.5` 已于 2026-09-05 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33972774150，双 job success；所有者授权「发，并且迭代5轮可以直接切换到线上版本了」）；`latest` 保持 v1.21.0。独立回读（直连 npmjs.org）：dist-tag 路由、integrity、attestation、隔离安装、`doctor` 有界 JSON 全过，证据见 [`docs/V2.0.0-BETA.5-RELEASE-EVIDENCE-2026-09-05.md`](docs/V2.0.0-BETA.5-RELEASE-EVIDENCE-2026-09-05.md)。所有者本机 CLI 已从源码链接切回正式包。
 > 来源：试点工作区 2026-09-03～09-05（beta.4 之后）全部驾驶会话、约 60 个 worker 会话与两个子仓 50 个 Run 台账的复盘回灌（迭代 09，lessons #23–#25），以及 2026-09-05 收尾清理回灌。台账数字：50 个 Run 成功 12、作废 16、取消 17、失败 5，支撑 7 次生产发布；所有者问"多久了正常吗"从十余次降到 1 次。
 
 - **预算续批不再死循环，run 配置可覆盖预算（迭代 09 A1）**：预算耗尽停人后批准 `resume-<step>`，内核落 `BUDGET_EXTENDED`（台账事实，可重放）给该步 +1 再跑，不再立刻重问；run 配置 `budgets.maxAttempts.<step>` 覆盖预设（run config > preset > `maxAttemptsPerStep`）；`doctor` 打印每步生效上限与来源。真实事故：两条应用登录 Run 因预设 2 轮改不动且批了没用而以 CANCELLED 收场，候选却已在生产
