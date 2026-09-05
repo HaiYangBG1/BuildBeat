@@ -19,3 +19,7 @@ node_modules/
 
 # 本地存档:演进规划书的外部调研原始报告,不入库(ROADMAP 附录 A 有存档说明)
 /演进规划书参考的文档/
+
+# BuildBeat v2 runtime plane (docs/v2/RFC-0002 §6): disposable by contract
+.buildbeat/runtime/
+.buildbeat/worktrees/

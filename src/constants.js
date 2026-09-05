@@ -5,7 +5,10 @@ const packageJson = JSON.parse(
 );
 
 export const CLI_VERSION = packageJson.version;
-export const SCAFFOLD_VERSION = `v${CLI_VERSION.split(".").slice(0, 2).join(".")}`;
+// The v1 scaffold surface is frozen at v1.21 while the package version moves
+// to v2 (kernel + runtime). scaffoldVersion tracks the scaffold content
+// bundle, not the CLI, so existing installs see no fictitious major upgrade.
+export const SCAFFOLD_VERSION = "v1.21";
 export const OUTPUT_SCHEMA_VERSION = 2;
 export const PRODUCT_NAME = "BuildBeat";
 export const LEGACY_PRODUCT_NAME = "Solobaton";

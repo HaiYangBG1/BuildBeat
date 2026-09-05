@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - v2
 
 permissions:
   contents: read
@@ -21,13 +22,13 @@ jobs:
           fetch-depth: 0
 
       - name: Check Shell syntax
-        run: bash -n .github/scripts/*.sh templates/scripts/*.sh tests/*.sh
+        run: bash -n .github/scripts/*.sh templates/scripts/*.sh tests/*.sh pilot/*.sh
 
       - name: Run ShellCheck
         run: |
           sudo apt-get update
           sudo apt-get install --yes shellcheck
-          shellcheck -x .github/scripts/*.sh templates/scripts/*.sh tests/*.sh
+          shellcheck -x .github/scripts/*.sh templates/scripts/*.sh tests/*.sh pilot/*.sh
 
       - name: Check documentation
         run: bash tests/check-docs.sh
@@ -61,6 +62,9 @@ jobs:
 
       - name: Run script regression suite
         run: bash tests/test-scripts.sh
+
+      - name: Run M-1 pilot driver regression suite
+        run: bash tests/pilot-loop.test.sh
 
   cli:
     name: CLI (${{ matrix.os }}, Node ${{ matrix.node }})

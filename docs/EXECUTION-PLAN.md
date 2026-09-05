@@ -1,6 +1,6 @@
 # BuildBeat 落地执行计划（v3：CLI 选择性解冻版）
 
-> 文档状态：当前执行基线（本版替代 2026-08-24 早先两版）
+> 文档状态：v1 历史执行基线（WP0.1–WP4.3 已全部完成收口；项目所有者已于 2026-08-27 拍板 `V2-D0=B`，新开发按 [`V2-PLAN.md`](V2-PLAN.md) 与 [`V2-ITERATION-01.md`](V2-ITERATION-01.md) 执行，决策见 [`V2-DECISIONS.md`](V2-DECISIONS.md)，v1 转入维护线）
 > 基线日期：2026-08-24
 > 上游文档：[`ROADMAP.md`](ROADMAP.md)（下称“演进书”）；竞品调研见 [`CLI-STRATEGY-2026-08.md`](CLI-STRATEGY-2026-08.md)
 > 基线代码：`@haiyangbg/buildbeat@1.20.0`（npm 已验证发布，Git tag `v1.20.0`）；legacy `solobaton@1.16.3` 保留并已 deprecate
@@ -204,7 +204,7 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 
 ### WP1.6 真实项目试点（候选完成，发布闸）
 
-- `example/` + 一个活跃多仓项目（建议老乡鸡 AI 底座工作区）+ 一个单仓项目；人工制造三类不一致验证检出；结论记 CHANGELOG。**不过不发。**
+- `example/` + 一个活跃多仓项目（建议一个真实企业工作区工作区）+ 一个单仓项目；人工制造三类不一致验证检出；结论记 CHANGELOG。**不过不发。**
 - 证据：[`PHASE1-PILOT-2026-08-24.md`](PHASE1-PILOT-2026-08-24.md)；全部在临时副本/共享 clone 中只读运行，三类源项目 Git 可见状态前后一致。
 
 **v1.18 发布**：脚本属 replace-if-unmodified 可整文件替换；看板/NOW/status 只给迁移手册。
@@ -277,7 +277,7 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 
 - 一个全新项目走 `init` 真写 + Skill/手动初始化 Git + AI 渲染 + bus-check 干净；一个存量项目走 `adopt`；一个项目走 Skill-only 手动 Bootstrap 交叉验证（完成这些后 doctor 对三者全绿）。
 - fixture：`standards-partial/` 已证明 CODE/REVIEW 部分存在时缺失 STACK/DESIGN 合法，Shell 回归由 166 增至 176；`stack-conflict/` 已在 WP2.5 提前闭环。
-- 只读预检见 [`PHASE2-PILOT-PREFLIGHT-2026-08-25.md`](PHASE2-PILOT-PREFLIGHT-2026-08-25.md)：相邻 `../chickAI` 为 partial 安装且 9 个碰撞，`../底座` 为 dirty legacy v1.14 安装且 9 个碰撞，均不具备 Wave 1 adopt 写入资格。剩余三条真实路径须用户点名绝对路径并明确授权；不得用 disposable fixture 冒充真实试点。
+- 只读预检见 [`PHASE2-PILOT-PREFLIGHT-2026-08-25.md`](PHASE2-PILOT-PREFLIGHT-2026-08-25.md)：相邻 `../pilot-app` 为 partial 安装且 9 个碰撞，`../试点工作区` 为 dirty legacy v1.14 安装且 9 个碰撞，均不具备 Wave 1 adopt 写入资格。剩余三条真实路径须用户点名绝对路径并明确授权；不得用 disposable fixture 冒充真实试点。
 - 用户已点名 `~/Downloads/solobaton测试/{1,2,3}`、`~/Downloads/tide_副本` 与 `~/Downloads/solobaton-skill测试`；dry-run、人工拒绝、init apply、adopt apply 和 Skill-only Bootstrap 均已按边界执行，详见 [`PHASE2-PILOT-2026-08-25.md`](PHASE2-PILOT-2026-08-25.md)。
 - `1`/`2` 保持零条目；两个 CLI 目标 manifest 有效，三个实际骨架项目占位符清零，验证套件与离线 strict exit 0。Tide 原 83 文件聚合 SHA-256 与原 ignore 173 字节 SHA-256 前后一致。
 - 真实 Tide 暴露浏览器扩展 UI 假阴性；源码已从 Manifest V2/V3 的 action/content/options 等信号识别 UI，重跑 Tide 得到 `hasUi=true` 并加入 Node 回归。

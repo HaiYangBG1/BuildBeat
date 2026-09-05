@@ -50,25 +50,41 @@ jobs:
         run: npm install --global npm@11.19.0
 
       - name: Validate tag, ancestry, and package version
+        id: policy
         shell: bash
         run: |
           set -euo pipefail
-          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Release tag must use vMAJOR.MINOR.PATCH." >&2
+          # Stable releases publish from main to dist-tag latest. Pre-release
+          # versions (e.g. v2.0.0-beta.1) publish from the exact origin tip of
+          # the dispatching release branch to dist-tag next; latest never moves
+          # on a pre-release.
+          if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            release_channel=stable
+            dist_tag=latest
+          elif [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*$ ]]; then
+            release_channel=prerelease
+            dist_tag=next
+          else
+            echo "Release tag must use vMAJOR.MINOR.PATCH with an optional pre-release suffix." >&2
             exit 1
           fi
 
-          git fetch --no-tags origin main:refs/remotes/origin/main
-          test "$GITHUB_REF" = "refs/heads/main"
+          dispatch_branch="${GITHUB_REF#refs/heads/}"
+          test "$GITHUB_REF" = "refs/heads/$dispatch_branch"
+          if [[ "$release_channel" = "stable" ]]; then
+            test "$dispatch_branch" = "main"
+          fi
+          git fetch --no-tags origin "$dispatch_branch:refs/remotes/origin/$dispatch_branch"
           test "$(git cat-file -t "$RELEASE_TAG")" = "tag"
           test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$(git rev-parse HEAD)"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git rev-parse HEAD)" = "$(git rev-parse refs/remotes/origin/main)"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/remotes/origin/$dispatch_branch")"
 
           package_version="$(node -p "require('./package.json').version")"
           test "$(node -p "require('./package.json').name")" = "$BUILDBEAT_PACKAGE_NAME"
           test "$RELEASE_TAG" = "v$package_version"
           test -z "$(git status --porcelain=v1)"
+          printf 'dist_tag=%s\n' "$dist_tag" >> "$GITHUB_OUTPUT"
 
       - name: Install package metadata
         run: npm ci --ignore-scripts --no-audit --no-fund
@@ -106,6 +122,7 @@ jobs:
           BUILDBEAT_PACKAGE_VERSION: ${{ steps.candidate.outputs.version }}
           BUILDBEAT_CANDIDATE_INTEGRITY: ${{ steps.candidate.outputs.integrity }}
           BUILDBEAT_CANDIDATE_TARBALL: ${{ steps.candidate.outputs.tarball }}
+          BUILDBEAT_DIST_TAG: ${{ steps.policy.outputs.dist_tag }}
         run: bash .github/scripts/publish-candidate.sh
 
   verify:
@@ -163,6 +180,32 @@ jobs:
             sleep 5
           done
           echo "The exact reviewed artifact did not become readable from the official registry." >&2
+          exit 1
+
+      - name: Verify dist-tag routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_name="$(node -p "require('./package.json').name")"
+          package_version="$(node -p "require('./package.json').version")"
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            latest_pointer="$(npm view "$package_name" dist-tags.latest 2>/dev/null || true)"
+            next_pointer="$(npm view "$package_name" dist-tags.next 2>/dev/null || true)"
+            if [[ "$package_version" == *-* ]]; then
+              if [[ "$next_pointer" = "$package_version" && "$latest_pointer" != "$package_version" && -n "$latest_pointer" ]]; then
+                printf 'Verified pre-release routing: next=%s, latest=%s untouched.\n' "$next_pointer" "$latest_pointer"
+                exit 0
+              fi
+            else
+              if [[ "$latest_pointer" = "$package_version" ]]; then
+                printf 'Verified stable routing: latest=%s.\n' "$latest_pointer"
+                exit 0
+              fi
+            fi
+            printf 'Dist-tag readback attempt %s is not complete yet.\n' "$attempt"
+            sleep 5
+          done
+          echo "Published version is readable, but dist-tag routing does not match the release channel." >&2
           exit 1
 
       - name: Verify provenance metadata

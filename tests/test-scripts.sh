@@ -644,6 +644,47 @@ expect_status 0 "an unmapped discovered repository stays non-blocking and unveri
 expect_contains 'Discovered repo=service-extra is absent from buildbeat-multirepo-map:v1.' "unmapped repository remains explicit in coverage"
 expect_contains '"path":"service-extra"' "unmapped repository finding keeps a precise relative path"
 
+# changelog= override (multi-module repo without a root CHANGELOG) + contract=n/a inventory-only entry
+rm "$PROJECT/service-extra/CHANGELOG.md"
+mkdir -p "$PROJECT/service-extra/mod"
+cat > "$PROJECT/service-extra/mod/CHANGELOG.md" <<'EOF'
+# Changelog
+
+## [v1.2.3 · Deployed 2026-09-05 · abc1234 · Flow #1 · summary]
+EOF
+git -C "$PROJECT/service-extra" add -A
+git -C "$PROJECT/service-extra" commit -qm "module changelog"
+mkdir -p "$PROJECT/legacy-ui"
+git -C "$PROJECT/legacy-ui" init -q
+git -C "$PROJECT/legacy-ui" config user.name "BuildBeat Tests"
+git -C "$PROJECT/legacy-ui" config user.email "tests@example.invalid"
+printf '%s\n' '# legacy' > "$PROJECT/legacy-ui/README.md"
+git -C "$PROJECT/legacy-ui" add README.md
+git -C "$PROJECT/legacy-ui" commit -qm "legacy baseline"
+cat > "$PROJECT/contracts/PROTOCOL.md" <<'EOF'
+# Contract
+
+**契约快照对应版本:`v1.2.3`**
+
+<!-- buildbeat-multirepo-map:v1
+repo=service-one|contract=contracts/PROTOCOL.md|deployment=web
+repo=service two|contract=contracts/service-two.md|deployment=api
+repo=service-extra|contract=contracts/PROTOCOL.md|deployment=n/a|changelog=service-extra/mod/CHANGELOG.md
+repo=legacy-ui|contract=n/a|deployment=n/a
+-->
+EOF
+run_bus "$PROJECT" scripts/bus-check.sh --strict
+expect_status 0 "changelog= override and contract=n/a entries pass strict when facts agree"
+expect_contains "service-extra 多仓版本一致: service-extra/mod/CHANGELOG.md" "changelog= override reads the module CHANGELOG named in the map"
+expect_contains "legacy-ui 已登记,无契约/部署版本域" "contract=n/a entry is inventoried without a version check"
+run_bus_json "$PROJECT" scripts/bus-check.sh
+expect_not_contains 'Discovered repo=service-extra is absent' "overridden repository no longer reports as unmapped"
+expect_not_contains 'Repo=legacy-ui' "contract=n/a repository emits no version finding"
+
+sed -i.bak 's#changelog=service-extra/mod/CHANGELOG.md#changelog=service-one/CHANGELOG.md#' "$PROJECT/contracts/PROTOCOL.md" && rm -f "$PROJECT/contracts/PROTOCOL.md.bak"
+run_bus_json "$PROJECT" scripts/bus-check.sh
+expect_contains 'is missing, duplicated, empty, or malformed' "a changelog= path outside its own repository invalidates the map"
+
 new_project default
 printf '%s\n' '# product status' > "$PROJECT/pm/status/product.md"
 printf '%s\n' '# testing status' > "$PROJECT/pm/status/testing.md"

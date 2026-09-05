@@ -1,0 +1,55 @@
+{
+  "run": "RUN-M1-ACCEPT-01",
+  "work": "WORK-V2-M1-ACCEPT",
+  "terminal": {
+    "status": "CANCELLED",
+    "reason": "M1 acceptance complete; candidate preserved on run branch, not merged"
+  },
+  "events": {
+    "from": 1,
+    "to": 20,
+    "lastDigest": "sha256:6eddad5efcc3fb451d75ef42d6cf3493951e547023a558504a520f69712fa731"
+  },
+  "startedAt": "2026-08-28T02:45:35.381Z",
+  "finishedAt": "2026-08-28T02:45:46.107Z",
+  "attempts": {
+    "build": 1,
+    "verify": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 3
+    }
+  },
+  "workspaces": {
+    "RUN-M1-ACCEPT-01": {
+      "repo": ".",
+      "branch": "run/RUN-M1-ACCEPT-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-M1-ACCEPT-01",
+      "base": "74e78826117fdb4e7e81cdf7e387d3d3c549da36",
+      "candidate": "30b3a0d6a03e60a1b5fbe6082c0270cf853ebdd7"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-M1-ACCEPT-01/logs/build-1.log",
+      "kind": "command",
+      "subject": "30b3a0d6a03e60a1b5fbe6082c0270cf853ebdd7",
+      "digest": "sha256:771867a0c8b0cf29d371f717eee5bce65e2a36bd6d033514d2c85a79e282088f",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-M1-ACCEPT-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "30b3a0d6a03e60a1b5fbe6082c0270cf853ebdd7",
+      "digest": "sha256:c80ae84d7deb0f2e1a354c7071f301dd38cdcce53d07d9ce79cd093e91867efa",
+      "status": "passed",
+      "grade": "L2"
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

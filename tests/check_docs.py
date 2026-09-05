@@ -481,9 +481,15 @@ def check_cli_package() -> list[str]:
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
     version = package.get("version", "")
-    version_match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+    # Three-part SemVer with an optional pre-release tag (e.g. 2.0.0-beta.1):
+    # the v2 plan ships beta versions on dist-tag next before latest moves.
+    version_match = re.fullmatch(
+        r"(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*))?", version
+    )
     latest_match = re.search(
-        r"^## v(\d+)\.(\d+)(?:\.(\d+))?", changelog, re.MULTILINE
+        r"^## v(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*))?",
+        changelog,
+        re.MULTILINE,
     )
     if version_match is None:
         errors.append("package.json: version must use three-part SemVer")
@@ -493,6 +499,8 @@ def check_cli_package() -> list[str]:
         latest_version = ".".join(
             (latest_match.group(1), latest_match.group(2), latest_match.group(3) or "0")
         )
+        if latest_match.group(4):
+            latest_version += f"-{latest_match.group(4)}"
         if version != latest_version:
             errors.append(
                 "package.json: version does not match the latest changelog release"
@@ -547,7 +555,8 @@ def check_cli_package() -> list[str]:
 
     release_guide = (ROOT / "docs/RELEASING.md").read_text(encoding="utf-8")
     verified_match = re.search(
-        r"latest independently verified BuildBeat npm distribution `@haiyangbg/buildbeat@(\d+\.\d+\.\d+)`",
+        r"latest independently verified BuildBeat npm distribution "
+        r"`@haiyangbg/buildbeat@(\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?)`",
         release_guide,
     )
     verified_pending = (
@@ -560,8 +569,11 @@ def check_cli_package() -> list[str]:
             "docs/RELEASING.md: scoped distribution evidence state is missing"
         )
     elif verified_match is not None and version_match is not None:
-        verified_parts = tuple(int(part) for part in verified_version.split("."))
-        source_parts = tuple(int(part) for part in version.split("."))
+        # Compare on the numeric cores; pre-release suffixes never make a
+        # verified distribution outrank the source package version.
+        verified_core = re.match(r"(\d+)\.(\d+)\.(\d+)", verified_version)
+        verified_parts = tuple(int(verified_core.group(i)) for i in (1, 2, 3))
+        source_parts = tuple(int(version_match.group(i)) for i in (1, 2, 3))
         if verified_parts > source_parts:
             errors.append(
                 "docs/RELEASING.md: verified npm distribution cannot exceed source package version"
@@ -975,19 +987,27 @@ def check_execution_contracts() -> list[str]:
     return errors
 
 
+def bundled_scaffold_version() -> str | None:
+    """The frozen scaffold bundle version pinned in src/constants.js."""
+    constants = (ROOT / "src/constants.js").read_text(encoding="utf-8")
+    match = re.search(r'export const SCAFFOLD_VERSION = "(v\d+\.\d+)"', constants)
+    return match.group(1) if match else None
+
+
 def check_example_version() -> list[str]:
-    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    # The teaching example tracks the scaffold content bundle, which is frozen
+    # independently of the (now v2) package version.
+    scaffold_version = bundled_scaffold_version()
     example = (ROOT / "example/BUILDBEAT.md").read_text(encoding="utf-8")
-    latest_match = re.search(r"^## (v\d+\.\d+)", changelog, re.MULTILINE)
     example_match = re.search(r"本项目使用 BuildBeat `(v\d+\.\d+)`", example)
-    if latest_match is None:
-        return ["CHANGELOG.md: no release heading found"]
+    if scaffold_version is None:
+        return ["src/constants.js: SCAFFOLD_VERSION must be a pinned v<major>.<minor> literal"]
     if example_match is None:
         return ["example/BUILDBEAT.md: no installed version found"]
-    if latest_match.group(1) != example_match.group(1):
+    if scaffold_version != example_match.group(1):
         return [
             "example/BUILDBEAT.md: installed version "
-            f"{example_match.group(1)} does not match latest changelog {latest_match.group(1)}"
+            f"{example_match.group(1)} does not match the bundled scaffold {scaffold_version}"
         ]
     return []
 
@@ -1015,11 +1035,7 @@ def check_example_manifest() -> list[str]:
 
     package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     cli_version = package.get("version")
-    scaffold_version = (
-        f"v{'.'.join(cli_version.split('.')[:2])}"
-        if isinstance(cli_version, str) and re.fullmatch(r"\d+\.\d+\.\d+", cli_version)
-        else None
-    )
+    scaffold_version = bundled_scaffold_version()
     if manifest.get("schemaVersion") != 2:
         errors.append(f"{relative}: teaching manifest must use schema 2")
     if manifest.get("cliVersion") != cli_version:
@@ -1127,9 +1143,13 @@ def check_publish_workflow() -> list[str]:
         "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
         "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
         "npm install --global npm@11.19.0",
-        'test "$GITHUB_REF" = "refs/heads/main"',
+        # Channel-aware ancestry guard: stable releases stay pinned to main;
+        # pre-releases must sit on the exact origin tip of the dispatching
+        # release branch and are forced onto dist-tag next.
+        'test "$dispatch_branch" = "main"',
         'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
-        'test "$(git rev-parse HEAD)" = "$(git rev-parse refs/remotes/origin/main)"',
+        'test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/remotes/origin/$dispatch_branch")"',
+        'dist_tag=next',
         "bash .github/scripts/publish-candidate.sh",
         "needs: publish",
         "dist.attestations.url",

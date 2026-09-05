@@ -1,0 +1,31 @@
+# Self-host observe config (M5 T1 pilot): the repo's own doc-drift guard runs
+# as a real Evidence Provider. One `observe run` = one cycle; schedule it with
+# cron/CI. Shape per docs/v2/RFC-0003-workflow-policy.md §8 (frozen).
+kind: workflow
+version: 1
+name: observe
+providers:
+  - id: docs-drift
+    command: bash
+    args:
+      - tests/check-docs.sh
+    schedule: manual
+    evidence:
+      kind: drift
+      subject: solobaton-docs
+    severity:
+      failed: error
+      unverified: warn
+bands:
+  - level: log
+    when: "severity >= info"
+  - level: diagnose
+    when: "severity >= error"
+  - level: intent
+    when: "severity >= error"
+triage:
+  actions:
+    - fix_now
+    - schedule
+    - dismiss
+  dismissFeedback: bands

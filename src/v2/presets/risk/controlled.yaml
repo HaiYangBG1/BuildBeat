@@ -1,0 +1,39 @@
+# Controlled lane: intent AND plan must be accepted artifacts before build;
+# merge stays human behind a stricter evidence floor. The release gate from
+# the controlled track is out of MVP scope (no deploy capability exists) and
+# returns with observe/release work in M5.
+kind: risk-preset
+version: 1
+name: controlled
+policies:
+  - kind: policy
+    version: 1
+    name: intent-accepted
+    type: pre
+    appliesTo: build
+    enforcement: LOCAL_ENFORCED
+    rule:
+      artifact.accepted:
+        artifact: intent
+  - kind: policy
+    version: 1
+    name: plan-accepted
+    type: pre
+    appliesTo: build
+    enforcement: LOCAL_ENFORCED
+    rule:
+      artifact.accepted:
+        artifact: plan
+  - kind: policy
+    version: 1
+    name: merge-evidence-floor
+    type: transition
+    appliesTo: enter-wait-merge
+    enforcement: LOCAL_ENFORCED
+    rule:
+      all:
+        - evidence.exists:
+            kind: command
+            minGrade: L2
+        - finding.maxSeverity:
+            atMost: P3

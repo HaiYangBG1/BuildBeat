@@ -1,0 +1,44 @@
+# Migration preset mapping BuildBeat v1's four fixed gates:
+#   Gate1 (requirements) -> intent acceptance (digest-bound)
+#   Gate2 (design)       -> plan acceptance + human boundary before build
+#   Gate3 (merge)        -> the built-in final merge decision
+#   Gate4 (release)      -> out of MVP scope (no deploy capability exists)
+# The extra human boundary before review preserves v1's late review gate.
+kind: risk-preset
+version: 1
+name: legacy-four-gates
+stopAt:
+  - build
+  - review
+policies:
+  - kind: policy
+    version: 1
+    name: intent-accepted
+    type: pre
+    appliesTo: build
+    enforcement: LOCAL_ENFORCED
+    rule:
+      artifact.accepted:
+        artifact: intent
+  - kind: policy
+    version: 1
+    name: plan-accepted
+    type: pre
+    appliesTo: build
+    enforcement: LOCAL_ENFORCED
+    rule:
+      artifact.accepted:
+        artifact: plan
+  - kind: policy
+    version: 1
+    name: merge-evidence-floor
+    type: transition
+    appliesTo: enter-wait-merge
+    enforcement: LOCAL_ENFORCED
+    rule:
+      all:
+        - evidence.exists:
+            kind: command
+            minGrade: L2
+        - finding.maxSeverity:
+            atMost: P2

@@ -1,0 +1,13 @@
+# Invariant 22 (v1 lessons #3, machine form): a UI delivery's spec approval
+# subject must include renderable proof — a screenshot with a digest —
+# before a human may stamp it. Static prose is not an approvable design.
+kind: policy
+version: 1
+name: ui-render-gate
+type: transition
+appliesTo: enter-spec
+enforcement: LOCAL_ENFORCED
+rule:
+  evidence.exists:
+    kind: screenshot
+    minGrade: L2

@@ -438,14 +438,18 @@ check_multirepo_drift() {
     multirepo_line="${multirepo_line%$'\r'}"
     [ -n "$multirepo_line" ] || continue
     if ! printf '%s\n' "$multirepo_line" \
-        | grep -Eq '^repo=[^|]+\|contract=[^|]+\|deployment=[^|]+$'; then
+        | grep -Eq '^repo=[^|]+\|contract=[^|]+\|deployment=[^|]+(\|changelog=[^|]+)?$'; then
       multirepo_map_invalid=1
       continue
     fi
-    IFS='|' read -r multirepo_repo_field multirepo_contract_field multirepo_deployment_field <<< "$multirepo_line"
+    IFS='|' read -r multirepo_repo_field multirepo_contract_field multirepo_deployment_field multirepo_changelog_field <<< "$multirepo_line"
     multirepo_repo="${multirepo_repo_field#repo=}"
     multirepo_contract="${multirepo_contract_field#contract=}"
     multirepo_deployment="${multirepo_deployment_field#deployment=}"
+    # 可选第 4 字段 changelog=<repo 内的 CHANGELOG 路径>:多模块仓没有根 CHANGELOG 时,
+    # 由 map 显式指定承载契约版本的模块 CHANGELOG;缺省仍为 <repo>/CHANGELOG.md。
+    multirepo_changelog_override="${multirepo_changelog_field#changelog=}"
+    [ -n "$multirepo_changelog_field" ] || multirepo_changelog_override=""
     multirepo_repo_trimmed="$(printf '%s' "$multirepo_repo" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
     multirepo_contract_trimmed="$(printf '%s' "$multirepo_contract" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
     multirepo_deployment_trimmed="$(printf '%s' "$multirepo_deployment" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
@@ -454,12 +458,23 @@ check_multirepo_drift() {
         || [ "$multirepo_deployment" != "$multirepo_deployment_trimmed" ] \
         || ! multirepo_repo_path_safe "$multirepo_repo" \
         || ! multirepo_map_value_safe "$multirepo_contract" 240 \
-        || ! printf '%s\n' "$multirepo_contract" | grep -Eq '^contracts/[^/].*\.md$' \
+        || ! { [ "$multirepo_contract" = "n/a" ] \
+          || printf '%s\n' "$multirepo_contract" | grep -Eq '^contracts/[^/].*\.md$'; } \
         || ! multirepo_map_value_safe "$multirepo_deployment" 100; then
       multirepo_map_invalid=1
       continue
     fi
-    printf '%s\t%s\t%s\n' "$multirepo_repo" "$multirepo_contract" "$multirepo_deployment" >> "$multirepo_records"
+    # contract=n/a 表示该仓没有契约版本域(如只读存量前端、npm 包 semver 与契约版本不同域),
+    # 只登记入 inventory、不做版本核对;不得用它掩盖真实存在的契约版本关系。
+    if [ -n "$multirepo_changelog_override" ]; then
+      if ! multirepo_repo_path_safe "$multirepo_changelog_override" \
+          || [ "${#multirepo_changelog_override}" -gt 240 ] \
+          || ! printf '%s\n' "$multirepo_changelog_override" | grep -Eq "^$(printf '%s' "$multirepo_repo" | sed 's/[.[\*^$]/\\&/g')/.+/CHANGELOG\.md$"; then
+        multirepo_map_invalid=1
+        continue
+      fi
+    fi
+    printf '%s\t%s\t%s\t%s\n' "$multirepo_repo" "$multirepo_contract" "$multirepo_deployment" "$multirepo_changelog_override" >> "$multirepo_records"
     printf '%s\n' "$multirepo_repo" >> "$multirepo_expected"
   done < "$multirepo_map_raw"
 
@@ -485,9 +500,9 @@ check_multirepo_drift() {
     add_finding "sync.unverified" "unverified" "Discovered repo=$multirepo_repo is absent from buildbeat-multirepo-map:v1." "$multirepo_repo"
   done < "$multirepo_discovered"
 
-  while IFS=$'\t' read -r multirepo_repo multirepo_contract multirepo_deployment; do
+  while IFS=$'\t' read -r multirepo_repo multirepo_contract multirepo_deployment multirepo_changelog_override; do
     [ -n "$multirepo_repo" ] || continue
-    multirepo_changelog="$multirepo_repo/CHANGELOG.md"
+    multirepo_changelog="${multirepo_changelog_override:-$multirepo_repo/CHANGELOG.md}"
     multirepo_issue=0
     multirepo_drift=0
     multirepo_changelog_ok=0
@@ -544,6 +559,10 @@ check_multirepo_drift() {
         ;;
     esac
 
+    if [ "$multirepo_contract" = "n/a" ] && [ "$multirepo_deployment" = "n/a" ]; then
+      echo "  · $multirepo_repo 已登记,无契约/部署版本域(contract=n/a, deployment=n/a),不做版本核对"
+      continue
+    fi
     if [ -L "$multirepo_changelog" ] \
         || { [ -e "$multirepo_changelog" ] \
           && path_uses_symlink_component "$ROOT_PHYS/$multirepo_changelog"; }; then
@@ -557,8 +576,8 @@ check_multirepo_drift() {
         "the mapped CHANGELOG version source was not readable"
       multirepo_issue=1
     elif [ ! -f "$multirepo_changelog" ]; then
-      echo "  ⚠️  $multirepo_repo 缺少可读 regular CHANGELOG.md"
-      add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo has no readable regular CHANGELOG.md version source." "$multirepo_changelog"
+      echo "  ⚠️  $multirepo_repo 缺少可读 regular $multirepo_changelog"
+      add_finding "sync.unverified" "unverified" "Repo=$multirepo_repo has no readable regular CHANGELOG version source: $multirepo_changelog." "$multirepo_changelog"
       multirepo_issue=1
     else
       multirepo_changelog_version="$(read_changelog_head_version "$multirepo_changelog" || true)"
@@ -572,8 +591,14 @@ check_multirepo_drift() {
     fi
 
     multirepo_contract_rc=0
-    validate_reference "$multirepo_contract" "$multirepo_map_path" || multirepo_contract_rc=$?
-    if [ "$multirepo_contract_rc" -ne 0 ]; then
+    if [ "$multirepo_contract" = "n/a" ]; then
+      multirepo_contract_rc=0
+    else
+      validate_reference "$multirepo_contract" "$multirepo_map_path" || multirepo_contract_rc=$?
+    fi
+    if [ "$multirepo_contract" = "n/a" ]; then
+      :
+    elif [ "$multirepo_contract_rc" -ne 0 ]; then
       echo "  ⚠️  $multirepo_repo 的契约版本来源不可读:$multirepo_contract"
       if [ "$multirepo_contract_rc" -eq 4 ]; then
         add_scan_boundary "symlink" "$multirepo_contract" \
@@ -672,9 +697,9 @@ check_multirepo_drift() {
       add_finding "sync.multirepo_drift" "conflict" "Version sources disagree for repo=$multirepo_repo: $multirepo_changelog=$multirepo_changelog_fact; $multirepo_contract=$multirepo_contract_fact; $multirepo_deployment_fact." "$multirepo_changelog"
     elif [ "$multirepo_issue" -eq 0 ]; then
       if [ "$multirepo_deployment" = "n/a" ]; then
-        echo "  ✅ $multirepo_repo 多仓版本一致: CHANGELOG.md ↔ $multirepo_contract (deployment=n/a)"
+        echo "  ✅ $multirepo_repo 多仓版本一致: $multirepo_changelog ↔ $multirepo_contract (deployment=n/a)"
       else
-        echo "  ✅ $multirepo_repo 多仓版本一致: CHANGELOG.md ↔ $multirepo_contract ↔ $multirepo_baseline#apps.$multirepo_deployment.imageTag"
+        echo "  ✅ $multirepo_repo 多仓版本一致: $multirepo_changelog ↔ $multirepo_contract ↔ $multirepo_baseline#apps.$multirepo_deployment.imageTag"
       fi
     fi
   done < "$multirepo_records"

@@ -14,8 +14,8 @@
 
 | 候选 | 只读事实 | WP2.7 结论 |
 |---|---|---|
-| `../chickAI` | 根 Git 干净，HEAD `8c7d3f322fb0`；doctor 判为 partial default layout、无 version marker/manifest；adopt 发现 9 个目标碰撞并返回 `ready=false` | 不能作为当前 Wave 1 adopt 写试点。须另立人工接管/所有权对账工作包，不能让 CLI 猜已有文件归属 |
-| `../底座` | 根 Git 有 15 个可见变更，HEAD `8e1b32db4885`；doctor 判为已安装 legacy v1.14、manifest 缺失；adopt 发现 9 个目标碰撞，并同时返回 already-installed、dirty、collision blockers | 不能作为 Wave 1 adopt 目标；它属于未来 legacy migration/upgrade 路径。当前脏工作区也不满足任何写前条件 |
+| `../pilot-app` | 根 Git 干净，HEAD `8c7d3f322fb0`；doctor 判为 partial default layout、无 version marker/manifest；adopt 发现 9 个目标碰撞并返回 `ready=false` | 不能作为当前 Wave 1 adopt 写试点。须另立人工接管/所有权对账工作包，不能让 CLI 猜已有文件归属 |
+| `../试点工作区` | 根 Git 有 15 个可见变更，HEAD `8e1b32db4885`；doctor 判为已安装 legacy v1.14、manifest 缺失；adopt 发现 9 个目标碰撞，并同时返回 already-installed、dirty、collision blockers | 不能作为 Wave 1 adopt 目标；它属于未来 legacy migration/upgrade 路径。当前脏工作区也不满足任何写前条件 |
 
 未读取或记录两仓的变更文件名、源码内容、配置值、凭据、远端状态或生产事实。上表是 2026-08-25 的点时只读结果，执行前必须重新预检。
 
