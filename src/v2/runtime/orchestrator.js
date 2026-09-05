@@ -26,6 +26,7 @@ import {
   releaseLock,
 } from "../workspace/workspace-manager.js";
 import { writeRunRecord } from "./run-record.js";
+import { computeWorkCost } from "./work-cost.js";
 import { assertRequires } from "./env-contract.js";
 import { materialisePrompt } from "./envelope.js";
 import { cacheKey, findReusableEvidence, lastReviewedCandidate, treeHash } from "./cache.js";
@@ -329,6 +330,30 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
         `no adapter configured for worker ${stepDef.worker ?? "(none)"}; attended handoff`,
       ]);
       return;
+    }
+
+    // Work-level review cap (iteration 09): review rounds are counted across
+    // every run of the work, superseded ones included, so "one run per
+    // round" cannot slip past the per-run budget. Reaching the cap is a
+    // human decision (review once more, or merge/close as-is), not a stop.
+    const workCap = context.runBudgets.reviewRoundsPerWork;
+    if (workCap !== undefined && (stepDef.worker === "reviewer" || step === "review")) {
+      const prior = computeWorkCost(context.repoRoot, ledger.state.run.work, {
+        excludeRun: ledger.state.run.id,
+      });
+      const rounds = prior.reviewRounds + (ledger.state.steps[step]?.attempts ?? 0);
+      const allowed = workCap + (ledger.state.workReviewGrants ?? 0);
+      if (rounds >= allowed) {
+        context.waitHuman(
+          `enter-${step}`,
+          [
+            `work review cap reached: ${rounds} review round(s) across ${prior.runs + 1} run(s) of ${ledger.state.run.work} (budgets.reviewRoundsPerWork=${workCap})`,
+            `approve enter-${step} to review once more, or reject and merge/close the work on the evidence you have`,
+          ],
+          "work-review-cap",
+        );
+        return;
+      }
     }
 
     const preGate = runPolicyGate(context, "pre", step);
@@ -977,7 +1002,24 @@ export function resumeRun(options) {
       // "one more"; record the grant before driving or the same request
       // comes straight back (the pilot's app-login runs ended CANCELLED
       // with their candidates in production because of exactly that).
-      if (
+      const requestKind = [...ledger.events]
+        .reverse()
+        .find((event) => event.type === "HUMAN_REQUESTED" && event.data.transition === approval.transition)
+        ?.data.kind;
+      if (requestKind === "work-review-cap") {
+        ledger.append({
+          type: "BUDGET_EXTENDED",
+          actor: KERNEL,
+          ts: now(),
+          data: {
+            step,
+            amount: 1,
+            scope: "work",
+            maxAttempts: (context.runBudgets.reviewRoundsPerWork ?? 0) + (state.workReviewGrants ?? 0) + 1,
+            approvalRef: approval.decisionRef,
+          },
+        });
+      } else if (
         approval.transition.startsWith("resume-") &&
         (state.steps[step]?.attempts ?? 0) >= context.maxAttemptsFor(step)
       ) {

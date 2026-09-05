@@ -68,6 +68,8 @@ budgets:
 
 `doctor` 打印每步生效的上限与来源（run config / workflow preset / default）。
 
+**按 Work 累计的 review 轮数（迭代 09）**：每 Run 的预算挡不住"每轮一个新 Run"——试点一个 Work 跑了 21 个 Run、9 轮 review，2 轮封顶从未触发。`budgets.reviewRoundsPerWork: N` 让内核在 review 步起跑前统计本 Work **所有** Run（含已作废、含已压成 run-record 的）的 review 轮数，达到 N 即停 `WAITING_HUMAN`（kind `work-review-cap`，transition `enter-review`）：批准即再审一轮（台账 `BUDGET_EXTENDED scope=work`），拒绝则按手头证据合并或关闭。`overview` 每个 Work 多一行 `cost: review rounds · findings · human waits · worker 时长`，run-record 也带 `cost` 块——"继续还是砍"之前先看这一行；intent 里的止损线（最多几个 Run / 几轮 review / 几小时）就对着它核。
+
 ## 基础设施故障与候选缺陷分开算（迭代 09）
 
 worker 的超时、崩溃、非信封输出，以及 worker 主动以退出码 **75** 结束（约定：verify / 包装脚本发现环境不满足——命令不在 PATH、端口被占、后端 404、沙箱禁止监听——就 `exit 75`），内核一律判 `infra`：`STEP_FINISHED.data.infra = true`，不记失败指纹、不派 fixer、该步预算不扣（`steps[step].infraAttempts` 抵回），停 `WAITING_HUMAN`（kind `infra`）。人批准 `resume-<step>` 重跑，拒绝结束。其余非零退出仍是候选失败，走 `on: failed` 边。

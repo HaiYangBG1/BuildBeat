@@ -9,6 +9,7 @@ import { join, relative } from "node:path";
 
 import { canonicalJson } from "../storage/event-ledger.js";
 import { normalizeRepoRef } from "./repo-ref.js";
+import { ledgerCost } from "./work-cost.js";
 
 const KERNEL = { kind: "kernel", id: "orchestrator" };
 
@@ -46,6 +47,7 @@ export function writeRunRecord({ repoRoot, ledger, ts }) {
     finishedAt: last.ts,
     attempts,
     budgets: state.budgets,
+    cost: ledgerCost(ledger),
     workspaces,
     evidence,
     decisions: state.decisions,

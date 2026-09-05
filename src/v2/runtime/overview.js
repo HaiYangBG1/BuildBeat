@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { EventLedger } from "../storage/event-ledger.js";
 import { latestAdjudications, readFindingsAccount } from "./findings.js";
 import { nextReply } from "./notify.js";
+import { computeWorkCost, renderWorkCost } from "./work-cost.js";
 
 function sha256File(path) {
   return `sha256:${createHash("sha256").update(readFileSync(path, "utf8"), "utf8").digest("hex")}`;
@@ -225,6 +226,7 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
       envFacts,
       openFindings,
       runs: runs.length,
+      cost: runs.length > 0 ? computeWorkCost(repoRoot, workId) : null,
       latest: latest
         ? { id: latest.id, status: latest.status, candidate: latest.candidate, at: latest.lastAt, source: latest.source, terminalReason: latest.terminal?.reason ?? null, waiting: latest.pendingHuman?.transition ?? null }
         : null,
@@ -263,6 +265,11 @@ export function renderOverview(rows) {
       parts.push("env-facts ✓");
     }
     lines.push(`  ${parts.join(" · ")}`);
+    if (row.cost) {
+      // What this work has already consumed across every run, superseded
+      // ones included: the number a "continue or cut" decision needs.
+      lines.push(`  cost: ${renderWorkCost(row.cost)}`);
+    }
     if (row.latest) {
       const cand = row.latest.candidate ? ` candidate ${row.latest.candidate.slice(0, 7)}${row.merged ? " (merged)" : ""}` : "";
       const wait = row.latest.waiting ? ` waiting ${row.latest.waiting}` : "";

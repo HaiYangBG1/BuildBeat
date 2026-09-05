@@ -24,6 +24,7 @@ export function initialState() {
     consecutiveSameFailure: 0,
     budgets: {},
     budgetExtensions: {},
+    workReviewGrants: 0,
     pendingHuman: null,
     decisions: [],
     approvals: [],
@@ -183,7 +184,13 @@ export function applyEvent(state, event) {
       // A human approving resume-<step> after its budget ran out grants
       // exactly one more attempt; the grant is a ledger fact, not a config
       // edit, so the effective cap is replayable.
-      next.budgetExtensions[data.step] = (state.budgetExtensions?.[data.step] ?? 0) + data.amount;
+      if (data.scope === "work") {
+        // Work-level review cap (budgets.reviewRoundsPerWork) lifted once by
+        // a human for this run.
+        next.workReviewGrants = (state.workReviewGrants ?? 0) + data.amount;
+      } else {
+        next.budgetExtensions[data.step] = (state.budgetExtensions?.[data.step] ?? 0) + data.amount;
+      }
       break;
     }
     case "HUMAN_REQUESTED": {

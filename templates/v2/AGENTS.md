@@ -7,7 +7,7 @@
 
 ## 0. v2 下工作怎么发生（一页流程）
 
-1. **工作项**：每件事一个 `delivery/work/<WORK-ID>/`（`intent.md` 为什么做 + `plan.md` 怎么做，可选 `env-facts.md` 记踩出来的环境事实）；被 digest 绑定接受（`buildbeat-v2 accept`）前只是草稿、不产生义务。
+1. **工作项**：每件事一个 `delivery/work/<WORK-ID>/`（`intent.md` 为什么做 + **止损线**（最多几个 Run / 几轮 review / 几小时，越线先问所有者"继续还是砍"）+ `plan.md` 怎么做，可选 `env-facts.md` 记踩出来的环境事实）；被 digest 绑定接受（`buildbeat-v2 accept`）前只是草稿、不产生义务。`overview` 的 `cost:` 行就是止损线的读数。
 2. **代码工作跑 Run**：`buildbeat-v2 start --config <run-config.yaml> --attempt new` → 隔离 worktree 内 Build→Verify→Fix→Review 自动闭环 → **停在合并决定**。push、合并、部署永远是人批之后的人类动作。
 3. **人怎么知道该做什么**：`buildbeat-v2 overview --repo .` 回答「每件事走到哪、下一步该谁」；`inbox` 只列等人批的 Run，每条后面附可复制的下一句命令；`status --run <RUN>` 回答「还在动吗、动了多久、卡没卡」。
 4. **上线**：生产动作是人的；`release-readback` 预设 + `release` 风险预设把「做之前回读 → 人做 → 做之后回读 → 观察 → 人关窗」记成 L4 证据，任一步失败即停人批。
