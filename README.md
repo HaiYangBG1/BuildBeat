@@ -12,7 +12,7 @@ BuildBeat（旧称 Solobaton）是一套面向人和 AI 会话的、**file-first
 
 BuildBeat 最初蒸馏自一个人指挥 4 个 AI 会话、持续多期交付复杂产品的实践；这说明了方法的来源，不限定使用人数。一个 Builder 可以使用，多个 Builder 也可以共享同一 Git 项目并按需求/工作包分别闭环。
 
-**当前主线是 v2**（`@haiyangbg/buildbeat@next`，2.0.0-beta.5）：在 v1 的文件总线与人工 Gate 之上加了一个由 AI 会话调用的交付运行时 `buildbeat-v2`——隔离 worktree 内 Build → Verify → Review → Fix 自动闭环、停在合并决定，`overview` / `inbox` / `status` 回答「到哪了、谁批、卡没卡」。见下文 [v2 运行时](#v2-运行时buildbeat-v2当前主线dist-tag-next) 与 [`docs/v2/guide/`](docs/v2/guide/README.md)。稳定分发 `@latest` 仍是 v1.21.0。
+**当前主线是 v2**（`@haiyangbg/buildbeat@latest`，2.0.0）：在 v1 的文件总线与人工 Gate 之上加了一个由 AI 会话调用的交付运行时 `buildbeat-v2`——隔离 worktree 内 Build → Verify → Review → Fix 自动闭环、停在合并决定，`overview` / `inbox` / `status` 回答「到哪了、谁批、卡没卡」。见下文 [v2 运行时](#v2-运行时buildbeat-v2当前主线) 与 [`docs/v2/guide/`](docs/v2/guide/README.md)。自 2.0.0 起 `@latest` 就是 v2：v1 的 `buildbeat` 生命周期命令原样保留，`buildbeat-v2` 是同一个包里的第二个可执行文件；`@next` 用于后续预发布。
 
 ## 解决什么问题
 
@@ -85,14 +85,14 @@ npm uninstall --global @haiyangbg/buildbeat       # 只移除全局 CLI 包
 
 旧 `solobaton@latest` 固定在 legacy v0 只读能力，并迁移提示到本 scoped package；它不会获得新的项目写入或升级能力。写入式首屏命令必须使用 `@haiyangbg/buildbeat`，并且仍先展示计划、受 Git/碰撞/所有权检查约束，不能跨人工 Gate。
 
-### v2 运行时：`buildbeat-v2`（当前主线，dist-tag `next`）
+### v2 运行时：`buildbeat-v2`（当前主线）
 
 v2 把「一个工作包怎么从接受走到合并、上线」做成了机器可核验的 Run：`delivery/work/<ID>/` 里的 intent / plan 被 digest 绑定接受后，`buildbeat-v2 start` 在隔离 git worktree 里按官方预设跑 Build → Verify → Review → Fix，候选由 git 回读而不是 worker 自述，只读 reviewer 由机器强制，超预算、同指纹重复失败、worker 基础设施故障都停下来等人；合并、push、部署永远是人批之后的人类动作（内核没有这些调用路径）。上线用 `release-readback` 车道把「做之前回读 → 人做 → 做之后回读 → 观察 → 人关窗」记成 L4 证据；`observe` 做生产只读体检；`gc` 打扫；`.buildbeat/notify.yaml` 把等待推到钉钉或 webhook。
 
 它不创建 Agent、不管理模型：worker 是你在 run 配置里写的任意命令（Codex / Claude Code / 一段脚本都行），内核只负责台账、隔离、证据和门。
 
 ```bash
-npm install --global @haiyangbg/buildbeat@next   # v2 预发布；latest 仍是 v1.21.0
+npm install --global @haiyangbg/buildbeat@latest # 2.0.0 起 latest 即 v2；预发布用 @next
 buildbeat-v2 overview --repo .                     # 每个 Work 走到哪、花了多少、下一步该谁
 buildbeat-v2 inbox --repo .                        # 谁在等你批，下一句该说什么
 buildbeat-v2 start --config delivery/work/WORK-X/run-config.yaml --attempt new
