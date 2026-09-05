@@ -101,15 +101,17 @@ test("two identical failures in a row stop the loop for a human", () => {
   assert.match(state.pendingHuman.reasons[0], /fingerprint/);
 });
 
-test("a failure with no transition terminates and compacts the run", () => {
+test("a failure with no transition stops for a human instead of terminating the run", () => {
+  // Iteration 09: a missing edge is not a verdict on the candidate. A
+  // pilot's backend build failed once and the run died as FAILED with no
+  // way back; now the person decides (rerun or reject).
   const { root } = fixtureRepo();
   const result = run(root, "RUN-T4", mockAdapters({ build: ["fail"] }));
   const state = result.state;
-  assert.equal(state.terminal.status, "FAILED");
-  assert.match(state.terminal.reason, /no transition/);
-  assert.ok(state.compacted);
-  const recordPath = join(root, "delivery", "work", "WORK-RUN-T4", "runs", "RUN-T4", "run-record.json");
-  assert.ok(existsSync(recordPath));
+  assert.equal(state.run.status, "WAITING_HUMAN");
+  assert.equal(state.terminal, null);
+  assert.equal(state.pendingHuman.transition, "resume-build");
+  assert.match(state.pendingHuman.reasons[0], /no transition for \(build, failed\)/);
 });
 
 test("a verify failure on its final attempt stops for a human instead of starting fix", () => {

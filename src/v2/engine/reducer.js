@@ -108,7 +108,12 @@ export function applyEvent(state, event) {
           `step ${data.step} expected attempt ${expectedAttempt}, got ${data.attempt}`,
         );
       }
-      next.steps[data.step] = { status: "RUNNING", attempts: data.attempt, detail: null };
+      next.steps[data.step] = {
+        status: "RUNNING",
+        attempts: data.attempt,
+        detail: null,
+        infraAttempts: state.steps[data.step]?.infraAttempts ?? 0,
+      };
       next.currentStep = data.step;
       break;
     }
@@ -121,6 +126,11 @@ export function applyEvent(state, event) {
       }
       next.steps[data.step].status = data.status === "succeeded" ? "SUCCEEDED" : "FAILED";
       next.steps[data.step].detail = data.status;
+      if (data.infra === true) {
+        // A worker-infrastructure failure (backend outage, timeout, garbage
+        // output, exit 75) is not charged to the step's budget.
+        next.steps[data.step].infraAttempts = (step.infraAttempts ?? 0) + 1;
+      }
       next.currentStep = null;
       break;
     }

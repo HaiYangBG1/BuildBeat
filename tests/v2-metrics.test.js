@@ -44,13 +44,13 @@ test("metrics derive run counts, rates and waits from ledgers alone", () => {
     });
 
   mkRun("RUN-M1", { build: ["succeed"], verify: ["succeed"] }); // waiting at review
-  mkRun("RUN-M2", { build: ["fail"] }); // terminal FAILED (no route)
+  mkRun("RUN-M2", { build: ["fail"] }); // no route for (build, failed): waits for a human (iteration 09)
 
   let summary = computeMetrics(root);
   assert.equal(summary.runs, 2);
-  assert.equal(summary.waitingHuman, 1);
-  assert.equal(summary.terminal.FAILED, 1);
-  assert.equal(summary.autoReachedHumanRate, 0.5);
+  assert.equal(summary.waitingHuman, 2);
+  assert.equal(summary.terminal.FAILED ?? 0, 0);
+  assert.equal(summary.autoReachedHumanRate, 1);
   assert.equal(summary.evidenceCompleteness, 1, "every finished step carried evidence");
   assert.deepEqual(summary.fixAttempts, { 0: 2 });
   assert.equal(summary.approvalWaitMs.length, 0);
@@ -62,6 +62,6 @@ test("metrics derive run counts, rates and waits from ledgers alone", () => {
 
   const text = renderMetrics(summary);
   assert.match(text, /runs: 2/);
-  assert.match(text, /auto-reached WAITING_HUMAN: 50\.0%/);
+  assert.match(text, /auto-reached WAITING_HUMAN: 100\.0%/);
   assert.match(text, /evidence completeness: 100\.0%/);
 });

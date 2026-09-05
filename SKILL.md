@@ -27,7 +27,7 @@ description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工�
 | 「有什么要我拍板」 | `buildbeat-v2 inbox --repo .` | 逐项:等什么、证据在哪、推荐 A/B;用户回「批准/拒绝」后会话调 `approve`/`reject` |
 | 「开个 Work:〔目标〕」 | 写 `delivery/work/<ID>/intent.md`(为什么做)+ `plan.md`(怎么做)+ `run-config.yaml`;给用户看摘要 | 「看完说接受」;用户说「接受」→ `accept --artifact intent` / `--artifact plan`(digest 绑定) |
 | 「开工」「再来一轮」 | `buildbeat-v2 start --config <run-config.yaml> --attempt new`(自动编号 RUN-X-01/02…,自动作废同 Work 的旧等待;**用 nohup/setsid 脱离启动**) | 「已起 RUN-X-02,停在合并决定时会通知/我会告诉你」 |
-| 「怎么样了」「卡住了吗」「正常吗」 | `buildbeat-v2 status --repo . --run <RUN>` | 一句:在跑第几步、跑了多久、历史通常多久、最后一次输出几分钟前;`STALLED` 就说「疑似卡住,建议停/等」 |
+| 「怎么样了」「卡住了吗」「正常吗」 | `buildbeat-v2 status --repo . --run <RUN>` | 一句:在跑第几步、跑了多久、历史通常多久、最后一次输出几分钟前;`STALLED` 就说「疑似卡住,建议停/等」;停在 kind `infra` 就说「worker 环境/后端故障,不是代码问题,恢复后我重跑,预算不扣」 |
 | 「批准 RUN-X」「拒绝,原因…」 | `approve --transition <t> --by <用户名>` / `reject --reason` → 若非终态再 `resume` | 「批准=merge-ready;合并/push/部署要你另说」 |
 | 「这条 finding 不算,那条接受」 | `findings list` / `findings adjudicate --action dismiss|accept` → `approve --transition enter-fix` | 裁决结果一句 |
 | 「上线」「做生产动作」 | 用 `release-readback` 预设 + `riskPreset: release` 开 Run:preflight 回读 → 停 `enter-apply-readback` | 「回读全绿,现在轮到你做〔动作〕;做完说一声」→ 用户说「做完了」→ `approve enter-apply-readback` → 回读+观察 → 停关窗 |
@@ -37,6 +37,7 @@ description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工�
 ### 0.5.2 会话必须遵守的读法
 
 - **能实查的不问人**:`overview` / `status` / `inbox` / `metrics` / `observe status` 全是只读,先跑再答;不信文档、不信上游转述。
+- **环境故障不是候选缺陷**:超时、崩溃、非 JSON 输出、退出码 75 内核判 `infra` 停人;会话只做两件事——查后端/环境(codex 是否 404、端口是否被占、PATH 是否缺工具),恢复后 `approve --transition resume-<step>`;**不要**为了绕过去手写探针循环或起新 Run。verify / 包装脚本发现环境不满足就 `exit 75`。
 - **数字要落地**:`status` 给了耗时和历史中位数,回答「正常吗」必须带对比("verify 已 14 分钟,历史中位 6 分钟,最后输出 2 分钟前,还在动");没数据就说没数据。
 - **输出里的 `next:` 行是给会话的**,会话据此调命令,不把命令原文丢给用户;用户只需要回「批准 / 拒绝 / 接受 / 做完了 / A / B」。
 - **人批三级**(§AGENTS 2.5):`STOP_NOW` 只用于跨发布门 / 扩范围 / 改冻结契约 / 不可逆外部动作 / 接受风险;可逆取舍攒到门前一次批 2～5 个;事实与派生约束自己定。**所有者以后要看见或念出来的名字与参数(域名、服务名、环境名、自停时长、窗口时长)属于门前决策项,不由 worker 顺手定**——真实事故:一个按内部术语起的服务名让所有者连问四轮才改成他听得懂的业务名。

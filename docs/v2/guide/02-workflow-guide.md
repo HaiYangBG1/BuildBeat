@@ -68,6 +68,12 @@ budgets:
 
 `doctor` 打印每步生效的上限与来源（run config / workflow preset / default）。
 
+## 基础设施故障与候选缺陷分开算（迭代 09）
+
+worker 的超时、崩溃、非信封输出，以及 worker 主动以退出码 **75** 结束（约定：verify / 包装脚本发现环境不满足——命令不在 PATH、端口被占、后端 404、沙箱禁止监听——就 `exit 75`），内核一律判 `infra`：`STEP_FINISHED.data.infra = true`，不记失败指纹、不派 fixer、该步预算不扣（`steps[step].infraAttempts` 抵回），停 `WAITING_HUMAN`（kind `infra`）。人批准 `resume-<step>` 重跑，拒绝结束。其余非零退出仍是候选失败，走 `on: failed` 边。
+
+没有转移边的失败结果（预设里 build、review、fix 的 `failed`）也不再终态，停 `resume-<step>` 交人决定。终态 FAILED 只剩 policy `BLOCK`。
+
 ## 迭代 08 新增的 run 配置段
 
 - **`envelope:`** —— `prompts:`（目录，相对 run 配置）+ `vars:`（`{vars.x}` 替换）+ 可选 `pin: <sha>`（从该提交读 prompt，冻结信封）。内核按 `<component>-<worker>.md` → `<worker>.md` 取 prompt，落到 `runs/<RUN>/prompts/<step>-<n>.md`，以 `BUILDBEAT_PROMPT`（路径）和 `input.envelope`（`promptRef / file / digest / vars`）交给 worker；worker args 里可用 `{prompt}` 与 `{vars.x}`。`RUN_CREATED` 记 `envelopeDigest`。

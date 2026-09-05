@@ -154,6 +154,11 @@ test("an invalid worker envelope is invalid-output and fails closed", () => {
   });
   const state = result.state;
   assert.equal(state.steps.review.detail, "invalid-output");
-  assert.equal(state.terminal.status, "FAILED");
-  assert.match(state.terminal.reason, /no transition for \(review, failed\)/);
+  // Garbage output is a worker-infrastructure failure: no fixer, no terminal
+  // FAILED, the attempt is refunded and a human decides when to rerun.
+  assert.equal(state.terminal, null);
+  assert.equal(state.run.status, "WAITING_HUMAN");
+  assert.equal(state.pendingHuman.kind, "infra");
+  assert.equal(state.pendingHuman.transition, "resume-review");
+  assert.equal(state.steps.review.infraAttempts, 1);
 });

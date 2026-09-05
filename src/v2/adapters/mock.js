@@ -11,7 +11,7 @@ export class MockScriptError extends Error {
   }
 }
 
-const BEHAVIORS = new Set(["succeed", "fail", "timeout", "crash", "invalid-output"]);
+const BEHAVIORS = new Set(["succeed", "fail", "timeout", "crash", "invalid-output", "env-fail"]);
 
 export function createMockAdapter(script) {
   const remaining = {};
@@ -53,12 +53,19 @@ export function createMockAdapter(script) {
           return { ...base, exitCode: 0 };
         case "fail":
           return { ...base, exitCode: 1, stderr: "mock failure" };
+        case "env-fail":
+          // Exit 75 (EX_TEMPFAIL): the worker says its environment, not the
+          // candidate, is what failed.
+          return { ...base, exitCode: 75, stderr: "mock environment unavailable" };
         case "timeout":
           return { ...base, exitCode: null, timedOut: true };
         case "crash":
           return { ...base, exitCode: null, signal: "SIGKILL" };
         case "invalid-output":
-          return { ...base, exitCode: 0, stdout: "not-a-valid-worker-envelope" };
+          // The kernel judges the envelope, not stdout: hand back a string
+          // that is not JSON so parseEnvelope fails the way a real worker's
+          // prose reply does.
+          return { ...base, exitCode: 0, stdout: "not-a-valid-worker-envelope", envelope: "not-a-valid-worker-envelope" };
         default:
           throw new MockScriptError(`unreachable behavior: ${behavior}`);
       }

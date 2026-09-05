@@ -63,7 +63,7 @@
 | `RUN_STARTED` | kernel | —— | 进入 RUNNING |
 | `WORKSPACE_BOUND` | kernel | `workspaceId, repo, branch, worktreePath, base` | 一个 Run 可多次（多仓绑定，卡点 2/4） |
 | `STEP_STARTED` | kernel | `step, attempt, worker, adapter, workspaceId` | Step 开跑 |
-| `STEP_FINISHED` | kernel | `step, attempt, status ∈ {succeeded,failed,blocked,invalid-output,timeout,crashed}, exitCode?` | Adapter 异常退出也必须落此事件（不变量 15） |
+| `STEP_FINISHED` | kernel | `step, attempt, status ∈ {succeeded,failed,blocked,invalid-output,timeout,crashed}, exitCode?`；additive（迭代 09）：`infra?: true`（worker 基础设施故障：timeout / crashed / invalid-output / exit 75；状态 `steps[step].infraAttempts` 累加，不扣预算） | Adapter 异常退出也必须落此事件（不变量 15） |
 | `CANDIDATE_PINNED` | kernel | `workspaceId, base, candidate` | candidate 由 Git 回读后固定 |
 | `EVIDENCE_RECORDED` | kernel/provider | `evidenceRef, kind, subject, digest, status, grade`；additive（迭代 08）：`cacheKey?`（树+命令+信封的复用键）、`reused? {run, evidenceRef, digest}`（本记录引用了哪次已通过的证据而未重跑） | 指向满足 Evidence Contract 的记录 |
 | `POLICY_EVALUATED` | kernel | `policy, phase ∈ {pre,post,transition,action}, result ∈ GateResult, enforcement, reason` | 每次 Policy 裁决可解释 |
@@ -71,7 +71,7 @@
 | `FAILURE_FINGERPRINT` | kernel | `step, command, exitCode, errorDigest, diffDigest` | 无进展/相同失败检测的输入 |
 | `BUDGET_CONSUMED` | kernel | `kind ∈ {attempts,tokens,cost,time}, amount, remaining` | 预算台账（卡点 1：token/费用不再 `UNVERIFIED`） |
 | `BUDGET_EXTENDED` | kernel | `step, amount, maxAttempts, approvalRef` | additive（迭代 09）：人批准了预算耗尽的 `resume-<step>`，该步上限 +`amount`；状态 `budgetExtensions[step]` 累加，`maxAttemptsFor(step)` 据此重放 |
-| `HUMAN_REQUESTED` | kernel | `transition, subject{candidate,planDigest,evidenceDigest}, reasons` | 进入 WAITING_HUMAN |
+| `HUMAN_REQUESTED` | kernel | `transition, subject{candidate,planDigest,evidenceDigest}, reasons`；additive：`kind ∈ {boundary,final-decision,finding-triage,stale,infra}` | 进入 WAITING_HUMAN |
 | `DECISION_RECORDED` | human | `decision ∈ {approved,rejected}, transition, subject, decisionRef` | 同步落 Git 决策记录 |
 | `APPROVAL_STALE` | kernel | `approvalRef, changed ⊆ {candidate,plan,evidence}` | F6 的机器化 |
 | `CHECKPOINT` | kernel | `resumePoint{step,attempt}, workspaceStates[]` | F5 的机器化：恢复只允许从最近 CHECKPOINT 或安全推导点继续 |

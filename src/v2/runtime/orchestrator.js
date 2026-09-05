@@ -151,7 +151,9 @@ function makeContext(options, ledger, workspace) {
   context.maxAttemptsFor = (step) =>
     (context.runBudgets.maxAttempts?.[step] ??
       workflow.budgets?.maxAttempts?.[step] ??
-      maxAttemptsPerStep) + (ledger.state.budgetExtensions?.[step] ?? 0);
+      maxAttemptsPerStep) +
+    (ledger.state.budgetExtensions?.[step] ?? 0) +
+    (ledger.state.steps[step]?.infraAttempts ?? 0);
   context.policies = options.policies ?? [];
   context.allowedPaths = options.allowedPaths ?? null;
   context.reviewTriage = options.reviewTriage ?? null;
@@ -275,13 +277,13 @@ function settleOutcome(context, step, outcome, tree, exec) {
     },
   });
   if (!to) {
-    ledger.append({
-      type: "RUN_TERMINAL",
-      actor: KERNEL,
-      ts: now(),
-      data: { status: "FAILED", reason: `no transition for (${step}, ${outcome})` },
-    });
-    writeRunRecord({ repoRoot: context.repoRoot, ledger, ts: now() });
+    // A workflow without an edge for this outcome is not a verdict on the
+    // candidate; the person decides whether to rerun the step or end the
+    // run. Terminal FAILED here used to kill runs whose reviewer had merely
+    // errored out.
+    context.waitHuman(`resume-${step}`, [
+      `no transition for (${step}, ${outcome}); approve resume-${step} to rerun the step, reject to end the run`,
+    ]);
     return null;
   }
   ledger.append({
@@ -541,18 +543,53 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
     } else {
       stepStatus = "succeeded";
     }
+    // Infrastructure failure vs candidate failure. A timeout, a crash,
+    // garbage output or the worker's own "environment unavailable" signal
+    // (exit 75, EX_TEMPFAIL) says nothing about the candidate: no failure
+    // fingerprint, no fixer, the attempt is refunded, and a human decides
+    // when the backend is back. Real incidents: a worker backend outage
+    // (review exit 97) and non-JSON reviewer output killed five runs in two
+    // days as "no transition for (review, failed)"; PATH, port and host-load
+    // verify failures dispatched fixers five times.
+    const infra =
+      stepStatus === "timeout" ||
+      stepStatus === "crashed" ||
+      stepStatus === "invalid-output" ||
+      (stepStatus === "failed" && exec.exitCode === 75);
     ledger.append({
       type: "STEP_FINISHED",
       actor: KERNEL,
       ts: now(),
-      data: { step, attempt, status: stepStatus, exitCode: exec.exitCode },
+      data: { step, attempt, status: stepStatus, exitCode: exec.exitCode, ...(infra ? { infra: true } : {}) },
     });
     ledger.append({
       type: "BUDGET_CONSUMED",
       actor: KERNEL,
       ts: now(),
-      data: { kind: "attempts", amount: 1, remaining: maxAttempts - attempt },
+      data: {
+        kind: "attempts",
+        amount: infra ? 0 : 1,
+        remaining: context.maxAttemptsFor(step) - attempt,
+      },
     });
+    if (infra) {
+      const cause =
+        stepStatus === "failed"
+          ? "exit 75 (worker reports its environment unavailable)"
+          : stepStatus === "invalid-output"
+            ? "output is not a worker envelope"
+            : stepStatus;
+      context.waitHuman(
+        `resume-${step}`,
+        [
+          `worker infrastructure failure at ${step}: ${cause}; not a candidate defect, attempt not charged`,
+          ...(tree.dirty ? [`the failed worker left the worktree dirty; inspect before rerunning`] : []),
+          `approve resume-${step} to rerun once the backend/environment is back; reject to end the run`,
+        ],
+        "infra",
+      );
+      return;
+    }
 
     let blockingFindings = [];
     if (envelope?.findings) {

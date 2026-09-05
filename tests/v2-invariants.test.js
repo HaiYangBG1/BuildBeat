@@ -64,14 +64,21 @@ test("a timed-out step is recorded as timeout and fails closed", () => {
   );
   const state = result.state;
   assert.equal(state.steps.build.detail, "timeout");
-  assert.equal(state.terminal.status, "FAILED", "build has no failure route in the preset");
+  // Fails closed: no progress, no fixer; a timeout is a worker-infrastructure
+  // failure and stops for a human (iteration 09), not a terminal FAILED.
+  assert.equal(state.run.status, "WAITING_HUMAN");
+  assert.equal(state.pendingHuman.kind, "infra");
+  assert.equal(state.pendingHuman.transition, "resume-build");
+  assert.equal(state.workspaces["RUN-I1"].candidate, null, "no candidate pinned");
 });
 
 test("an adapter crash leaves a failure fact, never silent progress", () => {
   const { root } = fixtureRepo();
   const result = run(root, "RUN-I2", { builder: createMockAdapter({ build: ["crash"] }) });
   assert.equal(result.state.steps.build.detail, "crashed");
-  assert.equal(result.state.terminal.status, "FAILED");
+  assert.equal(result.state.run.status, "WAITING_HUMAN");
+  assert.equal(result.state.pendingHuman.kind, "infra");
+  assert.equal(result.state.steps.build.infraAttempts, 1);
 });
 
 test("a spawn error yields unverified evidence and a crashed step", () => {
