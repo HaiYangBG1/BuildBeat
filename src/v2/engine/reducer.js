@@ -23,6 +23,7 @@ export function initialState() {
     fingerprints: [],
     consecutiveSameFailure: 0,
     budgets: {},
+    budgetExtensions: {},
     pendingHuman: null,
     decisions: [],
     approvals: [],
@@ -166,6 +167,13 @@ export function applyEvent(state, event) {
     case "BUDGET_CONSUMED": {
       const consumed = state.budgets[data.kind]?.consumed ?? 0;
       next.budgets[data.kind] = { consumed: consumed + data.amount, remaining: data.remaining };
+      break;
+    }
+    case "BUDGET_EXTENDED": {
+      // A human approving resume-<step> after its budget ran out grants
+      // exactly one more attempt; the grant is a ledger fact, not a config
+      // edit, so the effective cap is replayable.
+      next.budgetExtensions[data.step] = (state.budgetExtensions?.[data.step] ?? 0) + data.amount;
       break;
     }
     case "HUMAN_REQUESTED": {

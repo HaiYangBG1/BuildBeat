@@ -56,6 +56,10 @@ allowedPaths:
   - src
   - tests
 reviewTriage: required     # P0/P1 先过人分诊再派 fixer
+budgets:                   # 可省;run 配置 > 预设 > 默认。预算耗尽停人时,批准 resume-<step> 即多给一次
+  maxAttempts:
+    review: 2
+  reviewRoundsPerWork: 6   # 跨本 Work 所有 Run 累计的 review 轮数;超了新 Run 起跑前先问人
 cache:
   verify: tree             # 同树+同命令+同信封已通过就复用证据(标 REUSED)
 envelope:

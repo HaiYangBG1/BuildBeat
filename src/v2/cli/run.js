@@ -281,6 +281,43 @@ function loadRunConfig(flags, command) {
   if (config.stallAfterMs !== undefined && !(Number(config.stallAfterMs) > 0)) {
     throw new Error(`stallAfterMs must be a positive number, got: ${config.stallAfterMs}`);
   }
+  // budgets: run config beats the preset (the preset's two review rounds
+  // could not be raised per run before; a pilot's shipped candidates ended
+  // as CANCELLED runs because of it).
+  const budgets = {};
+  if (config.budgets !== undefined) {
+    if (!config.budgets || typeof config.budgets !== "object" || Array.isArray(config.budgets)) {
+      throw new Error("budgets must be a map");
+    }
+    for (const key of Object.keys(config.budgets)) {
+      if (!["maxAttempts", "reviewRoundsPerWork"].includes(key)) {
+        throw new Error(`unknown budgets key: ${key} (known: maxAttempts, reviewRoundsPerWork)`);
+      }
+    }
+    if (config.budgets.maxAttempts !== undefined) {
+      const map = config.budgets.maxAttempts;
+      if (!map || typeof map !== "object" || Array.isArray(map)) {
+        throw new Error("budgets.maxAttempts must be a map of step -> positive integer");
+      }
+      budgets.maxAttempts = {};
+      for (const [step, value] of Object.entries(map)) {
+        if (!workflow.stepIds.has(step)) {
+          throw new Error(`budgets.maxAttempts.${step}: step not in workflow`);
+        }
+        if (!Number.isInteger(Number(value)) || Number(value) < 1) {
+          throw new Error(`budgets.maxAttempts.${step} must be a positive integer, got: ${value}`);
+        }
+        budgets.maxAttempts[step] = Number(value);
+      }
+    }
+    if (config.budgets.reviewRoundsPerWork !== undefined) {
+      const value = Number(config.budgets.reviewRoundsPerWork);
+      if (!Number.isInteger(value) || value < 1) {
+        throw new Error(`budgets.reviewRoundsPerWork must be a positive integer, got: ${config.budgets.reviewRoundsPerWork}`);
+      }
+      budgets.reviewRoundsPerWork = value;
+    }
+  }
   const cache = {};
   for (const [step, mode] of Object.entries(config.cache ?? {})) {
     if (mode !== "tree") {
@@ -317,6 +354,7 @@ function loadRunConfig(flags, command) {
     policies,
     riskPreset,
     maxAttemptsPerStep: config.maxAttemptsPerStep ?? 4,
+    budgets,
     stepTimeoutMs: config.stepTimeoutMs,
     allowedPaths: config.allowedPaths,
     requires: config.requires ?? [],
@@ -593,6 +631,21 @@ function commandDoctor(flags) {
     console.log("push protection: repository has no remotes (nothing to protect)");
   }
   console.log("kernel capabilities: merge/deploy/publish have no call path in the runner (invariant 20)");
+  const budgetLines = [];
+  for (const step of options.workflow.steps) {
+    if (!step.worker) {
+      continue;
+    }
+    const fromRun = options.budgets.maxAttempts?.[step.id];
+    const fromPreset = options.workflow.budgets?.maxAttempts?.[step.id];
+    const effective = fromRun ?? fromPreset ?? options.maxAttemptsPerStep;
+    const source = fromRun !== undefined ? "run config" : fromPreset !== undefined ? "workflow preset" : "default";
+    budgetLines.push(`${step.id}=${effective} (${source})`);
+  }
+  console.log(`budgets (maxAttempts per step; approving resume-<step> after exhaustion grants +1): ${budgetLines.join(", ")}`);
+  if (options.budgets.reviewRoundsPerWork !== undefined) {
+    console.log(`budgets.reviewRoundsPerWork: ${options.budgets.reviewRoundsPerWork} (counted across every run of the work, superseded ones included)`);
+  }
   if (options.requires.length > 0) {
     console.log("environment contract (requires):");
     const check = checkRequires(options.requires);

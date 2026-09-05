@@ -52,7 +52,21 @@ run 配置还可声明（beta.3，皆来自三十轮部署战役的真实事故�
 
 ## review 轮数预算
 
-官方预设自带 `budgets.maxAttempts.review: 2`（战役章程"每 Run 2 轮 review 封顶"的原生化）：第三轮 review 在启动前即停 `WAITING_HUMAN`，理由写明预算耗尽。项目可用自己的 workflow 文件覆盖；机制就是每步 `maxAttempts`，无需新概念。
+官方预设自带 `budgets.maxAttempts.review: 2`（战役章程"每 Run 2 轮 review 封顶"的原生化）：第三轮 review 在启动前即停 `WAITING_HUMAN`，理由写明预算耗尽。机制就是每步 `maxAttempts`，无需新概念。
+
+预算耗尽后停的那次 `resume-<step>`，**人批准即多给一次**：内核落一条 `BUDGET_EXTENDED`（台账事实，可重放），该步上限 +1 再跑；拒绝即终止 Run。此前批准只会让同一请求立刻回来（试点两条应用登录 Run 因此以 CANCELLED 收场，候选却已在生产）。
+
+run 配置可覆盖预设（run 配置 > 预设 > 全局 `maxAttemptsPerStep`）：
+
+```yaml
+budgets:
+  maxAttempts:
+    review: 3
+    verify: 6
+  reviewRoundsPerWork: 6   # 跨本 Work 所有 Run（含已作废）累计的 review 轮数上限，见 overview 指南
+```
+
+`doctor` 打印每步生效的上限与来源（run config / workflow preset / default）。
 
 ## 迭代 08 新增的 run 配置段
 

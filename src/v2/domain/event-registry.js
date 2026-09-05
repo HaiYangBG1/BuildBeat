@@ -33,6 +33,7 @@ export const EVENT_REGISTRY = {
   TRANSITION: ["from", "to", "cause"],
   FAILURE_FINGERPRINT: ["step", "command", "exitCode", "errorDigest", "diffDigest"],
   BUDGET_CONSUMED: ["kind", "amount", "remaining"],
+  BUDGET_EXTENDED: ["step", "amount", "maxAttempts"],
   HUMAN_REQUESTED: ["transition", "subject", "reasons"],
   DECISION_RECORDED: ["decision", "transition", "subject", "decisionRef"],
   APPROVAL_STALE: ["approvalRef", "changed"],

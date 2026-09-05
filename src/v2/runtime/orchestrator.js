@@ -142,8 +142,16 @@ function makeContext(options, ledger, workspace) {
     ledger,
     workspace,
   };
+  // Effective cap per step: run config `budgets:` beats the preset, the
+  // preset beats the global default, and every BUDGET_EXTENDED a human
+  // granted on this ledger adds to it. Real incident: the preset's two
+  // review rounds could not be raised from the run config, and approving
+  // resume-review re-asked the same question forever.
+  context.runBudgets = options.budgets ?? {};
   context.maxAttemptsFor = (step) =>
-    workflow.budgets?.maxAttempts?.[step] ?? maxAttemptsPerStep;
+    (context.runBudgets.maxAttempts?.[step] ??
+      workflow.budgets?.maxAttempts?.[step] ??
+      maxAttemptsPerStep) + (ledger.state.budgetExtensions?.[step] ?? 0);
   context.policies = options.policies ?? [];
   context.allowedPaths = options.allowedPaths ?? null;
   context.reviewTriage = options.reviewTriage ?? null;
@@ -240,6 +248,7 @@ function settleOutcome(context, step, outcome, tree, exec) {
     if ((ledger.state.steps[step]?.attempts ?? 0) >= context.maxAttemptsFor(step)) {
       context.waitHuman(`resume-${step}`, [
         `budget exhausted: ${step} failed its final attempt (maxAttempts=${context.maxAttemptsFor(step)}); not routing to fix`,
+        `approving resume-${step} grants one more attempt; rejecting ends the run`,
       ]);
       return null;
     }
@@ -341,6 +350,7 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
     if (attempt > maxAttempts) {
       context.waitHuman(`resume-${step}`, [
         `budget exhausted: ${step} would exceed maxAttempts=${maxAttempts}`,
+        `approving resume-${step} grants one more attempt; rejecting ends the run`,
       ]);
       return;
     }
@@ -925,6 +935,26 @@ export function resumeRun(options) {
         throw new OrchestratorError(
           `cannot derive a resume step from approved transition ${approval.transition}`,
         );
+      }
+      // An approved resume-<step> on an exhausted budget is the human saying
+      // "one more"; record the grant before driving or the same request
+      // comes straight back (the pilot's app-login runs ended CANCELLED
+      // with their candidates in production because of exactly that).
+      if (
+        approval.transition.startsWith("resume-") &&
+        (state.steps[step]?.attempts ?? 0) >= context.maxAttemptsFor(step)
+      ) {
+        ledger.append({
+          type: "BUDGET_EXTENDED",
+          actor: KERNEL,
+          ts: now(),
+          data: {
+            step,
+            amount: 1,
+            maxAttempts: context.maxAttemptsFor(step) + 1,
+            approvalRef: approval.decisionRef,
+          },
+        });
       }
       ledger.append({ type: "RUN_STARTED", actor: KERNEL, ts: now(), data: {} });
       drive(context, step, { skipBoundaryOnce: true });
