@@ -99,7 +99,7 @@ npm view @haiyangbg/buildbeat@latest version
 npm install --global @haiyangbg/buildbeat@latest
 ```
 
-> The envelope templates the quickstart uses (`templates/v2/envelope/`) ship with the next patch release; after installing, check that the latest version in the [CHANGELOG](CHANGELOG.md) includes them.
+> The envelope templates the quickstart uses (`templates/v2/envelope/`) ship with the package since 2.0.1; see the [CHANGELOG](CHANGELOG.md) for what each version contains.
 
 **2. Load the entry point.** Download or clone this repository, ask your AI tool to read its [`SKILL.md`](SKILL.md), and say this in the target project:
 

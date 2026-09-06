@@ -38,7 +38,7 @@ workers:
       - npm test
 ```
 
-`env:` 的值必须是标量（写进子进程前转成字符串），变量名须合法（字母、数字、下划线）；不合法时 `doctor` / `start` 在加载配置时直接报错。**2.0.0 及更早的 CLI 加载路径会丢掉这两个字段**（doctor 报告了姿态，start 却按默认白名单跑，`env:` 的变量到不了 worker）；2.0.0 之后的首个补丁版起透传(`CHANGELOG.md` Unreleased),并有 CLI 端到端回归（`tests/v2-run-cli.test.js`）。直接调用 `createShellAdapter` 的 API 用户不受此影响。
+`env:` 的值必须是标量（写进子进程前转成字符串），变量名须合法（字母、数字、下划线）；不合法时 `doctor` / `start` 在加载配置时直接报错。**2.0.0 及更早的 CLI 加载路径会丢掉这两个字段**（doctor 报告了姿态，start 却按默认白名单跑，`env:` 的变量到不了 worker）；2.0.1 起透传，并有 CLI 端到端回归（`tests/v2-run-cli.test.js`）。直接调用 `createShellAdapter` 的 API 用户不受此影响。
 
 ## 输入输出
 

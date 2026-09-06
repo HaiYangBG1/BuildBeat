@@ -986,7 +986,7 @@ def check_execution_contracts() -> list[str]:
         ),
         "plugins/buildbeat/.claude-plugin/plugin.json": (
             '"name": "buildbeat"',
-            '"version": "0.2.1"',
+            '"version": "0.2.2"',
             '"repository": "https://github.com/HaiYangBG1/BuildBeat"',
             "claude-code-plugin-manifest.json",
         ),
