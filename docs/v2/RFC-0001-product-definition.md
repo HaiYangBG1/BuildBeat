@@ -50,6 +50,8 @@ v1 的"Skill-only 完整等价"拆成两个承诺（[`V2-PLAN.md`](../V2-PLAN.md
 
 ## 6. v1 的地位
 
+> **生效修订（2026-09-05）**：下段"`latest` 留 v1"是 beta 期策略，已按计划结束——`@haiyangbg/buildbeat@2.0.0` 于 2026-09-05 发布到 `latest`（[`CHANGELOG.md`](../../CHANGELOG.md)、[发布证据](../V2.0.0-RELEASE-EVIDENCE-2026-09-05.md)）。此后 `latest` = v2 系列，`next` 仅用于后续预发布；v1 生命周期命令随同一个包分发，v1 骨架版本仍是 v1.21。原文保留为决策记录。
+
 v1 进入 `v1-maintenance` 维护线，只修安全与严重缺陷；npm `latest` 留 v1，`next` 发 v2 预发布；Beta 前 `latest` 不指向 v2。v1 迁移采用半天手工 runbook（装机量 N=1），`migrate-v1` importer 已裁掉（收尾修正三）。旧概念的保留/转换/删除逐项见 [`RFC-0002`](RFC-0002-domain-model.md) §8。
 
 ## 7. 自研面与组装面（逐项自研理由）

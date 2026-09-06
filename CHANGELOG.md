@@ -2,6 +2,18 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+> 2.0.0 之后的文档与合同纠错（对外说明同步 A 批次）。未发布；发布时按 patch 走。
+
+- **修复：run 配置的 `workers.<角色>.inheritEnv` 与 `env:` 在 CLI 加载路径被丢弃**。`doctor` 按配置报告 env 姿态，`start` / `resume` 却总按默认白名单起 worker，`env:` 点名注入的变量到不了子进程（Adapter 指南承诺的能力在 CLI 侧从未生效；直接调用 `createShellAdapter` 的 API 用户不受影响）。现在两字段透传到 Shell Adapter，`env:` 值必须是标量、变量名必须合法，否则加载配置时报错。回归：`tests/v2-run-cli.test.js` 新增"env 姿态经 CLI 到达 worker"（allowlist 下宿主变量不泄漏且 `env:` 可达；`inheritEnv: true` 下宿主变量可见；非法变量名被拒）
+- **Worker 合同文档与解析器对齐**：finding 每条要求 `severity`（`P0`–`P3`）与字符串 `summary`（此前文档写 `title` 与 `P1|P2|P3`）；阻断的是 P0/P1（此前写 P1/P2）；格式错误 = `invalid-output` 判 `infra` 停人、不派 fixer、不扣预算（此前写"按失败处理"）；没配 `fixer` 时到 fix 步停人等接手，不是自动修。快速开始与 Skill 的 run-config 样板补 `fixer`，改成解析器可直接读的块列表，reviewer prompt 写明信封形状
+- **安装通道统一稳定版**：快速开始、迁移指南、Skill §0.5 的 `@next` 全部改为 `@latest`（2.0.0 起 `latest` 即 v2）；快速开始按"安装 → 工作项 → run 配置 → accept → doctor → start → 看证据 → 失败分支 → 恢复"重排，workflow 预设改为复制进工作项目录（digest 随项目进 Git），耗时不再写"5 分钟"
+- **批准语义统一**：Approval 指南新增"接受 / 批准某转换 / 合并决定 / Run SUCCEEDED / 拒绝"五词对照表；Skill、指挥台、v2 AGENTS 模板、how-to-talk 中"批准=merge-ready"改为按 transition 说清批的是哪一步，非终态批准后需 `resume`，`SUCCEEDED` ≠ 已合并
+- **安全边界分层**：安全指南每条边界分"内核实际做到的（检测或移除）"与"不能由此推出的"两栏；无人值守前置条件分内核 / 宿主 / 服务端三层，内核不再被描述为保证宿主层
+- **发布手册与 RFC 历史口径**：`docs/RELEASING.md` 不再同时写"2.0.0 是 latest"与"latest stable 是 1.21.0"，旧回读标注日期；RFC-0001 §6 加生效修订说明"`latest` 留 v1"已于 2026-09-05 结束，原文保留
+- **模板**：指挥台"每个 session 自动读 AGENTS.md"改为按工具装载方式；开工示意先 `doctor` 再 `start`；迁移指南分清"升级 CLI"与"迁移项目状态"，时间改为估算并给出迁移前后可核对目录
+
 ## v2.0.0 — 2026-09-05（正式版：v2 成为 `latest`）
 
 > **发布状态**：`@haiyangbg/buildbeat@2.0.0` 已于 2026-09-05 从 `main`（PR #22，tip `95e780e`，tag `v2.0.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 33974396871，双 job success；所有者授权「正式发布」）。独立回读（直连 npmjs.org）：`latest` = 2.0.0、integrity、attestation、隔离安装、`doctor` 有界 JSON 全过，GitHub Release v2.0.0 标 Latest，证据见 [`docs/V2.0.0-RELEASE-EVIDENCE-2026-09-05.md`](docs/V2.0.0-RELEASE-EVIDENCE-2026-09-05.md)。

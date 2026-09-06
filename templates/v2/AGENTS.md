@@ -67,7 +67,7 @@
 
 1. **凭据不入 git、不出本机**：文档只标位置不写值；本地 .env gitignore + 600；机器闸 = gitleaks pre-commit；v2 Worker 默认 env 白名单；通知 URL 只能来自环境变量。
 2. **不 `git add -A`**：只 stage 当前工作包拥有的具体文件；各仓分别提交。
-3. **不未授权部署**、不 force-push、不 `--amend` 已推送历史、不 `--no-verify`。Run 批准仅表示 merge-ready，合并/push/发布是其后的人类动作、逐项授权。
+3. **不未授权部署**、不 force-push、不 `--amend` 已推送历史、不 `--no-verify`。Run 的合并决定只表示候选具备合并条件（`SUCCEEDED` ≠ 已合并），合并/push/发布是其后的人类动作、逐项授权。
 4. **每次部署完必更对应仓 `CHANGELOG.md`**；部署后 `observe run` 一轮。
 5. **写者≠审者**：Run 内置只读 reviewer 机器强制；写者转述不构成证据。
 6. **事实分层**：代码已确认事实 / 运行时待核事实 / 拟议需求 / 已实现行为，四类严格分开；未实查一律写「待核」。

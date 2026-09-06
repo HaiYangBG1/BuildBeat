@@ -24,7 +24,21 @@ workers:
 
 ## env 白名单（默认，能力移除的一部分）
 
-Worker 子进程默认**只**拿到 `PATH HOME LANG LC_ALL TMPDIR TERM USER SHELL`——宿主 shell 里的云凭据、token 环境变量物理到不了 Worker。`inheritEnv: true` 可显式打开（doctor 会把它标为仅 ADVISORY 隔离）；单个变量可用 `env:` 白名单式注入。
+Worker 子进程默认**只**拿到 `PATH HOME LANG LC_ALL TMPDIR TERM USER SHELL`——宿主 shell 里的云凭据、token **环境变量**到不了 Worker（注意 `HOME` 在白名单里，凭据**文件**不在此边界之内，见 [安全边界](09-security-boundaries.md)）。`inheritEnv: true` 可显式打开（doctor 会把它标为仅 ADVISORY 隔离）；单个变量可用 `env:` 白名单式注入：
+
+```yaml
+workers:
+  verifier:
+    command: bash
+    env:
+      DATABASE_URL: postgres://localhost/app_test
+      CI: "1"
+    args:
+      - -lc
+      - npm test
+```
+
+`env:` 的值必须是标量（写进子进程前转成字符串），变量名须合法（字母、数字、下划线）；不合法时 `doctor` / `start` 在加载配置时直接报错。**2.0.0 及更早的 CLI 加载路径会丢掉这两个字段**（doctor 报告了姿态，start 却按默认白名单跑，`env:` 的变量到不了 worker）；2.0.0 之后的首个补丁版起透传(`CHANGELOG.md` Unreleased),并有 CLI 端到端回归（`tests/v2-run-cli.test.js`）。直接调用 `createShellAdapter` 的 API 用户不受此影响。
 
 ## 输入输出
 
