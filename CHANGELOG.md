@@ -4,6 +4,8 @@
 
 ## v2.0.1 — 2026-09-06（补丁：合同与文档同步、`env:` 透传修复、v2 模板与首跑回归、首页重写）
 
+> **发布状态**：`@haiyangbg/buildbeat@2.0.1` 已于 2026-09-06 从 `main`（PR #29，merge commit `4b2362f`，tag `v2.0.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34032278315，双 job success；所有者授权「发」）。独立回读（直连 npmjs.org）：`latest` = 2.0.1、integrity 与本地 dry-run 一致、attestation、隔离安装、`doctor` 有界 JSON、包内 `templates/v2/envelope/` 全过，GitHub Release v2.0.1 标 Latest，证据见 [`docs/V2.0.1-RELEASE-EVIDENCE-2026-09-06.md`](docs/V2.0.1-RELEASE-EVIDENCE-2026-09-06.md)。
+
 - **首页与简介（C 批次）**：中英文 README 围绕项目上下文与持续交付重写,暂用“会话随时换,项目接着干”标语;突出 Git 与文件上下文、跨模型/工具/会话/人员接续、多角色协作和交付 Loop,个人使用与团队接力均为适用场景;包与插件简介同步(插件版本 0.2.1 → 0.2.2)。新增中英文跨会话与团队接续指南,区分聊天删除、跨成员交接、运行恢复和跨机器同步;场景示意不冒充实测。README 与快速开始说明新模板随下一个补丁版发布(不再教源码全局安装);角色表收回 SKILL 的产品/全栈/测试三视角,审查归入 Run 内置只读 reviewer;首段补"进度与证据由内核回读";标语改为 H1 下的加粗行。README 检查改为必要入口和中英结构一致性,不再固定旧标题。
 
 > 2.0.0 之后的对外说明同步（A 事实与合同 → B 使用路径 → D 防回退 → C 首页），四批各一个 PR（#24、#27、#26、#28）合入 `main`；运行时只有一处行为修复（`env:` 透传），v1 生命周期命令与骨架 `v1.21` 不变；插件 manifest 描述随首页同步，版本升 0.2.2。
