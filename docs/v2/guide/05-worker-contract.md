@@ -5,15 +5,21 @@
 ## 通用合同
 
 - **输入**：环境变量 `BUILDBEAT_INPUT`（JSON）：step、worker、run/work id、candidate（如已固定）、允许范围；
-- **输出**：需要结构化结论的步把 JSON 信封写到 `BUILDBEAT_OUTPUT` 指向的文件：
+- **输出**：需要结构化结论的步把 JSON 信封写到 `BUILDBEAT_OUTPUT` 指向的文件。最小合法示例（与 `src/v2/runtime/orchestrator.js` 的解析器一致，回归测试 `tests/v2-review-loop.test.js`）：
 
 ```json
-{"status": "succeeded", "findings": []}
+{
+  "status": "succeeded",
+  "findings": [
+    {"severity": "P1", "summary": "日期筛选未覆盖结束日期边界，导致当天记录被遗漏。"}
+  ]
+}
 ```
 
   - `status`: `succeeded` | `failed` | `blocked`；
-  - `findings[]`: `{severity: "P1|P2|P3", title, detail?}`——`P1/P2` 会触发 `findings-blocking` 路由进 fix；
-  - 信封外多裹一层 markdown 代码栏（```json … ```）可容忍，其余任何格式=`invalid-output`，按失败处理；
+  - `findings[]`（可省，省略等于空数组）：每条**必须**有 `severity`（`P0` | `P1` | `P2` | `P3`）和字符串 `summary`；其他字段被忽略、不落账。finding 指纹 = 严重度 + `summary` 规范化 hash，所以 `summary` 要稳定、可复述，不要带时间戳或随机 id；
+  - **阻断语义**：`P0` / `P1` 阻断——`findings-blocking` 路由进 fix（`reviewTriage: required` 时先停人分诊）；`P2` / `P3` 只落 Evidence，不阻断、不派 fixer；已 `dismiss` 的同指纹不再阻断（[Approval 指南](07-approval-guide.md)）；
+  - **格式错误不是候选缺陷**：信封外多裹一层 markdown 代码栏（```json … ```）可容忍；其余任何格式（非 JSON、不是对象、finding 缺 `summary`、severity 不在 P0–P3）= `invalid-output`，2.0.0-beta.5 起内核判为 worker 基础设施故障（kind `infra`）：不派 fixer、不记失败指纹、不扣预算，停 `WAITING_HUMAN`；人修好 worker 或环境后 `approve --transition resume-<step>` 续跑；
 - **Worker 说的不算证据**：Runner 只相信自己回读的事实（退出码、日志、git 状态）；见 [Evidence 指南](06-evidence-guide.md)。
 
 ## 各角色纪律
@@ -29,6 +35,8 @@
 ## 失败与预算
 
 同一步失败会带着**失败指纹**（命令+退出码+错误摘要+diff digest）重试；连续同指纹或超 `maxAttemptsPerStep`/预算即停，转人工。Worker 不需要（也不能）自己决定"再试一次"。
+
+**没配 fixer 不等于自动修复**：run 配置 `workers:` 里缺某个角色（常见是 `fixer`），Run 走到该步时不会报错也不会跳过，而是停 `WAITING_HUMAN`（`enter-fix`，理由 `no adapter configured for worker fixer; attended handoff`）等人接手。想要"测试失败后自动修"，必须配置 `fixer`（通常与 builder 同一条命令，prompt 从 `BUILDBEAT_INPUT` 读失败摘要），见 [快速开始](01-quickstart.md)。
 
 ## 实践提示
 

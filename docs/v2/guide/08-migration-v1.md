@@ -1,6 +1,8 @@
-# v1 → v2 迁移指南（半天手工 runbook）
+# v1 → v2 迁移指南（手工 runbook）
 
-按收尾修正三：装机量 N=1，**不做 importer 工具**，半天人工走完。三条铁律全程有效：
+按收尾修正三：装机量 N=1，**不做 importer 工具**，人工走完。各步括号里的耗时是作者一次迁移的估算，不是承诺。
+
+先分清两件事：**升级 CLI** 与 **迁移项目状态**。`npm install --global @haiyangbg/buildbeat@latest` 只是前者——它把 `buildbeat-v2` 装到机器上，对项目文件零改动；v1 的 `buildbeat doctor / init / adopt / upgrade` 原样保留，schema 仍是 2，`buildbeat upgrade` 对 1.21 骨架报 up-to-date。后者才是本文：把"哪些工作在途"从 v1 看板搬进 `delivery/work/`，并冻结旧入口。三条铁律全程有效：
 
 1. **不猜旧状态有效性**——v1 看板/状态文件里没有证据支撑的行，一律当"待人工确认"，不自动翻译成 v2 状态；
 2. **单向迁移**——v1 只冻结不删除，历史归档可查；
@@ -8,7 +10,7 @@
 
 ## 前提（约 30 分钟）
 
-- [ ] 安装 v2 beta（`npm i -g @haiyangbg/buildbeat@next`），`buildbeat-v2` 可用；
+- [ ] 安装稳定版（`npm install --global @haiyangbg/buildbeat@latest`，2.0.0 起 `latest` 即 v2；`buildbeat-v2` 无参运行能打印用法）；
 - [ ] 读完 [快速开始](01-quickstart.md) 与 [Approval 指南](07-approval-guide.md)；
 - [ ] 目标仓库工作树干净、基线已提交。
 
@@ -65,4 +67,6 @@ v1 脚本本体不用改——它们的权威边界（各查什么、不证什�
 - 至少一个真实 Run 走完 Build→Verify→Review→人批闭环；
 - 三栏清单与拍板结果留档（就是迁移的证据）。
 
-回退：v1 全部原样在 Git 里，去掉冻结声明即可回去——但双写永远禁止，回去就是整个回去。
+迁移前后可核对的目录：迁移前 `pm/NOW.md`、`pm/status/*`、`pm/changes/*` 可写；迁移后它们只读并带冻结声明，`delivery/work/<ID>/` 每个在途事项一个目录，`buildbeat-v2 overview --repo .` 能列出全部活动 Work 且没有重复。旧文件不删，任何时候可读；不要为旧 Run 伪造 run-record 或 manifest。
+
+回退：v1 全部原样在 Git 里，去掉冻结声明即可回去——但双写永远禁止，回去就是整个回去。已经跑出的 v2 Run 台账保留在 `delivery/work/*/runs/`，回退不需要删它。

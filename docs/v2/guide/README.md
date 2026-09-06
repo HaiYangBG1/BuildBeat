@@ -5,14 +5,14 @@
 | # | 文档 | 一句话 |
 |---|---|---|
 | 0 | [怎么和会话说话](00-how-to-talk.md) | **给用户看的**：项目从未开始到换期，每个阶段你说什么、会话做什么、你得到什么 |
-| 1 | [快速开始](01-quickstart.md) | 5 分钟：装 beta → 写 run 配置 → 跑到合并决定 |
+| 1 | [快速开始](01-quickstart.md) | 第一个 Run：装 `@latest` → 工作项与 run 配置 → accept → doctor → start → 看证据拍板；含失败分支 |
 | 2 | [Workflow 编写指南](02-workflow-guide.md) | 步序、显式转换、readonly、terminal |
 | 3 | [Policy 指南](03-policy-guide.md) | 四类 Policy、8 算子、三值逻辑、强制等级 |
 | 4 | [Adapter 指南](04-adapter-guide.md) | Shell/Mock、env 白名单、接任意 CLI Agent |
 | 5 | [Worker 合同](05-worker-contract.md) | 输入输出信封、各角色纪律 |
 | 6 | [Evidence 指南](06-evidence-guide.md) | 回读制证据、状态/等级、UNVERIFIED 文化 |
 | 7 | [Human Approval 指南](07-approval-guide.md) | inbox / approve / stale、批准绑定什么 |
-| 8 | [v1 迁移指南](08-migration-v1.md) | 半天手工 runbook，单向迁移不双写 |
+| 8 | [v1 迁移指南](08-migration-v1.md) | 手工 runbook：升级 CLI 与迁移项目状态分开，单向迁移不双写 |
 | 9 | [安全与权限边界](09-security-boundaries.md) | 保护动作=能力移除；无人值守前置条件 |
 | 10 | [故障恢复手册](10-recovery.md) | 台账损坏、Run 中断、锁、runtime 全删重建 |
 

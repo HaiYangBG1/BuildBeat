@@ -25,9 +25,19 @@ buildbeat-v2 accept  --repo . --work WORK-X --artifact plan --by <名字>   # �
 3. **transition 门在盖章瞬间 re-check**：merge-evidence-floor / ui-render-gate 等此刻不 PASS → 拒绝；
 4. 终局决定（final-decision 类待批）批准即 `RUN_TERMINAL SUCCEEDED` + 压实 run-record 进 Git 面。
 
-## 批准 ≠ 执行
+## 五个词各指什么（批准 ≠ 执行）
 
-merge 批准只表示 **merge-ready**：真正的合并、push、发布是你在 Runner 之外的动作（保护动作见 [安全边界](09-security-boundaries.md)）。同理 observe 草稿的 `fix_now` 只是接受，Run 由人发起。
+会话与文档里"接受 / 批准 / 恢复 / 成功 / 合并"混用过，统一如下：
+
+| 词 | 命令 | 含义 | 不等于 |
+|---|---|---|---|
+| **接受**（accept） | `accept --artifact intent\|plan` | 一份工件的 digest 被人认可；改过即 `stale` | 开工；不产生任何 Run |
+| **批准某转换**（approve） | `approve --transition <t>` | 允许 Run 走**这一条** transition：`enter-fix`（放行分诊后的 fixer）、`resume-<step>`（预算耗尽 / infra 停人后再跑一次，会落 `BUDGET_EXTENDED`）、`enter-review`（Work 级 review 上限后再审一轮）、`enter-apply-readback`（上线车道"我做完了"） | 批准了别的转换；非终态转换批准后 Run **不会自己动**，要 `resume --config <run-config>` 续跑（`approve` 输出的 `next:` 行会写明） |
+| **合并决定**（最终批准） | `approve --transition enter-wait-merge` | 候选已具备合并条件：candidate + planDigest + evidenceDigest 此刻全部成立；Run 进终态 `SUCCEEDED`，run-record 压进 Git 面 | 代码已合并、已 push、已部署——这三件永远是你在 Runner 之外的动作 |
+| **Run SUCCEEDED** | — | Run 停在了它该停的地方，证据齐 | Work 完成。`overview` 只有回读到候选在当前分支上才显示 `MERGED` |
+| **拒绝**（reject） | `reject --reason` | Run 终止（`FAILED`，理由入账） | 工件失效；intent/plan 的接受状态不变 |
+
+同理 observe 草稿的 `fix_now` 只是接受，Run 由人发起。保护动作见 [安全边界](09-security-boundaries.md)。
 
 ## 人批点由 Risk Preset 决定
 

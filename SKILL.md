@@ -1,6 +1,6 @@
 ---
 name: buildbeat
-description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工程交付协议:帮助一个或多个端到端 Builder 通过 Git 文件总线、四个人工 Gate 和可验证证据闭环需求/功能工作包;产品/全栈/测试是可调用的 AI 专业视角,不是人类岗位流水线。包含会话路由/文件总线/三轨/任务包/审批分层/核查门/决策台账/换期压缩仪式/开工护栏脚本/机器闸 pre-commit:gitleaks+bus-check --strict/引导式 Bootstrap:自查代码+少量提问/接管存量项目仪式/已发布 legacy CLI v0 只读证据与源码候选 init/adopt 受控写入、schema 2 机械 upgrade/证据分级 L0-L4。**v2 运行时**(`buildbeat-v2`,由会话调用而非用户手敲):Work 目录 intent/plan digest 绑定接受、隔离 worktree 内 Build→Verify→Review→Fix 自动闭环停在合并决定、overview/inbox/status 回答"到哪了/谁批/卡没卡"、发现分诊与锚定审查、verify 复用、信封与 attempt 自动编号、release-readback 上线回读车道、observe 生产体检、通知出站、gc 打扫。当用户在 AI 会话里说"当前进度/开工/怎么样了/批准/上线/打扫卫生",或要为新的中大型项目搭多会话协作架构、**要给已有的存量老项目套上协作流程(接管)**、提到"BuildBeat/Solobaton/协作总线/Builder/人在回路/多 session 协作/AI 团队流程/项目骨架 bootstrap",或抱怨"多个 AI 会话信息不同步、任务过早结束、审批打断过多、review 过于频繁、验收漏验、文档腐烂、返工螺旋"时使用。
+description: BuildBeat(旧称 Solobaton)—— 面向人和 AI 会话的工程交付工作流,帮助一个或多个端到端 Builder 用可验证证据闭环需求/功能工作包。**v2 运行时**(`buildbeat-v2`,由会话调用而非用户手敲):Work 目录 intent/plan digest 绑定接受;隔离 worktree 内 Build→Verify→Review→Fix 自动闭环,停在人的合并决定;overview/inbox/status 回答"到哪了/谁批/卡没卡";发现分诊、预算与成本、infra 故障停人、release-readback 上线回读、observe 生产体检、通知出站、gc 打扫。产品/全栈/测试是可调用的 AI 专业视角,不是人类岗位流水线。v1 文件总线/四 Gate/`buildbeat init|adopt|upgrade`(schema 2 机械 upgrade)生命周期命令作为兼容面保留。当用户在 AI 会话里说"当前进度/开工/怎么样了/批准/上线/打扫卫生",或要为新项目搭多会话协作架构、给存量老项目套上协作流程(接管),提到"BuildBeat/Solobaton/Builder/人在回路/多 session 协作/AI 团队流程",或抱怨"多个 AI 会话信息不同步、任务过早结束、审批打断过多、review 过于频繁、验收漏验、返工螺旋"时使用。
 ---
 
 # BuildBeat —— 面向人和 AI 会话的工程交付协议
@@ -15,7 +15,7 @@ description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工�
 ## 0.5 v2 驾驶手册 —— Skill 是入口,CLI 是它调用的引擎
 
 > 绝大多数人在 Claude Code / Codex / Cursor 这类 AI 会话里使用 BuildBeat,而不是亲手敲 `buildbeat-v2`。所以**这一节是给会话读的**:用户说一句人话,会话按下表调命令、读输出、按格式收口。用户不需要知道任何命令;会话不得把命令名当成对用户的要求。§1–§10 是方法论正文,v1 文件总线(`pm/NOW.md`、看板、`pm/status/*`)在 v2 项目里已冻结只读,**禁止双写**。
-> 装载方式不变:项目根 `AGENTS.md`(v2 模板 [templates/v2/AGENTS.md](templates/v2/AGENTS.md))被任意会话自动装载,`CLAUDE.md` 只是一行指针。运行时 `npm i -g @haiyangbg/buildbeat@next`,Node ≥ 20;没装 CLI 时本节的"会话背后调什么"一列改为会话手工维护同名文件(`delivery/work/<ID>/` 与 `decisions.jsonl`),方法论不因此失效。
+> 装载方式:项目根 `AGENTS.md`(v2 模板 [templates/v2/AGENTS.md](templates/v2/AGENTS.md))按所用工具的方式装载——多数 AI 编程工具自动读根目录 `AGENTS.md` 或 `CLAUDE.md`(后者只是一行指针);不自动读的工具由用户开场贴给会话。运行时 `npm install --global @haiyangbg/buildbeat@latest`(2.0.0 起 `latest` 即 v2,预发布才用 `@next`),Node ≥ 20。**没装 CLI 时**本节的"会话背后调什么"一列退化为会话手工维护同名文件(`delivery/work/<ID>/` 与 `decisions.jsonl`):工件协议照用,但自动闭环、隔离 worktree、digest 绑定批准校验、预算与恢复都不存在,会话不得把手工维护表述成等价能力。
 
 > 给用户看的完整版(按项目阶段:未开始 → 立项定方案 → 准备执行 → 执行推进 → 验收合并 → 上线 → 完结换期复盘)在 [docs/v2/guide/00-how-to-talk.md](docs/v2/guide/00-how-to-talk.md);用户问"我该怎么说"时把它给用户,不要复述命令。
 
@@ -28,7 +28,7 @@ description: BuildBeat（旧称 Solobaton）—— 面向人和 AI 会话的工�
 | 「开个 Work:〔目标〕」 | 写 `delivery/work/<ID>/intent.md`(为什么做 + **止损线**:最多几个 Run / 几轮 review / 几小时,越线先问人)+ `plan.md`(怎么做)+ `run-config.yaml`(`budgets.reviewRoundsPerWork` 对应止损线);给用户看摘要 | 「看完说接受」;用户说「接受」→ `accept --artifact intent` / `--artifact plan`(digest 绑定) |
 | 「开工」「再来一轮」 | 先 `buildbeat-v2 doctor --config <run-config.yaml>`(会报本仓 intent/plan 是否存在且已接受、哪条 policy 会把 start 挡在哪步、每步预算),再 `start --config <run-config.yaml> --attempt new`(自动编号 RUN-X-01/02…,自动作废同 Work 的旧等待;**用 nohup/setsid 脱离启动**) | 「已起 RUN-X-02,停在合并决定时会通知/我会告诉你」 |
 | 「怎么样了」「卡住了吗」「正常吗」 | `buildbeat-v2 status --repo . --run <RUN>` | 一句:在跑第几步、跑了多久、历史通常多久、最后一次输出几分钟前;`STALLED` 就说「疑似卡住,建议停/等」;停在 kind `infra` 就说「worker 环境/后端故障,不是代码问题,恢复后我重跑,预算不扣」 |
-| 「批准 RUN-X」「拒绝,原因…」 | `approve --transition <t> --by <用户名>` / `reject --reason` → 若非终态再 `resume` | 「批准=merge-ready;合并/push/部署要你另说」 |
+| 「批准 RUN-X」「拒绝,原因…」 | 先看 `inbox` 该 Run 等的是哪条 transition,再 `approve --transition <t> --by <用户名>` / `reject --reason`;非终态转换(`enter-fix` / `resume-<step>` / `enter-review`)批准后再 `resume --config <cfg>` 续跑 | 说清批的是哪一步:「放行 fixer,续跑中」/「再跑一次,续跑中」/「合并决定已落,候选 <sha> 具备合并条件;合并/push/部署要你另说」。`SUCCEEDED` 不等于已合并 |
 | 会话自己在 Run 的 worktree 里把 finding 修完并提交了(Run 停在 enter-fix / resume-fix) | `resume --config <cfg> --adopt <sha> --by <会话名>`(跳过 fixer,从 verify 续跑;树必须干净、HEAD 必须是该 sha) | 「我已手修并提交 <sha>,验证重跑中」;**不要**为了让 fixer 空跑而 approve enter-fix |
 | 「这条 finding 不算,那条接受」 | `findings list` / `findings adjudicate --action dismiss|accept` → `approve --transition enter-fix` | 裁决结果一句 |
 | 「上线」「做生产动作」 | 用 `release-readback` 预设 + `riskPreset: release` 开 Run:preflight 回读 → 停 `enter-apply-readback` | 「回读全绿,现在轮到你做〔动作〕;做完说一声」→ 用户说「做完了」→ `approve enter-apply-readback` → 回读+观察 → 停关窗 |
@@ -80,16 +80,33 @@ redact:
 workers:
   builder:
     command: codex
-    args: [exec, -s, workspace-write, "按 $BUILDBEAT_PROMPT 实施,改动后 git commit"]
+    args:
+      - exec
+      - -s
+      - workspace-write
+      - 按 $BUILDBEAT_PROMPT 实施;改动后 git add 并 git commit
   verifier:
     command: bash
-    args: [-lc, "npm test"]
+    args:
+      - -lc
+      - npm test
   reviewer:
     command: codex
-    args: [exec, -s, read-only, "只读审查;若 BUILDBEAT_INPUT 里有 lastReviewed 只看 range 内 diff;JSON 信封写入 $BUILDBEAT_OUTPUT"]
+    args:
+      - exec
+      - -s
+      - read-only
+      - 只读审查;若 BUILDBEAT_INPUT 里有 lastReviewed 只看 range 内 diff。只输出一个 JSON 对象写入 $BUILDBEAT_OUTPUT:{"status":"succeeded","findings":[{"severity":"P1","summary":"..."}]};severity 只能 P0-P3,每条必须有 summary,无问题 findings 为空数组
+  fixer:
+    command: codex
+    args:
+      - exec
+      - -s
+      - workspace-write
+      - 读 BUILDBEAT_INPUT(JSON)里的失败命令/退出码/日志摘要/findings,只修这些;改动后 git add 并 git commit
 ```
 
-(严格 YAML 子集:上面为省行用了行内 `[]`,实际文件要写成块列表。)通知通道另放 `.buildbeat/notify.yaml`(URL 只能来自环境变量),见 [docs/v2/guide/07-approval-guide.md](docs/v2/guide/07-approval-guide.md);十件套指南索引 [docs/v2/guide/README.md](docs/v2/guide/README.md)。
+(严格 YAML 子集:只有块列表与块映射,没有行内 `[]` / `{}`,上面这份可原样解析。**`fixer` 不能省**:没配它,verify 失败或 review 阻断时 Run 停 `WAITING_HUMAN` 等人手修,不会自动修。)通知通道另放 `.buildbeat/notify.yaml`(URL 只能来自环境变量),见 [docs/v2/guide/07-approval-guide.md](docs/v2/guide/07-approval-guide.md);十件套指南索引 [docs/v2/guide/README.md](docs/v2/guide/README.md)。
 
 **第一次为一个项目写 run-config 时,会话要多问用户一句**:「Run 停下来等你批、跑完、或疑似卡住时,要不要推到钉钉/webhook?给我一个只放在环境变量里的 URL 就行」——试点一直没启用通知,一张合并卡就绪后隔夜等了 9.5 小时。用户说不要就记一句「通知未启用,等待只在 inbox 里」。
 

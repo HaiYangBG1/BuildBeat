@@ -229,6 +229,26 @@ function printState(state, ledger, view = {}) {
   }
 }
 
+function workerEnvOverrides(worker, env) {
+  if (env === undefined || env === null) {
+    return {};
+  }
+  if (typeof env !== "object" || Array.isArray(env)) {
+    throw new Error(`workers.${worker}.env must be a mapping of variable names to scalar values`);
+  }
+  const out = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+      throw new Error(`workers.${worker}.env: invalid variable name ${key}`);
+    }
+    if (value === null || typeof value === "object") {
+      throw new Error(`workers.${worker}.env.${key} must be a scalar`);
+    }
+    out[key] = String(value);
+  }
+  return out;
+}
+
 function loadRunConfig(flags, command) {
   if (!flags.config) {
     throw new Error(`${command} requires --config`);
@@ -244,11 +264,17 @@ function loadRunConfig(flags, command) {
 
   const adapters = {};
   for (const [worker, spec] of Object.entries(config.workers ?? {})) {
+    // The env posture documented in the adapter guide (allowlist by default,
+    // `inheritEnv: true` to opt out, `env:` for explicit injection) must reach
+    // the adapter through this loader, or doctor reports one posture while
+    // start runs another.
     adapters[worker] = createShellAdapter({
       name: `shell:${worker}`,
       command: spec.command,
       args: spec.args ?? [],
       timeoutMs: spec.timeoutMs,
+      inheritEnv: spec.inheritEnv === true,
+      env: workerEnvOverrides(worker, spec.env),
     });
   }
   const digestOfWorkFile = (name) => {

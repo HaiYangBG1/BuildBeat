@@ -12,8 +12,22 @@ function git(cwd, args) {
   return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
 }
 
-function cli(args) {
-  return execFileSync("node", [CLI, ...args], { encoding: "utf8" });
+function cli(args, env) {
+  return execFileSync("node", [CLI, ...args], {
+    encoding: "utf8",
+    env: env ? { ...process.env, ...env } : process.env,
+  });
+}
+
+function fixtureRepo(prefix) {
+  const root = mkdtempSync(join(tmpdir(), prefix));
+  execFileSync("git", ["init", "-q", "-b", "main", root]);
+  git(root, ["config", "user.email", "pilot@example.com"]);
+  git(root, ["config", "user.name", "Pilot"]);
+  writeFileSync(join(root, "README.md"), "fixture\n");
+  git(root, ["add", "."]);
+  git(root, ["commit", "-q", "-m", "baseline"]);
+  return root;
 }
 
 test("run start, status, and stop work end to end through the CLI", () => {
@@ -96,4 +110,101 @@ test("run start, status, and stop work end to end through the CLI", () => {
   const acceptOut = cli(["accept", "--repo", root, "--work", "WORK-CLI", "--artifact", "plan", "--by", "owner"]);
   assert.match(acceptOut, /accepted plan as A-WORK-CLI-\d+/);
   assert.match(acceptOut, /digest: sha256:/);
+});
+
+// Real incident class: the adapter guide documents `env:` and `inheritEnv`,
+// doctor reported them, but the CLI loader dropped both before the adapter
+// saw them — start ran a different env posture than doctor described.
+test("run config env posture reaches the worker through the CLI", () => {
+  const hostEnv = { BB_HOST_SECRET: "must-not-leak" };
+
+  const allowlisted = fixtureRepo("bb-v2-cli-env-");
+  writeFileSync(
+    join(allowlisted, "run-config.yaml"),
+    [
+      "repo: .",
+      "work: WORK-ENV",
+      "run: RUN-ENV",
+      `workflow: ${PRESET}`,
+      "riskPreset: fast",
+      "entry: build",
+      "stopAt:",
+      "  - review",
+      "workers:",
+      "  builder:",
+      "    command: bash",
+      "    args:",
+      "      - -lc",
+      "      - 'echo done > feature.txt && git add -A && git commit -qm candidate'",
+      "  verifier:",
+      "    command: bash",
+      "    env:",
+      "      BB_PROBE: hello",
+      "      BB_PORT: 8080",
+      "    args:",
+      "      - -lc",
+      "      - 'test \"$BB_PROBE\" = hello && test \"$BB_PORT\" = 8080 && test -z \"$BB_HOST_SECRET\"'",
+    ].join("\n"),
+  );
+  const doctorOut = cli(["doctor", "--config", join(allowlisted, "run-config.yaml")], hostEnv);
+  assert.match(doctorOut, /verifier: env allowlist/);
+  const startOut = cli(["start", "--config", join(allowlisted, "run-config.yaml")], hostEnv);
+  assert.match(startOut, /status: WAITING_HUMAN/);
+  assert.match(startOut, /waiting on human: enter-review/);
+  const statusOut = cli(["status", "--repo", allowlisted, "--run", "RUN-ENV"], hostEnv);
+  assert.match(statusOut, /step verify: SUCCEEDED/);
+
+  const inherited = fixtureRepo("bb-v2-cli-env-inherit-");
+  writeFileSync(
+    join(inherited, "run-config.yaml"),
+    [
+      "repo: .",
+      "work: WORK-ENV",
+      "run: RUN-ENV",
+      `workflow: ${PRESET}`,
+      "riskPreset: fast",
+      "entry: build",
+      "stopAt:",
+      "  - review",
+      "workers:",
+      "  builder:",
+      "    command: bash",
+      "    args:",
+      "      - -lc",
+      "      - 'echo done > feature.txt && git add -A && git commit -qm candidate'",
+      "  verifier:",
+      "    command: bash",
+      "    inheritEnv: true",
+      "    args:",
+      "      - -lc",
+      "      - 'test \"$BB_HOST_SECRET\" = must-not-leak'",
+    ].join("\n"),
+  );
+  const inheritDoctor = cli(["doctor", "--config", join(inherited, "run-config.yaml")], hostEnv);
+  assert.match(inheritDoctor, /verifier: WARNING inherit/);
+  cli(["start", "--config", join(inherited, "run-config.yaml")], hostEnv);
+  const inheritStatus = cli(["status", "--repo", inherited, "--run", "RUN-ENV"], hostEnv);
+  assert.match(inheritStatus, /step verify: SUCCEEDED/);
+
+  const broken = fixtureRepo("bb-v2-cli-env-bad-");
+  writeFileSync(
+    join(broken, "run-config.yaml"),
+    [
+      "repo: .",
+      "work: WORK-ENV",
+      "run: RUN-ENV",
+      `workflow: ${PRESET}`,
+      "riskPreset: fast",
+      "entry: build",
+      "workers:",
+      "  verifier:",
+      "    command: bash",
+      "    env:",
+      "      bad-name: x",
+    ].join("\n"),
+  );
+  assert.throws(
+    () => cli(["doctor", "--config", join(broken, "run-config.yaml")], hostEnv),
+    /workers\.verifier\.env: invalid variable name/,
+  );
 });
