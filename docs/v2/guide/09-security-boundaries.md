@@ -11,7 +11,7 @@
 | push 封禁 | worktree 级 `remote.pushurl=protected://push-blocked-by-buildbeat`——Worker 在工作区内对配置的 remote `git push` 无处可推（真实 remote 上实测） | Worker 不能 `git remote add` 另一个远端、不能发起任何网络请求 |
 | 写范围 | `allowedPaths` 越界写入 → 不固定 candidate、`workspace.scope` BLOCK 落账、Run 停——越界改动**不可能**成为合格候选 | Worker 进程无法触碰 worktree 之外的宿主目录 |
 | Reviewer 只读 | 步级前后快照比对，任何工作树写入按失败落账（不变量 9）——这是**事后检测并阻断结果**，不是操作系统级禁写 | 写入在发生那一刻就被拦下 |
-| 凭据隔离 | Worker env 默认白名单仅 `PATH HOME LANG LC_ALL TMPDIR TERM USER SHELL`；宿主 shell 里的云凭据 / token **环境变量**不进子进程；`inheritEnv: true` 显式打开会被 doctor 标为 ADVISORY；`env:` 只注入你点名的变量（CLI 加载路径在 2.0.0 之后的首个补丁版起真正透传，2.0.0 及更早 doctor 与 start 姿态不一致，见 [Adapter 指南](04-adapter-guide.md)） | Worker 读不到 `$HOME` 下的凭据文件、keychain、ssh key 等宿主资源（`HOME` 在白名单里） |
+| 凭据隔离 | Worker env 默认白名单仅 `PATH HOME LANG LC_ALL TMPDIR TERM USER SHELL`；宿主 shell 里的云凭据 / token **环境变量**不进子进程；`inheritEnv: true` 显式打开会被 doctor 标为 ADVISORY；`env:` 只注入你点名的变量（CLI 加载路径 2.0.1 起真正透传，2.0.0 及更早 doctor 与 start 姿态不一致，见 [Adapter 指南](04-adapter-guide.md)） | Worker 读不到 `$HOME` 下的凭据文件、keychain、ssh key 等宿主资源（`HOME` 在白名单里） |
 | 单活动 Run | 仓库级锁，一仓同时只有一个活动 Run | 多仓 / 多机并发有协调 |
 | 控制文件 | workflow / policy / run 配置在主检出，不在 Worker 的 worktree 写范围内 | Worker 无法通过其他途径读到它们 |
 | 内核无外部动作 | merge、push、部署、发布在 Runner **没有调用路径**（不变量 20，doctor 打印）；Runner 至多把"候选具备合并条件"放进 inbox | 你配置的任意外部 Worker 命令在全部宿主环境下都做不了这些动作 |

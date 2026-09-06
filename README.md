@@ -99,7 +99,7 @@ npm view @haiyangbg/buildbeat@latest version
 npm install --global @haiyangbg/buildbeat@latest
 ```
 
-> 快速开始用到的信封模板（`templates/v2/envelope/`）随下一个补丁版发布；装好后核对 [CHANGELOG](CHANGELOG.md) 的最新版本是否已包含它。
+> 快速开始用到的信封模板（`templates/v2/envelope/`）自 2.0.1 起随包分发；版本与内容对照见 [CHANGELOG](CHANGELOG.md)。
 
 **2. 让会话加载入口。** 下载或检出本仓，让你的 AI 工具读取其中的 [`SKILL.md`](SKILL.md)，然后在目标项目中说：
 
