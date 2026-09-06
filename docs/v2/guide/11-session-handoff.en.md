@@ -53,13 +53,13 @@ Once granted project access, the next teammate syncs the relevant files and cand
 
 If the original Run is not terminal, check its execution environment first. An empty `overview` or `inbox` on a new machine does not show that the old machine has no active Run. Local locks do not coordinate different machines or Git clones; do not start duplicate work on that basis. Before executing in a new environment, settle how the original Run will be handled, then prepare subsequent execution from synchronized artifacts and candidates.
 
-Teammates can own separate end-to-end work packages or hand over the same package. Product, development, testing, and review are AI perspectives each teammate may use; both the person and the perspective can change. Access control relies on existing repository hosting, execution platforms, and team authorization agreements. BuildBeat does not add a member account or permission system.
+Teammates can own separate end-to-end work packages or hand over the same package. Product, full-stack, and testing are AI perspectives each teammate may use (review is the Run's built-in read-only reviewer, not a session perspective); both the person and the perspective can change. Access control relies on existing repository hosting, execution platforms, and team authorization agreements. BuildBeat does not add a member account or permission system.
 
 ## Changing tools, models, and perspectives
 
 Project artifacts are readable files that different tools can consume. The new tool needs the entry point, access to the same project, and suitable permissions. Execution Workers also need a compatible command, authentication, and output contract. The external AI tool selects the model.
 
-Product, development, testing, and review perspectives read the same Work's goal, constraints, and evidence, and follow their own write boundaries. Changing perspective does not change accepted scope or require duplicating progress documents. The current runtime supports one active Run per repository.
+The product, full-stack, and testing perspectives read the same Work's goal, constraints, and evidence, and follow their own write boundaries; review is carried out by the Run's built-in read-only reviewer. Changing perspective does not change accepted scope or require duplicating progress documents. The current runtime supports one active Run per repository.
 
 This explains protocol continuity, not proof that every tool combination has passed a real handoff. See the [capability matrix](../../CAPABILITY-MATRIX.md) for existing evidence and the [adapter guide](04-adapter-guide.md) for integration requirements (Chinese).
 
