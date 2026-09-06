@@ -43,8 +43,9 @@ buildbeat-v2 accept  --repo . --work WORK-X --artifact plan --by <名字>   # �
 
 `fast` 仅 Merge；`standard` Plan+Merge；`controlled` Intent+Plan+Merge+Release；`legacy-four-gates` 为 v1 四 Gate 完整形态（迁移期用，见 [迁移指南](08-migration-v1.md)）。待批项强制携带 findings 摘要与理由——防"秒批"退化；人批等待时长进 `metrics`。
 
-## 发现分诊门与锚定审查（beta.3）
+## 发现分诊门与锚定审查
 
+> 自 2.0.0-beta.3（beta.3）起。
 来自三十轮部署战役最大的结构性教训：**finding 是处方不是事实**，无记忆 fresh reviewer 会开出互斥处方并翻案早已接受的设计，自动路由 fixer 让振荡直接烧钱。两个机制配套：
 
 1. **分诊门**：run 配置 `reviewTriage: required` 后，review 产出 P0/P1 finding 不再自动派 fixer，而是停 `WAITING_HUMAN`（kind `finding-triage`），待批理由逐条列出 finding 指纹。人先裁决、再 `approve --transition enter-fix` 放行（或 `reject` 终止 Run）。
@@ -60,8 +61,9 @@ buildbeat-v2 accept  --repo . --work WORK-X --artifact plan --by <名字>   # �
 
 裁决记忆在 Git 面，删 runtime 不丢（不变量 23 同款测试覆盖）。
 
-## 等待要能找到人（迭代 08）
+## 等待要能找到人
 
+> 自 2.0.0-beta.4（迭代 08）起。
 试点工作区 58 个 Run 里 32 个被取消，多数是在 `WAITING_HUMAN` 挂满一天后批量清掉；人批平均等 7～12 小时。原因不是人慢，是**没人知道有东西等他**。三件事配套：
 
 1. **下一句该说什么**：`status` 与 `inbox` 在每个等待后面直接给出可复制的命令（`approve` / `reject`，分诊时加 `findings list|adjudicate`）；`inbox` 按 Work 分组并显示已等待时长。输出里的 `--repo` 只在项目内给相对路径，项目外给 `<repo-path>` 占位——本机绝对路径永不进输出。
@@ -85,14 +87,16 @@ buildbeat-v2 accept  --repo . --work WORK-X --artifact plan --by <名字>   # �
 
 通知不是审批通道：拍板仍只能在 CLI 完成，digest 绑定不变。
 
-## 从「等我批」到「到哪了」：overview（迭代 08）
+## 从「等我批」到「到哪了」：overview
 
+> 自 2.0.0-beta.4（迭代 08）起。
 `inbox` 只知道哪个 Run 在等人；`buildbeat-v2 overview --repo .` 按 Work 回答「走到哪、下一步该谁」——intent/plan 是否被接受（接受后改过即 `stale`）、最新 Run 状态与候选、候选是否已合入当前分支、未裁决 P0/P1 数、是否有 `env-facts.md`，每行附下一句命令。运行时被删后由 Git 面 run-record 补足。会话开场先跑它，再回答用户「当前进度」。
 
 **阶段判定的真相修正（迭代 09）**：候选只要合入了当前分支，Work 就是 `MERGED`，哪怕最新 Run 是 CANCELLED（试点一条应用登录 Run 因预算问题被取消，候选却已在生产，overview 曾报 `STOPPED_CANCELLED` 并催重试）；`release-readback` 车道成功关窗的 Work 显示 `RELEASED`，不再说 "nothing to merge"；已合并 / 已发布 / 已关闭的 Work 不再提示未裁决 finding 数。`overview` 每个 Work 还多一行 `cost:`（见 [Workflow 指南](02-workflow-guide.md) 的 Work 级预算）。
 
-## 你自己改好了：`resume --adopt`（迭代 09）
+## 你自己改好了：`resume --adopt`
 
+> 自 2.0.0-beta.5（迭代 09）起。
 Run 停在 `enter-fix` / `resume-fix` 时，驾驶会话或人常常已经在 Run 的 worktree 里把问题修掉并提交了。此时再 `approve` 会派一个无事可做的 fixer，再多跑一次 verify（试点一条前端 Run 因此跑到 verify 第 5 次、fix 第 3 次）。改用：
 
 ```bash
@@ -103,6 +107,7 @@ buildbeat-v2 resume --config <run-config.yaml> --adopt <sha> --by <名字>
 
 `doctor` 现在还打印本仓 `delivery/work/<ID>/` 里 intent / plan 的存在与接受状态，并对每条要求 `artifact.accepted` 的 policy 预告"start 会停在哪一步"——此前两次 doctor 通过、start 却被"plan 未镜像到子仓"挡住。
 
-## 可见命名是门前决策项（迭代 08）
+## 可见命名是门前决策项
 
+> 自 2.0.0-beta.4（迭代 08）起。
 审批三级里 `BATCH_AT_GATE` 明确包含：域名、服务名、环境名、自停时长、窗口时长等**所有者以后要看见或念出来的名字与参数**。worker 顺手定的名字进不了台账；planner 在 intent 里列出并给推荐值，人一次批。

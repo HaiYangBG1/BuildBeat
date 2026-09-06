@@ -29,7 +29,7 @@
 | planner | 工作项目录 | 产出 intent/plan 草稿；接受与否是人的 digest 绑定动作 |
 | builder | 隔离 worktree（`allowedPaths` 内） | 改动必须落成 git 提交；越界写入 = Run BLOCK，不固定 candidate |
 | verifier | 只跑命令 | 跑真实测试；退出码就是结论，不写信封 |
-| fixer | 同 builder | 输入必含失败命令/退出码/日志摘要/candidate/允许范围；不接受泛化的"再检查一下" |
+| fixer | 同 builder | 输入是上一轮 review 的 `findings[]`（含指纹与裁决状态，只修 accepted / open）；verify 失败进来时输入里**没有**失败摘要，失败命令 / 退出码 / stdout / stderr 在主仓 `.buildbeat/runtime/runs/<RUN>/logs/verify-<attempt>.log`，prompt 要写明去读（[模板](../../../templates/v2/envelope/prompts/fixer.md)）；不接受泛化的"再检查一下" |
 | reviewer | **无**（`readonly: true`） | fresh-context 只读；产出结构化 findings；任何工作树写入由快照比对捕获并按失败落账（不变量 9） |
 
 ## 失败与预算
@@ -39,6 +39,8 @@
 **没配 fixer 不等于自动修复**：run 配置 `workers:` 里缺某个角色（常见是 `fixer`），Run 走到该步时不会报错也不会跳过，而是停 `WAITING_HUMAN`（`enter-fix`，理由 `no adapter configured for worker fixer; attended handoff`）等人接手。想要"测试失败后自动修"，必须配置 `fixer`（通常与 builder 同一条命令，prompt 从 `BUILDBEAT_INPUT` 读失败摘要），见 [快速开始](01-quickstart.md)。
 
 ## 实践提示
+
+- 现成的包装脚本与三份 prompt 在 [`templates/v2/envelope/`](../../../templates/v2/envelope/worker.sh)：`worker.sh <role> -- <工具命令…>` 负责"工具不在 PATH 就 exit 75、把 `$BUILDBEAT_PROMPT` 追加为最后一个参数、写入步机械 commit、只读步把 stdout 落到 `$BUILDBEAT_OUTPUT`"，换工具只改 `--` 后面的命令；确定性首跑回归见 `tests/v2-templates-firstrun.test.js`。
 
 - prompt 里明确引用 `delivery/work/<id>/plan.md`，让 Worker 的目标与被批准的 digest 是同一份文件；
 - builder 的提交动作可以由包装脚本机械执行（M4 试点即如此：codex 只改文件，`git commit` 在包装层）；
@@ -50,6 +52,7 @@
 - `input.lastReviewed`（仅 readonly 步）：`{candidate, run, evidenceRef, range}`——上一次 review 看过的候选与到当前候选的 `range`；reviewer 可只审增量，但**已裁决结论不得翻案**（`anchor` 仍在）。
 - `input.findings`（写入步）与 `input.anchor`（readonly 步）不变。
 
-## 所有者可见命名不由 worker 决定（迭代 08）
+## 所有者可见命名不由 worker 决定
 
+> 自 2.0.0-beta.4（迭代 08）起。
 builder / planner 在实现中会顺手起名：域名、服务名、环境名、自停时长、窗口时长。**凡所有者以后要看见或念出来的名字与参数，不是实现细节，是门前决策项**：写进 intent，或攒进门前决策卡给推荐值与理由，人批后再落地。真实事故：一个按内部术语起的服务名让所有者连问四轮才改成他听得懂的业务名。prompt 里写明这条，reviewer 清单里把"引入了未经批准的可见命名"记为 P2。

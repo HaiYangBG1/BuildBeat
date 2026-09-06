@@ -1,6 +1,6 @@
 # AGENTS.md — <项目名> 工作区 · BuildBeat v2 协作契约
 
-> 本文件走开放标准 `AGENTS.md`，被工作区下**任意会话**自动装载（Claude Code / Cursor / Codex / Gemini CLI / Aider / Zed 等均认）。目的：每个会话开工即知道「当前工作在哪 / 我是什么视角 / 读哪 / 写哪 / 该调哪条命令」，不靠人转述上下文。
+> 本文件走开放标准 `AGENTS.md`，由工作区下的会话按各工具自己的方式装载（Claude Code / Codex / Cursor / Gemini CLI / Aider / Zed 等多数会自动读根目录 `AGENTS.md` 或 `CLAUDE.md`；不自动读的工具由人开场贴给会话——用哪个工具就按它的文档核对一次，不要假设）。目的：每个会话开工即知道「当前工作在哪 / 我是什么视角 / 读哪 / 写哪 / 该调哪条命令」，不靠人转述上下文。
 > **层叠规则**（标准语义）：会话从被编辑文件所在目录向上收集沿途所有 `AGENTS.md` 合并，**离得越近优先级越高**。本文件只写全局的（路由 / 协作规则 / 红线），各代码子仓的局部细节写进**该仓自己的 `AGENTS.md`**。
 > 根目录 `CLAUDE.md` 只是一行指针（兼容只认该文件名的工具），内容单点在本文件。全栈总图见 `./ARCHITECTURE.md`，按需读。
 > **本仓运行 BuildBeat v2**（运行时 `@haiyangbg/buildbeat@<版本>`，`buildbeat-v2` 由会话调用，人不必手敲）。若由 v1 迁来：`pm/NOW.md`、当期看板、`pm/status/*` 冻结只读，**禁止双写**。
@@ -12,10 +12,10 @@
 3. **人怎么知道该做什么**：`buildbeat-v2 overview --repo .` 回答「每件事走到哪、下一步该谁」；`inbox` 只列等人批的 Run，每条后面附可复制的下一句命令；`status --run <RUN>` 回答「还在动吗、动了多久、卡没卡」。
 4. **上线**：生产动作是人的；`release-readback` 预设 + `release` 风险预设把「做之前回读 → 人做 → 做之后回读 → 观察 → 人关窗」记成 L4 证据，任一步失败即停人批。
 5. **observe 盯生产**：`buildbeat-v2 observe run --config .buildbeat/observe.yaml` 一次=一轮只读体检；异常分层（落账→只读诊断→intent 草稿入队 `delivery/observe/intents/`），草稿**绝不自动执行**，人用 `observe triage` 分诊。
-6. **拍板台账**：平台级真实决策包一行进 `pm/decisions.md`；Run 级批准落各 Work 的 `decisions.jsonl`；finding 裁决落 `review-findings.jsonl`。契约在 `contracts/`。
+6. **拍板台账**：平台级真实决策包一行进 `pm/decisions.md`（纯 v2 项目也只建这一个 v1 文件，从 `templates/pm/decisions.md` 拷）；Run 级批准落各 Work 的 `decisions.jsonl`；finding 裁决落 `review-findings.jsonl`。跨仓契约在 `contracts/`（单仓项目可无）。
 7. **通知**：`.buildbeat/notify.yaml` 配一条通道（URL 只能来自环境变量），Run 停在人批 / 终态 / 疑似卡住会来找人。
 8. **打扫**：终态 Run 留下的工作树用 `buildbeat-v2 gc --repo .` 清（默认只出计划）。工作树在仓内 `.buildbeat/worktrees/`：`.gitignore` 排除 `.buildbeat/runtime/` 与 `.buildbeat/worktrees/`，测试框架的收集范围也要排除 `**/.buildbeat/**`（vitest `exclude`、jest `testPathIgnorePatterns`、pytest `norecursedirs`），否则主干测试会把旧候选的用例一起跑。
-9. **worker 环境事实（写进 worker prompt / 信封）**：worker 的沙箱通常**不能监听端口**，需要起服务或绑定 loopback 的集成测试交给 verify 步，worker 只跑单测与静态检查，不要反复尝试；PATH 只认 POSIX 工具（`grep -E` 不用 `rg`，`find` 不用 `fd`）或在 `requires:` 里声明；verify / 包装脚本发现环境不满足（命令不在 PATH、端口被占、后端 404）就 `exit 75`，内核会当基础设施故障停人、不派 fixer、不扣预算。
+9. **worker 信封**：`delivery/envelope/`（从 `templates/v2/envelope/` 拷）放 `worker.sh` 与 builder / reviewer / fixer 的 prompt，run 配置 `envelope.prompts` 指向它；换工具只改 run 配置里 `--` 后的命令。**worker 环境事实（写进 prompt）**：worker 的沙箱通常**不能监听端口**，需要起服务或绑定 loopback 的集成测试交给 verify 步，worker 只跑单测与静态检查，不要反复尝试；PATH 只认 POSIX 工具（`grep -E` 不用 `rg`，`find` 不用 `fd`）或在 `requires:` 里声明；verify / 包装脚本发现环境不满足（命令不在 PATH、端口被占、后端 404）就 `exit 75`，内核会当基础设施故障停人、不派 fixer、不扣预算。
 
 ## 1. 工作包路由 —— Builder 端到端负责，会话按 AI 视角隔离
 
@@ -29,7 +29,7 @@
 
 > 🔴 **边界（按项目填写）**：<新地盘 / 老地盘 / 只读模块 / 不得借道写入的目录>。
 > 🔴 **写者≠审者的机器化**：v2 Run 内置 fresh-context 只读 reviewer（快照强制，写入即失败落账）；merge 门绑定 candidate + plan + 证据 digest，过期即 stale。
-> **开工/收工护栏**：任意会话开工先 `bash scripts/bus-check.sh` + 各仓 `git pull`；收工前再跑 `bus-check --strict` 并保留 warning/unverified 边界。生产状态问 `observe status`，不猜。
+> **开工/收工护栏**：任意会话开工先各仓 `git pull`，再 `buildbeat-v2 overview --repo .`（活动 Work、等人的 Run、成本）；收工前再跑一次 `overview` 并把 warning / unverified 原样写进收口。**只有从 v1 迁来、仓里还有 `pm/NOW.md` 的项目**才另跑 `bash scripts/bus-check.sh`（它只检查 v1 文件总线那部分：契约版本、子仓同步、幽灵 hash），纯 v2 项目没有 `pm/NOW.md` 就不装、不跑、不为了它伪造 v1 文件。生产状态问 `observe status`，不猜。
 
 ## 1.5 UI 规范摘要（非 UI 项目可删）
 
@@ -42,7 +42,7 @@
 **① 唯一入口** —— 活动工作看 `delivery/`（`overview` / `inbox`）；v1 遗留入口 `pm/NOW.md` 只读。
 **② 契约落盘不喊话（双向）** —— 跨边界接口先改 `contracts/` 再动代码；收到协议声明独立核查再信。反向流：实现中发现契约不够用 → 不得就地消化，停下记契约缺口交产品域裁决。
 **③ 交接靠 candidate hash + 台账** —— Run 停在合并决定时 candidate 已由 Git 回读固定；跨会话接力读 `delivery/work/<id>/` 即知全部事实，hash 不得编造。
-**④ 护栏与不可逆动作** —— 开工 `bus-check`；部署/改契约/migration 等不可逆动作前再跑一次并走人批；exit 0 不消除 `warning/unverified`。
+**④ 护栏与不可逆动作** —— 开工 `overview`（v1 迁来的仓另加 `bus-check`）；部署/改契约/migration 等不可逆动作前再核一次并走人批；exit 0 不消除 `warning/unverified`。
 **⑤ 风险分轨** —— Risk Preset：`fast`（仅 merge 人批）/ `standard`（plan+merge，默认）/ `controlled`（intent+plan+merge+release）/ `release`（上线回读车道）。
 **⑥ 核查门** —— Run 内 reviewer 只读、结构化 findings；`reviewTriage: required` 时 P0/P1 先过人分诊再派 fixer；review 每 Run 默认 2 轮封顶。**完成 = hash + 可核验证据**；标准轨最低 L3，上线必须 L4。`UNVERIFIED` 永不当作通过。
 **⑦ 状态单点** —— 事实进 Run 证据与 Work 记录；进度看 `overview`，度量看 `metrics`（本地只读）。

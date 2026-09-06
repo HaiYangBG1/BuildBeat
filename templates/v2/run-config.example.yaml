@@ -1,0 +1,74 @@
+# BuildBeat v2 run 配置样板。拷到 delivery/work/<WORK-ID>/run-config.yaml 后改 work / run / allowedPaths / workers。
+# 路径相对本文件解析。严格 YAML 子集：只有块列表与块映射，无行内 [] / {}、无锚点、注释必须独占一行。
+# 起跑前：buildbeat-v2 doctor --config <本文件>；起跑：buildbeat-v2 start --config <本文件> --attempt new
+repo: ../../..
+work: WORK-X
+# 家族名；--attempt new 自动编成 RUN-X-01/02…
+run: RUN-X
+# 从 $(npm root -g)/@haiyangbg/buildbeat/src/v2/presets/software-delivery.yaml 复制到本目录（digest 随项目进 Git）
+workflow: workflow.yaml
+# fast | standard | controlled | release（配 release-readback 预设）
+riskPreset: standard
+entry: build
+# builder / fixer 只能改这些目录；越界改动不成为候选
+allowedPaths:
+  - src
+  - tests
+# P0/P1 finding 先过人分诊再派 fixer；不需要就删掉这行
+reviewTriage: required
+# 可省；run 配置 > 预设 > 默认。reviewRoundsPerWork 是跨本 Work 所有 Run 累计的 review 轮数上限（对应 intent 的止损线）
+budgets:
+  maxAttempts:
+    review: 2
+  reviewRoundsPerWork: 6
+# 同树 + 同命令 + 同信封已通过就复用 verify 证据
+cache:
+  verify: tree
+# 内核把 prompts/<worker>.md 喂给 worker（$BUILDBEAT_PROMPT）；模板见 templates/v2/envelope/prompts/
+envelope:
+  prompts: ../../envelope/prompts
+  vars:
+    component: app
+# worker 输出落成证据前按这些 JS 正则脱敏（不支持 (?i) 这类内联标志）
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+# worker 以隔离 worktree 为 cwd 运行；delivery/envelope/worker.sh 已随仓库进 worktree。
+# 换工具只改 `--` 后面的命令：codex exec … / claude -p … / 任意脚本。
+workers:
+  builder:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - builder
+      - --
+      - codex
+      - exec
+      - -s
+      - workspace-write
+  # 真实测试命令；环境不满足就 exit 75（内核当基础设施故障停人）
+  verifier:
+    command: bash
+    args:
+      - -lc
+      - npm test
+  reviewer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only
+  # 不能省：没配它，verify 失败 / review 阻断时 Run 停人等手修
+  fixer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - fixer
+      - --
+      - codex
+      - exec
+      - -s
+      - workspace-write
