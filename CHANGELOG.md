@@ -13,6 +13,9 @@
 - **安全边界分层**：安全指南每条边界分"内核实际做到的（检测或移除）"与"不能由此推出的"两栏；无人值守前置条件分内核 / 宿主 / 服务端三层，内核不再被描述为保证宿主层
 - **发布手册与 RFC 历史口径**：`docs/RELEASING.md` 不再同时写"2.0.0 是 latest"与"latest stable 是 1.21.0"，旧回读标注日期；RFC-0001 §6 加生效修订说明"`latest` 留 v1"已于 2026-09-05 结束，原文保留
 - **模板**：指挥台"每个 session 自动读 AGENTS.md"改为按工具装载方式；开工示意先 `doctor` 再 `start`；迁移指南分清"升级 CLI"与"迁移项目状态"，时间改为估算并给出迁移前后可核对目录
+- **v2 成为 Skill 的默认入口（B 批次）**：SKILL §8.0 按目录形态路由——已有 `delivery/` 继续 v2、有 `pm/NOW.md` 的 v1 项目给出继续或迁移两条路、什么都没有的项目默认 v2；§8.2 明确为 v1 文件总线路径，新增 §8.3 v2 生成 checklist（装载入口 → 台账 → 信封 → 第一个 Work → 通知 → 机器闸 → 首跑验收 → 收尾）；§8.5 接管存量项目骨架默认 v2，`adopt` 只在选 v1 时跑
+- **`templates/v2/` 补齐**：`CLAUDE.md`（一行指针）、`BUILDBEAT.md`（运行时版本标记，升级 = 升级 CLI）、`run-config.example.yaml`（可原样解析，含 fixer / reviewTriage / budgets / cache / envelope / redact）、`envelope/worker.sh`（工具缺失 exit 75、喂 `$BUILDBEAT_PROMPT`、写入步机械 commit、只读步落信封）与 builder / reviewer / fixer 三份 prompt。回归 `tests/v2-templates-firstrun.test.js`：脚本 worker 从这套模板走到合并决定（含 verify 失败→fixer→重验），并验证 SKILL 与快速开始里的每个 run-config 样板都能被严格 YAML 子集解析——顺带发现并修正了样板里三处会让 `doctor` / `start` 直接报错的写法：解析器不支持的行尾注释、内联 prompt 中的冒号、JS RegExp 不支持的 `(?i)` 内联标志（`redact` 样板）
+- **文档口径**：快速开始与 Skill 样板改用 `delivery/envelope/`；Worker 合同的 fixer 行改为实际输入（review `findings[]` 含裁决状态；verify 失败时输入无失败摘要，日志在 `.buildbeat/runtime/runs/<RUN>/logs/`）；十件套索引按"第一次使用 / 日常使用 / 配置参考 / 迁移"重排；指南各节标题去掉"（迭代 08）"类内部编号，改为"自 2.0.0-beta.x 起"出处行；能力矩阵新增"四个可用面"与 v2 运行时能力表，v1.21 条目原样保留；`docs/CLI.md` 明确本页只是 v1 生命周期 CLI 合同并加"两个可执行文件各管什么"；v2 AGENTS 模板改为按工具装载、开工护栏改 `overview`（只有 v1 迁来的仓才跑 `bus-check`）、信封目录约定
 
 ## v2.0.0 — 2026-09-05（正式版：v2 成为 `latest`）
 

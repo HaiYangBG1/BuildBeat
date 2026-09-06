@@ -4,7 +4,16 @@ Status: **BuildBeat `2.0.0` scoped distribution (stable `latest`; the v1 lifecyc
 
 The CLI does not replace `SKILL.md`. The Skill owns code-aware reasoning, minimal questions, project semantics, and human Gates. The CLI owns deterministic inspection, scaffold mechanics, manifest/hash bookkeeping, and bounded mechanical upgrade in the current scoped distribution. Synchronous file-bus checks remain authoritative in the project-local scripts specified by [`CHECKS.md`](CHECKS.md).
 
-The bilingual [`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) is the compact authority for what Skill-only, the legacy npm v0, and BuildBeat 1.21 can each do. Command details and safety semantics remain authoritative in this document.
+This document is the contract for the **v1 lifecycle CLI `buildbeat`** only. The v2 delivery runtime `buildbeat-v2` in the same package has its own surface (below) documented in [`v2/guide/`](v2/guide/README.md). The bilingual [`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) is the compact authority for what Skill-only, the legacy npm v0, the v1 lifecycle CLI, and the v2 runtime can each do. v1 command details and safety semantics remain authoritative in this document.
+
+## Two executables, two jobs
+
+| Executable | Job | Does not do |
+|---|---|---|
+| `buildbeat` | Inspect (`doctor`), scaffold (`init` / `adopt`), and mechanically upgrade (`upgrade`) the **v1 file-bus skeleton** (`pm/`, `contracts/`, `scripts/`); `version` | Does not create `delivery/work/`, run-configs, or Runs; `buildbeat doctor` does not check a v2 run-config (that is `buildbeat-v2 doctor --config`); `buildbeat upgrade` does not migrate Work state |
+| `buildbeat-v2` | Run and query the **v2 delivery loop**: `accept`, `start`, `resume`, `status`, `inbox`, `overview`, `approve`, `reject`, `findings`, `doctor`, `preflight`, `events`, `replay`, `metrics`, `stop`, `gc`, `watch`, `observe` — run `buildbeat-v2` with no arguments for the usage text | Does not scaffold the v1 file bus; never merges, pushes, deploys, or publishes (invariant 20) |
+
+A project may use either or both: pure v2 projects have no `pm/NOW.md` and never run `bus-check`; v1 projects that adopt v2 freeze the file bus read-only ([`v2/guide/08-migration-v1.md`](v2/guide/08-migration-v1.md)).
 
 ## Command boundary and phased availability
 

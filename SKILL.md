@@ -50,25 +50,32 @@ description: BuildBeat(旧称 Solobaton)—— 面向人和 AI 会话的工程�
 ```yaml
 repo: ../../..
 work: WORK-X
-run: RUN-X                 # 家族名;start --attempt new 自动编成 RUN-X-01/02…
-workflow: <buildbeat>/src/v2/presets/software-delivery.yaml
-riskPreset: standard       # fast | standard | controlled | release(配 release-readback 预设)
+# 家族名;start --attempt new 自动编成 RUN-X-01/02…
+run: RUN-X
+# 从 $(npm root -g)/@haiyangbg/buildbeat/src/v2/presets/software-delivery.yaml 复制到本目录
+workflow: workflow.yaml
+# fast | standard | controlled | release(配 release-readback 预设)
+riskPreset: standard
 entry: build
 allowedPaths:
   - src
   - tests
-reviewTriage: required     # P0/P1 先过人分诊再派 fixer
-budgets:                   # 可省;run 配置 > 预设 > 默认。预算耗尽停人时,批准 resume-<step> 即多给一次
+# P0/P1 先过人分诊再派 fixer
+reviewTriage: required
+# 可省;run 配置 > 预设 > 默认。预算耗尽停人时,批准 resume-<step> 即多给一次;
+# reviewRoundsPerWork 跨本 Work 所有 Run 累计 review 轮数,超了新 Run 起跑前先问人
+budgets:
   maxAttempts:
     review: 2
-  reviewRoundsPerWork: 6   # 跨本 Work 所有 Run 累计的 review 轮数;超了新 Run 起跑前先问人
+  reviewRoundsPerWork: 6
+# 同树+同命令+同信封已通过就复用证据(标 REUSED)
 cache:
-  verify: tree             # 同树+同命令+同信封已通过就复用证据(标 REUSED)
+  verify: tree
+# prompts/<component>-<worker>.md 或 <worker>.md;内核喂给 worker($BUILDBEAT_PROMPT)。冻结信封时加 pin: <meta 提交 sha>
 envelope:
-  prompts: prompts         # prompts/<component>-<worker>.md 或 <worker>.md;内核喂给 worker($BUILDBEAT_PROMPT)
+  prompts: ../../envelope/prompts
   vars:
     component: auth
-  # pin: <meta 提交 sha>    # 冻结信封时钉住
 requires:
   - command: node
     min: "20"
@@ -76,37 +83,47 @@ requires:
     expect: PONG
     name: redis-reachable
 redact:
-  - "(?i)(token|secret|password)=[^\\s]+"
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+# worker.sh 与三份 prompt 从 templates/v2/envelope/ 拷到仓级 delivery/envelope/;换工具只改 -- 后面的命令
 workers:
   builder:
-    command: codex
+    command: bash
     args:
+      - delivery/envelope/worker.sh
+      - builder
+      - --
+      - codex
       - exec
       - -s
       - workspace-write
-      - 按 $BUILDBEAT_PROMPT 实施;改动后 git add 并 git commit
   verifier:
     command: bash
     args:
       - -lc
       - npm test
   reviewer:
-    command: codex
+    command: bash
     args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
       - exec
       - -s
       - read-only
-      - 只读审查;若 BUILDBEAT_INPUT 里有 lastReviewed 只看 range 内 diff。只输出一个 JSON 对象写入 $BUILDBEAT_OUTPUT:{"status":"succeeded","findings":[{"severity":"P1","summary":"..."}]};severity 只能 P0-P3,每条必须有 summary,无问题 findings 为空数组
   fixer:
-    command: codex
+    command: bash
     args:
+      - delivery/envelope/worker.sh
+      - fixer
+      - --
+      - codex
       - exec
       - -s
       - workspace-write
-      - 读 BUILDBEAT_INPUT(JSON)里的失败命令/退出码/日志摘要/findings,只修这些;改动后 git add 并 git commit
 ```
 
-(严格 YAML 子集:只有块列表与块映射,没有行内 `[]` / `{}`,上面这份可原样解析。**`fixer` 不能省**:没配它,verify 失败或 review 阻断时 Run 停 `WAITING_HUMAN` 等人手修,不会自动修。)通知通道另放 `.buildbeat/notify.yaml`(URL 只能来自环境变量),见 [docs/v2/guide/07-approval-guide.md](docs/v2/guide/07-approval-guide.md);十件套指南索引 [docs/v2/guide/README.md](docs/v2/guide/README.md)。
+(严格 YAML 子集:只有块列表与块映射,没有行内 `[]` / `{}`,**注释必须独占一行**;上面这份可原样解析,机器验证在 `tests/v2-templates-firstrun.test.js`。**`fixer` 不能省**:没配它,verify 失败或 review 阻断时 Run 停 `WAITING_HUMAN` 等人手修,不会自动修。完整样板 [templates/v2/run-config.example.yaml](templates/v2/run-config.example.yaml),信封 [templates/v2/envelope/](templates/v2/envelope/worker.sh)。)通知通道另放 `.buildbeat/notify.yaml`(URL 只能来自环境变量),见 [docs/v2/guide/07-approval-guide.md](docs/v2/guide/07-approval-guide.md);十件套指南索引 [docs/v2/guide/README.md](docs/v2/guide/README.md)。
 
 **第一次为一个项目写 run-config 时,会话要多问用户一句**:「Run 停下来等你批、跑完、或疑似卡住时,要不要推到钉钉/webhook?给我一个只放在环境变量里的 URL 就行」——试点一直没启用通知,一张合并卡就绪后隔夜等了 9.5 小时。用户说不要就记一句「通知未启用,等待只在 inbox 里」。
 
@@ -324,10 +341,22 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 
 ## 8. Bootstrap 新项目(引导式:自查 → 少量提问 → 确认 → 生成)
 
+### 8.0 先认项目形态,再选路(2.0.0 起默认 v2)
+
+收到「用 BuildBeat 开始 / 搭骨架 / 套流程」类请求,**先看目录再说话**,按下表路由,不问用户"要 v1 还是 v2":
+
+| 目录里有什么 | 形态 | 走哪条路 |
+|---|---|---|
+| `delivery/work/` 或 `.buildbeat/` | 已是 v2 项目 | 不再 Bootstrap;直接 §0.5:`buildbeat-v2 overview --repo .` 开场 |
+| `pm/NOW.md` 且没有 `delivery/` | v1 文件总线项目 | 给用户两句话:继续 v1(§8.2 / §8.5 旧流程原样可用)或迁到 v2([迁移指南](docs/v2/guide/08-migration-v1.md):升级 CLI 与迁移项目状态是两件事);用户不选就先不动,只做当前请求 |
+| 两者都没有 | 新项目或未接入的存量项目 | **默认 v2**:先按 §8.1 自查与少量提问(0→1)或 §8.5 步骤 1–4 摸底与划边界(10→N),再走 §8.3 v2 生成 checklist。用户明确说要 v1 文件总线(多仓 pm 看板、契约同步护栏是刚需)才走 §8.2 |
+
+v2 的自动闭环、隔离 worktree、digest 绑定批准都要 `buildbeat-v2` 在 PATH 上;没装时先装 `npm install --global @haiyangbg/buildbeat@latest`,装不了就明说"只能手工维护工件协议,没有自动闭环"(§0.5 开头),不得把手工路径说成等价能力。
+
 > 🔴 收到「搭骨架 / 用 BuildBeat 起项目」类请求时,流程 = **先自查代码 → 只问查不到的 → 一屏确认 → 生成**;不许直接拷模板留 `<占位符>` 让用户手改,也**不许把看代码就能搞清的事拿去问用户**。
 > **提问三原则:① 能从代码/配置查到的不问;② 问就问不懂技术的人也能答的话**(话术不出现"仓/部署单元/契约/CLI"这类词,能给选项就不开放问);**③ 合并一次问完(常规 3 问,查到有 UI 时 +1),不连环追问**。有 AskUserQuestion 类工具就用,没有就在对话里问;用户说「你定 / 随便」就取默认值,并在收尾报告标注。
 >
-> **CLI 是确定性机械层,不是 Bootstrap 替身。** Canonical npm 入口已发布为 `@haiyangbg/buildbeat@latest`；先运行 `npx --yes --package=@haiyangbg/buildbeat@latest buildbeat init <项目根> --dry-run --json`,存量项目改用 `adopt ... --dry-run --json`。旧 npm 包 `solobaton` 已 deprecate 且仍只读；新包内的 `solobaton` executable 只作为迁移别名保留。把仓/部署标记/UI/测试/碰撞结果作为自查证据,随后仍要读代码、只问剩余问题并做一屏确认。只有同一屏已获用户确认且 dry-run 无 blocker,才可去掉 `--dry-run` 交互写入；非交互时 `--yes` 只复用这次确认,不能绕过碰撞/脏 Git/路径检查。CLI 只填确定项,必须继续按输出的 `pendingPlaceholders` 完成语义渲染；不得声称它已初始化 Git、安装 Hook、跨 Gate 或替业务项目批准发布。
+> **v1 生命周期 CLI 是确定性机械层,不是 Bootstrap 替身;它生成的是 v1 文件总线骨架,不生成 v2 的 `delivery/`。** 只在 §8.0 路由到 v1 时使用。Canonical npm 入口 `@haiyangbg/buildbeat@latest`(同包内含 `buildbeat` 与 `buildbeat-v2`)；先运行 `npx --yes --package=@haiyangbg/buildbeat@latest buildbeat init <项目根> --dry-run --json`,存量项目改用 `adopt ... --dry-run --json`。旧 npm 包 `solobaton` 已 deprecate 且仍只读；新包内的 `solobaton` executable 只作为迁移别名保留。把仓/部署标记/UI/测试/碰撞结果作为自查证据,随后仍要读代码、只问剩余问题并做一屏确认。只有同一屏已获用户确认且 dry-run 无 blocker,才可去掉 `--dry-run` 交互写入；非交互时 `--yes` 只复用这次确认,不能绕过碰撞/脏 Git/路径检查。CLI 只填确定项,必须继续按输出的 `pendingPlaceholders` 完成语义渲染；不得声称它已初始化 Git、安装 Hook、跨 Gate 或替业务项目批准发布。
 
 ### 8.1 先自查,后提问
 
@@ -357,7 +386,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 
 > **可选规范默认不生成。** `standards/` 缺失是合法状态,不增加提问预算;只有用户在同一屏确认中选择启用,才创建相应文件。STACK 首次生成保持 `Status: Draft`,Node/lockfile/Docker 可核对基线和人类声明一起被明确确认后才改 `Confirmed`;不能观测不等于 `n/a`。DESIGN 只在识别到 UI/视觉/交互交付时建议。ADR 只在 `templates/pm/adr/README.md` 的五项判据命中时按需创建,不随骨架批量生成。
 
-### 8.2 生成 checklist(确认过后由 agent 执行)
+### 8.2 v1 文件总线生成 checklist(仅 §8.0 路由到 v1 时;确认过后由 agent 执行)
 
 ```
 - [ ] 1. 默认只生成基础骨架并排除可选 `standards/` 与 `pm/adr/`。源码候选优先走“`init/adopt --dry-run` → 一屏确认 → apply”受控路径,随后按 `pendingPlaceholders` 填完项目事实；CLI 不可用时,手动等价路径为 `rsync -a --exclude '/standards/' --exclude '/pm/adr/' templates/ <新项目根>/`(会保留隐藏 `.claude/`;若无 rsync,先在新建的空 staging 中 `cp -R templates/.` 后排除可选目录,再拷到目标,不得对非空项目盲删)。**基础交付物的 <占位符> 最终必须按自查+确认结论填好**;`BUILDBEAT.md` 填拷入版本。用户选择启用的 optional 文件单独从模板生成:STACK 先留 `Status: Draft`,DESIGN 仅 UI 项目创建;未启用即不存在
@@ -373,10 +402,25 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 
 > 各文件「填好之后长什么样」,参照仓库 [example/](example/)(虚构「简账」项目跑完一期的快照)。
 
+### 8.3 v2 生成 checklist(默认路径;确认过后由 agent 执行)
+
+```
+- [ ] 1. 装载入口:`templates/v2/AGENTS.md` → 项目根 `AGENTS.md`(填项目名、边界、视角路由;单仓项目删多仓相关行),`templates/v2/CLAUDE.md` → `CLAUDE.md`(一行指针,不复制内容),`templates/v2/指挥台.md` → `指挥台.md`,`templates/v2/BUILDBEAT.md` → `BUILDBEAT.md`(填运行时版本与日期)。`templates/gitignore.template` → `.gitignore`(已排除 `.buildbeat/runtime/` 与 `.buildbeat/worktrees/`;有测试框架的项目另配 exclude,见 Workflow 指南)
+- [ ] 2. 台账:`templates/pm/decisions.md` → `pm/decisions.md`(纯 v2 项目也只建这一个 v1 文件,记平台级决策包);多仓才建 `contracts/PROTOCOL.md`。**不建** `pm/NOW.md`、看板、`pm/status/`,不装 `bus-check`
+- [ ] 3. 信封:`templates/v2/envelope/` 整目录 → `delivery/envelope/`(worker.sh + builder / reviewer / fixer prompt);按项目补 prompt 里的环境事实(§0.5.3 末尾三条)。这一步进 Git,worktree 里才有
+- [ ] 4. 第一个 Work:`delivery/work/<WORK-ID>/` 写 `intent.md`(为什么 + 止损线)、`plan.md`;`templates/v2/run-config.example.yaml` → `run-config.yaml`(改 work / run / allowedPaths / 把 `--` 后的工具命令换成用户实际用的);`$(npm root -g)/@haiyangbg/buildbeat/src/v2/presets/software-delivery.yaml` → `workflow.yaml`
+- [ ] 5. 通知(问一句,§0.5.3):要就写 `.buildbeat/notify.yaml`,URL 只能来自环境变量;不要就在收尾说明"等待只在 inbox 里"
+- [ ] 6. 机器闸:各代码仓 `cp templates/scripts/pre-commit.sh .git/hooks/pre-commit`,只保留 gitleaks 那道(v1 的 bus-check --strict 一道在纯 v2 仓会因缺 `pm/NOW.md` 直接跳过);`command -v gitleaks` 查无则提醒安装
+- [ ] 7. 首跑验收:用户说「接受」→ `accept --artifact intent` / `plan`;`buildbeat-v2 doctor --config …` 全段读一遍(intent/plan 接受状态、env 姿态、预算、start 会停在哪);`start --config … --attempt new`(脱离启动)→ 停 `WAITING_HUMAN`;`overview` / `status` 把候选、verify 退出码、findings 读给用户。**这一次 Run 停在合并决定之前,不宣布"接入完成"**
+- [ ] 8. 收尾一屏:生成了什么 / 默认拿主意的项 / 首跑停在哪、证据在哪 / 下一步由谁做(合并是人的动作)
+```
+
+> 可核对的样例:`tests/v2-templates-firstrun.test.js` 用脚本 worker 代替真实模型,从上面的模板走到合并决定(含一次 verify 失败→fixer→重验)。它证明包内路径、配置、信封、提交机制、reviewer 信封连得上;不证明某个真实模型能完成业务任务。
+
 ## 8.5 接管存量项目(10→N 入口:先摸底、划边界、补验证)
 
 > §8 假设从零起步;公司里大多数项目是**存量**的,两类项目的成本结构相反:0→1 的瓶颈是需求不确定,10→N 的瓶颈是**理解成本 ≫ 编写成本**、改坏的损失 ≫ 改对的收益。收到「给现有项目上 BuildBeat」类请求走本节,别拿 §8 硬套;提问三原则(§8)同样适用。
-> 先跑 `node bin/buildbeat.js adopt <项目根> --dry-run --json`:已发布 legacy v0 只给只读计划；当前源码候选在一屏确认后可受控 apply,默认生成紧凑布局并列出/拒绝碰撞。两者都不会判断绞杀者边界、危险区或 L3 是否充分,这些仍按下方仪式核实和拍板；apply 后继续消费 `pendingPlaceholders`,不能把机械落盘当成接管完成。
+> 摸底与划边界(步骤 1–4)与协议版本无关,都要做。只在 §8.0 路由到 v1 时才跑 `npx --yes --package=@haiyangbg/buildbeat@latest buildbeat adopt <项目根> --dry-run --json`(一屏确认后可受控 apply,默认紧凑布局并列出/拒绝碰撞);它不判断绞杀者边界、危险区或 L3 是否充分,这些仍按下方仪式核实和拍板;apply 后继续消费 `pendingPlaceholders`,不能把机械落盘当成接管完成。
 > v1.16 拷出项目若没有 CLI 真实写入的 schema 2 manifest，`upgrade` 必须 blocked；不得手写 manifest、复制 `example/.buildbeat/manifest.json`、重命名 `.solobaton` 文件，或用当前文件 hash 伪造安装基线。默认继续手工维护；只在项目所有者明确批准时，按 [v1.16 legacy 迁移指南](docs/LEGACY-V1.16-MIGRATION.md) 在专用 Git 分支重建基线。
 
 ```
@@ -390,10 +434,11 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
         没有这一步,证据分级给不出 L3,后面所有 Gate 都在空转
 - [ ] 4. 产出分层 AGENTS.md:根一份(路由 + 新旧边界)+ 各业务模块一份(模块地图,给 AI 会话降理解成本)。
         靠标准的「向上合并、就近优先」层叠:改哪个模块只额外装载哪份,根文件因此能保持精简
-- [ ] 5. 骨架用**紧凑布局**(§3):`templates/scripts/` 整树拷成 `pm/scripts/`,`指挥台.md` 与 `BUILDBEAT.md` 拷进 `pm/`。
+- [ ] 5. 骨架默认 v2(§8.3 步骤 1–3):`AGENTS.md` 根一份写新旧边界与危险区,各模块一份地图;`delivery/envelope/` 的 builder / fixer prompt 里写明"老地盘只维护、改动一律先问人"。
+        用户明确要 v1 文件总线时改用**紧凑布局**(§3):`templates/scripts/` 整树拷成 `pm/scripts/`,`指挥台.md` 与 `BUILDBEAT.md` 拷进 `pm/`;
         脚本自定位不用改;要改的是文档里的调用路径——`AGENTS.md`、`pm/NOW.md`、`指挥台.md`、`pm/当期看板.md`、`contracts/PROTOCOL.md`、`ARCHITECTURE.md` 六处,
         改完 `grep -rn 'scripts/' <项目根> --include='*.md'` 复核:只该剩 `pm/scripts/` 与项目自己的 `scripts/`
-- [ ] 6. 之后按 §8.2 步骤 2-9 走(骨架/机器闸/第一期立项);一期起步的优先级:补测试 > 机械重构 > 新功能
+- [ ] 6. 之后 v2 按 §8.3 步骤 4-8 走(第一个 Work = 第 3 步的最小验证套件,`allowedPaths` 只放新地盘与 tests);v1 按 §8.2 步骤 2-9 走。一期起步的优先级:补测试 > 机械重构 > 新功能
 ```
 
 存量项目已有自定义 standards/ADR 时只读摸底并保留项目所有权,不得用上游模板覆盖。项目没有这些文件时仍默认不生成;若用户在接管确认屏选择启用,先用现有配置起草 STACK `Draft`,UI 项目才建议 DESIGN,长期不可逆决定才建 ADR。
@@ -402,8 +447,11 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 
 | 模板 | 用途 |
 |---|---|
-| [templates/v2/AGENTS.md](templates/v2/AGENTS.md) / [templates/v2/指挥台.md](templates/v2/指挥台.md) | **v2 项目用这两份**:一页流程 + 视角路由 + 十一条规则(含可见命名进决策卡)+ 红线;指挥台是"用户一句话 → 会话调什么"的操作卡 |
-| [templates/AGENTS.md](templates/AGENTS.md) | v1 工作区路由 + 十条规则 + 红线(开放标准,每会话自动装载) |
+| [templates/v2/AGENTS.md](templates/v2/AGENTS.md) / [templates/v2/指挥台.md](templates/v2/指挥台.md) | **v2 项目装载入口**:一页流程 + 视角路由 + 十一条规则(含可见命名进决策卡)+ 红线;指挥台是"用户一句话 → 会话调什么"的操作卡 |
+| [templates/v2/CLAUDE.md](templates/v2/CLAUDE.md) / [templates/v2/BUILDBEAT.md](templates/v2/BUILDBEAT.md) | v2 项目的一行指针与版本标记(运行时版本、装载方式、v1 遗留冻结状态、升级 = 升级 CLI) |
+| [templates/v2/run-config.example.yaml](templates/v2/run-config.example.yaml) | 可原样解析的 run 配置样板(含 fixer、reviewTriage、budgets、cache、envelope、redact);机器验证见 `tests/v2-templates-firstrun.test.js` |
+| [templates/v2/envelope/worker.sh](templates/v2/envelope/worker.sh) + [prompts/](templates/v2/envelope/prompts/builder.md) | worker 包装(工具缺失 exit 75、喂 prompt、写入步机械 commit、只读步落信封)与 builder / reviewer / fixer 三份 prompt;拷到仓级 `delivery/envelope/` |
+| [templates/AGENTS.md](templates/AGENTS.md) | v1 工作区路由 + 十条规则 + 红线(开放标准,按工具装载) |
 | [templates/CLAUDE.md](templates/CLAUDE.md) | 一行指针 → `AGENTS.md`(兼容只认此名的工具;🔴 不复制内容) |
 | [templates/ARCHITECTURE.md](templates/ARCHITECTURE.md) | 全栈总图骨架(架构/基础设施/凭据位置/子项目索引) |
 | [templates/指挥台.md](templates/指挥台.md) | 给人看的一页操作卡 |
@@ -427,7 +475,7 @@ Gate1 规格(人批) → Gate2 设计(人对着真渲染原型批) → 实现+�
 > 5 个 `.sh` 自己定位协调层根(向上找 `pm/NOW.md`),整树搬到 `pm/scripts/` 即得 §3 紧凑布局,脚本本身不用改。同伴脚本(`live-status.sh` / `live-config.sh`)要和它们放同一目录。
 >
 > 仓库级 CLI 的命令、exit code、schema 1 兼容/三策略 schema 2 文件所有权、机械 upgrade 与手动移除边界见 [docs/CLI.md](docs/CLI.md)。CLI 与 Skill 共用同一协议,但职责不同:Skill 做代码级理解与人 Gate,CLI 只做确定性生命周期机械动作;项目 `uninstall` 命令继续冻结。
-> Skill-only / 已发布 npm v0 / 当前本地源码候选的可用面、CLI 三组生命周期入口和双向互操作证据见 [docs/CAPABILITY-MATRIX.md](docs/CAPABILITY-MATRIX.md)。
+> Skill-only 手工路径 / v1 生命周期 CLI / v2 运行时 / Claude 插件各自的可用面、CLI 三组生命周期入口和双向互操作证据见 [docs/CAPABILITY-MATRIX.md](docs/CAPABILITY-MATRIX.md)。
 > legacy v1.16 项目的所有权分类、受控 rebaseline 步骤、回退和证据边界见 [docs/LEGACY-V1.16-MIGRATION.md](docs/LEGACY-V1.16-MIGRATION.md)。
 
 ## 10. 反模式与实战教训

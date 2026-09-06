@@ -57,8 +57,9 @@ rm -rf .buildbeat/runtime/
 
 `buildbeat-v2 doctor --config <run-config>`：配置可解析、workflow 无出口环、adapter env 姿态、digest 可算、supersede 与 stall 阈值、通知通道与环境变量是否就位。`events`/`replay`/`metrics` 全部只读，可随时跑。
 
-## "是不是卡住了"（迭代 08）
+## "是不是卡住了"
 
+> 自 2.0.0-beta.4（迭代 08）起。
 先看 `buildbeat-v2 status --repo . --run <RUN>`：在飞步骤有已用时间、同仓历史中位数、worker 命令、最后一次输出距今多久与末三行输出。无输出超过阈值（默认 15 分钟，`--stall-after <分钟>` 或 run 配置 `stallAfterMs`）标 `STALLED`——**只标不杀**。判断口径：
 
 - 有输出在持续 → 等（对照 `typical` 看是否已远超中位数）；
@@ -67,8 +68,9 @@ rm -rf .buildbeat/runtime/
 
 想不盯屏就订阅 `STALLED` 通知（[Approval 指南](07-approval-guide.md)）。`watch --repo . --run <RUN> --once true` 可手工探测一次。
 
-## 打扫卫生：gc（迭代 08）
+## 打扫卫生：gc
 
+> 自 2.0.0-beta.4（迭代 08）起。
 终态 Run 会留下工作树、`run/*` 分支和偶尔的锁。`buildbeat-v2 gc --repo .` 默认只出计划，`--apply true` 执行：
 
 - 只动**终态且已压成 run-record** 的 Run（Git 面有账才动运行时面）；
