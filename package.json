@@ -1,7 +1,7 @@
 {
   "name": "@haiyangbg/buildbeat",
   "version": "2.0.0",
-  "description": "BuildBeat: a Git-based, human-gated engineering delivery protocol for humans and AI sessions.",
+  "description": "BuildBeat: Git-based AI delivery across models, tools, sessions, and people, with context in project files, build-test-review-fix loops, and human decisions.",
   "type": "module",
   "bin": {
     "buildbeat": "bin/buildbeat.js",
@@ -49,13 +49,14 @@
   },
   "keywords": [
     "ai-coding",
-    "file-first",
+    "git-workflow",
+    "project-context",
+    "session-handoff",
     "human-in-the-loop",
-    "scaffold",
     "software-delivery",
-    "delivery-protocol",
-    "ai-sessions",
-    "git-workflow"
+    "delivery-runtime",
+    "ai-agents",
+    "team-collaboration"
   ],
   "author": "HaiYangBG",
   "license": "MIT"

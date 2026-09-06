@@ -15,12 +15,6 @@ from urllib.parse import unquote
 ROOT = Path(__file__).resolve().parents[1]
 MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(([^)\n]+)\)")
 INTERNAL_CITATION = re.compile(r"(?:filecite|cite)")
-# The README is edited as a document, not as a contract: keep it within a
-# sane band instead of pinning an exact section count.
-EXPECTED_H2_RANGE = {
-    "README.md": (8, 12),
-    "README.en.md": (8, 12),
-}
 # Documents users read today. History (release evidence, iteration records,
 # plans, RFC bodies) is exempt: it must keep the facts of its own date.
 ACTIVE_DOCS = (
@@ -44,6 +38,8 @@ ACTIVE_DOCS = (
     "docs/v2/guide/08-migration-v1.md",
     "docs/v2/guide/09-security-boundaries.md",
     "docs/v2/guide/10-recovery.md",
+    "docs/v2/guide/11-session-handoff.md",
+    "docs/v2/guide/11-session-handoff.en.md",
     "templates/v2/AGENTS.md",
     "templates/v2/指挥台.md",
     "templates/v2/BUILDBEAT.md",
@@ -255,31 +251,35 @@ def check_internal_citations(paths: list[Path]) -> list[str]:
 
 def check_readme_shape() -> list[str]:
     errors: list[str] = []
-    for filename, (low, high) in EXPECTED_H2_RANGE.items():
-        path = ROOT / filename
-        headings = [
-            line for line in path.read_text(encoding="utf-8").splitlines()
-            if line.startswith("## ")
-        ]
-        if not low <= len(headings) <= high:
-            errors.append(
-                f"{filename}: expected between {low} and {high} H2 sections, found {len(headings)}"
-            )
-
     zh = (ROOT / "README.md").read_text(encoding="utf-8")
     en = (ROOT / "README.en.md").read_text(encoding="utf-8")
-    required_pairs = (
-        ("## 5 分钟开始", "## Start in five minutes"),
-        ("## 核心机制", "## Core mechanisms"),
-        ("## 适用边界", "## Applicability"),
-        ("## 能力与依赖", "## Capabilities and dependencies"),
-        ("## 贡献", "## Contributing"),
-    )
-    for zh_heading, en_heading in required_pairs:
-        if zh_heading not in zh:
-            errors.append(f"README.md: missing section {zh_heading}")
-        if en_heading not in en:
-            errors.append(f"README.en.md: missing section {en_heading}")
+    # Keep translations aligned, without freezing marketing copy or titles.
+    zh_sections = re.findall(r"^## .+$", zh, re.MULTILINE)
+    en_sections = re.findall(r"^## .+$", en, re.MULTILINE)
+    if not zh_sections or len(zh_sections) != len(en_sections):
+        errors.append("README translations must have matching section counts")
+    for language in ("bash", "text"):
+        pattern = rf"```{language}\n(.*?)```"
+        if re.findall(pattern, zh, re.DOTALL) != re.findall(pattern, en, re.DOTALL):
+            errors.append(f"README translations have different {language} examples")
+
+    # A homepage must lead to usable instructions and disclose the local
+    # runtime boundary; links are checked for existence elsewhere.
+    for filename, content, handoff in (
+        ("README.md", zh, "docs/v2/guide/11-session-handoff.md"),
+        ("README.en.md", en, "docs/v2/guide/11-session-handoff.en.md"),
+    ):
+        targets = set(MARKDOWN_LINK.findall(content))
+        for target in (
+            "SKILL.md", "docs/v2/guide/01-quickstart.md", handoff,
+            "docs/CAPABILITY-MATRIX.md", "docs/v2/guide/10-recovery.md",
+            "docs/v2/guide/09-security-boundaries.md", "CONTRIBUTING.md", "LICENSE",
+        ):
+            if target not in targets:
+                errors.append(f"{filename}: missing user entry point {target}")
+        for boundary in (".buildbeat/runtime/", ".buildbeat/worktrees/"):
+            if boundary not in content:
+                errors.append(f"{filename}: missing local execution boundary {boundary}")
 
     required_boundary_pairs = (
         ("多人账号、角色/权限", "multi-user accounts, roles and permissions"),
@@ -296,7 +296,6 @@ def check_readme_shape() -> list[str]:
         ("面向人和 AI 会话", "for humans and AI sessions"),
         ("端到端工作包", "End-to-end work packages"),
         ("不是人类岗位接力", "not mandatory human-role handoffs"),
-        ("Claude Code 插件：BuildBeat 仓库", "Claude Code plugin: BuildBeat repository"),
         (
             "/plugin install buildbeat@buildbeat-plugins",
             "/plugin install buildbeat@buildbeat-plugins",
@@ -304,7 +303,7 @@ def check_readme_shape() -> list[str]:
     )
     # The v1 distribution history (legacy solobaton v0, schema 2 pilot, scoped
     # lifecycle) is guarded in docs/CAPABILITY-MATRIX.md and docs/CLI.md, not
-    # as mandatory README sentences.
+    # as mandatory README sentences. Core audience and plugin identity remain.
     for zh_positioning, en_positioning in required_positioning_pairs:
         if zh_positioning not in zh:
             errors.append(f"README.md: missing scale-independent positioning {zh_positioning}")

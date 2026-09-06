@@ -2,308 +2,167 @@
 
 [简体中文](README.md) | **English**
 
-**Keep humans and AI sessions aligned around the same delivery facts.**
+## Switch sessions. Keep building.
 
-BuildBeat (formerly Solobaton) is a **file-first, human-gated engineering-delivery protocol and scaffold** for humans and AI sessions. Its Git-based file bus, human Gates, and verifiable evidence keep long-running work synchronized, controlled, and auditable across repositories and AI contexts. It does not create agents, manage models, model team roles, or provide an agent runtime.
+**Context in files. Collaboration through Git. Work keeps moving.**
 
-> **Information moves through files, not through a human messenger. Done requires evidence. Humans approve specification, design, merge, and release.**
+BuildBeat is a Git-based AI delivery workflow for humans and AI sessions. Goals, plans, decisions, and delivery records stay in the project, providing a basis for continuing when models, tools, sessions, or the person doing the work change. A build, verify, review, and fix loop moves execution forward, with key decisions remaining human.
 
-Requirements, boards, contracts, decisions, status, and verification evidence live in Git-managed files. A session can be closed or replaced without taking the project's working context with it.
+[User guides (Chinese)](docs/v2/guide/README.md) · [Session handoffs](docs/v2/guide/11-session-handoff.en.md) · [npm](https://www.npmjs.com/package/@haiyangbg/buildbeat) · [CI](https://github.com/HaiYangBG1/BuildBeat/actions/workflows/ci.yml) · [MIT](LICENSE)
 
-BuildBeat began with one person coordinating four AI sessions across a complex, multi-iteration product. That is its origin, not an audience limit. One Builder can use it, or several Builders can share one Git project and close separate requirement/work packages end to end.
+## Let go of that irreplaceable chat
 
-**v2 is the current line** (`@haiyangbg/buildbeat@latest`, 2.0.0): on top of the v1 file bus and human Gates it adds `buildbeat-v2`, a delivery runtime driven by AI sessions — an automatic Build → Verify → Review → Fix loop inside an isolated worktree that stops at the merge decision, with `overview` / `inbox` / `status` answering "where is it, who decides, is it stuck". See [the v2 runtime](#the-v2-runtime-buildbeat-v2-current-line) below and [`docs/v2/guide/`](docs/v2/guide/README.md). Since 2.0.0 `@latest` is v2: the v1 `buildbeat` lifecycle commands are unchanged and `buildbeat-v2` is a second executable in the same package; `@next` is for later pre-releases.
+You should not have to preserve an ever-growing chat because it holds the only working context for your project. Open a fresh session when context fills up. Switch models or tools when you need to. Hand work to a teammate who can read the progress and next step from project files. Goals, constraints, plans, decisions, and delivery records belong in the filesystem, where the next session can find them without the old conversation.
 
-> **Language note:** `SKILL.md`, the scaffold templates, and script output are currently Chinese-first. The delivery protocol is language-independent, and a project can translate its generated scaffold during bootstrap.
+This is an **illustrative interaction** in a configured project, not a recorded test run:
 
-## The problem it solves
+| Moment | What you say | What the session does |
+|---|---|---|
+| Session A: begin | “Add date filtering to exports. Plan it first.” | Reads project constraints and writes the goal and plan into a Work; starts execution after acceptance |
+| Before leaving | “Save decisions and unfinished work; I am closing this session.” | Updates project records, checks run state and uncommitted changes, and identifies the next step |
+| A new session takes over | “Read the project's BuildBeat entry point and continue date filtering.” | Reads the Work, Git, and run ledger to identify completed work, unverified results, decisions, and blockers |
+| Continue | “Continue under the accepted plan.” | Proceeds, handles recovery, or waits for a decision according to the actual state; brings evidence to the merge decision |
 
-When several AI coding sessions work on one project, code generation is rarely the hardest part. Delivery state is:
+You can open the next session yourself or hand work to someone else with project access. When changing people or machines, synchronize records and candidates and check the original Run environment.
 
-- Session A keeps working against an old interface after session B changed it.
-- The builder copy-pastes context between sessions and becomes the message bus.
-- An agent says “done” without a test, commit, or live evidence.
-- A session hands work back after one document or commit and waits to be told “continue.”
-- Every reversible draft choice interrupts the builder until real stage Gates disappear in confirmation noise.
-- Current progress, production version, and decisions are copied into several documents and begin to contradict one another.
+**Once the necessary context is saved, you can close or delete the old chat.** Unsaved discussion does not become project memory automatically. Keep the project, candidate branches, and required runtime files when removing chats. See [session handoffs](docs/v2/guide/11-session-handoff.en.md).
 
-BuildBeat reduces those problems to four pillars:
+## Context lives in the project
 
-1. **End-to-end work packages:** one Builder owns product judgment, implementation, testing, merge, and release evidence for a requirement/feature package. Product, Fullstack, and Testing are optional AI perspectives, not mandatory human-role handoffs.
-2. **File bus:** `NOW → board → contracts → status`; handoffs do not depend on chat memory.
-3. **Human at the Gate:** specification, design, merge, and release cannot be crossed automatically.
-4. **Evidence-based done:** completion requires a commit hash and verifiable evidence. No evidence means not done.
+Git manages project facts that need to last. Local files hold execution state. BuildBeat reads those facts to report progress, instead of asking every session to maintain another estimate of what happened.
 
-## Start in five minutes
+| Files and directories | What they hold | How they are used |
+|---|---|---|
+| `AGENTS.md`, project standards, and contracts | Entry points, constraints, perspectives, and write boundaries | A new session starts here, then reads the files relevant to its task |
+| `delivery/work/<ID>/` | Goals, plans, configuration, decisions, review adjudications, and terminal run records | Version in Git as the basis for continuing the same work |
+| `.buildbeat/runtime/` | In-flight events, checkpoints, locks, and raw logs | Local and excluded from Git; needed to recover an active Run |
+| `.buildbeat/worktrees/` | Each Run's isolated working tree | Preserves candidate code and the working state; keep it when clearing chats |
 
-### Recommended: guided bootstrap
+Filesystem storage does not mean every file belongs in Git. Secrets stay in a protected local environment. Terminal records retain evidence digests and references; retain raw logs separately when the project requires them. See the [evidence guide (Chinese)](docs/v2/guide/06-evidence-guide.md).
 
-Keep this repository at any stable local path, or place it in a local skill directory currently supported by your AI coding tool. Ask the session to read [`SKILL.md`](SKILL.md), then say:
+## Different ways to continue the same work
 
-> Use BuildBeat to scaffold collaboration for my project.
+The project files carry the context needed to continue. A fresh session with BuildBeat loaded can read the same goals, decisions, and current state. Execution Workers connect through commands; model selection and authentication belong to the chosen AI tool.
 
-It inspects the code and configuration first, identifying repositories, deploy units, UI surfaces, and contract boundaries. It asks only three or four simple questions that cannot be answered from the project, shows one confirmation screen, then generates a scaffold filled with project facts and runs its self-check.
+- **Across sessions:** close an old chat and continue the same Work with a fresh context.
+- **Across tools and models:** load the Skill in the target tool, configure its command and output contract, and reuse project records.
+- **Across people:** someone with project access can synchronize context, candidates, and required evidence, then continue within their responsibility and authorization. Existing valid decisions remain in effect.
+- **Across time and place:** sync committed project files and prepare another machine to take over. An ordinary Git clone does not migrate an active Run's runtime state or worktree.
 
-> Do not apply the new-project template directly to a large existing codebase. Use the **brownfield takeover ritual** in `SKILL.md` §8.5: survey the system, draw the old/new boundary, establish minimum verification, and use the compact `pm/scripts/` layout so BuildBeat does not collide with the project's own `scripts/` directory.
+**Taking over anytime and anywhere starts with accessible records, a working environment, and appropriate permissions.** Whether you continue yourself or hand work to someone else, start from project files without carrying the old chat transcript. Git supplies version control and collaboration; repository hosting and execution platforms control access.
 
-### Claude Code plugin: BuildBeat repository
+Different tools can read and write the protocol. Running the Loop also requires a compatible adapter, permissions, and environment. Existing real Worker evidence covers `codex exec`, with deterministic tests for script Workers. Having a CLI alone does not establish that another tool is verified. See the [capability matrix](docs/CAPABILITY-MATRIX.md) and [adapter guide](docs/v2/guide/04-adapter-guide.md) (Chinese).
 
-This repository contains a standalone Claude Code marketplace package. Once installed, `/buildbeat:buildbeat` routes to the same canonical [`SKILL.md`](SKILL.md). It can be installed from a local checkout in isolation:
+## Multiple perspectives, one shared objective
+
+**End-to-end work packages** are the unit of collaboration. One Builder owns a user-level outcome and calls on product, development, testing, and review perspectives as needed. Several Builders can own separate work packages or hand over the same package. Record who is currently taking it forward, what is done, and the next step to avoid duplicate execution.
+
+| Perspective | Reads when taking over | Produces |
+|---|---|---|
+| Product | Goals, constraints, and existing decisions | Scope, a plan, and acceptance criteria |
+| Development | The accepted plan, contracts, and environment facts | Candidate code and implementation records |
+| Testing | Acceptance criteria and the candidate | Actual test results, coverage, and gaps |
+| Review | A fixed candidate, the plan, and verification evidence | Structured findings and a review conclusion |
+
+These are available AI perspectives, not mandatory human-role handoffs or a requirement to open four chats. One person or several people can use these perspectives as needed. Shared facts move through project files, and each perspective respects its write boundaries. The current single-repository active-Run lock is local. Multiple perspectives or Git clones do not provide cross-machine execution coordination. Check the original execution environment before handing over the same Work to avoid duplicate starts.
+
+## Put the work in a Loop
+
+After the required plan acceptance, `buildbeat-v2` calls configured Workers in an isolated Git worktree to implement, verify, review, and fix the change.
+
+```mermaid
+flowchart LR
+    P[Accept plan] --> B[Build]
+    B --> V[Verify]
+    V -->|Pass| R[Review]
+    V -->|Fail| F[Fix]
+    R -->|Blocking findings| F
+    F --> V
+    R -->|Pass| H[Human merge decision]
+```
+
+The diagram shows normal and repair paths. Risk presets, finding triage, infrastructure failures, and budgets can introduce additional waits.
+
+- **Completion has evidence:** candidates are read back from Git, and test conclusions come from actual commands. An AI's “done” does not replace verification.
+- **Approval has a subject:** decisions bind to a candidate, plan, and evidence. Changes can make an earlier approval stale.
+- **Interruption has a recovery path:** the Runner can resume from its ledger. An interrupted step may run again; a dirty worktree requires a decision first.
+- **Loops have limits:** budgets, repeated failures, and infrastructure problems become explicit pending actions. Notifications are configurable.
+
+The merge decision means the candidate is ready for a merge. A human or a separately authorized tool performs merge, push, and deployment outside the Runner. The `release-readback` workflow can record release checks and observations. Runtime checks and host isolation have distinct scopes; see [security and permission boundaries (Chinese)](docs/v2/guide/09-security-boundaries.md).
+
+## Start your first handoff
+
+You need Node.js ≥ 20, Git, Bash, and an installed, authenticated AI coding tool.
+
+**1. Install the runtime.** Stable packages use `@latest`. The package includes the `buildbeat-v2` runtime and the `buildbeat` v1 lifecycle commands.
+
+```bash
+npm view @haiyangbg/buildbeat@latest version
+npm install --global @haiyangbg/buildbeat@latest
+```
+
+> **Source versus published package:** as of 2026-09-06, the stable package is 2.0.0. The v2 envelope templates and configuration fixes under `Unreleased` have not shipped. To use those templates for a first run, install this checkout with `npm install --global .`, then follow the [quickstart (Chinese)](docs/v2/guide/01-quickstart.md). Check the [CHANGELOG](CHANGELOG.md) against your installed version after later releases.
+
+**2. Load the entry point.** Download or clone this repository, ask your AI tool to read its [`SKILL.md`](SKILL.md), and say this in the target project:
+
+> Set up BuildBeat for this project. Inspect the code and existing constraints first, then prepare v2 context and execution configuration for the first piece of work.
+
+The session inspects the project and prepares a goal, plan, verification commands, and Worker configuration. Execution starts after your acceptance. See the [quickstart](docs/v2/guide/01-quickstart.md), or the [migration guide](docs/v2/guide/08-migration-v1.md) for an existing v1 project (Chinese).
+
+**3. Try a handoff.** Once work records are saved, close the old session and open one without its chat history. Or synchronize the records and candidate so another authorized teammate can take over with their own tool:
+
+> Read the project's BuildBeat entry point, inspect progress and pending decisions, explain the next step, and continue within the existing authorization.
+
+Check the goal, candidate, verification results, and next step it reads back. Follow the [session handoff guide](docs/v2/guide/11-session-handoff.en.md).
+
+<details>
+<summary>Claude Code plugin installation</summary>
+
+The plugin loads the Skill and reference material. Install the runtime separately.
 
 ```text
-/plugin marketplace add /absolute/path/to/BuildBeat
+/plugin marketplace add HaiYangBG1/BuildBeat
 /plugin install buildbeat@buildbeat-plugins
 /buildbeat:buildbeat
 ```
 
-For GitHub installation, use `/plugin marketplace add HaiYangBG1/BuildBeat`. The plugin carries the Skill, templates, example, and reference documentation without exposing the npm CLI's top-level `bin/` to Claude Code. Project writes remain bounded by the CLI version, its confirmation screen, and human Gates. See [`plugins/buildbeat/README.md`](plugins/buildbeat/README.md) for the packaging boundary.
+To install from source, replace the marketplace address with this checkout's absolute path. See the [plugin guide](plugins/buildbeat/README.md) for cache boundaries and installation checks.
 
-### CLI: the scoped BuildBeat package carries the bounded lifecycle
+</details>
 
-The canonical npm distribution ID is `@haiyangbg/buildbeat`; the unscoped `buildbeat` name is owned by another project and is not claimed here. Read the exact `@latest` version back from the official registry before use; for reproducibility, substitute that recorded version in later commands:
+<details>
+<summary>v1 lifecycle and former names</summary>
+
+`buildbeat doctor` checks a v1 scaffold; `init/adopt/upgrade` manage its lifecycle. They do not generate or migrate a complete v2 Work.
 
 ```bash
-npm view @haiyangbg/buildbeat@latest version
 npx --yes --package=@haiyangbg/buildbeat@latest buildbeat doctor /path/to/project
-npx --yes --package=@haiyangbg/buildbeat@latest buildbeat init /path/to/project --dry-run
-npx --yes --package=@haiyangbg/buildbeat@latest buildbeat adopt /path/to/project --dry-run --json
-npx --yes --package=@haiyangbg/buildbeat@latest buildbeat upgrade /path/to/project --dry-run --json
 ```
 
-For regular use, manage an explicit global CLI installation:
+See the [CLI reference](docs/CLI.md). BuildBeat was formerly Solobaton; the `solobaton` executable remains a compatibility alias. The historical example is in [example/](example/README.md) (Chinese).
 
-```bash
-npm install --global @haiyangbg/buildbeat@latest
-buildbeat doctor /path/to/project
-npm install --global @haiyangbg/buildbeat@latest  # update the CLI package
-npm uninstall --global @haiyangbg/buildbeat       # remove only the global CLI package
-```
+</details>
 
-Package-manager install, update, and removal operations manage only the **CLI package and executables**; they never create, upgrade, or delete a project's scaffold. `doctor` is read-only. `init/adopt` show the complete plan and write only after clean-Git, collision, blocker, and confirmation checks. `upgrade` accepts only a canonical schema 2 baseline and performs manifest/hash-based mechanical changes with zero writes on unresolved conflict. `diff/uninstall` and workflow-command expansion remain frozen. `buildbeat` is canonical; the `solobaton` executable remains only as a compatibility alias. See [`docs/CLI.md`](docs/CLI.md) for the complete contract.
+## Everyday use and applicability
 
-`1.21.0` is now independently verified and adds a standard domain-response format on top of the `1.20.0` lifecycle: close out with Done → Not done → Next, and keep evidence directly under the completed outcome it supports. CLI commands and safety boundaries do not expand. `--force` still cannot overwrite project-owned content or unsafe paths, and a major transition separately requires `--major`. A source checkout, Git tag, and npm artifact remain different evidence surfaces; exact release evidence is archived in [`docs/V1.21-RELEASE-EVIDENCE-2026-08-25.md`](docs/V1.21-RELEASE-EVIDENCE-2026-08-25.md).
+Once configured, talk to the session directly:
 
-Copied v1.16 legacy projects must not hand-author, copy, or rename a manifest to fabricate schema 2 ownership. Continue with manual CHANGELOG-based maintenance by default; if mechanical upgrades are genuinely required, use the [v1.16 legacy migration guide](docs/LEGACY-V1.16-MIGRATION.md) to rebuild the baseline under review on a dedicated Git branch.
+| What you need | What you can say |
+|---|---|
+| A new session or teammate to take over | “Sync project records, read the entry point, and continue this work.” |
+| Progress | “What is done, what remains, and who moves next?” |
+| A decision | “What needs my decision? Show the evidence with it.” |
+| Recovery | “Is this run stuck? Inspect the state and handle recovery.” |
+| A fresh session | “Save the necessary context and check which work is still running.” |
 
-The old `solobaton@latest` package stays on the legacy read-only v0 capability and points users to this scoped package; it does not gain project writes or upgrades. A write-enabled first-screen command must use `@haiyangbg/buildbeat`, still shows its plan first, and remains subject to Git, collision, ownership, and human-Gate boundaries.
+BuildBeat fits ongoing projects with frequent AI context changes, specialist collaboration, and a need for verifiable delivery records. Individuals can keep their own work moving; teams can hand work over through shared records. One-off scripts and very small changes usually do not need the full workflow. The project should have real verification commands, or establish minimum verification first.
 
-### The v2 runtime: `buildbeat-v2` (current line)
+Teams collaborate through a shared Git repository and project agreements. BuildBeat does not provide multi-user accounts, roles and permissions. It does not collect or upload project usage data and has no telemetry collection. Configured AI tools and notification services have their own data practices. More examples are in the [conversation guide (Chinese)](docs/v2/guide/00-how-to-talk.md).
 
-v2 turns "how a work package goes from accepted to merged to released" into a machine-verifiable Run: once the intent / plan under `delivery/work/<ID>/` are accepted by digest, `buildbeat-v2 start` drives Build → Verify → Review → Fix in an isolated git worktree under the official preset. The candidate is what git reads back, never what a worker claims; the read-only reviewer is enforced by the kernel; exhausted budgets, repeated identical failures and worker-infrastructure failures all stop for a human; merge, push and deploy remain human actions after approval (the kernel has no call path for them). Go-live uses the `release-readback` lane to ledger "read back before → human acts → read back after → observe → human closes the window" as L4 evidence; `observe` runs read-only production health checks; `gc` cleans up; `.buildbeat/notify.yaml` pushes waits to DingTalk or a webhook.
+## Learn more and contribute
 
-It does not create agents or manage models: a worker is whatever command you put in the run config (Codex, Claude Code, a script); the kernel owns only the ledger, isolation, evidence and gates.
-
-```bash
-npm install --global @haiyangbg/buildbeat@latest # since 2.0.0 latest is v2; pre-releases use @next
-buildbeat-v2 overview --repo .                     # where each work is, what it has cost, who moves next
-buildbeat-v2 inbox --repo .                        # what is waiting on you, and the exact reply
-buildbeat-v2 start --config delivery/work/WORK-X/run-config.yaml --attempt new
-buildbeat-v2 status --repo . --run RUN-X-01        # which step, for how long, typical duration, stalled or not
-```
-
-People driving BuildBeat from an AI session do not need these commands: [`SKILL.md`](SKILL.md) §0.5 is the driving manual the session reads; the user says "progress / start / how is it going / approve / go live / clean up". The one-page user view is [`docs/v2/guide/00-how-to-talk.md`](docs/v2/guide/00-how-to-talk.md), the ten-guide index is [`docs/v2/guide/README.md`](docs/v2/guide/README.md), and migration from the v1 file bus is [`docs/v2/guide/08-migration-v1.md`](docs/v2/guide/08-migration-v1.md) (Chinese). Each beta's content and release evidence is in [`CHANGELOG.md`](CHANGELOG.md) and `docs/V2.0.0-BETA.*-RELEASE-EVIDENCE-*.md`; the real incident behind every mechanism is in [`lessons.md`](lessons.md).
-
-### Manual installation
-
-Use this path only when you already understand the templates:
-
-```bash
-git clone https://github.com/HaiYangBG1/BuildBeat.git
-rsync -a --exclude '/standards/' --exclude '/pm/adr/' "BuildBeat/templates/" /path/to/new-project/
-cd /path/to/new-project
-```
-
-This default path preserves the hidden `.claude/` tree but does not generate optional `standards/` or `pm/adr/`. Those project-owned libraries still ship in the source repository. Copy and render one only when the Bootstrap confirmation explicitly enables it or a real decision meets the ADR criteria; absence is valid.
-
-You must then:
-
-1. replace every `<placeholder>` in every copied file;
-2. merge `gitignore.template` into the project's `.gitignore`;
-3. configure real test commands in `verify-status.sh`;
-4. run `bash scripts/bus-check.sh` and inspect every capability boundary;
-5. install the pre-commit guard in the meta repo and in each code sub-repo:
-
-```bash
-cp scripts/pre-commit.sh .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
-```
-
-Installing [`gitleaks`](https://github.com/gitleaks/gitleaks) is strongly recommended. Without it, the remaining pre-commit checks still run, but secret scanning degrades to a warning instead of a blocking gate. Git hooks are not part of ordinary Git history; install them again after a fresh clone, or explicitly configure a versioned `core.hooksPath`.
-
-## Daily operation
-
-Start by claiming one independently acceptable work package from the board; the same Builder owns it end to end. Product, Fullstack, and Testing sessions may provide parallel specialist perspectives inside that package, but they are not mandatory handoffs between human roles. With several Builders, each claims a different work package and shares final facts through Git.
-
-```text
-You are the Product perspective for the current work package. Clarify requirements, board state, and decision facts. Start.
-```
-
-```text
-You are the Fullstack perspective for the current work package. Own implementation, contracts, and the deployment candidate. Start.
-```
-
-```text
-You are the Testing perspective for the current work package. Own black-box acceptance, E2E, and evidence. Verify the current candidate.
-```
-
-Every perspective closes its user-facing response as **Done → Not done → Next**. Done contains only functional or business outcomes, and evidence stays directly under the completed outcome it supports. Not done names the remaining outcome and its reason. A completed perspective says who takes the next baton and what they own; an incomplete perspective says who must provide or confirm what. If it can continue safely on its own, it keeps working instead of inventing a handoff or help request. See [`templates/指挥台.md`](templates/%E6%8C%87%E6%8C%A5%E5%8F%B0.md) for the full template.
-
-At the start of every session, synchronize the repository and run the guardrail:
-
-```bash
-git pull
-bash scripts/bus-check.sh
-```
-
-Synchronize every sub-repo separately in a multi-repo project. Run `bus-check.sh` again before changing a contract, running a migration, deploying, or taking another irreversible action.
-
-Common commands:
-
-```bash
-bash scripts/bus-check.sh --format=json  # emits schema 1 JSON without hiding warnings or unverified scope
-bash scripts/bus-check.sh --strict       # exits non-zero on any conflict/error finding
-bash scripts/verify-status.sh --run       # runs configured project suites and records the latest green result
-bash scripts/design-preview.sh 1          # opens the real clickable prototype before Gate 2 for UI work
-```
-
-## Core mechanisms
-
-- **Work packages:** keep moving toward one independently acceptable user outcome instead of handing back after one file, commit, or reviewer result.
-- **Three approval levels:** `STOP_NOW` for authorization, frozen semantics, and irreversible actions; `BATCH_AT_GATE` for reversible choices; `NO_APPROVAL` for derived in-scope work.
-- **Three tracks:** fast, standard, and heavy tracks select process weight by risk rather than applying every ceremony to every change.
-- **Single sources of truth:** `NOW.md` stays a thin pointer, while contracts, decisions, status, and live queries each have one authoritative entry point.
-- **Review-ready gate:** launch one independent milestone reviewer only after the candidate is stable, worktrees are clean, L3 evidence is green, and there are no known pending fixes.
-- **Machine guardrails:** `bus-check --strict`, pre-commit, gitleaks, and project tests turn deterministic rules into executable checks.
-- **Multi-repository drift:** a multi-repo project explicitly joins each sub-repository CHANGELOG, contract-version source, and local deployment-baseline app at the contract entry point. Definite mismatches block; missing repositories or sources stay unverified instead of being inferred from prose.
-- **Optional standards and ADRs:** STACK/CODE/REVIEW/DESIGN are not generated by default. When present, their declarations, Rule IDs, and Draft/Confirmed state are checked. A Confirmed STACK also gets a read-only comparison between its explicit baseline and observed Node, lockfile, and Docker FROM facts; incomplete scope stays unverified. Only durable, hard-to-reverse decisions need ADRs, whose Status and Superseded chain are validated.
-- **Production-state evidence:** after a project supplies `live-status.sh` and `live-config.sh`, BuildBeat can compare deployment-platform configuration with a baseline. It does not automatically prove that a running container loaded the latest configuration.
-- **Brownfield takeover:** establish system boundaries and minimum verification before applying the full bus to new territory; do not rewrite unknown legacy behavior.
-
-The complete rules, bootstrap, and takeover procedure live in [`SKILL.md`](SKILL.md). Real failure modes and their design rationale live in [`lessons.md`](lessons.md).
-
-## Operating model
-
-```mermaid
-flowchart LR
-    Views["AI specialist perspectives<br/>Product · Fullstack · Testing"] --> WPA["Builder / work package A<br/>judgment → implementation → test → merge/release evidence"]
-    Views --> WPB["Builder / work package B<br/>judgment → implementation → test → merge/release evidence"]
-    Human["Human Gates<br/>specification · design · merge · release"] --> WPA
-    Human --> WPB
-    WPA --> Bus["Git file bus<br/>NOW · contracts · decisions · status · evidence"]
-    WPB --> Bus
-```
-
-Each work package closes vertically instead of becoming a Product→Engineering→Testing human-role pipeline. Humans do not relay context between sessions; they make judgments that cannot be delegated, while ordinary facts, archiving, status updates, and reversible implementation inside an approved boundary continue autonomously.
-
-## Applicability
-
-Recommended for projects that:
-
-- have at least two repositories or deploy units;
-- will evolve for several weeks or longer;
-- have one or more Builders coordinating multiple AI contexts and closing separate work packages end to end;
-- need stable handoffs between several AI coding sessions;
-- value verifiable delivery records without introducing a complex agent runtime.
-
-Not recommended for:
-
-- small single-repo changes;
-- one-off scripts;
-- work expected to finish within a week;
-- projects with no verification capability and no intent to establish a minimum test suite first.
-
-Known boundaries: the human remains the final decision-maker. The protocol raises confidence that an agreed goal was delivered correctly; it does not guarantee that the product direction was correct. Automatic rule loading and skill directories also differ between AI coding tools, so compatibility claims should follow each tool's current documentation and real tests.
-
-Current non-goals: multi-user accounts, roles and permissions, or an organization administration surface; telemetry collection, team-performance scoring, or a metrics dashboard. The BuildBeat CLI does not collect or upload project usage data. These are not unfinished maintenance items. Any future proposal needs a separate product milestone with explicit requirements, data definitions, privacy/authorization governance, and an acceptance Gate.
-
-## Installed project layout
-
-```text
-<project-root>/
-├── AGENTS.md                       # session routing, bus rules, and red lines
-├── CLAUDE.md                       # compatibility pointer; never duplicates the rules
-├── ARCHITECTURE.md                 # system facts and sub-project index
-├── contracts/PROTOCOL.md           # cross-boundary contract entry point
-├── pm/
-│   ├── NOW.md                      # thin pointer to the current iteration
-│   ├── <iteration>-board.md
-│   ├── decisions.md
-│   ├── status/
-│   ├── changes/
-│   ├── adr/                         # optional durable technical decisions and supersession links
-│   └── archive/<iteration>/evidence/
-├── standards/                      # optional STACK/CODE/REVIEW; DESIGN for UI projects
-├── scripts/
-│   ├── bus-check.sh
-│   ├── verify-status.sh
-│   ├── drift-check.sh
-│   ├── design-preview.sh
-│   └── pre-commit.sh
-├── .claude/agents/reviewer.md      # read-only milestone / risk-delta / closure review
-├── 指挥台.md                        # one-page operator card
-└── BUILDBEAT.md                    # installed BuildBeat version and upgrade record
-```
-
-The compact brownfield layout moves the scripts, operator card, and version marker into `pm/`. Optional `standards/` and `pm/adr/` are not part of the default scaffold. See `SKILL.md` §3/§8 for the complete rules.
-
-## Capabilities and dependencies
-
-| Capability | Dependency | When missing |
-|---|---|---|
-| File bus and basic checks | Git, Bash | The core workflow cannot run |
-| Real-render design preview | Python 3 | The bundled preview script cannot run |
-| Blocking secret scan | gitleaks | Degrades to a warning; do not claim a secret gate exists |
-| Production-config drift | `jq`, a SHA tool, project `live-config.sh` | Explicitly skipped; no production-state conclusion |
-| Live-version query | project `live-status.sh` and platform CLI | Explicitly unconfigured; documentation is not treated as live truth |
-| L3 test evidence | real `SUITES` in project `verify-status.sh` | Reports unconfigured; cannot claim automation is green |
-| CLI inspection/scaffolding/mechanical upgrade | Node.js 20+, the npm registry, or this source checkout | Legacy npm v0 remains read-only; scoped BuildBeat 1.21 is independently verified, while the genuine schema 2 version-increment pilot remains the v1.20 real-project evidence; project uninstall remains frozen, and the Skill/manual equivalent stays supported |
-
-Skill-only, legacy npm v0, and scoped BuildBeat 1.21 are distinct availability surfaces; the source checkout, registry artifact, and real project must also be verified separately. `doctor`, `init/adopt`, and `upgrade` own different responsibilities. See the bilingual [BuildBeat capability matrix](docs/CAPABILITY-MATRIX.md) and the [v1.20 real-project pilot](docs/PHASE4-V1.20-PILOT-2026-08-25.md).
-
-## Continue reading
-
-- [`SKILL.md`](SKILL.md): the single complete entry point for the methodology and bootstrap; §0.5 is the v2 driving manual;
-- [`docs/v2/guide/README.md`](docs/v2/guide/README.md): the ten v2 runtime guides (how to talk to a session, quickstart, workflow / policy / adapter / worker contract / evidence / approval / migration from v1 / security boundaries / recovery);
-- [`example/`](example/): the protocol teaching snapshot of a fictional project after one completed iteration (executable scripts still reference the template SSOT);
-- [`lessons.md`](lessons.md): real anti-patterns, root causes, and fixes;
-- [`docs/ROADMAP.md`](docs/ROADMAP.md): the new product direction, design principles, and the CLI execution amendment effective on 2026-08-24;
-- [`docs/EXECUTION-PLAN.md`](docs/EXECUTION-PLAN.md): the current phased work packages, dependencies, acceptance criteria, and frozen boundaries;
-- [`docs/CLI-STRATEGY-2026-08.md`](docs/CLI-STRATEGY-2026-08.md): the official-source CLI comparison and its evidence limits;
-- [`docs/CHECKS.md`](docs/CHECKS.md): file-bus invariants, Gate/evidence tokens, finding codes, and strict-mode semantics;
-- [`docs/CLI.md`](docs/CLI.md): command boundaries, file ownership, manifest, mechanical upgrade, and manual-removal contract;
-- [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md): bilingual capability and interoperability mapping across Skill-only, legacy npm v0, and scoped BuildBeat 1.21;
-- [`docs/LEGACY-V1.16-MIGRATION.md`](docs/LEGACY-V1.16-MIGRATION.md): safe paths for a copied v1.16 project to remain manually managed or rebuild a schema 2 baseline under review (Chinese);
-- [`docs/CLI-PILOT-2026-08-23.md`](docs/CLI-PILOT-2026-08-23.md): read-only CLI v0 evidence from three real brownfield projects and the write-boundary decision;
-- [`docs/PHASE1-PILOT-2026-08-24.md`](docs/PHASE1-PILOT-2026-08-24.md): the read-only Phase 1 file-bus pilot across the example, an active multi-repo projection, and a real single-repo code tree;
-- [`docs/PHASE2-PILOT-2026-08-25.md`](docs/PHASE2-PILOT-2026-08-25.md): the three real-directory Wave 1 write paths, Tide preservation hashes, UI-detection feedback, and final local Git/hook/hash evidence;
-- [`docs/PHASE2-BUILDBEAT-PILOT-2026-08-25.md`](docs/PHASE2-BUILDBEAT-PILOT-2026-08-25.md): the fresh BuildBeat canonical namespace regression, Tide preservation recheck, and Gate3 closure evidence;
-- [`docs/PHASE4-V1.20-PILOT-2026-08-25.md`](docs/PHASE4-V1.20-PILOT-2026-08-25.md): the genuine schema 2 version-increment upgrade, project-ownership preservation, and read-only real multi-repository refresh;
-- [`docs/PHASE4-STABILITY-AUDIT-2026-08-25.md`](docs/PHASE4-STABILITY-AUDIT-2026-08-25.md): the status, evidence boundary, and still-open release blocker for all 12 roadmap §15 hard gates (Chinese);
-- [`docs/RELEASING.md`](docs/RELEASING.md): npm release Gates, verification, and the Trusted Publishing migration;
-- [`CONTRIBUTING.md`](CONTRIBUTING.md): contribution, verification, and pull-request boundaries;
-- [`SECURITY.md`](SECURITY.md): supported versions and the private vulnerability-reporting channel;
-- [`CHANGELOG.md`](CHANGELOG.md): version history and upgrade instructions for copied projects.
-
-## Contributing
-
-Issues and pull requests are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the complete submission rules. Do not open a public issue for an undisclosed vulnerability; report it privately through [`SECURITY.md`](SECURITY.md). A change to workflow semantics should update `SKILL.md`, affected templates, both READMEs, the example, and the changelog. Explain:
-
-1. which real failure mode the change addresses;
-2. how to reproduce it;
-3. which automated checks show that it did not regress existing behavior.
-
-Run at least:
-
-```bash
-bash -n templates/scripts/*.sh tests/*.sh
-npm test
-npm run test:scripts
-npm run test:skill-only
-npm run check:docs
-npm run pack:check
-git diff --check
-```
-
-## License
-
-[MIT](LICENSE) © 2026 HaiYangBG
+- [Documentation index](docs/README.md): current guides, specifications, and historical records (Chinese).
+- [Capability matrix](docs/CAPABILITY-MATRIX.md): manual protocol, v1 CLI, v2 runtime, plugin, and verification scope (Chinese).
+- [Session handoffs](docs/v2/guide/11-session-handoff.en.md) · [Run recovery](docs/v2/guide/10-recovery.md) · [Approval and triage](docs/v2/guide/07-approval-guide.md) (last two in Chinese).
+- [Skill](SKILL.md): how a session uses BuildBeat; [lessons](lessons.md): the real incidents behind its mechanisms (Chinese).
+- [CHANGELOG](CHANGELOG.md) (Chinese) · [Contributing](CONTRIBUTING.md) · [MIT license](LICENSE).
