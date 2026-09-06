@@ -13,7 +13,7 @@ buildbeat-v2 | head -3    # 打印 "BuildBeat v2 runtime" 与用法即安装成�
 
 2.0.0 起 `@latest` 就是 v2；同一个包同时给出 `buildbeat`（v1 生命周期命令：doctor / init / adopt / upgrade）和 `buildbeat-v2`（本文用的运行时）。预发布才用 `@next`。要求 Node ≥ 20、Git、bash，零运行时依赖。
 
-> **源码与发布包边界（2026-09-06）**：当前稳定包 2.0.0 尚不包含下文使用的 `templates/v2/envelope/`。首次使用本仓新增模板时,先在 BuildBeat 源码检出目录执行 `npm install --global .`,再回到目标项目操作。配置环境变量透传修复也仍在 `CHANGELOG.md` 的 Unreleased 中。后续补丁发布后,按实际版本核对模板与配置支持。
+> 下文用到的 `templates/v2/envelope/` 与 run 配置 `env:` 透传修复随 2.0.0 之后的首个补丁版发布（见 `CHANGELOG.md`）。装好后确认 `$(npm root -g)/@haiyangbg/buildbeat/templates/v2/envelope/` 存在再继续；不存在就是版本还没到，等补丁版，不要从源码目录全局安装同版本号的包。
 
 ## 1. 准备工作项（Git 面）
 

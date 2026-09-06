@@ -2,11 +2,10 @@
 
 [简体中文](README.md) | **English**
 
-## Switch sessions. Keep building.
+**Switch sessions. Keep building.**
+Context in files. Collaboration through Git. Work keeps moving.
 
-**Context in files. Collaboration through Git. Work keeps moving.**
-
-BuildBeat is a Git-based AI delivery workflow for humans and AI sessions. Goals, plans, decisions, and delivery records stay in the project, providing a basis for continuing when models, tools, sessions, or the person doing the work change. A build, verify, review, and fix loop moves execution forward, with key decisions remaining human.
+BuildBeat is a Git-based AI delivery workflow for humans and AI sessions. Goals, plans, decisions, and delivery records stay in the project, providing a basis for continuing when models, tools, sessions, or the person doing the work change. A build, verify, review, and fix loop moves execution forward; progress and evidence are read back by the kernel from Git and real commands, never taken from a session's own account; key decisions remain human.
 
 [User guides (Chinese)](docs/v2/guide/README.md) · [Session handoffs](docs/v2/guide/11-session-handoff.en.md) · [npm](https://www.npmjs.com/package/@haiyangbg/buildbeat) · [CI](https://github.com/HaiYangBG1/BuildBeat/actions/workflows/ci.yml) · [MIT](LICENSE)
 
@@ -55,20 +54,19 @@ Different tools can read and write the protocol. Running the Loop also requires 
 
 ## Multiple perspectives, one shared objective
 
-**End-to-end work packages** are the unit of collaboration. One Builder owns a user-level outcome and calls on product, development, testing, and review perspectives as needed. Several Builders can own separate work packages or hand over the same package. Record who is currently taking it forward, what is done, and the next step to avoid duplicate execution.
+**End-to-end work packages** are the unit of collaboration. One Builder owns a user-level outcome and calls on three AI perspectives — product, full-stack, and testing — as needed. Several Builders can own separate work packages or hand over the same package. Record who is currently taking it forward, what is done, and the next step to avoid duplicate execution.
 
 | Perspective | Reads when taking over | Produces |
 |---|---|---|
 | Product | Goals, constraints, and existing decisions | Scope, a plan, and acceptance criteria |
-| Development | The accepted plan, contracts, and environment facts | Candidate code and implementation records |
+| Full-stack (incl. operations) | The accepted plan, contracts, and environment facts | Candidate code and implementation records |
 | Testing | Acceptance criteria and the candidate | Actual test results, coverage, and gaps |
-| Review | A fixed candidate, the plan, and verification evidence | Structured findings and a review conclusion |
 
-These are available AI perspectives, not mandatory human-role handoffs or a requirement to open four chats. One person or several people can use these perspectives as needed. Shared facts move through project files, and each perspective respects its write boundaries. The current single-repository active-Run lock is local. Multiple perspectives or Git clones do not provide cross-machine execution coordination. Check the original execution environment before handing over the same Work to avoid duplicate starts.
+These are available AI perspectives, not mandatory human-role handoffs or a requirement to open three chats. Review is not a session perspective: it is the read-only reviewer built into the Run, described in the next section. One person or several people can use these perspectives as needed. Shared facts move through project files, and each perspective respects its write boundaries. The current single-repository active-Run lock is local. Multiple perspectives or Git clones do not provide cross-machine execution coordination. Check the original execution environment before handing over the same Work to avoid duplicate starts.
 
 ## Put the work in a Loop
 
-After the required plan acceptance, `buildbeat-v2` calls configured Workers in an isolated Git worktree to implement, verify, review, and fix the change.
+After the required plan acceptance, `buildbeat-v2` calls configured Workers in an isolated Git worktree to implement, verify, review, and fix the change. Review is performed by a fresh-context, read-only reviewer worker; any write to the worktree is caught by a before/after snapshot comparison and recorded as a failure.
 
 ```mermaid
 flowchart LR
@@ -101,7 +99,7 @@ npm view @haiyangbg/buildbeat@latest version
 npm install --global @haiyangbg/buildbeat@latest
 ```
 
-> **Source versus published package:** as of 2026-09-06, the stable package is 2.0.0. The v2 envelope templates and configuration fixes under `Unreleased` have not shipped. To use those templates for a first run, install this checkout with `npm install --global .`, then follow the [quickstart (Chinese)](docs/v2/guide/01-quickstart.md). Check the [CHANGELOG](CHANGELOG.md) against your installed version after later releases.
+> The envelope templates the quickstart uses (`templates/v2/envelope/`) ship with the next patch release; after installing, check that the latest version in the [CHANGELOG](CHANGELOG.md) includes them.
 
 **2. Load the entry point.** Download or clone this repository, ask your AI tool to read its [`SKILL.md`](SKILL.md), and say this in the target project:
 
