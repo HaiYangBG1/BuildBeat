@@ -1,11 +1,13 @@
 ---
 name: buildbeat
-description: BuildBeat(旧称 Solobaton)—— 面向人和 AI 会话的工程交付工作流,帮助一个或多个端到端 Builder 用可验证证据闭环需求/功能工作包。**v2 运行时**(`buildbeat-v2`,由会话调用而非用户手敲):Work 目录 intent/plan digest 绑定接受;隔离 worktree 内 Build→Verify→Review→Fix 自动闭环,停在人的合并决定;overview/inbox/status 回答"到哪了/谁批/卡没卡";发现分诊、预算与成本、infra 故障停人、release-readback 上线回读、observe 生产体检、通知出站、gc 打扫。产品/全栈/测试是可调用的 AI 专业视角,不是人类岗位流水线。v1 文件总线/四 Gate/`buildbeat init|adopt|upgrade`(schema 2 机械 upgrade)生命周期命令作为兼容面保留。当用户在 AI 会话里说"当前进度/开工/怎么样了/批准/上线/打扫卫生",或要为新项目搭多会话协作架构、给存量老项目套上协作流程(接管),提到"BuildBeat/Solobaton/Builder/人在回路/多 session 协作/AI 团队流程",或抱怨"多个 AI 会话信息不同步、任务过早结束、审批打断过多、review 过于频繁、验收漏验、返工螺旋"时使用。
+description: BuildBeat(旧称 Solobaton)—— 面向人和 AI 会话的工程交付工作流,上下文落在项目文件、Git 管理长期事实,支持跨模型、跨工具、跨会话和跨人接续;帮助一个或多个端到端 Builder 用可验证证据闭环需求/功能工作包。**v2 运行时**(`buildbeat-v2`,由会话调用而非用户手敲):Work 目录 intent/plan digest 绑定接受;隔离 worktree 内 Build→Verify→Review→Fix 自动闭环,停在人的合并决定;overview/inbox/status 回答"到哪了/谁批/卡没卡";发现分诊、预算与成本、infra 故障停人、release-readback 上线回读、observe 生产体检、通知出站、gc 打扫。产品/全栈/测试是可调用的 AI 专业视角,不是人类岗位流水线。v1 文件总线/四 Gate/`buildbeat init|adopt|upgrade`(schema 2 机械 upgrade)生命周期命令作为兼容面保留。当用户说"换会话/删旧会话/继续项目/跨工具接手/同事接手/团队接力",或在 AI 会话里说"当前进度/开工/怎么样了/批准/上线/打扫卫生",或要为新项目搭多会话协作架构、给存量老项目套上协作流程(接管),提到"BuildBeat/Solobaton/Builder/人在回路/多 session 协作/AI 团队流程",或抱怨"多个 AI 会话信息不同步、任务过早结束、审批打断过多、review 过于频繁、验收漏验、返工螺旋"时使用。
 ---
 
 # BuildBeat —— 面向人和 AI 会话的工程交付协议
 
 > 蒸馏自一个真实跑了多期迭代的实践:一个人协调 4 个并行 AI 会话,把一个含前端/BFF/多个后端服务/网关/审计的内部产品持续交付。这个案例说明来源,不限定人数;一个 Builder 可用,多个 Builder 也可共享 Git 后按工作包分别闭环。方法论与项目解耦,模板可直接拷贝。
+
+> **会话随时换,项目接着干。** 继续工作所需的上下文落在项目文件中;会话按入口读取同一份目标、决定与证据,由 Loop 推进执行。关闭聊天前补齐未落盘事实;保留活动 Run 的台账与工作树。团队成员按已有权限同步项目文件与候选后可接手,有效的既有决定继续保留;新机器无活动项不代表原机器无 Run。跨成员、跨会话、跨工具和跨机器的具体边界见 [接续指南](docs/v2/guide/11-session-handoff.md)。
 
 ## 0. 何时用 / 不用
 
@@ -23,6 +25,7 @@ description: BuildBeat(旧称 Solobaton)—— 面向人和 AI 会话的工程�
 
 | 用户说 | 会话背后调什么 | 会话回给用户什么 |
 |---|---|---|
+| 「换会话」「删旧会话」「继续这个项目」「同事接手」 | 按 [接续指南](docs/v2/guide/11-session-handoff.md) 核对项目入口、Work、Git、`overview` / `inbox` / `status`;离开前补齐未落盘事实,接手后区分活动 Run / 中断 / 待批 / 终态 | 「已保存哪些上下文、工作停在哪、下一步」;不把删聊天当删工作树,不重启仍活动的 Run,不伪造或代批决定 |
 | 「当前进度」「待办是什么」「X 上线了吗」「离上线还差多远」 | `buildbeat-v2 overview --repo .`(每个 Work 的阶段 + 下一步该谁 + `cost:` 已花的 Run/review 轮/等人次数/worker 时长)+ `observe status --repo .` | 每件事一句:走到哪、卡在谁、下一步;**不列命令**;花费超过 intent 止损线的 Work 要主动说「已 N 轮 review / N 小时,继续还是砍」 |
 | 「有什么要我拍板」 | `buildbeat-v2 inbox --repo .` | 逐项:等什么、证据在哪、推荐 A/B;用户回「批准/拒绝」后会话调 `approve`/`reject` |
 | 「开个 Work:〔目标〕」 | 写 `delivery/work/<ID>/intent.md`(为什么做 + **止损线**:最多几个 Run / 几轮 review / 几小时,越线先问人)+ `plan.md`(怎么做)+ `run-config.yaml`(`budgets.reviewRoundsPerWork` 对应止损线);给用户看摘要 | 「看完说接受」;用户说「接受」→ `accept --artifact intent` / `--artifact plan`(digest 绑定) |

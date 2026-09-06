@@ -13,6 +13,8 @@ buildbeat-v2 | head -3    # 打印 "BuildBeat v2 runtime" 与用法即安装成�
 
 2.0.0 起 `@latest` 就是 v2；同一个包同时给出 `buildbeat`（v1 生命周期命令：doctor / init / adopt / upgrade）和 `buildbeat-v2`（本文用的运行时）。预发布才用 `@next`。要求 Node ≥ 20、Git、bash，零运行时依赖。
 
+> 下文用到的 `templates/v2/envelope/` 与 run 配置 `env:` 透传修复随 2.0.0 之后的首个补丁版发布（见 `CHANGELOG.md`）。装好后确认 `$(npm root -g)/@haiyangbg/buildbeat/templates/v2/envelope/` 存在再继续；不存在就是版本还没到，等补丁版，不要从源码目录全局安装同版本号的包。
+
 ## 1. 准备工作项（Git 面）
 
 在目标仓库建工作项目录并写下意图与计划（它们的 digest 会绑进批准对象），把官方 workflow 预设复制到工作项旁边（复制而不是引用安装目录：workflow 文件的 digest 会记进 Run，随项目一起进 Git），再把信封模板（worker 包装脚本 + 三份 prompt）拷到仓级 `delivery/envelope/`：

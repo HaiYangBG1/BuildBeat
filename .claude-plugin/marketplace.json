@@ -4,18 +4,21 @@
     "name": "HaiYangBG",
     "url": "https://github.com/HaiYangBG1"
   },
-  "description": "Official BuildBeat plugins for file-first, human-gated delivery with AI coding sessions.",
+  "description": "Official BuildBeat plugins: context in project files and Git-based delivery across AI models, tools, sessions, and people.",
   "plugins": [
     {
       "name": "buildbeat",
       "source": "./plugins/buildbeat",
-      "description": "Guides AI coding sessions through BuildBeat bootstrap, brownfield adoption, file-bus synchronization, human Gates, and evidence-based delivery.",
+      "description": "Load BuildBeat guidance for project context, session handoffs, specialist collaboration, and evidence-based delivery, for individuals and teams. Install the runtime separately.",
       "category": "productivity",
       "tags": [
         "ai-coding",
         "delivery",
         "git-workflow",
-        "human-in-the-loop"
+        "project-context",
+        "session-handoff",
+        "human-in-the-loop",
+        "team-collaboration"
       ]
     }
   ]

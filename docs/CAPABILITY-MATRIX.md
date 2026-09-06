@@ -9,7 +9,7 @@
 | **Skill-only 手工路径** | 工件协议（Work 目录、intent/plan、决策台账、证据分级）由 AI 会话按 `SKILL.md` 手工维护 | Skill 本身（仓库 `SKILL.md` / 插件） | `SKILL.md` | 协议完整可用；**没有**自动闭环、隔离 worktree、digest 绑定批准校验、预算与恢复（`tests/skill-only.test.sh` 证明去掉 CLI 后 v1 文件总线仍可维护） |
 | **v1 生命周期 CLI `buildbeat`** | `doctor / init / adopt / upgrade / version`：v1 文件总线骨架的只读体检、受控写入与 schema 2 机械升级 | `@haiyangbg/buildbeat@latest`（2.0.0 起与 v2 同包；骨架版本仍 v1.21） | [`CLI.md`](CLI.md) | 1.21 发布证据 + 真实版本增量试点（§5）；2.0.0 未改其命令与边界 |
 | **v2 运行时 `buildbeat-v2`** | 隔离 worktree 内 Build→Verify→Review→Fix 自动闭环，停在人的合并决定；`accept / start / resume / status / inbox / overview / approve / reject / findings / doctor / preflight / gc / metrics / observe / watch` | 同上 | [`v2/guide/`](v2/guide/README.md)、RFC-0001/2/3、SPEC-0001 | 单元与 CLI 端到端测试（`tests/v2-*.test.js`，含脚本 worker 的模板首跑）；真实 AI worker 试点见 `docs/v2/M4-*`、迭代记录（`codex exec` 实证；其他工具"可通过命令接入"，未逐一验证） |
-| **Claude Code 插件** | 把 Skill、模板、文档、lessons 装进 Claude Code；**不含**任何 CLI `bin/` | `claude plugin marketplace add HaiYangBG1/BuildBeat` + `claude plugin install buildbeat@buildbeat` | [`plugins/buildbeat/README.md`](../plugins/buildbeat/README.md) | `tests/plugin-marketplace.test.sh`（manifest 校验、隔离安装、缓存自包含）；装了插件不等于装了运行时，两者分别检查 |
+| **Claude Code 插件** | 把 Skill、模板、文档、lessons 装进 Claude Code；**不含**任何 CLI `bin/` | `claude plugin marketplace add HaiYangBG1/BuildBeat` + `claude plugin install buildbeat@buildbeat-plugins` | [`plugins/buildbeat/README.md`](../plugins/buildbeat/README.md) | `tests/plugin-marketplace.test.sh`（manifest 校验、隔离安装、缓存自包含）；装了插件不等于装了运行时，两者分别检查 |
 
 一句话：Skill 是入口（会话读它决定调什么），CLI 是引擎（`buildbeat-v2` 跑 Run、`buildbeat` 管 v1 骨架），项目文件是事实（Git 面 `delivery/` 与 `.buildbeat/`），插件只是把入口送进 Claude Code。
 

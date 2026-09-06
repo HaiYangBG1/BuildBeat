@@ -18,6 +18,7 @@
 |---|---|
 | [Human Approval 指南](07-approval-guide.md) | inbox / approve / stale；接受、批准某转换、合并决定五词各指什么；分诊门；等待要能找到人；overview |
 | [Evidence 指南](06-evidence-guide.md) | 回读制证据、状态/等级、UNVERIFIED 文化、observe |
+| [跨会话与团队接续](11-session-handoff.md) · [English](11-session-handoff.en.md) | 上下文落盘、关闭旧聊天、新成员接手、跨工具与跨机器边界 |
 | [故障恢复手册](10-recovery.md) | 台账损坏、Run 中断、infra 停人、锁、runtime 全删重建、gc |
 
 ## 配置参考

@@ -3,7 +3,7 @@
   "name": "buildbeat",
   "version": "0.2.1",
   "displayName": "BuildBeat",
-  "description": "File-first, human-gated engineering delivery for one or more end-to-end Builders and their AI coding sessions.",
+  "description": "Guides AI sessions through project context in files, handoffs across tools and people, and BuildBeat delivery loops with human decisions. Runtime installed separately.",
   "author": {
     "name": "HaiYangBG",
     "url": "https://github.com/HaiYangBG1"
@@ -13,8 +13,11 @@
   "license": "MIT",
   "keywords": [
     "ai-coding",
-    "file-first",
+    "git-workflow",
+    "project-context",
+    "session-handoff",
     "human-in-the-loop",
-    "software-delivery"
+    "software-delivery",
+    "team-collaboration"
   ]
 }

@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- **首页与简介（C 批次）**：中英文 README 围绕项目上下文与持续交付重写,暂用“会话随时换,项目接着干”标语;突出 Git 与文件上下文、跨模型/工具/会话/人员接续、多角色协作和交付 Loop,个人使用与团队接力均为适用场景;包与插件简介同步。新增中英文跨会话与团队接续指南,区分聊天删除、跨成员交接、运行恢复和跨机器同步;场景示意不冒充实测。README 与快速开始说明新模板随下一个补丁版发布(不再教源码全局安装);角色表收回 SKILL 的产品/全栈/测试三视角,审查归入 Run 内置只读 reviewer;首段补"进度与证据由内核回读";标语改为 H1 下的加粗行。README 检查改为必要入口和中英结构一致性,不再固定旧标题。
+
 > 2.0.0 之后的文档与合同纠错（对外说明同步 A 批次）。未发布；发布时按 patch 走。
 
 - **修复：run 配置的 `workers.<角色>.inheritEnv` 与 `env:` 在 CLI 加载路径被丢弃**。`doctor` 按配置报告 env 姿态，`start` / `resume` 却总按默认白名单起 worker，`env:` 点名注入的变量到不了子进程（Adapter 指南承诺的能力在 CLI 侧从未生效；直接调用 `createShellAdapter` 的 API 用户不受影响）。现在两字段透传到 Shell Adapter，`env:` 值必须是标量、变量名必须合法，否则加载配置时报错。回归：`tests/v2-run-cli.test.js` 新增"env 姿态经 CLI 到达 worker"（allowlist 下宿主变量不泄漏且 `env:` 可达；`inheritEnv: true` 下宿主变量可见；非法变量名被拒）
@@ -13,7 +15,7 @@
 - **安全边界分层**：安全指南每条边界分"内核实际做到的（检测或移除）"与"不能由此推出的"两栏；无人值守前置条件分内核 / 宿主 / 服务端三层，内核不再被描述为保证宿主层
 - **发布手册与 RFC 历史口径**：`docs/RELEASING.md` 不再同时写"2.0.0 是 latest"与"latest stable 是 1.21.0"，旧回读标注日期；RFC-0001 §6 加生效修订说明"`latest` 留 v1"已于 2026-09-05 结束，原文保留
 - **模板**：指挥台"每个 session 自动读 AGENTS.md"改为按工具装载方式；开工示意先 `doctor` 再 `start`；迁移指南分清"升级 CLI"与"迁移项目状态"，时间改为估算并给出迁移前后可核对目录
-- **防回退（D 批次）**：`tests/check_docs.py` 新增"现行文档时效"检查——把 README、SKILL、CONTRIBUTING、CLI、能力矩阵、RELEASING、十件套指南、`templates/v2/*.md`、插件 README 列为现行文档，禁止再出现 `@next` 安装行、"latest 仍是 v1"、`title`/P1–P3 的旧信封形状、"P1/P2 阻断"、"任意会话自动装载"、"批准=merge-ready"这类本轮实际发现过的失效说法；SKILL frontmatter 描述限长 1024 且必须提到 `buildbeat-v2`；README H2 数改为 8–12 区间，README 不再被要求保留六句 v1 分发史文案（事实改由能力矩阵与 CLI.md 守卫）；package.json description 改为形状校验（以 BuildBeat 开头、40–300 字、必须提到人的决定点、不得含 solo 类受众词），不再要求整句旧文案；RELEASING 必须含"Channels and branches"与"Post-release synchronization checklist"两节
+- **防回退（D 批次）**：`tests/check_docs.py` 新增"现行文档时效"检查——把 README、SKILL、CONTRIBUTING、CLI、能力矩阵、RELEASING、十件套指南、`templates/v2/*.md`、插件 README 列为现行文档，禁止再出现 `@next` 安装行、"latest 仍是 v1"、`title`/P1–P3 的旧信封形状、"P1/P2 阻断"、"任意会话自动装载"、"批准=merge-ready"这类本轮实际发现过的失效说法；SKILL frontmatter 描述限长 1024 且必须提到 `buildbeat-v2`；README 形状约束放宽（最终按 C 批次检查中英结构、命令与必要入口），README 不再被要求保留六句 v1 分发史文案（事实改由能力矩阵与 CLI.md 守卫）；package.json description 改为形状校验（以 BuildBeat 开头、40–300 字、必须提到人的决定点、不得含 solo 类受众词），不再要求整句旧文案；RELEASING 必须含"Channels and branches"与"Post-release synchronization checklist"两节
 - **打包首跑回归 `npm run test:pack-firstrun`**（`tests/pack-firstrun.test.sh`，已进 CI 的 CLI 矩阵与 `prepublishOnly`）：`npm pack` → 隔离 `--prefix` 全局安装 → 用**安装后的** `bin/`、预设与 `templates/v2/envelope/` 按快速开始的顺序 accept → doctor → start，脚本 worker 走到合并决定（含 verify 失败→fixer）。源码树测试抓不到 `files` 漏文件，这条能
 - **维护文档**：`CONTRIBUTING.md` 重写——文档权威分层（Skill = 使用路由与行为；RFC/SPEC = 规范；代码与测试 = 现状；冲突即 bug）、分支与发布策略（main 保护、七项必需检查、日常在 v2、稳定版从 main 顶端出、预发布到 next）、全部测试命令、lessons / evals 只收真实事故且先红后绿；`docs/RELEASING.md` 新增通道与分支表、发布后同步清单（CHANGELOG、证据、README、Skill、CLI/矩阵状态行、RFC 修订注、GitHub About、Release Latest 标记、插件版本、docs 检查）；`tests/README.md` 重写为分层表（每层证明什么、不证明什么），插件身份改 0.2.1；新增 `docs/README.md` 总入口，现行与历史分开；`V2-PLAN.md` 顶部加"已交付、此后为历史基线"状态更新
 - **v2 成为 Skill 的默认入口（B 批次）**：SKILL §8.0 按目录形态路由——已有 `delivery/` 继续 v2、有 `pm/NOW.md` 的 v1 项目给出继续或迁移两条路、什么都没有的项目默认 v2；§8.2 明确为 v1 文件总线路径，新增 §8.3 v2 生成 checklist（装载入口 → 台账 → 信封 → 第一个 Work → 通知 → 机器闸 → 首跑验收 → 收尾）；§8.5 接管存量项目骨架默认 v2，`adopt` 只在选 v1 时跑

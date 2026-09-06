@@ -9,6 +9,7 @@
 | 第一次用 v2，在 AI 会话里 | [`v2/guide/00-how-to-talk.md`](v2/guide/00-how-to-talk.md) → 会话读 [`SKILL.md`](../SKILL.md) §0.5 |
 | 第一次用 v2，自己敲命令核对 | [`v2/guide/01-quickstart.md`](v2/guide/01-quickstart.md) |
 | 十件套指南（日常 / 配置 / 迁移） | [`v2/guide/README.md`](v2/guide/README.md) |
+| 关闭旧会话后继续，或由其他成员/工具接手 | [`跨会话接续`](v2/guide/11-session-handoff.md) · [English](v2/guide/11-session-handoff.en.md) |
 | 四个可用面各能做什么（Skill-only / v1 CLI / v2 运行时 / 插件） | [`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) |
 | v1 生命周期 CLI（`buildbeat doctor/init/adopt/upgrade`） | [`CLI.md`](CLI.md)、[`CHECKS.md`](CHECKS.md) |
 | 从 v1 文件总线迁到 v2 | [`v2/guide/08-migration-v1.md`](v2/guide/08-migration-v1.md) |
