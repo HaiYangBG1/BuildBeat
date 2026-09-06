@@ -4,6 +4,15 @@ This runbook governs BuildBeat's public npm distribution. The canonical package 
 
 Release evidence at source package version `@haiyangbg/buildbeat@2.0.0`; latest independently verified BuildBeat npm distribution `@haiyangbg/buildbeat@2.0.0` (dist-tag `latest`; `next` stays `2.0.0-beta.5`), anchored by annotated tag `v2.0.0` at commit `95e780e`, workflow run [33974396871](https://github.com/HaiYangBG1/BuildBeat/actions/runs/33974396871), and archived in [`V2.0.0-RELEASE-EVIDENCE-2026-09-05.md`](V2.0.0-RELEASE-EVIDENCE-2026-09-05.md). The beta.5 chain stays archived in [`V2.0.0-BETA.5-RELEASE-EVIDENCE-2026-09-05.md`](V2.0.0-BETA.5-RELEASE-EVIDENCE-2026-09-05.md). The beta.4 chain stays archived in [`V2.0.0-BETA.4-RELEASE-EVIDENCE-2026-09-03.md`](V2.0.0-BETA.4-RELEASE-EVIDENCE-2026-09-03.md); the beta.3 chain in [`V2.0.0-BETA.3-RELEASE-EVIDENCE-2026-09-01.md`](V2.0.0-BETA.3-RELEASE-EVIDENCE-2026-09-01.md). The beta.2 chain stays archived in [`V2.0.0-BETA.2-RELEASE-EVIDENCE-2026-08-28.md`](V2.0.0-BETA.2-RELEASE-EVIDENCE-2026-08-28.md); the beta.1 chain stays archived in [`V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md`](V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md). The previous stable distribution, `@haiyangbg/buildbeat@1.21.0` (`latest` from 2026-08-25 until 2.0.0 took over on 2026-09-05), stays anchored by annotated tag `v1.21.0` at commit `ce69a05`, workflow run [32864438692](https://github.com/HaiYangBG1/BuildBeat/actions/runs/32864438692), and the matching [GitHub Release](https://github.com/HaiYangBG1/BuildBeat/releases/tag/v1.21.0). Its exact registry identity, provenance, signatures, isolated-install readback, Environment approval, and immutable-artifact boundary are archived in [`V1.21-RELEASE-EVIDENCE-2026-08-25.md`](V1.21-RELEASE-EVIDENCE-2026-08-25.md). First-scoped-release bootstrap behavior and legacy deprecation remain archived in [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md). The legacy distribution remains `solobaton@1.16.3`; all three published legacy versions are retained and deprecated toward the scoped package.
 
+## Channels and branches
+
+| Channel | Source | dist-tag | How |
+|---|---|---|---|
+| Stable | tip of `main` (a release branch → pull request → merge commit → annotated tag `vX.Y.Z` on that commit) | `latest` | `workflow_dispatch` of `publish.yml` with the exact tag; the workflow refuses a tag that is not on `main` for the stable channel |
+| Pre-release | the dispatching release branch (normally `v2`), version `X.Y.Z-beta.N` | `next` | same dispatch; `latest` never moves for a pre-release |
+
+`main` is protected (pull request only, seven required checks, admins included, no force-push); day-to-day work lands on `v2` and reaches `main` through PRs. Since 2.0.0 `latest` is the v2 line; `next` is only for later pre-releases.
+
 ## Release invariants
 
 1. One npm version maps to one immutable annotated Git tag and one exact source commit. Never move a published version's tag.
@@ -115,3 +124,18 @@ The workflow waits for exact registry-version readback, requires `dist.attestati
 Trusted Publishing removes the long-lived write token and automatically emits provenance for supported public GitHub repositories. Configure the exact owner, repository, workflow filename, allowed `npm publish` action, and the exact `npm-publish` environment on npmjs.com. A GitHub Environment without the matching npm-side environment binding is not sufficient evidence. See npm's [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) and [provenance](https://docs.npmjs.com/generating-provenance-statements/) documentation.
 
 The bootstrap `0.0.0` package is not retroactively provenance-backed and must remain on the non-default `bootstrap` tag. The existence of the workflow and trusted-publisher binding is configuration evidence only; npm validates the binding during the real publish. After the first OIDC release succeeds, set `npm access set mfa=publish @haiyangbg/buildbeat` and independently read back npm's most restrictive Publishing access option, currently labeled `Require two-factor authentication and disallow bypass 2fa tokens (recommended)`, while preserving the Trusted Publisher. Then deprecate every legacy `solobaton` version with a concise migration pointer to `@haiyangbg/buildbeat`; do not unpublish it, because existing read-only installations and redirects remain useful compatibility paths. Because package access, trust, tags, and deprecation are mutable registry state, future release operators must recheck them live.
+
+## Post-release synchronization checklist
+
+Publishing the artifact is one surface. These are the others; each has drifted at least once, so tick them in the same sitting as the release (the docs check catches most of them, the two GitHub-side items it cannot):
+
+- [ ] `CHANGELOG.md`: `## Unreleased` renamed to the version with date and the publication paragraph (run id, dist-tag, readback).
+- [ ] `docs/<VERSION>-RELEASE-EVIDENCE-<date>.md` archived; the current-state paragraph at the top of this runbook names the new version and the previous stable moves to a dated past tense — never two "current" versions in one runbook.
+- [ ] `README.md` / `README.en.md`: version and channel claims (`@latest` is what it says it is), no `@next` install line unless a pre-release is being announced as such.
+- [ ] `SKILL.md` §0.5 install line and `docs/v2/guide/01-quickstart.md` / `08-migration-v1.md` install lines: stable channel.
+- [ ] `docs/CLI.md` status line, `docs/CAPABILITY-MATRIX.md` status line and distribution section.
+- [ ] Active RFC / plan documents whose channel policy the release changed get a dated "生效修订" note; history keeps its original text.
+- [ ] GitHub repository About (description, topics, homepage) still describes the product that was just released — cannot be checked from the repository, do it by hand.
+- [ ] GitHub Release marked Latest for a stable release, not for a pre-release.
+- [ ] Claude Code plugin: if `plugins/buildbeat/.claude-plugin/plugin.json` changed, its version bumped and `tests/plugin-marketplace.test.sh` updated; the plugin version is independent of the npm version.
+- [ ] `npm run check:docs` green on the release commit (it enforces the active-document claims above).

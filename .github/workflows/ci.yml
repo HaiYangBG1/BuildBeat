@@ -97,3 +97,6 @@ jobs:
 
       - name: Audit package contents
         run: npm run pack:check
+
+      - name: Packaged first run (install the packed artifact, drive a run to the merge decision)
+        run: npm run test:pack-firstrun
