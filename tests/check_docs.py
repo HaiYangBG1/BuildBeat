@@ -40,6 +40,15 @@ CRITICAL_TEMPLATE_FILES = (
     "templates/scripts/verify-status.sh",
     "templates/scripts/design-preview.sh",
     "templates/scripts/drift-check.sh",
+    "templates/v2/AGENTS.md",
+    "templates/v2/CLAUDE.md",
+    "templates/v2/BUILDBEAT.md",
+    "templates/v2/指挥台.md",
+    "templates/v2/run-config.example.yaml",
+    "templates/v2/envelope/worker.sh",
+    "templates/v2/envelope/prompts/builder.md",
+    "templates/v2/envelope/prompts/reviewer.md",
+    "templates/v2/envelope/prompts/fixer.md",
 )
 CRITICAL_CLI_FILES = (
     ".github/scripts/publish-candidate.sh",

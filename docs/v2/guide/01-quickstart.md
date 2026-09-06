@@ -15,18 +15,23 @@ buildbeat-v2 | head -3    # 打印 "BuildBeat v2 runtime" 与用法即安装成�
 
 ## 1. 准备工作项（Git 面）
 
-在目标仓库建工作项目录并写下意图与计划（它们的 digest 会绑进批准对象），把官方 workflow 预设复制到工作项旁边（复制而不是引用安装目录：workflow 文件的 digest 会记进 Run，随项目一起进 Git）：
+在目标仓库建工作项目录并写下意图与计划（它们的 digest 会绑进批准对象），把官方 workflow 预设复制到工作项旁边（复制而不是引用安装目录：workflow 文件的 digest 会记进 Run，随项目一起进 Git），再把信封模板（worker 包装脚本 + 三份 prompt）拷到仓级 `delivery/envelope/`：
 
 ```bash
+BB="$(npm root -g)/@haiyangbg/buildbeat"
 mkdir -p delivery/work/WORK-DEMO-1
 printf "# 意图\n给 CSV 导出加日期筛选。\n止损线：最多 3 个 Run、4 轮 review。\n" > delivery/work/WORK-DEMO-1/intent.md
 printf "# 计划\n1. 在 src/export.js 加 from/to 参数；2. tests/ 补边界用例。\n" > delivery/work/WORK-DEMO-1/plan.md
-cp "$(npm root -g)/@haiyangbg/buildbeat/src/v2/presets/software-delivery.yaml" delivery/work/WORK-DEMO-1/workflow.yaml
+cp "$BB/src/v2/presets/software-delivery.yaml" delivery/work/WORK-DEMO-1/workflow.yaml
+cp -R "$BB/templates/v2/envelope" delivery/envelope
+git add delivery && git commit -qm "buildbeat: work WORK-DEMO-1 + envelope"
 ```
+
+信封要进 Git：worker 在隔离 worktree 里运行，只看得到已提交的文件。`delivery/envelope/worker.sh <角色> -- <工具命令…>` 负责"工具不在 PATH 就 exit 75、把 prompt 追加为最后一个参数、写入步机械 commit、只读步把 stdout 落成信封"，三份 prompt 按项目补环境事实即可（[Worker 合同](05-worker-contract.md)）。
 
 ## 2. 写 run 配置
 
-`delivery/work/WORK-DEMO-1/run-config.yaml`。路径相对**本文件**解析；YAML 是严格子集：只有块列表与块映射，没有行内 `[]` / `{}`、没有锚点。下面这份可以原样解析。
+`delivery/work/WORK-DEMO-1/run-config.yaml`。路径相对**本文件**解析；YAML 是严格子集：只有块列表与块映射，没有行内 `[]` / `{}`、没有锚点、注释必须独占一行。下面这份可以原样解析（机器验证在 `tests/v2-templates-firstrun.test.js`）；完整样板与信封模板在 [`templates/v2/`](../../../templates/v2/run-config.example.yaml)。
 
 ```yaml
 repo: ../../..
@@ -39,36 +44,47 @@ allowedPaths:
   - src
   - tests
 reviewTriage: required
+envelope:
+  prompts: ../../envelope/prompts
 workers:
   builder:
-    command: codex
+    command: bash
     args:
+      - delivery/envelope/worker.sh
+      - builder
+      - --
+      - codex
       - exec
       - -s
       - workspace-write
-      - 按 delivery/work/WORK-DEMO-1/plan.md 实施；改动后 git add 并 git commit
   verifier:
     command: bash
     args:
       - -lc
       - npm test
   reviewer:
-    command: codex
+    command: bash
     args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
       - exec
       - -s
       - read-only
-      - 只读审查本分支相对 base 的改动。只输出一个 JSON 对象并写入 $BUILDBEAT_OUTPUT 指向的文件：{"status":"succeeded","findings":[{"severity":"P1","summary":"..."}]}；severity 只能是 P0/P1/P2/P3，每条必须有 summary；没有问题就 findings 为空数组
   fixer:
-    command: codex
+    command: bash
     args:
+      - delivery/envelope/worker.sh
+      - fixer
+      - --
+      - codex
       - exec
       - -s
       - workspace-write
-      - 读环境变量 BUILDBEAT_INPUT（JSON）里的失败命令、退出码、日志摘要和 findings，只修这些问题；改动后 git add 并 git commit
 ```
 
-- `workers.<角色>` 是任意 CLI（codex / claude / 脚本），见 [Adapter 指南](04-adapter-guide.md)；reviewer 的输出格式见 [Worker 合同](05-worker-contract.md)。
+- `workers.<角色>` 是任意 CLI：换工具只改 `--` 后面的命令（`claude -p`、任意脚本都行），见 [Adapter 指南](04-adapter-guide.md)；reviewer 的输出格式见 [Worker 合同](05-worker-contract.md)，prompt 模板已写明。
 - **`fixer` 不是可选项**：没配它，verify 失败或 review 阻断时 Run 会停 `WAITING_HUMAN`（理由 `no adapter configured for worker fixer`）等你手修，不会自动修。
 - worker 子进程默认只拿到 `PATH HOME LANG LC_ALL TMPDIR TERM USER SHELL`；需要别的变量用 `env:` 点名注入（[Adapter 指南](04-adapter-guide.md)）。
 - `reviewTriage: required` 让 P0/P1 finding 先过你的手再派 fixer；不想要就删掉这行。
