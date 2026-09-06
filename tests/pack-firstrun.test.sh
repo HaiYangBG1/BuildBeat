@@ -45,7 +45,10 @@ expect_not_contains() {
 }
 
 # 1. Pack and install into an isolated prefix (zero runtime dependencies,
-#    so --offline must be enough).
+#    so --offline must be enough). This script also runs from prepublishOnly,
+#    where a parent `npm publish --dry-run` exports npm_config_dry_run to
+#    every nested npm and `npm pack` would then write nothing: clear it.
+unset npm_config_dry_run NPM_CONFIG_DRY_RUN
 (cd "$REPO_ROOT" && npm pack --silent --pack-destination "$TMP_ROOT" >/dev/null)
 TARBALL="$(find "$TMP_ROOT" -maxdepth 1 -name '*.tgz' | head -n 1)"
 [ -n "$TARBALL" ] || fail "npm pack produced no tarball"
