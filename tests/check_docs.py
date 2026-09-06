@@ -15,10 +15,52 @@ from urllib.parse import unquote
 ROOT = Path(__file__).resolve().parents[1]
 MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(([^)\n]+)\)")
 INTERNAL_CITATION = re.compile(r"(?:filecite|cite)")
-EXPECTED_H2_COUNTS = {
-    "README.md": 11,
-    "README.en.md": 11,
+# The README is edited as a document, not as a contract: keep it within a
+# sane band instead of pinning an exact section count.
+EXPECTED_H2_RANGE = {
+    "README.md": (8, 12),
+    "README.en.md": (8, 12),
 }
+# Documents users read today. History (release evidence, iteration records,
+# plans, RFC bodies) is exempt: it must keep the facts of its own date.
+ACTIVE_DOCS = (
+    "README.md",
+    "README.en.md",
+    "SKILL.md",
+    "CONTRIBUTING.md",
+    "docs/README.md",
+    "docs/CLI.md",
+    "docs/CAPABILITY-MATRIX.md",
+    "docs/RELEASING.md",
+    "docs/v2/guide/README.md",
+    "docs/v2/guide/00-how-to-talk.md",
+    "docs/v2/guide/01-quickstart.md",
+    "docs/v2/guide/02-workflow-guide.md",
+    "docs/v2/guide/03-policy-guide.md",
+    "docs/v2/guide/04-adapter-guide.md",
+    "docs/v2/guide/05-worker-contract.md",
+    "docs/v2/guide/06-evidence-guide.md",
+    "docs/v2/guide/07-approval-guide.md",
+    "docs/v2/guide/08-migration-v1.md",
+    "docs/v2/guide/09-security-boundaries.md",
+    "docs/v2/guide/10-recovery.md",
+    "templates/v2/AGENTS.md",
+    "templates/v2/指挥台.md",
+    "templates/v2/BUILDBEAT.md",
+    "plugins/buildbeat/README.md",
+)
+# Claims that were true during the v2 beta and are wrong since 2.0.0 took
+# dist-tag latest (2026-09-05), plus contract wording the parser rejects.
+# Each entry: (regex, what it means). Found in an active doc = failure.
+STALE_ACTIVE_CLAIMS = (
+    (r"npm (?:i|install)(?: -g| --global)? @haiyangbg/buildbeat@next", "installs the pre-release channel as the default"),
+    (r"Beta 期 `latest`|`latest` 仍指向 v1|latest 仍是 v1|latest is still v1|latest stays v1|装 beta", "says latest is still v1"),
+    (r"severity: \"P1\|P2\|P3\", title", "worker finding schema uses `title` / omits P0"),
+    (r"P1/P2 会触发 `findings-blocking`", "says P2 blocks (only P0/P1 block)"),
+    (r"被任意会话自动装载|每个 session 一开就自动读", "claims every tool auto-loads AGENTS.md"),
+    (r"批准即 merge-ready|批准=merge-ready|批准仅表示 merge-ready", "flattens every approval into merge-ready"),
+)
+
 CRITICAL_TEMPLATE_FILES = (
     "templates/AGENTS.md",
     "templates/CLAUDE.md",
@@ -213,15 +255,15 @@ def check_internal_citations(paths: list[Path]) -> list[str]:
 
 def check_readme_shape() -> list[str]:
     errors: list[str] = []
-    for filename, expected in EXPECTED_H2_COUNTS.items():
+    for filename, (low, high) in EXPECTED_H2_RANGE.items():
         path = ROOT / filename
         headings = [
             line for line in path.read_text(encoding="utf-8").splitlines()
             if line.startswith("## ")
         ]
-        if len(headings) != expected:
+        if not low <= len(headings) <= high:
             errors.append(
-                f"{filename}: expected {expected} H2 sections, found {len(headings)}"
+                f"{filename}: expected between {low} and {high} H2 sections, found {len(headings)}"
             )
 
     zh = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -259,21 +301,10 @@ def check_readme_shape() -> list[str]:
             "/plugin install buildbeat@buildbeat-plugins",
             "/plugin install buildbeat@buildbeat-plugins",
         ),
-        (
-            "旧 `solobaton@latest` 固定在 legacy v0 只读能力",
-            "The old `solobaton@latest` package stays on the legacy read-only v0 capability",
-        ),
-        ("BuildBeat 能力矩阵", "BuildBeat capability matrix"),
-        ("真实 schema 2 版本增量试点", "genuine schema 2 version-increment pilot"),
-        (
-            "scoped BuildBeat 包承载完整有界生命周期",
-            "the scoped BuildBeat package carries the bounded lifecycle",
-        ),
-        (
-            "证据紧跟对应的已做事项",
-            "evidence stays directly under the completed outcome it supports",
-        ),
     )
+    # The v1 distribution history (legacy solobaton v0, schema 2 pilot, scoped
+    # lifecycle) is guarded in docs/CAPABILITY-MATRIX.md and docs/CLI.md, not
+    # as mandatory README sentences.
     for zh_positioning, en_positioning in required_positioning_pairs:
         if zh_positioning not in zh:
             errors.append(f"README.md: missing scale-independent positioning {zh_positioning}")
@@ -477,6 +508,8 @@ def check_repository_governance() -> list[str]:
         "update",
         "deletion",
         "empty bypass list",
+        "## Channels and branches",
+        "## Post-release synchronization checklist",
     ):
         if fragment not in runbook:
             errors.append(f"docs/RELEASING.md: missing release-tag guard {fragment}")
@@ -536,15 +569,18 @@ def check_cli_package() -> list[str]:
         errors.append("package.json: supported Node floor must stay explicit at >=20")
     if package.get("dependencies") not in (None, {}):
         errors.append("package.json: BuildBeat must keep zero third-party runtime dependencies")
-    if package.get("description") != (
-        "BuildBeat: a Git-based, human-gated engineering delivery protocol for humans and AI sessions."
-    ):
-        errors.append("package.json: scale-independent product description is stale")
+    description = package.get("description", "")
+    if not description.startswith("BuildBeat") or not 40 <= len(description) <= 300:
+        errors.append("package.json: description must start with BuildBeat and stay between 40 and 300 characters")
+    if re.search(r"solo|one-person|for humans only", description, re.IGNORECASE):
+        errors.append("package.json: description carries a scale-dependent audience claim")
+    if "human" not in description.lower():
+        errors.append("package.json: description must name the human decision point")
     keywords = set(package.get("keywords", []))
-    if "solo-builder" in keywords or not {"delivery-protocol", "ai-sessions"}.issubset(
-        keywords
-    ):
-        errors.append("package.json: product-positioning keywords are stale")
+    if keywords & {"solo-builder", "one-person-company"}:
+        errors.append("package.json: scale-dependent audience keywords are stale")
+    if not keywords & {"ai-coding", "ai-agents", "human-in-the-loop"}:
+        errors.append("package.json: keywords must carry at least one current positioning term")
     publish_config = package.get("publishConfig", {})
     if publish_config.get("registry") != "https://registry.npmjs.org/":
         errors.append("package.json: publishConfig must pin the official npm registry")
@@ -556,6 +592,7 @@ def check_cli_package() -> list[str]:
         "npm run test:scripts",
         "npm run test:skill-only",
         "npm run test:plugin",
+        "npm run test:pack-firstrun",
         "npm run check:docs",
         "npm run pack:check",
     ):
@@ -618,12 +655,14 @@ def check_cli_package() -> list[str]:
         errors.append("docs/CLI.md: manifest example CLI version is stale")
 
     stale_distribution_claims = {
-        "README.md": "尚未发布 npm",
-        "README.en.md": "not published to npm yet",
+        "README.md": ("尚未发布 npm", "latest 仍是 v1", "`latest` 仍指向 v1"),
+        "README.en.md": ("not published to npm yet", "latest is still v1", "latest stays on v1"),
     }
-    for relative, stale_claim in stale_distribution_claims.items():
-        if stale_claim in (ROOT / relative).read_text(encoding="utf-8"):
-            errors.append(f"{relative}: stale npm publication claim remains")
+    for relative, stale_claims in stale_distribution_claims.items():
+        content = (ROOT / relative).read_text(encoding="utf-8")
+        for stale_claim in stale_claims:
+            if stale_claim in content:
+                errors.append(f"{relative}: stale distribution claim remains: {stale_claim}")
     if not ((ROOT / "bin/buildbeat.js").stat().st_mode & 0o111):
         errors.append("bin/buildbeat.js: executable bit is missing")
     if not ((ROOT / "bin/solobaton.js").stat().st_mode & 0o111):
@@ -748,6 +787,9 @@ def check_execution_contracts() -> list[str]:
             "不可外推",
         ),
         "docs/CAPABILITY-MATRIX.md": (
+            "四个可用面",
+            "v2 运行时面：`buildbeat-v2`",
+            "Skill 是入口",
             "三组生命周期入口",
             "Skill-only / 手工路径",
             "legacy `solobaton@1.16.3`",
@@ -1199,6 +1241,55 @@ def check_publish_workflow() -> list[str]:
     return errors
 
 
+def check_active_docs_currency() -> list[str]:
+    """Active documents must describe the current distribution and contracts.
+
+    Every pattern here was found in a shipped document after 2.0.0 moved to
+    dist-tag latest; this keeps them from coming back."""
+    errors: list[str] = []
+    compiled = [(re.compile(pattern), meaning) for pattern, meaning in STALE_ACTIVE_CLAIMS]
+    for relative in ACTIVE_DOCS:
+        path = ROOT / relative
+        if not path.exists():
+            errors.append(f"{relative}: active document listed in ACTIVE_DOCS is missing")
+            continue
+        text = path.read_text(encoding="utf-8")
+        for pattern, meaning in compiled:
+            match = pattern.search(text)
+            if match is not None:
+                line = text.count("\n", 0, match.start()) + 1
+                errors.append(f"{relative}:{line}: stale claim ({meaning}): {match.group(0)}")
+
+    # The Skill's frontmatter description is what a session sees when it
+    # decides whether to load the skill; long descriptions get truncated.
+    skill_lines = (ROOT / "SKILL.md").read_text(encoding="utf-8").splitlines()
+    for line in skill_lines[1:10]:
+        if line.startswith("description:"):
+            length = len(line[len("description:"):].strip())
+            if length > 1024:
+                errors.append(f"SKILL.md: frontmatter description is {length} characters; keep it under 1024")
+            if "buildbeat-v2" not in line:
+                errors.append("SKILL.md: frontmatter description must name the v2 runtime")
+            break
+    else:
+        errors.append("SKILL.md: frontmatter description not found in the first lines")
+
+    # Worker envelope: the documented finding shape must be the parsed one.
+    contract = (ROOT / "docs/v2/guide/05-worker-contract.md").read_text(encoding="utf-8")
+    for fragment in ('"severity": "P1", "summary"', "`P0` / `P1` 阻断", "`invalid-output`"):
+        if fragment not in contract:
+            errors.append(f"docs/v2/guide/05-worker-contract.md: missing parser-aligned contract fragment {fragment}")
+
+    # Every documented install line in active docs must use the stable channel.
+    for relative in ACTIVE_DOCS:
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        for match in re.finditer(r"npm (?:i|install)(?: -g| --global)? @haiyangbg/buildbeat@([A-Za-z0-9.\-]+)", text):
+            if match.group(1) != "latest":
+                line = text.count("\n", 0, match.start()) + 1
+                errors.append(f"{relative}:{line}: install line must use @latest: {match.group(0)}")
+    return errors
+
+
 def main() -> int:
     paths = markdown_files()
     errors = []
@@ -1216,6 +1307,7 @@ def main() -> int:
     errors.extend(check_publish_workflow())
     errors.extend(check_workflow_action_pins())
     errors.extend(check_repository_governance())
+    errors.extend(check_active_docs_currency())
 
     if errors:
         print("Documentation checks failed:", file=sys.stderr)
@@ -1225,7 +1317,7 @@ def main() -> int:
 
     print(
         f"Documentation checks passed: {len(paths)} Markdown files, "
-        "relative links, bilingual README shape, frontmatter, critical files, example manifest hashes, phase-4 hard-gate status, CLI package metadata, and repository governance."
+        "relative links, bilingual README shape, frontmatter, critical files, example manifest hashes, phase-4 hard-gate status, CLI package metadata, repository governance, and active-document currency."
     )
     return 0
 

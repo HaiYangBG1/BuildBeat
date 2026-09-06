@@ -1,5 +1,7 @@
 # BuildBeat v2 终版规划：工件协议 × 确定性内核 × 可恢复 Agent Loop
 
+> **状态更新（2026-09-05）**：本计划的目标已交付——`@haiyangbg/buildbeat@2.0.0` 发布到 `latest`（[`CHANGELOG.md`](../CHANGELOG.md)）。本文件此后是**历史执行基线**，原文不再修改；§8 里"`latest` 留 v1、`next` 发预发布"是 beta 期策略，已按计划结束。现行文档入口见 [`docs/README.md`](README.md)。
+>
 > 文档状态：**正式执行基线**（2026-08-27，项目所有者已拍板 `V2-D0=B`；决策见 [`V2-DECISIONS.md`](V2-DECISIONS.md)）
 > 基线日期：2026-08-27
 > 合并来源：报告 A（[`V2-PROPOSAL.md`](V2-PROPOSAL.md)，产品/方向层）× 报告 B（[《BuildBeat v2：AI 原生软件交付控制平面》](BuildBeat%20v2%EF%BC%9AAI%20%E5%8E%9F%E7%94%9F%E8%BD%AF%E4%BB%B6%E4%BA%A4%E4%BB%98%E6%8E%A7%E5%88%B6%E5%B9%B3%E9%9D%A2.md)，运行时工程层）
