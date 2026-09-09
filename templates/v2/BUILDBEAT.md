@@ -1,9 +1,8 @@
-# BUILDBEAT.md — 本项目的 BuildBeat v2 标记
+# BUILDBEAT.md — 本项目的 BuildBeat 标记
 
-**本项目运行 BuildBeat v2**：运行时 `@haiyangbg/buildbeat@<X.Y.Z>`（<yyyy-mm-dd> 首次接入；查看本机版本 `npm ls -g @haiyangbg/buildbeat`，查看最新 `npm view @haiyangbg/buildbeat@latest version`）
+**本项目运行 BuildBeat**：运行时 `@haiyangbg/buildbeat@<X.Y.Z>`（<yyyy-mm-dd> 首次接入；查看本机版本 `npm ls -g @haiyangbg/buildbeat`，查看最新 `npm view @haiyangbg/buildbeat@latest version`）
 **装载方式**：会话读根目录 `AGENTS.md`（`CLAUDE.md` 是一行指针）；驾驶手册在 BuildBeat Skill `SKILL.md` §0.5
 **活动工作**：`delivery/work/<WORK-ID>/`（intent / plan / run-config / decisions.jsonl / runs/）；信封与 worker 包装在 `delivery/envelope/`
-**v1 遗留**：<无 | `pm/NOW.md` 等已于 <yyyy-mm-dd> 冻结只读，禁止双写>
 来源：<https://github.com/HaiYangBG1/BuildBeat>
 
 ## 升级

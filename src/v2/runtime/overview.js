@@ -193,25 +193,25 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
         stage = intent.accepted ? "INTENT_ACCEPTED" : "INTENT_DRAFT";
         next = intent.accepted
           ? `write delivery/work/${workId}/plan.md, then accept it`
-          : `buildbeat-v2 accept --repo ${repoLabel} --work ${workId} --artifact intent --by <you>`;
+          : `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact intent --by <you>`;
       } else if (!plan.accepted) {
         stage = plan.stale ? "PLAN_STALE" : "PLAN_DRAFT";
-        next = `buildbeat-v2 accept --repo ${repoLabel} --work ${workId} --artifact plan --by <you>${plan.stale ? "   # plan changed since acceptance" : ""}`;
+        next = `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact plan --by <you>${plan.stale ? "   # plan changed since acceptance" : ""}`;
       } else {
         stage = "READY_TO_RUN";
         const configs = readdirSync(workDir).filter((name) => /^run-config.*\.ya?ml$/.test(name));
         next =
           configs.length > 0
-            ? `buildbeat-v2 start --config delivery/work/${workId}/${configs[0]} --attempt new`
+            ? `buildbeat start --config delivery/work/${workId}/${configs[0]} --attempt new`
             : `no run-config in delivery/work/${workId}: write one, or close it with a decisions.jsonl row {"transition":"close-work","decision":"closed","subject":{"result":"..."}} if it was doc-only`;
       }
     } else if (latest.status === "RUNNING") {
       stage = "RUNNING";
-      next = `buildbeat-v2 status --repo ${repoLabel} --run ${latest.id}`;
+      next = `buildbeat status --repo ${repoLabel} --run ${latest.id}`;
     } else if (latest.status === "WAITING_HUMAN") {
       stage = latest.pendingHuman?.kind === "final-decision" ? "MERGE_DECISION" : "WAITING_HUMAN";
       const replies = latest.state ? nextReply({ repoLabel, state: latest.state }) : [];
-      next = replies[0] ?? `buildbeat-v2 inbox --repo ${repoLabel}`;
+      next = replies[0] ?? `buildbeat inbox --repo ${repoLabel}`;
     } else if (latest.status === "SUCCEEDED" && isReleaseLane(latest)) {
       // A release-readback lane that reached wait-close and was approved is
       // a closed release window, not "nothing to merge".
@@ -220,7 +220,7 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
     } else if (merged) {
       stage = "MERGED";
       next =
-        `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release/deploy stays a human action; then buildbeat-v2 gc --repo ${repoLabel}` +
+        `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release/deploy stays a human action; then buildbeat gc --repo ${repoLabel}` +
         (latest.status !== "SUCCEEDED" ? `   # latest run ${latest.id} ended ${latest.status} after the merge` : "");
     } else if (latest.status === "SUCCEEDED") {
       stage = "MERGE_READY";
@@ -230,7 +230,7 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
     } else {
       stage = `STOPPED_${latest.status}`;
       next = plan.accepted
-        ? `decide: retry (buildbeat-v2 start ... --attempt new) or close the work`
+        ? `decide: retry (buildbeat start ... --attempt new) or close the work`
         : `plan not accepted (${plan.exists ? "draft" : "missing"}); fix that before another run`;
     }
     rows.push({

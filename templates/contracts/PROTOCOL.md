@@ -6,17 +6,9 @@
 > 同仓内部的"前后端"接口优先用**共享类型/schema 由编译器强制**,不进本文件;本文件只管跨服务、跨语言、跨部署单元的边界。
 
 **契约快照对应版本:`<vX.Y.Z>`**(<上线日期>)。
-> 🔴 **线上实况唯一查询口 = `bash scripts/bus-check.sh`**;本行只标「本快照写就时对应的版本」,其它文档一律不写「当前线上 vX」(规则⑨)。
+> 🔴 **线上实况唯一查询口 = `buildbeat observe status --repo .` 与部署平台实查**;本行只标「本快照写就时对应的版本」,其它文档一律不写「当前线上 vX」(AGENTS ⑨)。
 
-> 多仓项目逐仓填写下面的显式来源 map；单仓项目删除整个 block。`contract` 指向含唯一「契约快照对应版本」行的仓库相对 Markdown，`deployment` 填 `scripts/bus-baseline.json` 的 app key；确认无部署填 `n/a`。不要靠目录名或自然语言猜版本关系。
-
-<!-- buildbeat-multirepo-map:v1
-repo=<代码子仓1>|contract=contracts/PROTOCOL.md|deployment=<bus-baseline.json app 名或 n/a>
--->
-<!-- map 行格式:repo=<子仓路径>|contract=<contracts/*.md 或 n/a>|deployment=<bus-baseline.json app 名或 n/a>[|changelog=<该仓内模块 CHANGELOG 路径>]
-     · changelog= 给多模块仓用(根下没有 CHANGELOG,由某个模块 CHANGELOG 承载契约版本);缺省 <repo>/CHANGELOG.md。
-     · contract=n/a 表示该仓没有契约版本域(如只读存量前端、npm 包 semver 与契约版本不同域),只登记不核对;不得拿它掩盖真实的契约关系。
-     · 被核对的 CHANGELOG 首个已发布 H2 须以契约快照版本开头,如 `## [v1.3 · Deployed 2026-09-05 · <sha> · <流水线>]`。 -->
+> 多仓项目在 §1 按边界逐一列出参与的仓与部署单元;版本对齐由 `release-readback` 车道在上线前后回读,不靠目录名或自然语言猜。
 
 ---
 

@@ -13,7 +13,7 @@
   - 人分诊 `observe triage`：fix_now / schedule / dismiss；**dismiss 回调 bands**——同指纹被 dismiss 后不再重复出 intent 草稿（除非严重度升级），分诊终态写在 Git 面草稿文件里（不变量 23：删 runtime 不丢分诊记忆）；
   - 新事件类型 additive 注册（SPEC-0001 演进规则）：`BAND_TRIGGERED` / `INTENT_DRAFTED` / `TRIAGE_RECORDED`；
   - 测试：配置 fail-closed、unverified 传导、band 路由、intent 只入队不执行、dismiss 反馈、runtime 可删。
-- [x] **T2 v1→v2 迁移 runbook（半天手工，WP6.2 原则）**：只读分析 v1 → 草稿 → 人工确认活动 Work → 冻结旧看板 → 新工作只进 v2 → 归档不双写 → 一个真实 Run 后才正式切换；装机量 N=1，不写 importer 工具。→ [`guide/08-migration-v1.md`](v2/guide/08-migration-v1.md)
+- [x] **T2 v1→v2 迁移 runbook（半天手工，WP6.2 原则）**：只读分析 v1 → 草稿 → 人工确认活动 Work → 冻结旧看板 → 新工作只进 v2 → 归档不双写 → 一个真实 Run 后才正式切换；装机量 N=1，不写 importer 工具。→ `guide/08-migration-v1.md`（已于 3.0.0 移除）
 - [x] **T3 文档十件套（WP6.3）**：快速开始 / Workflow 编写 / Policy / Adapter / Worker 合同 / Evidence / Human Approval / v1 迁移（=T2）/ 安全与权限边界 / 故障恢复，落 [`docs/v2/guide/`](v2/guide/README.md)。
 - [x] **T4 Beta 打包准备**：`package.json` 版本 `2.0.0-beta.1`、`bin/buildbeat-v2.js` 入口、`files` 覆盖 `src/v2/`、`pack:check` 通过、v1 全套测试保持绿（v1 只冻结不删除，`latest` 不动）。文档一致性守卫（`tests/check_docs.py`）教会识别 prerelease 版本号（additive），教学快照/CLI 契约/RELEASING 版本联动完成。
 - [x] **T5 发布 `@haiyangbg/buildbeat@2.0.0-beta.1`（dist-tag `next`）**：所有者授权（"发布吧，授权也一起"）后经 GitHub Actions OIDC Trusted Publishing 完成；prepublish 门抓出并修正 3 个真实缺陷（发布脚本 dist-tag 契约、v1 cliVersion prerelease 校验、SCAFFOLD_VERSION 虚构跨大版本升级）；`latest` 未动；独立回读五项全过。证据：[`V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md`](V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md)。

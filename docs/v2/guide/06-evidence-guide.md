@@ -14,7 +14,7 @@
 | `failed` | 非零退出 / 超时 / 信号 |
 | `unverified` | **采不到**：无法启动、数据缺失。永远不是"没问题" |
 
-`unverified` 不会被任何门当作通过（[Policy 指南](03-policy-guide.md) 三值逻辑）。这是 v1 fail-closed 文化的内核化。
+`unverified` 不会被任何门当作通过（[Policy 指南](03-policy-guide.md) 三值逻辑）。fail-closed 是内核语义，不是约定。
 
 ## 等级 L0–L4
 
@@ -24,7 +24,7 @@
 
 ## 预检 ≠ 证据
 
-`buildbeat-v2 preflight --config <run-config> --step <id>`：在主 checkout 直接干跑某步的 worker 命令——无 worktree、无台账、不落任何证据（输出自带 `PREFLIGHT (dry signal, never evidence)` 横幅，环境变量 `BUILDBEAT_PREFLIGHT=1`）。用途是分钟级循环打到首个失败边界再进 Run（战役里 harness 缺陷每个要烧一整轮 Run，预检模式一晚拆完）；**预检发现的任何东西必须由 Run 复现才算数**。
+`buildbeat preflight --config <run-config> --step <id>`：在主 checkout 直接干跑某步的 worker 命令——无 worktree、无台账、不落任何证据（输出自带 `PREFLIGHT (dry signal, never evidence)` 横幅，环境变量 `BUILDBEAT_PREFLIGHT=1`）。用途是分钟级循环打到首个失败边界再进 Run（战役里 harness 缺陷每个要烧一整轮 Run，预检模式一晚拆完）；**预检发现的任何东西必须由 Run 复现才算数**。
 
 ## 候选作用域
 
@@ -41,7 +41,7 @@
 
 ## 完整率
 
-`buildbeat-v2 metrics` 输出证据完整率（有证据的步/应有证据的步）；M4/M5 退出线 ≥95%，试点实测 100%。
+`buildbeat metrics` 输出证据完整率（有证据的步/应有证据的步）；M4/M5 退出线 ≥95%，试点实测 100%。
 
 ## 运行中的读数 ≠ 证据
 

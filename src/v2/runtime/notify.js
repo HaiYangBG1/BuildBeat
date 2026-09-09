@@ -83,16 +83,16 @@ export function nextReply({ repoLabel, state }) {
   const runId = state.run.id;
   const lines = [];
   if (pending.kind === "finding-triage") {
-    lines.push(`buildbeat-v2 findings list --repo ${repoLabel} --work ${state.run.work}`);
+    lines.push(`buildbeat findings list --repo ${repoLabel} --work ${state.run.work}`);
     lines.push(
-      `buildbeat-v2 findings adjudicate --repo ${repoLabel} --work ${state.run.work} --fingerprint <fp> --action accept|dismiss --by <you>`,
+      `buildbeat findings adjudicate --repo ${repoLabel} --work ${state.run.work} --fingerprint <fp> --action accept|dismiss --by <you>`,
     );
   }
   lines.push(
-    `buildbeat-v2 approve --repo ${repoLabel} --run ${runId} --transition ${pending.transition} --by <you>` +
+    `buildbeat approve --repo ${repoLabel} --run ${runId} --transition ${pending.transition} --by <you>` +
       (pending.kind === "final-decision" ? "   # merge-ready; merge/push stay yours" : "   # then: resume --config <run-config.yaml>"),
   );
-  lines.push(`buildbeat-v2 reject --repo ${repoLabel} --run ${runId} --reason <why> --by <you>`);
+  lines.push(`buildbeat reject --repo ${repoLabel} --run ${runId} --reason <why> --by <you>`);
   return lines;
 }
 
@@ -135,7 +135,7 @@ export function buildNotification(kind, { repoLabel, state, detail = {} }) {
         `threshold ${detail.threshold ?? "?"}; the process is NOT killed — check status, then decide`,
       ],
       candidate: null,
-      nextReply: [`buildbeat-v2 status --repo ${repoLabel} --run ${run.id}`],
+      nextReply: [`buildbeat status --repo ${repoLabel} --run ${run.id}`],
     };
   }
   throw new NotifyConfigError(`unknown notification kind: ${kind}`);

@@ -14,7 +14,7 @@ import {
 } from "../src/v2/runtime/liveness.js";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat-v2.js");
+const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const KERNEL = { kind: "kernel", id: "test" };
 const BASE = "0123456789abcdef0123456789abcdef01234567";
 

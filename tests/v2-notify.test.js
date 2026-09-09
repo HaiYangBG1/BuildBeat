@@ -15,7 +15,7 @@ import {
   subscribes,
 } from "../src/v2/runtime/notify.js";
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat-v2.js");
+const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 
 function git(cwd, args) {
@@ -75,9 +75,9 @@ test("notify config is optional, fail-closed on shape, and never allows a URL in
 test("nextReply spells out the copyable commands for every kind of wait", () => {
   const boundary = nextReply({ repoLabel: ".", state: waitingState("boundary") });
   assert.equal(boundary.length, 2);
-  assert.match(boundary[0], /^buildbeat-v2 approve --repo \. --run RUN-N --transition enter-fix --by <you>/);
+  assert.match(boundary[0], /^buildbeat approve --repo \. --run RUN-N --transition enter-fix --by <you>/);
   assert.match(boundary[0], /then: resume/);
-  assert.match(boundary[1], /^buildbeat-v2 reject --repo \. --run RUN-N/);
+  assert.match(boundary[1], /^buildbeat reject --repo \. --run RUN-N/);
   const final = nextReply({ repoLabel: "sub", state: waitingState("final-decision") });
   assert.match(final[0], /enter-wait-merge --by <you>   # merge-ready; merge\/push stay yours/);
   const triage = nextReply({ repoLabel: ".", state: waitingState("finding-triage") });
@@ -139,7 +139,7 @@ test("dispatch is fail-open: sends to subscribed channels, skips without env, su
     });
     assert.match(stalled.title, /疑似卡住：verify 已 21m 无输出/);
     assert.match(stalled.reasons.join("\n"), /NOT killed/);
-    assert.deepEqual(stalled.nextReply, ["buildbeat-v2 status --repo . --run RUN-N"]);
+    assert.deepEqual(stalled.nextReply, ["buildbeat status --repo . --run RUN-N"]);
   } finally {
     server.close();
   }
@@ -203,7 +203,7 @@ test("a run that stops for a human reaches the configured channel through the CL
     const inbox = execFileSync("node", [CLI, "inbox", "--repo", root], { encoding: "utf8" });
     assert.match(inbox, /work WORK-NC:/);
     assert.match(inbox, /RUN-NC \[boundary\] enter-review — waiting \d+s \(since /);
-    assert.match(inbox, /next: buildbeat-v2 approve --repo .* --run RUN-NC --transition enter-review/);
+    assert.match(inbox, /next: buildbeat approve --repo .* --run RUN-NC --transition enter-review/);
   } finally {
     server.close();
   }

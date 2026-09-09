@@ -241,7 +241,6 @@ jobs:
             --registry=https://registry.npmjs.org/ --ignore-scripts --no-audit --no-fund
           package_dir="$release_probe/node_modules/$package_name"
           test "$(node "$package_dir/bin/buildbeat.js" --version)" = "$package_version"
-          test "$(node "$package_dir/bin/solobaton.js" --version)" = "$package_version"
           (
             cd "$release_probe"
             npm audit signatures --registry=https://registry.npmjs.org/

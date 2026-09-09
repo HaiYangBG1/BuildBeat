@@ -28,8 +28,8 @@ Open a fresh session in the **same project directory**. Load the BuildBeat Skill
 The session reads current facts first:
 
 ```bash
-buildbeat-v2 overview --repo .
-buildbeat-v2 inbox --repo .
+buildbeat overview --repo .
+buildbeat inbox --repo .
 ```
 
 It then reads the goal, plan, decisions, and configuration under the relevant `delivery/work/<ID>/`. For active Run details, use `status --repo . --run <RUN-ID>`. Read IDs from actual output rather than guessing from a conversation.

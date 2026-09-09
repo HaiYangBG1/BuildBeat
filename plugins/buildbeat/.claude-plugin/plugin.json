@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "buildbeat",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "displayName": "BuildBeat",
   "description": "Guides AI sessions through project context in files, handoffs across tools and people, and BuildBeat delivery loops with human decisions. Runtime installed separately.",
   "author": {

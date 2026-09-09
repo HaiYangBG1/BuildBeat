@@ -8,10 +8,10 @@
 
 ```bash
 npm install --global @haiyangbg/buildbeat@latest
-buildbeat-v2 | head -3    # 打印 "BuildBeat v2 runtime" 与用法即安装成功
+buildbeat | head -3    # 打印 "BuildBeat v2 runtime" 与用法即安装成功
 ```
 
-2.0.0 起 `@latest` 就是 v2；同一个包同时给出 `buildbeat`（v1 生命周期命令：doctor / init / adopt / upgrade）和 `buildbeat-v2`（本文用的运行时）。预发布才用 `@next`。要求 Node ≥ 20、Git、bash，零运行时依赖。
+稳定版走 `@latest`，可执行文件只有一个：`buildbeat`（本文用的运行时）。预发布才用 `@next`。要求 Node ≥ 20、Git、bash，零运行时依赖。
 
 > 下文用到的 `templates/v2/envelope/` 与 run 配置 `env:` 透传修复自 2.0.1 起随包分发。装好后确认 `$(npm root -g)/@haiyangbg/buildbeat/templates/v2/envelope/` 存在再继续；不存在说明装到的是 2.0.0，先 `npm install --global @haiyangbg/buildbeat@latest` 更新。
 
@@ -96,7 +96,7 @@ workers:
 `standard` 预设在 build 前要求 plan 是已接受工件（`controlled` 还要求 intent）。接受是 digest 绑定的：接受后改了 plan，接受自动过期，`doctor` 会报 `stale`。
 
 ```bash
-buildbeat-v2 accept --repo . --work WORK-DEMO-1 --artifact plan --by <你的名字>
+buildbeat accept --repo . --work WORK-DEMO-1 --artifact plan --by <你的名字>
 ```
 
 成功：打印 `accepted plan as A-WORK-DEMO-1-<n>` 与 `digest: sha256:…`。
@@ -104,7 +104,7 @@ buildbeat-v2 accept --repo . --work WORK-DEMO-1 --artifact plan --by <你的名�
 ## 4. doctor：起跑前把 start 会读的事实读一遍
 
 ```bash
-buildbeat-v2 doctor --config delivery/work/WORK-DEMO-1/run-config.yaml
+buildbeat doctor --config delivery/work/WORK-DEMO-1/run-config.yaml
 ```
 
 逐段核对：`policies` 每条的 declared 与 actual 强制等级；`worker isolation` 每个 worker 是 `env allowlist` 还是 `WARNING inherit`；`push protection`；每步预算；`work artifacts` 里 intent / plan 是否存在、是否已接受、是否 stale，以及"start 会停在哪一步"的预告。有 `WARNING` 不代表不能跑，但要知道它意味着什么；退出码 0 不等于全部就绪。
@@ -112,7 +112,7 @@ buildbeat-v2 doctor --config delivery/work/WORK-DEMO-1/run-config.yaml
 ## 5. 起 Run，停在人批
 
 ```bash
-buildbeat-v2 start --config delivery/work/WORK-DEMO-1/run-config.yaml --attempt new
+buildbeat start --config delivery/work/WORK-DEMO-1/run-config.yaml --attempt new
 ```
 
 `--attempt new` 自动编号 `RUN-DEMO-01/02…`，并作废同一 Work 下仍在等人的旧 Run。Runner 会：开隔离 worktree（分支 `run/RUN-DEMO-01`，对配置 remote 的 push 已被封禁）→ builder 产出提交并固定 candidate → verifier 真实跑测试（退出码回读为证据）→ reviewer 只读出结构化 findings → 到达 `WAITING_HUMAN`。
@@ -124,15 +124,15 @@ buildbeat-v2 start --config delivery/work/WORK-DEMO-1/run-config.yaml --attempt 
 ## 6. 看证据、拍板
 
 ```bash
-buildbeat-v2 overview --repo .                       # 每个 Work 走到哪、下一步该谁、花了多少
-buildbeat-v2 inbox --repo .                          # 等你批的 Run，每条附可复制的下一句命令
-buildbeat-v2 status --repo . --run RUN-DEMO-01       # 步、耗时、证据、findings、待批理由
+buildbeat overview --repo .                       # 每个 Work 走到哪、下一步该谁、花了多少
+buildbeat inbox --repo .                          # 等你批的 Run，每条附可复制的下一句命令
+buildbeat status --repo . --run RUN-DEMO-01       # 步、耗时、证据、findings、待批理由
 ```
 
 批之前先看：候选 SHA、verify 的退出码与日志、review 的每条 finding。然后按 `inbox` 给出的那一句执行，通常是：
 
 ```bash
-buildbeat-v2 approve --repo . --run RUN-DEMO-01 --transition enter-wait-merge --by <你的名字> --config delivery/work/WORK-DEMO-1/run-config.yaml
+buildbeat approve --repo . --run RUN-DEMO-01 --transition enter-wait-merge --by <你的名字> --config delivery/work/WORK-DEMO-1/run-config.yaml
 ```
 
 **批的是哪一步要分清**（[Approval 指南](07-approval-guide.md)）：`enter-wait-merge` 是合并决定，Run 进终态 `SUCCEEDED`，表示候选具备合并条件——真正的合并、push、发布永远是你在 Runner 之外的动作；`enter-fix` / `resume-<step>` 是非终态转换，批准后要 `resume --config …` 让它续跑。被 findings 阻断时会自动路由 fix→verify→review 重走，超预算或失败指纹重复则停下交还给你（[Recovery](10-recovery.md)）。
@@ -153,9 +153,9 @@ buildbeat-v2 approve --repo . --run RUN-DEMO-01 --transition enter-wait-merge --
 
 ```bash
 cp "$(npm root -g)/@haiyangbg/buildbeat/src/v2/presets/observe.yaml" .buildbeat/observe.yaml   # 改成项目真实探针
-buildbeat-v2 observe run --config .buildbeat/observe.yaml            # 一次=一个周期；周期化交给 cron
-buildbeat-v2 observe status --repo .
-buildbeat-v2 observe triage --repo . --intent delivery/observe/intents/INTENT-<fp>.md --action fix_now --by <你>
+buildbeat observe run --config .buildbeat/observe.yaml            # 一次=一个周期；周期化交给 cron
+buildbeat observe status --repo .
+buildbeat observe triage --repo . --intent delivery/observe/intents/INTENT-<fp>.md --action fix_now --by <你>
 ```
 
 探针失败/采不到 → 证据 `failed`/`unverified` → bands 分层（记录→只读诊断→Intent 草稿入队）。草稿**绝不自动执行**；`dismiss` 会回调阈值，同指纹在严重度升级前不再打扰。详见 [Evidence 指南](06-evidence-guide.md) §observe。

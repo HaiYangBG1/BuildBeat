@@ -55,30 +55,31 @@ import { acquireLock, listHeldRunLocks, releaseLock } from "../workspace/workspa
 
 const KERNEL = { kind: "kernel", id: "cli" };
 
-const USAGE = `BuildBeat v2 runtime
+const USAGE = `BuildBeat runtime
 
 Usage:
-  run.js start --config <run-config.yaml> [--attempt new]
-  run.js resume --config <run-config.yaml> [--adopt <sha> --by <name>]   # --adopt: hand fix committed in the worktree; skip fix, resume at verify
-  run.js status --repo <path> --run <RUN-ID> [--stall-after <minutes>]
-  run.js inbox --repo <path>
-  run.js overview --repo <path> [--work <WORK-ID>] [--json true]
-  run.js approve --repo <path> --run <RUN-ID> --transition <t> [--by <name>] [--config <run-config.yaml>]
-  run.js reject --repo <path> --run <RUN-ID> [--transition <t>] [--reason <text>] [--by <name>]
-  run.js accept --repo <path> --work <WORK-ID> --artifact <plan|intent|spec> [--by <name>]
-  run.js doctor --config <run-config.yaml>
-  run.js events --repo <path> --run <RUN-ID>
-  run.js replay --repo <path> --run <RUN-ID>
-  run.js metrics --repo <path> [--json true]
-  run.js stop --repo <path> --run <RUN-ID> --reason <text>
-  run.js gc --repo <path> [--apply true] [--force true]
-  run.js watch --repo <path> --run <RUN-ID> [--stall-after <minutes>] [--interval <seconds>] [--once true]
-  run.js observe run --config <observe.yaml>
-  run.js observe status --repo <path>
-  run.js observe triage --repo <path> --intent <ref> --action <fix_now|schedule|dismiss> [--by <name>] [--note <text>]
-  run.js preflight --config <run-config.yaml> --step <id>
-  run.js findings list --repo <path> --work <WORK-ID>
-  run.js findings adjudicate --repo <path> --work <WORK-ID> --fingerprint <fp> --action <accept|dismiss> [--by <name>] [--note <text>]
+  buildbeat --version
+  buildbeat start --config <run-config.yaml> [--attempt new]
+  buildbeat resume --config <run-config.yaml> [--adopt <sha> --by <name>]   # --adopt: hand fix committed in the worktree; skip fix, resume at verify
+  buildbeat status --repo <path> --run <RUN-ID> [--stall-after <minutes>]
+  buildbeat inbox --repo <path>
+  buildbeat overview --repo <path> [--work <WORK-ID>] [--json true]
+  buildbeat approve --repo <path> --run <RUN-ID> --transition <t> [--by <name>] [--config <run-config.yaml>]
+  buildbeat reject --repo <path> --run <RUN-ID> [--transition <t>] [--reason <text>] [--by <name>]
+  buildbeat accept --repo <path> --work <WORK-ID> --artifact <plan|intent|spec> [--by <name>]
+  buildbeat doctor --config <run-config.yaml>
+  buildbeat events --repo <path> --run <RUN-ID>
+  buildbeat replay --repo <path> --run <RUN-ID>
+  buildbeat metrics --repo <path> [--json true]
+  buildbeat stop --repo <path> --run <RUN-ID> --reason <text>
+  buildbeat gc --repo <path> [--apply true] [--force true]
+  buildbeat watch --repo <path> --run <RUN-ID> [--stall-after <minutes>] [--interval <seconds>] [--once true]
+  buildbeat observe run --config <observe.yaml>
+  buildbeat observe status --repo <path>
+  buildbeat observe triage --repo <path> --intent <ref> --action <fix_now|schedule|dismiss> [--by <name>] [--note <text>]
+  buildbeat preflight --config <run-config.yaml> --step <id>
+  buildbeat findings list --repo <path> --work <WORK-ID>
+  buildbeat findings adjudicate --repo <path> --work <WORK-ID> --fingerprint <fp> --action <accept|dismiss> [--by <name>] [--note <text>]
 `;
 
 function parseFlags(argv) {
@@ -507,7 +508,7 @@ async function commandStart(flags) {
           summary = `${state.run?.work ?? "?"} ${state.run?.status ?? "?"} ${step}${since ? `, last event ${formatMs(Date.now() - Date.parse(since))} ago` : ""}`;
         }
         console.error(`blocked by ${holder}: ${summary}`);
-        console.error(`  watch it: buildbeat-v2 status --repo ${label} --run ${holder}`);
+        console.error(`  watch it: buildbeat status --repo ${label} --run ${holder}`);
       }
       console.error("queue position: next after the holder(s) above stop or wait on a human (the repository allows one driving run at a time; worktrees are already isolated)");
     }
@@ -1174,8 +1175,17 @@ function commandObserve(rest) {
   }
 }
 
+function packageVersion() {
+  const packageJson = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "package.json");
+  return JSON.parse(readFileSync(packageJson, "utf8")).version;
+}
+
 async function main() {
   const [command, ...rest] = process.argv.slice(2);
+  if (command === "--version" || command === "-v" || command === "version") {
+    process.stdout.write(`${packageVersion()}\n`);
+    return;
+  }
   if (command === "observe" || command === "findings") {
     try {
       (command === "observe" ? commandObserve : commandFindings)(rest);

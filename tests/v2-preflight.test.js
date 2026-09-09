@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat-v2.js");
+const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 
 function fixtureRepo() {

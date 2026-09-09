@@ -28,8 +28,8 @@ BuildBeat 的接续依据是项目文件、Git 与运行台账。新会话读取
 会话先读当前事实：
 
 ```bash
-buildbeat-v2 overview --repo .
-buildbeat-v2 inbox --repo .
+buildbeat overview --repo .
+buildbeat inbox --repo .
 ```
 
 随后读取对应 `delivery/work/<ID>/` 的目标、计划、决定和配置；需要活动 Run 细节时运行 `status --repo . --run <RUN-ID>`。ID 从实际输出读取，不凭聊天猜。

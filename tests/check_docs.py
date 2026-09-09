@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 import subprocess
@@ -14,7 +13,7 @@ from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(([^)\n]+)\)")
-INTERNAL_CITATION = re.compile(r"(?:filecite|cite)")
+INTERNAL_CITATION = re.compile(r"(?:filecite|cite)")
 # Documents users read today. History (release evidence, iteration records,
 # plans, RFC bodies) is exempt: it must keep the facts of its own date.
 ACTIVE_DOCS = (
@@ -22,8 +21,8 @@ ACTIVE_DOCS = (
     "README.en.md",
     "SKILL.md",
     "CONTRIBUTING.md",
+    "lessons.md",
     "docs/README.md",
-    "docs/CLI.md",
     "docs/CAPABILITY-MATRIX.md",
     "docs/RELEASING.md",
     "docs/v2/guide/README.md",
@@ -35,7 +34,6 @@ ACTIVE_DOCS = (
     "docs/v2/guide/05-worker-contract.md",
     "docs/v2/guide/06-evidence-guide.md",
     "docs/v2/guide/07-approval-guide.md",
-    "docs/v2/guide/08-migration-v1.md",
     "docs/v2/guide/09-security-boundaries.md",
     "docs/v2/guide/10-recovery.md",
     "docs/v2/guide/11-session-handoff.md",
@@ -43,11 +41,23 @@ ACTIVE_DOCS = (
     "templates/v2/AGENTS.md",
     "templates/v2/指挥台.md",
     "templates/v2/BUILDBEAT.md",
+    "templates/v2/CLAUDE.md",
+    "templates/ARCHITECTURE.md",
+    "templates/pm/decisions.md",
+    "templates/pm/adr/README.md",
+    "templates/pm/adr/ADR-0000-template.md",
+    "templates/contracts/PROTOCOL.md",
+    "templates/standards/STACK.md",
+    "templates/standards/CODE.md",
+    "templates/standards/REVIEW.md",
+    "templates/standards/DESIGN.md",
     "plugins/buildbeat/README.md",
+    "tests/README.md",
 )
-# Claims that were true during the v2 beta and are wrong since 2.0.0 took
-# dist-tag latest (2026-09-05), plus contract wording the parser rejects.
-# Each entry: (regex, what it means). Found in an active doc = failure.
+# Claims that were true once and are wrong today, plus contract wording the
+# parser rejects. Each entry: (regex, what it means). Found in an active doc =
+# failure. The v1 family of patterns exists because 3.0.0 removed the v1
+# file bus and lifecycle CLI: active documents describe one product.
 STALE_ACTIVE_CLAIMS = (
     (r"npm (?:i|install)(?: -g| --global)? @haiyangbg/buildbeat@next", "installs the pre-release channel as the default"),
     (r"Beta 期 `latest`|`latest` 仍指向 v1|latest 仍是 v1|latest is still v1|latest stays v1|装 beta", "says latest is still v1"),
@@ -55,29 +65,25 @@ STALE_ACTIVE_CLAIMS = (
     (r"P1/P2 会触发 `findings-blocking`", "says P2 blocks (only P0/P1 block)"),
     (r"被任意会话自动装载|每个 session 一开就自动读", "claims every tool auto-loads AGENTS.md"),
     (r"批准即 merge-ready|批准=merge-ready|批准仅表示 merge-ready", "flattens every approval into merge-ready"),
+    (r"buildbeat-v2", "names the removed `buildbeat-v2` executable (the runtime is `buildbeat`)"),
+    (r"(?i)solobaton", "names the retired Solobaton name or executable"),
+    (r"(?<![A-Za-z0-9./-])(?<!SLSA )v1(?![A-Za-z0-9.])", "refers to the removed v1 generation"),
+    (r"pm/NOW\.md|当期看板|pm/status/|pm/changes/|bus-check|verify-status\.sh|drift-check\.sh|design-preview\.sh|pre-commit\.sh", "refers to the removed file bus"),
+    (r"legacy-four-gates|四 Gate|四个 Gate|Gate[1-4]\b|三轨", "refers to the removed fixed-gate cadence"),
+    (r"buildbeat (?:init|adopt|upgrade)\b|`init/adopt|schema 2 manifest|SCAFFOLD_VERSION", "refers to the removed lifecycle CLI"),
 )
 
 CRITICAL_TEMPLATE_FILES = (
-    "templates/AGENTS.md",
-    "templates/CLAUDE.md",
     "templates/ARCHITECTURE.md",
-    "templates/BUILDBEAT.md",
+    "templates/gitignore.template",
     "templates/contracts/PROTOCOL.md",
-    "templates/pm/NOW.md",
-    "templates/pm/当期看板.md",
-    "templates/pm/status/README.md",
+    "templates/pm/decisions.md",
     "templates/pm/adr/README.md",
     "templates/pm/adr/ADR-0000-template.md",
     "templates/standards/STACK.md",
     "templates/standards/CODE.md",
     "templates/standards/REVIEW.md",
     "templates/standards/DESIGN.md",
-    "templates/.claude/agents/reviewer.md",
-    "templates/scripts/bus-check.sh",
-    "templates/scripts/pre-commit.sh",
-    "templates/scripts/verify-status.sh",
-    "templates/scripts/design-preview.sh",
-    "templates/scripts/drift-check.sh",
     "templates/v2/AGENTS.md",
     "templates/v2/CLAUDE.md",
     "templates/v2/BUILDBEAT.md",
@@ -92,47 +98,14 @@ CRITICAL_CLI_FILES = (
     ".github/scripts/publish-candidate.sh",
     ".github/workflows/publish.yml",
     "bin/buildbeat.js",
-    "bin/solobaton.js",
-    "docs/CLI.md",
-    "docs/PHASE4-V1.20-PILOT-2026-08-25.md",
-    "example/.buildbeat/manifest.json",
     "docs/RELEASING.md",
     "package-lock.json",
     "package.json",
-    "src/cli.js",
-    "src/constants.js",
-    "src/doctor.js",
-    "src/planner.js",
-    "src/project.js",
-    "src/upgrader.js",
-    "src/writer.js",
-    "tests/cli.test.js",
+    "src/v2/cli/run.js",
+    "src/v2/presets/software-delivery.yaml",
     "tests/publish-workflow.test.js",
-    "tests/skill-only.test.sh",
-    "tests/fixtures/healthy-default/expected-findings.json",
-    "tests/fixtures/broken-now-pointer/expected-findings.json",
-    "tests/fixtures/board-done-no-evidence/expected-findings.json",
-    "tests/fixtures/gate-na-no-reason/expected-findings.json",
-    "tests/fixtures/gate-na-ui-inconsistent/expected-findings.json",
-    "tests/fixtures/gate-pass-untraceable/expected-findings.json",
-    "tests/fixtures/gate-decision-valid/expected-findings.json",
-    "tests/fixtures/gate-decision-line-missing/expected-findings.json",
-    "tests/fixtures/gate-invalid/expected-findings.json",
-    "tests/fixtures/evidence-valid/expected-findings.json",
-    "tests/fixtures/evidence-outside-archive/expected-findings.json",
-    "tests/fixtures/ghost-hash/expected-findings.json",
-    "tests/fixtures/stale-now/expected-findings.json",
-    "tests/fixtures/scan-truncated/expected-findings.json",
-    "tests/fixtures/standards-partial/expected-findings.json",
-    "tests/fixtures/standards-valid/expected-findings.json",
-    "tests/fixtures/standards-draft/expected-findings.json",
-    "tests/fixtures/standards-invalid/expected-findings.json",
-    "tests/fixtures/stack-valid/expected-findings.json",
-    "tests/fixtures/stack-conflict/expected-findings.json",
-    "tests/fixtures/stack-unverified/expected-findings.json",
-    "tests/fixtures/adr-valid/expected-findings.json",
-    "tests/fixtures/adr-status-invalid/expected-findings.json",
-    "tests/fixtures/adr-superseded-broken/expected-findings.json",
+    "tests/pack-firstrun.test.sh",
+    "tests/v2-templates-firstrun.test.js",
 )
 CRITICAL_GOVERNANCE_FILES = (
     ".github/CODEOWNERS",
@@ -145,25 +118,41 @@ CRITICAL_GOVERNANCE_FILES = (
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
     "SECURITY.md",
-    "docs/CHECKS.md",
     "docs/CAPABILITY-MATRIX.md",
-    "docs/CLI-STRATEGY-2026-08.md",
-    "docs/EXECUTION-PLAN.md",
-    "docs/LEGACY-V1.16-MIGRATION.md",
-    "docs/PHASE1-PILOT-2026-08-24.md",
-    "docs/PHASE2-PILOT-PREFLIGHT-2026-08-25.md",
-    "docs/PHASE2-PILOT-2026-08-25.md",
-    "docs/PHASE2-BUILDBEAT-PILOT-2026-08-25.md",
-    "docs/PHASE4-STABILITY-AUDIT-2026-08-25.md",
-    "docs/V1.21-RELEASE-EVIDENCE-2026-08-25.md",
-    "docs/ROADMAP.md",
-    "docs/CLI-PILOT-2026-08-23.md",
+    "docs/v2/RFC-0001-product-definition.md",
+    "docs/v2/RFC-0002-domain-model.md",
+    "docs/v2/RFC-0003-workflow-policy.md",
+    "docs/v2/SPEC-0001-events-v1.md",
 )
 CRITICAL_PLUGIN_FILES = (
     ".claude-plugin/marketplace.json",
     "plugins/buildbeat/.claude-plugin/plugin.json",
     "plugins/buildbeat/README.md",
     "tests/plugin-marketplace.test.sh",
+)
+REMOVED_PATHS = (
+    "bin/buildbeat-v2.js",
+    "bin/solobaton.js",
+    "src/cli.js",
+    "src/constants.js",
+    "src/upgrader.js",
+    "example",
+    "docs/CLI.md",
+    "docs/CHECKS.md",
+    "docs/LEGACY-V1.16-MIGRATION.md",
+    "docs/v2/guide/08-migration-v1.md",
+    "templates/AGENTS.md",
+    "templates/pm/NOW.md",
+    "templates/scripts",
+    "templates/.claude",
+    "tests/cli.test.js",
+    "tests/test-scripts.sh",
+    "tests/skill-only.test.sh",
+    "tests/fixtures",
+    "team/TEAM.md",
+    "team/APPROVALS.md",
+    "templates/team/TEAM.md",
+    "templates/team/APPROVALS.md",
 )
 
 
@@ -240,6 +229,9 @@ def check_relative_links(paths: list[Path]) -> list[str]:
 def check_internal_citations(paths: list[Path]) -> list[str]:
     errors: list[str] = []
     for path in paths:
+        if path.name == "CHANGELOG-v1.md":
+            # Archived verbatim; it names the marker while describing this check.
+            continue
         text = path.read_text(encoding="utf-8")
         for match in INTERNAL_CITATION.finditer(text):
             line = text.count("\n", 0, match.start()) + 1
@@ -301,9 +293,6 @@ def check_readme_shape() -> list[str]:
             "/plugin install buildbeat@buildbeat-plugins",
         ),
     )
-    # The v1 distribution history (legacy solobaton v0, schema 2 pilot, scoped
-    # lifecycle) is guarded in docs/CAPABILITY-MATRIX.md and docs/CLI.md, not
-    # as mandatory README sentences. Core audience and plugin identity remain.
     for zh_positioning, en_positioning in required_positioning_pairs:
         if zh_positioning not in zh:
             errors.append(f"README.md: missing scale-independent positioning {zh_positioning}")
@@ -320,7 +309,7 @@ def check_readme_shape() -> list[str]:
 
 def check_frontmatter() -> list[str]:
     errors: list[str] = []
-    for relative in ("SKILL.md", "templates/.claude/agents/reviewer.md"):
+    for relative in ("SKILL.md",):
         path = ROOT / relative
         lines = path.read_text(encoding="utf-8").splitlines()
         if not lines or lines[0] != "---":
@@ -339,7 +328,7 @@ def check_frontmatter() -> list[str]:
 
 
 def check_critical_files() -> list[str]:
-    return [
+    errors = [
         f"missing critical repository file: {relative}"
         for relative in (
             *CRITICAL_TEMPLATE_FILES,
@@ -349,6 +338,12 @@ def check_critical_files() -> list[str]:
         )
         if not (ROOT / relative).is_file()
     ]
+    errors.extend(
+        f"{relative}: removed scope must not return"
+        for relative in REMOVED_PATHS
+        if (ROOT / relative).exists()
+    )
+    return errors
 
 
 def check_claude_plugin() -> list[str]:
@@ -398,7 +393,6 @@ def check_claude_plugin() -> list[str]:
         "SKILL.md": "../../SKILL.md",
         "templates": "../../templates",
         "docs": "../../docs",
-        "example": "../../example",
         "lessons.md": "../../lessons.md",
         "LICENSE": "../../LICENSE",
         "CHANGELOG.md": "../../CHANGELOG.md",
@@ -419,8 +413,9 @@ def check_claude_plugin() -> list[str]:
             errors.append(
                 f"plugins/buildbeat/{relative}: link target must exist inside marketplace root"
             )
-    if (plugin_root / "bin").exists():
-        errors.append("plugins/buildbeat: npm CLI bin must not enter the plugin boundary")
+    for stale in ("bin", "example"):
+        if (plugin_root / stale).exists() or (plugin_root / stale).is_symlink():
+            errors.append(f"plugins/buildbeat/{stale}: must not enter the plugin boundary")
     return errors
 
 
@@ -491,15 +486,6 @@ def check_repository_governance() -> list[str]:
     if private_report_url not in security:
         errors.append("SECURITY.md: private vulnerability-reporting URL is missing")
 
-    for forbidden in (
-        "team/TEAM.md",
-        "team/APPROVALS.md",
-        "templates/team/TEAM.md",
-        "templates/team/APPROVALS.md",
-    ):
-        if (ROOT / forbidden).exists():
-            errors.append(f"{forbidden}: deleted team-management scope must not return")
-
     runbook = (ROOT / "docs/RELEASING.md").read_text(encoding="utf-8")
     for fragment in (
         "Protect release tags",
@@ -522,8 +508,8 @@ def check_cli_package() -> list[str]:
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
     version = package.get("version", "")
-    # Three-part SemVer with an optional pre-release tag (e.g. 2.0.0-beta.1):
-    # the v2 plan ships beta versions on dist-tag next before latest moves.
+    # Three-part SemVer with an optional pre-release tag (e.g. 3.0.0-beta.1):
+    # pre-releases ship on dist-tag next before latest moves.
     version_match = re.fullmatch(
         r"(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*))?", version
     )
@@ -556,12 +542,10 @@ def check_cli_package() -> list[str]:
     root_lock = lock.get("packages", {}).get("", {})
     if root_lock.get("name") != package.get("name") or root_lock.get("version") != version:
         errors.append("package-lock.json: root package identity does not match package.json")
-    if package.get("bin", {}).get("buildbeat") != "bin/buildbeat.js":
-        errors.append("package.json: buildbeat bin entry must point to bin/buildbeat.js")
-    if package.get("bin", {}).get("solobaton") != "bin/solobaton.js":
-        errors.append("package.json: solobaton bin entry must point to bin/solobaton.js")
+    if package.get("bin") != {"buildbeat": "bin/buildbeat.js"}:
+        errors.append("package.json: the only executable is buildbeat -> bin/buildbeat.js")
     package_files = package.get("files", [])
-    for required in ("docs/", "example/", "templates/", "lessons.md"):
+    for required in ("bin/", "src/", "docs/", "templates/", "SKILL.md", "lessons.md", "CHANGELOG.md"):
         if required not in package_files:
             errors.append(f"package.json: published files must include {required}")
     if package.get("engines", {}).get("node") != ">=20":
@@ -588,8 +572,7 @@ def check_cli_package() -> list[str]:
     prepublish = package.get("scripts", {}).get("prepublishOnly", "")
     for required in (
         "npm test",
-        "npm run test:scripts",
-        "npm run test:skill-only",
+        "npm run test:pilot",
         "npm run test:plugin",
         "npm run test:pack-firstrun",
         "npm run check:docs",
@@ -604,19 +587,12 @@ def check_cli_package() -> list[str]:
         r"`@haiyangbg/buildbeat@(\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?)`",
         release_guide,
     )
-    verified_pending = (
-        "latest independently verified BuildBeat npm distribution: "
-        "**pending first scoped publication**"
-    ) in release_guide
-    verified_version = verified_match.group(1) if verified_match else ""
-    if verified_match is None and not verified_pending:
-        errors.append(
-            "docs/RELEASING.md: scoped distribution evidence state is missing"
-        )
-    elif verified_match is not None and version_match is not None:
+    if verified_match is None:
+        errors.append("docs/RELEASING.md: scoped distribution evidence state is missing")
+    elif version_match is not None:
         # Compare on the numeric cores; pre-release suffixes never make a
         # verified distribution outrank the source package version.
-        verified_core = re.match(r"(\d+)\.(\d+)\.(\d+)", verified_version)
+        verified_core = re.match(r"(\d+)\.(\d+)\.(\d+)", verified_match.group(1))
         verified_parts = tuple(int(verified_core.group(i)) for i in (1, 2, 3))
         source_parts = tuple(int(version_match.group(i)) for i in (1, 2, 3))
         if verified_parts > source_parts:
@@ -626,21 +602,14 @@ def check_cli_package() -> list[str]:
     if f"source package version `@haiyangbg/buildbeat@{version}`" not in release_guide:
         errors.append("docs/RELEASING.md: source package version evidence is stale")
 
-    distribution_docs = ("README.md", "README.en.md", "docs/CLI.md")
-    for relative in distribution_docs:
+    for relative in ("README.md", "README.en.md"):
         content = (ROOT / relative).read_text(encoding="utf-8")
-        required_commands = (
+        for command in (
             "npm view @haiyangbg/buildbeat@latest version",
-            "npx --yes --package=@haiyangbg/buildbeat@latest buildbeat",
             "npm install --global @haiyangbg/buildbeat@latest",
-        )
-        for command in required_commands:
+        ):
             if command not in content:
-                errors.append(
-                    f"{relative}: missing evergreen npm package command {command}"
-                )
-        if "buildbeat doctor" not in content:
-            errors.append(f"{relative}: missing canonical BuildBeat executable command")
+                errors.append(f"{relative}: missing evergreen npm package command {command}")
         hard_coded_command = re.search(
             r"(?:--package=|--global\s+)@haiyangbg/buildbeat@\d+\.\d+\.\d+",
             content,
@@ -649,534 +618,10 @@ def check_cli_package() -> list[str]:
             errors.append(
                 f"{relative}: hard-coded executable package command will make the immutable npm README stale: {hard_coded_command.group(0)}"
             )
-    cli_contract = (ROOT / "docs/CLI.md").read_text(encoding="utf-8")
-    if f'"cliVersion": "{version}"' not in cli_contract:
-        errors.append("docs/CLI.md: manifest example CLI version is stale")
-
-    stale_distribution_claims = {
-        "README.md": ("尚未发布 npm", "latest 仍是 v1", "`latest` 仍指向 v1"),
-        "README.en.md": ("not published to npm yet", "latest is still v1", "latest stays on v1"),
-    }
-    for relative, stale_claims in stale_distribution_claims.items():
-        content = (ROOT / relative).read_text(encoding="utf-8")
-        for stale_claim in stale_claims:
-            if stale_claim in content:
-                errors.append(f"{relative}: stale distribution claim remains: {stale_claim}")
     if not ((ROOT / "bin/buildbeat.js").stat().st_mode & 0o111):
         errors.append("bin/buildbeat.js: executable bit is missing")
-    if not ((ROOT / "bin/solobaton.js").stat().st_mode & 0o111):
-        errors.append("bin/solobaton.js: executable bit is missing")
     if not ((ROOT / ".github/scripts/publish-candidate.sh").stat().st_mode & 0o111):
         errors.append(".github/scripts/publish-candidate.sh: executable bit is missing")
-    return errors
-
-
-def check_execution_contracts() -> list[str]:
-    errors: list[str] = []
-    contracts = {
-        "docs/CLI.md": (
-            "legacy package `solobaton@1.16.3` remains the independently verified read-only v0",
-            "`diff` and `uninstall` stay reserved",
-            '"schemaVersion": 2',
-            '"beginMarker": "# >>> buildbeat managed >>>"',
-            "schema 2 rejects `three-way-only`",
-            "In-process rollback is mandatory",
-            "There is no project `uninstall` engine",
-            "`git.not_initialized`",
-        ),
-        "docs/CHECKS.md": (
-            "Status: **BuildBeat 1.20 / WP3.4 implementation baseline**",
-            "INV-1",
-            "INV-8",
-            "`confirmed`",
-            "`unverified`",
-            "`sync.multirepo_drift`",
-            "`gate.na_without_reason`",
-            "`gate.na_inconsistent`",
-            "`gate.invalid`",
-            "pm/decisions.md:<positive-line-number>",
-            "`evidence.missing`",
-            "`evidence.outside_archive`",
-            "`ref.broken`",
-            "`standards.invalid`",
-            "`standards.unconfirmed`",
-            "`stack.drift`",
-            "`stack.unverified`",
-            "buildbeat-stack-baseline:v1",
-            "BUS_STACK_MAX",
-            "`adr.status_invalid`",
-            "`adr.superseded_broken`",
-            "`bus-check --format=json`",
-            "Exit behavior:",
-            "latest three dated rows",
-            "buildbeat-multirepo-map:v1",
-            "reason=limit",
-            "reason=symlink",
-            "reason=permission",
-        ),
-        "docs/EXECUTION-PLAN.md": (
-            "按 schema 分开的 policy 校验集合",
-            "不得把该策略迁移延后到 Wave 2",
-            "本阶段不得再次迁移 policy",
-            "`git.not_initialized`",
-            "可变远端状态未来仍按发布 runbook 重新读回",
-            "WP1.1–WP1.6 已完成",
-            "WP0.1–WP4.3 已完成",
-            "WP2.6 分发补强（候选完成）",
-            "WP3.2 Gate/证据强关联（源码候选完成）",
-            "WP3.3 多仓漂移（源码候选完成）",
-            "WP3.4 边界报告完善（源码候选完成）",
-            "WP4.1 示例全貌与 legacy 迁移（完成）",
-            "WP4.2 能力矩阵、双语终校与硬门槛（完成）",
-            "WP4.3 scoped 分发迁移（完成）",
-            "WP4.3-RELEASE-EVIDENCE-2026-08-25.md",
-            "buildbeat@buildbeat-plugins",
-            "PHASE1-PILOT-2026-08-24.md",
-            "PHASE2-PILOT-2026-08-25.md",
-            "PHASE2-BUILDBEAT-PILOT-2026-08-25.md",
-            "PHASE4-V1.20-PILOT-2026-08-25.md",
-        ),
-        "docs/PHASE1-PILOT-2026-08-24.md": (
-            "source_state_unchanged",
-            "sync.ghost_hash",
-            "gate.na_without_reason",
-            "Git 可见状态不变",
-        ),
-        "docs/PHASE2-PILOT-PREFLIGHT-2026-08-25.md": (
-            "writesPerformed=false",
-            "partial default layout",
-            "15 个可见变更",
-            "仍需点名并授权的三个目标",
-            "默认不授权 push、merge、tag",
-        ),
-        "docs/PHASE2-PILOT-2026-08-25.md": (
-            "real-directory write pilot",
-            "git.not_initialized",
-            "5aef3e87290068388e8b8f218daa1d4abaed3e2d9d7251a8c37b6defb8b0cb18",
-            "31bd73f175152a312f56c77a0d9bcd61b597a9a4ac07c75a3d747f32aa19e91c",
-            "hasUi=true",
-            "command_not_available",
-            "eb27a88663701ea03de776e32b6a23c2d1e3ac28",
-            "5b6aa726a1722226f9651a14bf0fb8fa36a5f9f6",
-            "b63383db9e56f17495a8ccc8edcb81e7c9cf24f0",
-        ),
-        "docs/PHASE2-BUILDBEAT-PILOT-2026-08-25.md": (
-            "BuildBeat namespace real-directory pilot",
-            "WP2.8 Gate3 已由用户确认",
-            "a1a23c1e1abbd23ff248a1f782c9b5e7c1ddefa251bef7ff1da617014894e827",
-            "31bd73f175152a312f56c77a0d9bcd61b597a9a4ac07c75a3d747f32aa19e91c",
-            "bb5cf55a2f099ce96f941473af3bd7d452fe1aad",
-            "f181e3e5759ac692eed96f055111f05d49f7dd3d",
-            "84261c935eb6cda724e9840888e02fcce51a1b84",
-            "9cfda12cc3225db2e75ccd5990bb7d1df7f0359b",
-            "8ed14e83b43b8d960faad343d13b7aa8ea56dced",
-            "bd7fb59f9a99c4428377081cba25b294e30f685c",
-            "4ea29a94a3a29fa905ae99662359ec561298135d",
-            "69d6e8358f7fda03225c090d99b5647cae152183",
-            "6b32c53e4fd750770690a0bbe796638314cb792a",
-        ),
-        "docs/PHASE4-V1.20-PILOT-2026-08-25.md": (
-            "a136ff6f33d5814d36593f85a3b9ec2f1e223827",
-            "schema `2`，scaffold `v1.16`，CLI `1.16.3`",
-            "scaffold `v1.20` / CLI `1.20.0`",
-            "`main...HEAD` 的 diff 行数为 `0`",
-            "Shell 套件为 `222/222`",
-            "`pm/NOW.md` 引用根内不存在的 `lessons.md`",
-            "原仓零写入、零 stage、零 commit",
-            "不可外推",
-        ),
-        "docs/CAPABILITY-MATRIX.md": (
-            "四个可用面",
-            "v2 运行时面：`buildbeat-v2`",
-            "Skill 是入口",
-            "三组生命周期入口",
-            "Skill-only / 手工路径",
-            "legacy `solobaton@1.16.3`",
-            "BuildBeat `@haiyangbg/buildbeat@1.21.0`",
-            "Skill-only → CLI `doctor`",
-            "CLI `init/adopt` → Skill-only",
-            "CLI `upgrade` → Skill-only",
-            "Legacy npm v0",
-            "BuildBeat 1.21",
-            "Project runtime",
-        ),
-        "docs/LEGACY-V1.16-MIGRATION.md": (
-            "A. 继续 legacy 手工维护",
-            "B. 受控重建 schema 2 基线",
-            "不得手写 manifest",
-            "example/.buildbeat/manifest.json",
-            "本流程不授权部署、push、tag、GitHub Release、npm publish 或远端改名",
-            "不用破坏性 reset",
-        ),
-        "docs/ROADMAP.md": (
-            "2026-08-24 执行修订（生效）",
-            "[`EXECUTION-PLAN.md`](EXECUTION-PLAN.md)",
-            "一个 Builder 对一个工作包端到端负责",
-            "真实 schema 2 `v1.16 → v1.20` upgrade",
-            "WP4.1–WP4.2",
-            "WP4.3 scoped package、新仓库名与 `1.20.0` 外部分发已关闭",
-            "13. [x] 完成远端改名",
-            "WP4.3-RELEASE-EVIDENCE-2026-08-25.md",
-        ),
-        "docs/WP4.3-RELEASE-EVIDENCE-2026-08-25.md": (
-            "5aaa9e8ec96113970e7ce0ed0e43bec86a8743a0",
-            "32826832379",
-            "include=`refs/tags/v*`",
-            "rules=`update,deletion`",
-            '"bootstrap": "0.0.0"',
-            '"latest": "1.20.0"',
-            "sha512-Q9hcRNSwuhYulNR7+XxAyILSmujzhj01tDqHR+C8RgROSdP99O/oAhZgSpiHW441jdvCWPmnl4yDvtQGpfffUg==",
-            "1 个 verified registry signature",
-            "1 个 verified attestation",
-            "Git 可见状态完全一致",
-            "registry README",
-            "Require two-factor authentication and disallow bypass 2fa tokens (recommended)",
-            "1.16.1",
-            "1.16.2",
-            "1.16.3",
-            "不证明任何业务项目 Gate、部署、生产健康或常态流量",
-        ),
-        "docs/V1.21-RELEASE-EVIDENCE-2026-08-25.md": (
-            "ce69a05c8a42b9ac8d3cafbc4ed224f0bbf71a63",
-            "78031f68a8c16f0ef7c3bb9daceda19431db34cb",
-            "32864194006",
-            "32864196001",
-            "32864438692",
-            "include=`refs/tags/v*`",
-            "rules=`update,deletion`",
-            "latest=1.21.0",
-            "sha512-P9HluoPvb6/HJhh2IP3VLG3ig6kQ4aJKtkZeowcU6Virv9vGxgvulMnq9J7XN5dQNtcwaUZhfgLKR/Qi93e+wA==",
-            "1 个 verified registry signature",
-            "1 个 verified attestation",
-            "writesPerformed=false",
-            "Git 可见状态完全一致",
-            "不证明任何业务项目的 Gate、部署、生产健康或常态流量",
-        ),
-        "SKILL.md": (
-            "一个或多个端到端 Builder",
-            "不是人类岗位流水线",
-            "工作包所有权与 AI 专业视角",
-            "四个仪式",
-            "开工同步(7 步)",
-            "执行中同步(5 守则)",
-            "收工同步(7 步)",
-            "### 6.4 域回复格式",
-            "我继续做，暂不交棒",
-            "可选规范默认不生成",
-            "历史债务与接管边界",
-            "pendingPlaceholders",
-            "`--yes` 只复用这次确认",
-            "schema 2 机械 upgrade",
-            "`pm/decisions.md:<行号>`",
-            "buildbeat-multirepo-map:v1",
-            "检查结果怎么读",
-            "coverage.complete=false",
-            "docs/CAPABILITY-MATRIX.md",
-        ),
-        "templates/指挥台.md": (
-            "## 域回复怎么写",
-            "共同证据",
-            "检查结果怎么读",
-            "reason=limit|symlink|permission",
-            "coverage.complete=false",
-        ),
-        "templates/AGENTS.md": (
-            "Builder 端到端负责",
-            "不是人类岗位或审批链",
-            "开工/收工护栏",
-            "**域回复格式**",
-            "下一棒是",
-            "standards/DESIGN.md",
-            "buildbeat-multirepo-map:v1",
-        ),
-        "templates/pm/当期看板.md": (
-            "- **证据**:",
-            "- Gate1: pending",
-            "- Gate2: pending",
-            "- Gate3: pending",
-            "- Gate4: pending",
-            "pm/decisions.md:<行号>",
-        ),
-        "templates/pm/NOW.md": (
-            "`contracts/PROTOCOL.md`",
-        ),
-        "templates/contracts/PROTOCOL.md": (
-            "buildbeat-multirepo-map:v1",
-            "repo=<代码子仓1>|contract=contracts/PROTOCOL.md|deployment=<bus-baseline.json app 名或 n/a>",
-        ),
-        "templates/scripts/bus-check.sh": (
-            "--format=json",
-            'add_finding "gate.na_without_reason"',
-            'add_finding "gate.na_inconsistent"',
-            'add_finding "sync.multirepo_drift"',
-            'add_finding "evidence.missing"',
-            'add_finding "evidence.outside_archive"',
-            'add_finding "sync.scan_truncated"',
-            'add_finding "standards.invalid"',
-            'add_finding "stack.drift"',
-            'add_finding "stack.unverified"',
-            'add_finding "adr.status_invalid"',
-            "render_json_report",
-        ),
-        "src/constants.js": (
-            'OPTIONAL_TEMPLATE_PREFIXES = ["standards/", "pm/adr/"]',
-            '"standards/STACK.md"',
-            '"pm/adr/ADR-0000-template.md"',
-            "OUTPUT_SCHEMA_VERSION = 2",
-            "MANIFEST_SCHEMA_VERSION = 2",
-            'GITIGNORE_BEGIN_MARKER = "# >>> buildbeat managed >>>"',
-            '"<bus-baseline.json app 名或 n/a>"',
-            'LEGACY_GITIGNORE_BEGIN_MARKER = "# >>> solobaton managed >>>"',
-        ),
-        "src/cli.js": (
-            'token === "--yes"',
-            'token === "--force"',
-            "applyScaffold(plan, { now })",
-            "applyUpgrade(plan, { now })",
-            'code: "confirmation_required"',
-        ),
-        "src/upgrader.js": (
-            "export function buildUpgradePlan",
-            "export function applyUpgrade",
-            "function preflightExpectations",
-            "function rollback",
-            'command: "upgrade"',
-        ),
-        "src/writer.js": (
-            "function atomicWrite",
-            "function rollback",
-            "schemaVersion: MANIFEST_SCHEMA_VERSION",
-            "faultInjector",
-        ),
-        "templates/standards/CODE.md": (
-            "**Optional**",
-            "**AI write boundary**",
-            "**Status**: Draft",
-            "CODE-MUST-001",
-            "Secret",
-        ),
-        "templates/standards/STACK.md": (
-            "**Optional**",
-            "**AI write boundary**",
-            "**Status**: Draft",
-            "buildbeat-stack-baseline:v1",
-            "nodeConstraint=",
-            "lockfileKind=",
-            "dockerFromImage=",
-        ),
-        "templates/pm/adr/README.md": (
-            "Proposed / Accepted / Rejected / Superseded",
-            "推翻或替代此前 ADR",
-        ),
-        "templates/scripts/verify-status.sh": (
-            "--format=machine",
-            'emit_machine_finding "sync.l3_stale"',
-            'emit_machine_finding "sync.l3_unconfigured"',
-        ),
-        "tests/README.md": (
-            "expectedCoverageComplete",
-            "registered code/level pairs",
-            "plugin-marketplace.test.sh",
-            "isolated config/cache directories",
-            "both interoperability directions",
-        ),
-        ".claude-plugin/marketplace.json": (
-            '"name": "buildbeat-plugins"',
-            '"source": "./plugins/buildbeat"',
-        ),
-        "plugins/buildbeat/.claude-plugin/plugin.json": (
-            '"name": "buildbeat"',
-            '"version": "0.2.2"',
-            '"repository": "https://github.com/HaiYangBG1/BuildBeat"',
-            "claude-code-plugin-manifest.json",
-        ),
-        "plugins/buildbeat/README.md": (
-            "canonical files at the marketplace root",
-            "/buildbeat:buildbeat",
-        ),
-        "example/pm/一期-看板.md": (
-            "- Gate1: passed",
-            "- Gate4: passed",
-            "- **证据**:",
-        ),
-        "example/README.md": (
-            "- Gate1: pending",
-            "- Gate2: passed",
-            "- Gate3: blocked",
-            "- Gate4: n/a",
-            "Manifest 的教学边界",
-            "## 域回复示例",
-            "下一棒是测试视角",
-        ),
-        "lessons.md": (
-            "## 19. 域回复各说各话",
-            "已做 → 未做 → 下一步",
-        ),
-    }
-    for relative, fragments in contracts.items():
-        content = (ROOT / relative).read_text(encoding="utf-8")
-        for fragment in fragments:
-            if fragment not in content:
-                errors.append(f"{relative}: missing execution contract guard {fragment}")
-
-    cli_contract = (ROOT / "docs/CLI.md").read_text(encoding="utf-8")
-    for stale in (
-        "both changed → conflict with a three-way diff artifact",
-        "`uninstall --dry-run` will",
-        "render project facts with no canonical placeholders remaining",
-    ):
-        if stale in cli_contract:
-            errors.append(f"docs/CLI.md: superseded lifecycle contract remains: {stale}")
-    stale_phase0_claims = {
-        "docs/CHECKS.md": "implements only the legacy subset",
-        "tests/README.md": "Phase 0 bridge contract",
-    }
-    for relative, stale in stale_phase0_claims.items():
-        if stale in (ROOT / relative).read_text(encoding="utf-8"):
-            errors.append(f"{relative}: stale Phase 0 implementation claim remains")
-    return errors
-
-
-def bundled_scaffold_version() -> str | None:
-    """The frozen scaffold bundle version pinned in src/constants.js."""
-    constants = (ROOT / "src/constants.js").read_text(encoding="utf-8")
-    match = re.search(r'export const SCAFFOLD_VERSION = "(v\d+\.\d+)"', constants)
-    return match.group(1) if match else None
-
-
-def check_example_version() -> list[str]:
-    # The teaching example tracks the scaffold content bundle, which is frozen
-    # independently of the (now v2) package version.
-    scaffold_version = bundled_scaffold_version()
-    example = (ROOT / "example/BUILDBEAT.md").read_text(encoding="utf-8")
-    example_match = re.search(r"本项目使用 BuildBeat `(v\d+\.\d+)`", example)
-    if scaffold_version is None:
-        return ["src/constants.js: SCAFFOLD_VERSION must be a pinned v<major>.<minor> literal"]
-    if example_match is None:
-        return ["example/BUILDBEAT.md: no installed version found"]
-    if scaffold_version != example_match.group(1):
-        return [
-            "example/BUILDBEAT.md: installed version "
-            f"{example_match.group(1)} does not match the bundled scaffold {scaffold_version}"
-        ]
-    return []
-
-
-def check_example_manifest() -> list[str]:
-    errors: list[str] = []
-    relative = "example/.buildbeat/manifest.json"
-    path = ROOT / relative
-    try:
-        manifest = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        return [f"{relative}: invalid JSON: {error}"]
-
-    expected_top_level = {
-        "schemaVersion",
-        "scaffoldVersion",
-        "cliVersion",
-        "layout",
-        "installedAt",
-        "files",
-        "integrations",
-    }
-    if set(manifest) != expected_top_level:
-        errors.append(f"{relative}: top-level fields do not match schema 2")
-
-    package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
-    cli_version = package.get("version")
-    scaffold_version = bundled_scaffold_version()
-    if manifest.get("schemaVersion") != 2:
-        errors.append(f"{relative}: teaching manifest must use schema 2")
-    if manifest.get("cliVersion") != cli_version:
-        errors.append(f"{relative}: cliVersion must match package.json")
-    if manifest.get("scaffoldVersion") != scaffold_version:
-        errors.append(f"{relative}: scaffoldVersion must match the source bundle")
-    if manifest.get("layout") != "default":
-        errors.append(f"{relative}: teaching snapshot must use default layout")
-    if re.fullmatch(
-        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z",
-        str(manifest.get("installedAt", "")),
-    ) is None:
-        errors.append(f"{relative}: installedAt must be a canonical UTC timestamp")
-
-    marker = (ROOT / "example/BUILDBEAT.md").read_text(encoding="utf-8")
-    marker_match = re.search(r"本项目使用 BuildBeat `(v\d+\.\d+)`", marker)
-    if marker_match is None or marker_match.group(1) != manifest.get("scaffoldVersion"):
-        errors.append(f"{relative}: scaffoldVersion must match example/BUILDBEAT.md")
-
-    expected_files = {
-        "AGENTS.md": "replace-if-unmodified",
-        "ARCHITECTURE.md": "project-owned",
-        "BUILDBEAT.md": "replace-if-unmodified",
-        "CLAUDE.md": "replace-if-unmodified",
-        "contracts/PROTOCOL.md": "project-owned",
-        "pm/NOW.md": "project-owned",
-        "pm/decisions.md": "project-owned",
-        "pm/一期-看板.md": "project-owned",
-    }
-    files = manifest.get("files")
-    if not isinstance(files, dict):
-        errors.append(f"{relative}: files must be an object")
-        files = {}
-    if set(files) != set(expected_files):
-        errors.append(f"{relative}: teaching inventory must contain the documented 8 paths")
-    for project_relative, policy in expected_files.items():
-        record = files.get(project_relative)
-        if not isinstance(record, dict) or set(record) != {"policy", "baselineSha256"}:
-            errors.append(f"{relative}: invalid file record for {project_relative}")
-            continue
-        if record.get("policy") != policy:
-            errors.append(f"{relative}: wrong policy for {project_relative}")
-        target = ROOT / "example" / project_relative
-        if not target.is_file() or target.is_symlink():
-            errors.append(f"{relative}: baseline target must be a regular file: {project_relative}")
-            continue
-        actual_hash = hashlib.sha256(target.read_bytes()).hexdigest()
-        if record.get("baselineSha256") != actual_hash:
-            errors.append(f"{relative}: stale baselineSha256 for {project_relative}")
-
-    if manifest.get("integrations") != {"gitignore": None, "hooks": None}:
-        errors.append(f"{relative}: teaching integrations must keep gitignore/hooks null")
-
-    readme = (ROOT / "example/README.md").read_text(encoding="utf-8")
-    for fragment in (
-        "合成教学快照",
-        "不得复制本 manifest",
-        "这不是可用 `doctor` 证明健康的完整 CLI 安装",
-    ):
-        if fragment not in readme:
-            errors.append(f"example/README.md: missing manifest evidence boundary {fragment}")
-    return errors
-
-
-def check_phase4_audit() -> list[str]:
-    errors: list[str] = []
-    relative = "docs/PHASE4-STABILITY-AUDIT-2026-08-25.md"
-    audit = (ROOT / relative).read_text(encoding="utf-8")
-    statuses: dict[int, str] = {}
-    for gate in range(1, 13):
-        match = re.search(
-            rf"^\| {gate} \| `\[([x ])\]` \|",
-            audit,
-            re.MULTILINE,
-        )
-        if match is None:
-            errors.append(f"{relative}: missing unique checkbox row for roadmap gate {gate}")
-            continue
-        statuses[gate] = match.group(1)
-
-    for gate in range(1, 13):
-        if gate in statuses and statuses[gate] != "x":
-            errors.append(f"{relative}: roadmap gate {gate} has an unexpected status")
-    for fragment in (
-        "12 条源码/真实试点候选口径与后续 scoped 外部分发证据均已闭合",
-        "真实 schema 2 `v1.16 → v1.20` upgrade",
-        "WP4.3 外部分发均已关闭",
-        "WP4.3-RELEASE-EVIDENCE-2026-08-25.md",
-    ):
-        if fragment not in audit:
-            errors.append(f"{relative}: missing hard-gate evidence boundary {fragment}")
     return errors
 
 
@@ -1207,6 +652,7 @@ def check_publish_workflow() -> list[str]:
         "npm audit signatures",
         '@haiyangbg/buildbeat',
         'encoded_package="${package_name/\\//%2f}"',
+        'bin/buildbeat.js" --version',
     )
     for fragment in required_fragments:
         if fragment not in workflow:
@@ -1243,8 +689,8 @@ def check_publish_workflow() -> list[str]:
 def check_active_docs_currency() -> list[str]:
     """Active documents must describe the current distribution and contracts.
 
-    Every pattern here was found in a shipped document after 2.0.0 moved to
-    dist-tag latest; this keeps them from coming back."""
+    Every pattern here was found in a shipped document at some point; this
+    keeps them from coming back."""
     errors: list[str] = []
     compiled = [(re.compile(pattern), meaning) for pattern, meaning in STALE_ACTIVE_CLAIMS]
     for relative in ACTIVE_DOCS:
@@ -1267,8 +713,8 @@ def check_active_docs_currency() -> list[str]:
             length = len(line[len("description:"):].strip())
             if length > 1024:
                 errors.append(f"SKILL.md: frontmatter description is {length} characters; keep it under 1024")
-            if "buildbeat-v2" not in line:
-                errors.append("SKILL.md: frontmatter description must name the v2 runtime")
+            if "`buildbeat`" not in line:
+                errors.append("SKILL.md: frontmatter description must name the `buildbeat` runtime")
             break
     else:
         errors.append("SKILL.md: frontmatter description not found in the first lines")
@@ -1299,10 +745,6 @@ def main() -> int:
     errors.extend(check_critical_files())
     errors.extend(check_claude_plugin())
     errors.extend(check_cli_package())
-    errors.extend(check_execution_contracts())
-    errors.extend(check_example_version())
-    errors.extend(check_example_manifest())
-    errors.extend(check_phase4_audit())
     errors.extend(check_publish_workflow())
     errors.extend(check_workflow_action_pins())
     errors.extend(check_repository_governance())
@@ -1316,7 +758,7 @@ def main() -> int:
 
     print(
         f"Documentation checks passed: {len(paths)} Markdown files, "
-        "relative links, bilingual README shape, frontmatter, critical files, example manifest hashes, phase-4 hard-gate status, CLI package metadata, repository governance, and active-document currency."
+        "relative links, bilingual README shape, frontmatter, critical and removed files, plugin boundary, package metadata, publish workflow, repository governance, and active-document currency."
     )
     return 0
 

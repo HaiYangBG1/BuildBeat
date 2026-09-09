@@ -16,15 +16,9 @@
 | CI 与测试 | <CI 与测试命令> | CI workflow / 测试配置 |
 | 供应链 | <许可证 / 供应链约束> | LICENSE / lockfile / 安全策略 |
 
-## 可核对基线（bus-check v1）
+## 可核对事实
 
-下面的注释块是仓库事实的精确比对入口，不从上表自然语言猜值。每个键至少一行；有多个已观测值时重复该键；确认不适用时将唯一值填为 n/a。Node 值逐字对应 .nvmrc 或 package.json 的 engines.node；lockfile 填文件名；容器填 Dockerfile FROM 的镜像令牌。
-
-<!-- buildbeat-stack-baseline:v1
-nodeConstraint=<.nvmrc / engines.node 的精确值；多值重复本行；无则 n/a>
-lockfileKind=<lockfile 文件名；多类重复本行；无则 n/a>
-dockerFromImage=<Dockerfile FROM 镜像；多值重复本行；无则 n/a>
--->
+上表每一行都要能指回一个仓库事实（`.nvmrc` / `engines.node`、lockfile 文件名、Dockerfile `FROM` 镜像等）。不确定的值保留占位符或标 `n/a`，不猜。Run 配置里的 `requires:`（command / probe）是这些事实的可执行形态，起跑前 fail-closed。
 
 ## Rules
 

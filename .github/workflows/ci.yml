@@ -22,13 +22,13 @@ jobs:
           fetch-depth: 0
 
       - name: Check Shell syntax
-        run: bash -n .github/scripts/*.sh templates/scripts/*.sh tests/*.sh pilot/*.sh
+        run: bash -n .github/scripts/*.sh tests/*.sh pilot/*.sh
 
       - name: Run ShellCheck
         run: |
           sudo apt-get update
           sudo apt-get install --yes shellcheck
-          shellcheck -x .github/scripts/*.sh templates/scripts/*.sh tests/*.sh pilot/*.sh
+          shellcheck -x .github/scripts/*.sh tests/*.sh pilot/*.sh
 
       - name: Check documentation
         run: bash tests/check-docs.sh
@@ -59,9 +59,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Run script regression suite
-        run: bash tests/test-scripts.sh
 
       - name: Run M-1 pilot driver regression suite
         run: bash tests/pilot-loop.test.sh

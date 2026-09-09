@@ -8,14 +8,14 @@
 
 `status`/`inbox` 出现 `LEDGER CORRUPTED after seq=N (<原因>)`：台账在最后一条合法事件处截断视图并**拒绝追加**——恢复是人的决定，不静默修复。
 
-1. `buildbeat-v2 events --repo . --run RUN-X` 看合法前缀；`replay` 校验归约；
+1. `buildbeat events --repo . --run RUN-X` 看合法前缀；`replay` 校验归约；
 2. 若坏的是在途 Run：通常直接废弃该 Run（worktree 里的候选仍在分支上可读），新起一个 Run；
 3. 若人为改过台账文件：从 Git 面事实重建判断，不要手补事件行。
 
 ### Run 进程被杀 / 机器重启
 
 ```bash
-buildbeat-v2 resume --config <run-config.yaml>
+buildbeat resume --config <run-config.yaml>
 ```
 
 在途步会以 `crashed` 关闭（事实落账），然后**重跑该步本身**（beta.3 改）：进程死掉不说明候选有问题，丢失的那次尝试照常计入该步预算，预算耗尽即停人工。此前的语义是把 crash 当步骤失败走 failure 边——真实事故（deploy-18）：宿主工具超时杀掉 verify worker，crash 被路由去 fix，fixer 面对零 verifier 证据白烧一轮。工作树脏了仍然先停人工。带批准恢复时会做 candidate/plan 新鲜度检查，变了即 `APPROVAL_STALE` 转人工。恢复不了就删 runtime 重跑——候选分支与 Git 面记录不丢。
@@ -27,7 +27,7 @@ buildbeat-v2 resume --config <run-config.yaml>
 上一个 Run 异常退出可能留下仓库锁：确认真的没有活动 Run 后
 
 ```bash
-buildbeat-v2 stop --repo . --run RUN-X --reason "crashed; releasing lock"
+buildbeat stop --repo . --run RUN-X --reason "crashed; releasing lock"
 ```
 
 `stop` 落终态与理由；单纯锁残留也可删 `.buildbeat/runtime/` 后重来。
@@ -55,12 +55,12 @@ rm -rf .buildbeat/runtime/
 
 ## 诊断入口
 
-`buildbeat-v2 doctor --config <run-config>`：配置可解析、workflow 无出口环、adapter env 姿态、digest 可算、supersede 与 stall 阈值、通知通道与环境变量是否就位。`events`/`replay`/`metrics` 全部只读，可随时跑。
+`buildbeat doctor --config <run-config>`：配置可解析、workflow 无出口环、adapter env 姿态、digest 可算、supersede 与 stall 阈值、通知通道与环境变量是否就位。`events`/`replay`/`metrics` 全部只读，可随时跑。
 
 ## "是不是卡住了"
 
 > 自 2.0.0-beta.4（迭代 08）起。
-先看 `buildbeat-v2 status --repo . --run <RUN>`：在飞步骤有已用时间、同仓历史中位数、worker 命令、最后一次输出距今多久与末三行输出。无输出超过阈值（默认 15 分钟，`--stall-after <分钟>` 或 run 配置 `stallAfterMs`）标 `STALLED`——**只标不杀**。判断口径：
+先看 `buildbeat status --repo . --run <RUN>`：在飞步骤有已用时间、同仓历史中位数、worker 命令、最后一次输出距今多久与末三行输出。无输出超过阈值（默认 15 分钟，`--stall-after <分钟>` 或 run 配置 `stallAfterMs`）标 `STALLED`——**只标不杀**。判断口径：
 
 - 有输出在持续 → 等（对照 `typical` 看是否已远超中位数）；
 - STALLED 且 worker 是 Agent CLI → 多半在长推理或等一个永远不来的交互，`stop --reason` 后按崩溃恢复重跑（中断的步重跑自身）；
@@ -71,7 +71,7 @@ rm -rf .buildbeat/runtime/
 ## 打扫卫生：gc
 
 > 自 2.0.0-beta.4（迭代 08）起。
-终态 Run 会留下工作树、`run/*` 分支和偶尔的锁。`buildbeat-v2 gc --repo .` 默认只出计划，`--apply true` 执行：
+终态 Run 会留下工作树、`run/*` 分支和偶尔的锁。`buildbeat gc --repo .` 默认只出计划，`--apply true` 执行：
 
 - 只动**终态且已压成 run-record** 的 Run（Git 面有账才动运行时面）；
 - 工作树可删（提交都在分支上）；脏工作树不带 `--force true` 不动；

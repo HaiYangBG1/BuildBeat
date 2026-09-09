@@ -12,7 +12,7 @@ import { acceptArtifact, approveRun } from "../src/v2/runtime/decisions.js";
 import { startRun } from "../src/v2/runtime/orchestrator.js";
 import { computeOverview } from "../src/v2/runtime/overview.js";
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat-v2.js");
+const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 const WORKFLOW = loadWorkflow(PRESET_PATH);
 

@@ -8,7 +8,7 @@ import test from "node:test";
 import { EnvelopeError, loadEnvelope, nextAttemptId, substituteVars } from "../src/v2/runtime/envelope.js";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat-v2.js");
+const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 
 function git(cwd, args) {

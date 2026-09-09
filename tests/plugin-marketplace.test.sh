@@ -67,7 +67,6 @@ pass "marketplace and plugin manifests have the expected bounded shape"
 expect_link "SKILL.md" "../../SKILL.md"
 expect_link "templates" "../../templates"
 expect_link "docs" "../../docs"
-expect_link "example" "../../example"
 expect_link "lessons.md" "../../lessons.md"
 expect_link "LICENSE" "../../LICENSE"
 expect_link "CHANGELOG.md" "../../CHANGELOG.md"
@@ -113,7 +112,7 @@ plugins = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 matching = [item for item in plugins if item.get("id") == "buildbeat@buildbeat-plugins"]
 assert len(matching) == 1
 plugin = matching[0]
-assert plugin.get("version") == "0.2.2"
+assert plugin.get("version") == "0.3.0"
 assert plugin.get("scope") == "user"
 assert plugin.get("enabled") is True
 
@@ -131,15 +130,13 @@ for relative in SKILL.md CHANGELOG.md LICENSE lessons.md; do
     fail "$relative was not dereferenced into a regular cached file"
   fi
 done
-for relative in templates docs example; do
+for relative in templates docs; do
   if [ ! -d "$INSTALL_PATH/$relative" ] || [ -L "$INSTALL_PATH/$relative" ]; then
     fail "$relative was not dereferenced into a regular cached directory"
   fi
 done
-[ -f "$INSTALL_PATH/docs/CLI.md" ] \
+[ -f "$INSTALL_PATH/docs/v2/guide/01-quickstart.md" ] \
   || fail "installed plugin is missing reference documentation"
-[ -f "$INSTALL_PATH/example/README.md" ] \
-  || fail "installed plugin is missing the teaching example"
 [ ! -e "$INSTALL_PATH/bin" ] \
   || fail "installed plugin unexpectedly exposes the npm CLI bin directory"
 if find "$INSTALL_PATH" -type l -print -quit | grep -q .; then

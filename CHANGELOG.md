@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+> **3.0.0（破坏性变更）**：v1 已移除。需要 v1 文件总线或 `buildbeat doctor/init/adopt/upgrade` 的项目请停留在 2.0.2；3.0.0 起仓库与包只描述一个产品。
+
+- **可执行文件只剩 `buildbeat`**：它就是运行时（原 `buildbeat-v2`）；`buildbeat-v2` 与 `solobaton` 两个入口删除。新增 `buildbeat --version`。所有文档、模板、信封、`overview` / `inbox` / 通知里可复制的下一句命令统一改名。
+- **删除 v1 面**：生命周期 CLI 源码（`src/cli.js`、`constants.js`、`doctor.js`、`planner.js`、`project.js`、`upgrader.js`、`writer.js`）、文件总线模板（`templates/AGENTS.md` 等根模板、`pm/NOW.md`、当期看板、`pm/status/`、`pm/changes/`、`templates/scripts/` 五个脚本、`.claude/agents/reviewer.md`）、教学沙盘 `example/`、`docs/CLI.md`、`docs/CHECKS.md`、`docs/LEGACY-V1.16-MIGRATION.md`、`docs/v2/guide/08-migration-v1.md`、`legacy-four-gates` 风险预设，以及它们的测试（`tests/cli.test.js`、`test-scripts.sh`、`skill-only.test.sh`、`tests/fixtures/`）。保留并改写为运行时口径的模板：`pm/decisions.md`、`pm/adr/`、`standards/`、`contracts/PROTOCOL.md`、`ARCHITECTURE.md`、`gitignore.template`。
+- **SKILL.md 重写为单一产品**：§3 项目文件布局、§4 十一条协作规则（指向 `templates/v2/AGENTS.md`）、§5 风险预设决定人批点、§6 三个仪式与读数表、§8 Bootstrap 只剩一条路（含验证命令与 worker 工具自查、通知一问）、§8.5 接管存量项目按 `allowedPaths` 划边界；frontmatter 触发词去掉旧名。`lessons.md` 22 条：只对文件总线成立的 3 条删除，其余解药改指运行时机制并重新编号。
+- **文档**：README 中英去掉 v1 折叠段与迁移指南链接；能力矩阵改为三个可用面；docs 索引、发布手册、贡献指南、tests/README、插件 README 同步；RFC-0001 §6 与 RFC-0003 预设表加 2026-09-09 生效修订注，正文保留。带日期的历史文件（试点、路线、发布证据、`CHANGELOG-v1.md`）原样留在仓库，不进包。
+- **守卫**：`tests/check_docs.py` 重写——删除面的路径不得回归（`REMOVED_PATHS`），现行文档不得再出现旧可执行文件名、旧产品名、文件总线与固定 Gate 词汇；`package.json` 只允许一个 bin；插件版本 0.2.2 → 0.3.0（不再链接 `example/`）。CI 去掉文件总线脚本套件，作业名不变；发布 workflow 只探测 `buildbeat`。
+- **体积**：npm 包 137 → 85 个文件，压缩约 340 kB → 212 kB，解压约 963 kB → 578 kB。
+
 - **CHANGELOG 拆分**：v1 系列条目（v1 ～ v1.21.0，约 55 kB，占原文件近三分之二）原文不改地移到仓库根 [`CHANGELOG-v1.md`](https://github.com/HaiYangBG1/BuildBeat/blob/main/CHANGELOG-v1.md)，根 `CHANGELOG.md` 只保留 v2 系列并在末尾指向它；新文件不在 `package.json` 的 `files` 里，不随 npm 包分发，`tests/pack-firstrun.test.sh` 断言包内有 `CHANGELOG.md`、没有 `CHANGELOG-v1.md`。版本史仍只在 CHANGELOG 一处维护，只是按大版本分了两个文件。
 
 ## v2.0.2 — 2026-09-09（补丁：npm 包不再携带历史文档）
@@ -40,7 +49,7 @@
 > **发布状态**：`@haiyangbg/buildbeat@2.0.0` 已于 2026-09-05 从 `main`（PR #22，tip `95e780e`，tag `v2.0.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 33974396871，双 job success；所有者授权「正式发布」）。独立回读（直连 npmjs.org）：`latest` = 2.0.0、integrity、attestation、隔离安装、`doctor` 有界 JSON 全过，GitHub Release v2.0.0 标 Latest，证据见 [`docs/V2.0.0-RELEASE-EVIDENCE-2026-09-05.md`](docs/V2.0.0-RELEASE-EVIDENCE-2026-09-05.md)。
 
 - **内容与 `2.0.0-beta.5` 同源**（迭代 01～09 的全部 v2 运行时、Skill §0.5 驾驶手册、`templates/v2/`、十件套指南、lessons #1–#25），外加 README 中英文的「当前主线是 v2」段与 `docs/CLI.md` 的 2.0.0 状态行。
-- **对拷出项目意味着什么**：v1 文件总线、`buildbeat` 生命周期命令（`doctor` / `init` / `adopt` / `upgrade` / `version`）与安全边界**不变**，schema 仍是 2；`npm install --global @haiyangbg/buildbeat@latest` 现在同时给出 `buildbeat` 与 `buildbeat-v2`。骨架版本仍是 `v1.21`（模板未变，`buildbeat upgrade` 对 1.21 骨架报 up-to-date，不需要 `--major`）；manifest 里的 `cliVersion` 只是记录，不触发升级。v2 运行时是可选叠加：按 [`docs/v2/guide/08-migration-v1.md`](docs/v2/guide/08-migration-v1.md) 建 `delivery/work/` 与 run 配置即可，不动现有 `pm/` 与 `contracts/`。
+- **对拷出项目意味着什么**：v1 文件总线、`buildbeat` 生命周期命令（`doctor` / `init` / `adopt` / `upgrade` / `version`）与安全边界**不变**，schema 仍是 2；`npm install --global @haiyangbg/buildbeat@latest` 现在同时给出 `buildbeat` 与 `buildbeat-v2`。骨架版本仍是 `v1.21`（模板未变，`buildbeat upgrade` 对 1.21 骨架报 up-to-date，不需要 `--major`）；manifest 里的 `cliVersion` 只是记录，不触发升级。v2 运行时是可选叠加：按 `docs/v2/guide/08-migration-v1.md`（已于 3.0.0 移除）建 `delivery/work/` 与 run 配置即可，不动现有 `pm/` 与 `contracts/`。
 - **分发口径**：`latest` 从 1.21.0 切到 2.0.0；`next` 保留给后续预发布；旧 `solobaton` 包不变。
 
 ## v2.0.0-beta.5 — 2026-09-05（迭代 09：预算是刹车、故障分开算、成本看得见）

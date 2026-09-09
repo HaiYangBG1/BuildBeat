@@ -11,9 +11,6 @@
 *.key
 *.pem
 
-# verify-status 的「上次全绿」标记(本地实查产物,不入 git)
-.last-green-*
-
 # BuildBeat v2 运行时面与隔离工作树(可随时整删重建;不入 git)
 # 同时让 rg / 尊重 .gitignore 的工具不再走进旧工作树;vitest / jest 等要另配 exclude,见 docs/v2/guide/02-workflow-guide.md
 .buildbeat/runtime/
