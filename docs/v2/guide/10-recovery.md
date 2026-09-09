@@ -1,5 +1,7 @@
 # 故障恢复手册
 
+**简体中文** | [English](10-recovery.en.md)
+
 设计前提（[`V2-PLAN.md`](../../V2-PLAN.md) 不变量 23）：**`.buildbeat/runtime/` 整个目录随时可删**——已接受工件、Decision、Intent 草稿与分诊、已终结 Run 的压实记录全部活在 Git 面。"删了重建"是默认排障手段，不是最后手段。
 
 ## 症状 → 处置

@@ -1,5 +1,7 @@
 # Evidence 指南
 
+**简体中文** | [English](06-evidence-guide.en.md)
+
 权威：[`RFC-0002 §4`](../RFC-0002-domain-model.md)；实现：`src/v2/evidence/collector.js`、`src/v2/observe/`。核心：**证据是 Runner 回读到的事实，不是 Worker 的自述**。
 
 ## 证据记录的形状
