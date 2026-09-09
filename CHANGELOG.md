@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- **英文指南补齐四篇**：快速开始、Human Approval、Evidence、故障恢复各加 `.en.md`（与中文逐节对应，互相加语言切换行）；指南索引、docs 总入口、英文 README 指向英文版。快速开始安装注释里的 `BuildBeat v2 runtime` 改为 3.0.0 实际打印的 `BuildBeat runtime`，信封存在性说明去掉版本号。
 - **示例项目回来了**：`example/` 现在是虚构单仓项目「简账」跑完一个 Work 的快照——填好的 `AGENTS.md` / `指挥台.md` / `BUILDBEAT.md` / `pm/decisions.md`、通知与 observe 配置样例、带项目环境事实的信封、完整的 `delivery/work/WORK-EXPORT-DATE-FILTER/`（intent / plan / run-config / workflow 副本）以及运行时真跑一遍得到的 `decisions.jsonl` 与 `run-record.json`，外加应用本体与真实 `npm test`。随 npm 包与 Claude 插件分发；`tests/example-firstrun.test.js` 锁住工件一致性并把原样拷贝再跑到合并决定。README、docs 索引、SKILL §8.3 指向它。
 
 ## v3.0.0 — 2026-09-09（大版本：只剩一个产品，v1 移除）

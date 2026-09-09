@@ -1,5 +1,7 @@
 # 快速开始：第一个 Run
 
+**简体中文** | [English](01-quickstart.en.md)
+
 目标：在一个真实 Git 仓库里，让 v2 Runner 驱动 Build→Verify→Review 自动跑完，**停在合并决定**，由你带着证据拍板。下面的顺序是固定的：安装 → 准备工作项 → 写 run 配置 → 接受计划 → doctor → start → 看证据、拍板。每一步都写了"成功是什么样"。耗时取决于你的 worker 与任务，本文不给承诺数字。
 
 > 在 AI 会话里用 BuildBeat 的人不需要手敲这些命令：`SKILL.md` §0.5 是给会话读的驾驶手册，你说「开工 / 当前进度 / 批准」即可。本文给的是会话背后跑的东西，方便你核对。
@@ -8,12 +10,12 @@
 
 ```bash
 npm install --global @haiyangbg/buildbeat@latest
-buildbeat | head -3    # 打印 "BuildBeat v2 runtime" 与用法即安装成功
+buildbeat | head -3    # 打印 "BuildBeat runtime" 与用法即安装成功
 ```
 
 稳定版走 `@latest`，可执行文件只有一个：`buildbeat`（本文用的运行时）。预发布才用 `@next`。要求 Node ≥ 20、Git、bash，零运行时依赖。
 
-> 下文用到的 `templates/v2/envelope/` 与 run 配置 `env:` 透传修复自 2.0.1 起随包分发。装好后确认 `$(npm root -g)/@haiyangbg/buildbeat/templates/v2/envelope/` 存在再继续；不存在说明装到的是 2.0.0，先 `npm install --global @haiyangbg/buildbeat@latest` 更新。
+> 继续之前确认 `$(npm root -g)/@haiyangbg/buildbeat/templates/v2/envelope/` 存在；不存在就重新 `npm install --global @haiyangbg/buildbeat@latest`。
 
 ## 1. 准备工作项（Git 面）
 

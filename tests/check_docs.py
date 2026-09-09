@@ -28,14 +28,18 @@ ACTIVE_DOCS = (
     "docs/v2/guide/README.md",
     "docs/v2/guide/00-how-to-talk.md",
     "docs/v2/guide/01-quickstart.md",
+    "docs/v2/guide/01-quickstart.en.md",
     "docs/v2/guide/02-workflow-guide.md",
     "docs/v2/guide/03-policy-guide.md",
     "docs/v2/guide/04-adapter-guide.md",
     "docs/v2/guide/05-worker-contract.md",
     "docs/v2/guide/06-evidence-guide.md",
+    "docs/v2/guide/06-evidence-guide.en.md",
     "docs/v2/guide/07-approval-guide.md",
+    "docs/v2/guide/07-approval-guide.en.md",
     "docs/v2/guide/09-security-boundaries.md",
     "docs/v2/guide/10-recovery.md",
+    "docs/v2/guide/10-recovery.en.md",
     "docs/v2/guide/11-session-handoff.md",
     "docs/v2/guide/11-session-handoff.en.md",
     "templates/v2/AGENTS.md",
@@ -269,14 +273,14 @@ def check_readme_shape() -> list[str]:
 
     # A homepage must lead to usable instructions and disclose the local
     # runtime boundary; links are checked for existence elsewhere.
-    for filename, content, handoff in (
-        ("README.md", zh, "docs/v2/guide/11-session-handoff.md"),
-        ("README.en.md", en, "docs/v2/guide/11-session-handoff.en.md"),
+    for filename, content, suffix in (
+        ("README.md", zh, ".md"),
+        ("README.en.md", en, ".en.md"),
     ):
         targets = set(MARKDOWN_LINK.findall(content))
         for target in (
-            "SKILL.md", "docs/v2/guide/01-quickstart.md", handoff,
-            "docs/CAPABILITY-MATRIX.md", "docs/v2/guide/10-recovery.md",
+            "SKILL.md", f"docs/v2/guide/01-quickstart{suffix}", f"docs/v2/guide/11-session-handoff{suffix}",
+            "docs/CAPABILITY-MATRIX.md", f"docs/v2/guide/10-recovery{suffix}",
             "docs/v2/guide/09-security-boundaries.md", "CONTRIBUTING.md", "LICENSE",
         ):
             if target not in targets:

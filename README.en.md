@@ -7,7 +7,7 @@ Context in files. Collaboration through Git. Work keeps moving.
 
 BuildBeat is a Git-based AI delivery workflow for humans and AI sessions. Goals, plans, decisions, and delivery records stay in the project, providing a basis for continuing when models, tools, sessions, or the person doing the work change. A build, verify, review, and fix loop moves execution forward; progress and evidence are read back by the kernel from Git and real commands, never taken from a session's own account; key decisions remain human.
 
-[User guides (Chinese)](docs/v2/guide/README.md) · [Session handoffs](docs/v2/guide/11-session-handoff.en.md) · [npm](https://www.npmjs.com/package/@haiyangbg/buildbeat) · [CI](https://github.com/HaiYangBG1/BuildBeat/actions/workflows/ci.yml) · [MIT](LICENSE)
+[Quickstart](docs/v2/guide/01-quickstart.en.md) · [Session handoffs](docs/v2/guide/11-session-handoff.en.md) · [npm](https://www.npmjs.com/package/@haiyangbg/buildbeat) · [CI](https://github.com/HaiYangBG1/BuildBeat/actions/workflows/ci.yml) · [MIT](LICENSE)
 
 ## Let go of that irreplaceable chat
 
@@ -37,7 +37,7 @@ Git manages project facts that need to last. Local files hold execution state. B
 | `.buildbeat/runtime/` | In-flight events, checkpoints, locks, and raw logs | Local and excluded from Git; needed to recover an active Run |
 | `.buildbeat/worktrees/` | Each Run's isolated working tree | Preserves candidate code and the working state; keep it when clearing chats |
 
-Filesystem storage does not mean every file belongs in Git. Secrets stay in a protected local environment. Terminal records retain evidence digests and references; retain raw logs separately when the project requires them. See the [evidence guide (Chinese)](docs/v2/guide/06-evidence-guide.md).
+Filesystem storage does not mean every file belongs in Git. Secrets stay in a protected local environment. Terminal records retain evidence digests and references; retain raw logs separately when the project requires them. See the [evidence guide](docs/v2/guide/06-evidence-guide.en.md).
 
 ## Different ways to continue the same work
 
@@ -105,7 +105,7 @@ npm install --global @haiyangbg/buildbeat@latest
 
 > Set up BuildBeat for this project. Inspect the code and existing constraints first, then prepare context and execution configuration for the first piece of work.
 
-The session inspects the project and prepares a goal, plan, verification commands, and Worker configuration. Execution starts after your acceptance. See the [quickstart](docs/v2/guide/01-quickstart.md) and the [example project](example/README.md) (Chinese).
+The session inspects the project and prepares a goal, plan, verification commands, and Worker configuration. Execution starts after your acceptance. See the [quickstart](docs/v2/guide/01-quickstart.en.md) and the [example project](example/README.md) (Chinese).
 
 **3. Try a handoff.** Once work records are saved, close the old session and open one without its chat history. Or synchronize the records and candidate so another authorized teammate can take over with their own tool:
 
@@ -148,6 +148,6 @@ Teams collaborate through a shared Git repository and project agreements. BuildB
 
 - [Documentation index](docs/README.md): current guides, specifications, and historical records (Chinese).
 - [Capability matrix](docs/CAPABILITY-MATRIX.md): manual protocol, runtime, plugin, and verification scope (Chinese).
-- [Session handoffs](docs/v2/guide/11-session-handoff.en.md) · [Run recovery](docs/v2/guide/10-recovery.md) · [Approval and triage](docs/v2/guide/07-approval-guide.md) (last two in Chinese).
+- [Session handoffs](docs/v2/guide/11-session-handoff.en.md) · [Run recovery](docs/v2/guide/10-recovery.en.md) · [Approval and triage](docs/v2/guide/07-approval-guide.en.md) · [Evidence](docs/v2/guide/06-evidence-guide.en.md).
 - [Skill](SKILL.md): how a session uses BuildBeat; [lessons](lessons.md): the real incidents behind its mechanisms (Chinese).
 - [CHANGELOG](CHANGELOG.md) (Chinese) · [Contributing](CONTRIBUTING.md) · [MIT license](LICENSE).

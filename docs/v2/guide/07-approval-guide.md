@@ -1,5 +1,7 @@
 # Human Approval 指南
 
+**简体中文** | [English](07-approval-guide.en.md)
+
 权威：[`RFC-0003 §5`](../RFC-0003-workflow-policy.md)；实现：`src/v2/runtime/decisions.js`。原则：**人批的是一个 digest 绑定的对象，不是一句"可以了"**。
 
 ## 批准绑定什么

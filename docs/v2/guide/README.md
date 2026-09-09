@@ -7,7 +7,7 @@
 | 文档 | 一句话 |
 |---|---|
 | [怎么和会话说话](00-how-to-talk.md) | **给用户看的**：项目从未开始到换期，每个阶段你说什么、会话做什么、你得到什么 |
-| [快速开始](01-quickstart.md) | 第一个 Run：装 `@latest` → 工作项与 run 配置 → accept → doctor → start → 看证据拍板；含失败分支 |
+| [快速开始](01-quickstart.md) · [English](01-quickstart.en.md) | 第一个 Run：装 `@latest` → 工作项与 run 配置 → accept → doctor → start → 看证据拍板；含失败分支 |
 | [`templates/v2/`](../../../templates/v2/AGENTS.md) | 项目装载入口（AGENTS / CLAUDE / 指挥台 / BUILDBEAT 标记）、run 配置样板、信封 prompt 与 worker 包装 |
 
 在 AI 会话里用的人只需读第 0 篇；会话读 `SKILL.md` §0.5 驾驶手册。
@@ -16,10 +16,10 @@
 
 | 文档 | 一句话 |
 |---|---|
-| [Human Approval 指南](07-approval-guide.md) | inbox / approve / stale；接受、批准某转换、合并决定五词各指什么；分诊门；等待要能找到人；overview |
-| [Evidence 指南](06-evidence-guide.md) | 回读制证据、状态/等级、UNVERIFIED 文化、observe |
+| [Human Approval 指南](07-approval-guide.md) · [English](07-approval-guide.en.md) | inbox / approve / stale；接受、批准某转换、合并决定五词各指什么；分诊门；等待要能找到人；overview |
+| [Evidence 指南](06-evidence-guide.md) · [English](06-evidence-guide.en.md) | 回读制证据、状态/等级、UNVERIFIED 文化、observe |
 | [跨会话与团队接续](11-session-handoff.md) · [English](11-session-handoff.en.md) | 上下文落盘、关闭旧聊天、新成员接手、跨工具与跨机器边界 |
-| [故障恢复手册](10-recovery.md) | 台账损坏、Run 中断、infra 停人、锁、runtime 全删重建、gc |
+| [故障恢复手册](10-recovery.md) · [English](10-recovery.en.md) | 台账损坏、Run 中断、infra 停人、锁、runtime 全删重建、gc |
 
 ## 配置参考
 

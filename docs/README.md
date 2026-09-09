@@ -7,7 +7,7 @@
 | 你要做什么 | 读 |
 |---|---|
 | 第一次用，在 AI 会话里 | [`v2/guide/00-how-to-talk.md`](v2/guide/00-how-to-talk.md) → 会话读 [`SKILL.md`](../SKILL.md) §0.5 |
-| 第一次用，自己敲命令核对 | [`v2/guide/01-quickstart.md`](v2/guide/01-quickstart.md) |
+| 第一次用，自己敲命令核对 | [`v2/guide/01-quickstart.md`](v2/guide/01-quickstart.md) · [English](v2/guide/01-quickstart.en.md) |
 | 指南索引（日常 / 配置） | [`v2/guide/README.md`](v2/guide/README.md) |
 | 关闭旧会话后继续，或由其他成员/工具接手 | [`跨会话接续`](v2/guide/11-session-handoff.md) · [English](v2/guide/11-session-handoff.en.md) |
 | 三个可用面各能做什么（Skill-only / 运行时 / 插件） | [`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) |
