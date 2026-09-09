@@ -1,6 +1,6 @@
 # Changelog — v1 系列（2026-06-10 ～ 2026-08-25）
 
-> 从根 [`CHANGELOG.md`](CHANGELOG.md) 拆出的 v1 系列条目（v1 ～ v1.21.0），原文未改、倒序；v2 系列在根 `CHANGELOG.md`。本文件只保存在仓库，不随 npm 包分发。v1 生命周期 CLI（`buildbeat doctor/init/adopt/upgrade`）与骨架 `v1.21` 自 2.0.0 起随同一个包分发且未变，合同见 [`docs/CLI.md`](docs/CLI.md)。
+> 从根 [`CHANGELOG.md`](CHANGELOG.md) 拆出的 v1 系列条目（v1 ～ v1.21.0），原文未改、倒序；v2 系列在根 `CHANGELOG.md`。本文件只保存在仓库，不随 npm 包分发。v1 生命周期 CLI（`buildbeat doctor/init/adopt/upgrade`）与骨架 `v1.21` 自 2.0.0 起随同一个包分发，于 3.0.0 移除；最后一个带它们的版本是 2.0.2。
 
 ## v1.21.0 — 2026-08-25
 

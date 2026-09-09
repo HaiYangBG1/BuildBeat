@@ -12,7 +12,7 @@ providers:
     schedule: manual
     evidence:
       kind: drift
-      subject: solobaton-docs
+      subject: buildbeat-docs
     severity:
       failed: error
       unverified: warn

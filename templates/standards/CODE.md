@@ -20,4 +20,4 @@
 
 ## 偏离规则
 
-MUST 偏离必须在 Gate 前形成真实决策；SHOULD 偏离需在 Review 证据中写明理由；MAY 不构成阻断项。
+MUST 偏离必须在人批的转换（plan / merge / release）前形成真实决策；SHOULD 偏离需在 Review 证据中写明理由；MAY 不构成阻断项。

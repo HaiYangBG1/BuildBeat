@@ -1,6 +1,6 @@
 # BuildBeat v2 run 配置样板。拷到 delivery/work/<WORK-ID>/run-config.yaml 后改 work / run / allowedPaths / workers。
 # 路径相对本文件解析。严格 YAML 子集：只有块列表与块映射，无行内 [] / {}、无锚点、注释必须独占一行。
-# 起跑前：buildbeat-v2 doctor --config <本文件>；起跑：buildbeat-v2 start --config <本文件> --attempt new
+# 起跑前：buildbeat doctor --config <本文件>；起跑：buildbeat start --config <本文件> --attempt new
 repo: ../../..
 work: WORK-X
 # 家族名；--attempt new 自动编成 RUN-X-01/02…

@@ -66,7 +66,7 @@ These are available AI perspectives, not mandatory human-role handoffs or a requ
 
 ## Put the work in a Loop
 
-After the required plan acceptance, `buildbeat-v2` calls configured Workers in an isolated Git worktree to implement, verify, review, and fix the change. Review is performed by a fresh-context, read-only reviewer worker; any write to the worktree is caught by a before/after snapshot comparison and recorded as a failure.
+After the required plan acceptance, `buildbeat` calls configured Workers in an isolated Git worktree to implement, verify, review, and fix the change. Review is performed by a fresh-context, read-only reviewer worker; any write to the worktree is caught by a before/after snapshot comparison and recorded as a failure.
 
 ```mermaid
 flowchart LR
@@ -92,20 +92,20 @@ The merge decision means the candidate is ready for a merge. A human or a separa
 
 You need Node.js ≥ 20, Git, Bash, and an installed, authenticated AI coding tool.
 
-**1. Install the runtime.** Stable packages use `@latest`. The package includes the `buildbeat-v2` runtime and the `buildbeat` v1 lifecycle commands.
+**1. Install the runtime.** Stable packages use `@latest`. The package ships one executable: `buildbeat`.
 
 ```bash
 npm view @haiyangbg/buildbeat@latest version
 npm install --global @haiyangbg/buildbeat@latest
 ```
 
-> The envelope templates the quickstart uses (`templates/v2/envelope/`) ship with the package since 2.0.1; see the [CHANGELOG](CHANGELOG.md) for what each version contains.
+> The envelope templates the quickstart uses (`templates/v2/envelope/`) ship with the package; see the [CHANGELOG](CHANGELOG.md) for what each version contains.
 
 **2. Load the entry point.** Download or clone this repository, ask your AI tool to read its [`SKILL.md`](SKILL.md), and say this in the target project:
 
-> Set up BuildBeat for this project. Inspect the code and existing constraints first, then prepare v2 context and execution configuration for the first piece of work.
+> Set up BuildBeat for this project. Inspect the code and existing constraints first, then prepare context and execution configuration for the first piece of work.
 
-The session inspects the project and prepares a goal, plan, verification commands, and Worker configuration. Execution starts after your acceptance. See the [quickstart](docs/v2/guide/01-quickstart.md), or the [migration guide](docs/v2/guide/08-migration-v1.md) for an existing v1 project (Chinese).
+The session inspects the project and prepares a goal, plan, verification commands, and Worker configuration. Execution starts after your acceptance. See the [quickstart](docs/v2/guide/01-quickstart.md) (Chinese).
 
 **3. Try a handoff.** Once work records are saved, close the old session and open one without its chat history. Or synchronize the records and candidate so another authorized teammate can take over with their own tool:
 
@@ -128,19 +128,6 @@ To install from source, replace the marketplace address with this checkout's abs
 
 </details>
 
-<details>
-<summary>v1 lifecycle and former names</summary>
-
-`buildbeat doctor` checks a v1 scaffold; `init/adopt/upgrade` manage its lifecycle. They do not generate or migrate a complete v2 Work.
-
-```bash
-npx --yes --package=@haiyangbg/buildbeat@latest buildbeat doctor /path/to/project
-```
-
-See the [CLI reference](docs/CLI.md). BuildBeat was formerly Solobaton; the `solobaton` executable remains a compatibility alias. The historical example is in [example/](example/README.md) (Chinese).
-
-</details>
-
 ## Everyday use and applicability
 
 Once configured, talk to the session directly:
@@ -160,7 +147,7 @@ Teams collaborate through a shared Git repository and project agreements. BuildB
 ## Learn more and contribute
 
 - [Documentation index](docs/README.md): current guides, specifications, and historical records (Chinese).
-- [Capability matrix](docs/CAPABILITY-MATRIX.md): manual protocol, v1 CLI, v2 runtime, plugin, and verification scope (Chinese).
+- [Capability matrix](docs/CAPABILITY-MATRIX.md): manual protocol, runtime, plugin, and verification scope (Chinese).
 - [Session handoffs](docs/v2/guide/11-session-handoff.en.md) · [Run recovery](docs/v2/guide/10-recovery.md) · [Approval and triage](docs/v2/guide/07-approval-guide.md) (last two in Chinese).
 - [Skill](SKILL.md): how a session uses BuildBeat; [lessons](lessons.md): the real incidents behind its mechanisms (Chinese).
 - [CHANGELOG](CHANGELOG.md) (Chinese) · [Contributing](CONTRIBUTING.md) · [MIT license](LICENSE).

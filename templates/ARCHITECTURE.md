@@ -20,7 +20,7 @@
 
 ```
 <项目根>/
-├── AGENTS.md / ARCHITECTURE.md / 指挥台.md / contracts/ / design/ / pm/ / scripts/
+├── AGENTS.md / ARCHITECTURE.md / 指挥台.md / BUILDBEAT.md / contracts/ / delivery/ / pm/decisions.md
 ├── <代码仓1>/        # ★ <说明>;详见其 AGENTS.md
 └── <代码仓2>/        # ★ <说明>
 ```

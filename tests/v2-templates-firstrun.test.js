@@ -15,7 +15,7 @@ import { parseYamlSubset } from "../src/v2/engine/yaml-subset.js";
 // the task.
 
 const ROOT = join(import.meta.dirname, "..");
-const CLI = join(ROOT, "bin", "buildbeat-v2.js");
+const CLI = join(ROOT, "bin", "buildbeat.js");
 const PRESET = join(ROOT, "src", "v2", "presets", "software-delivery.yaml");
 const TEMPLATES = join(ROOT, "templates", "v2");
 

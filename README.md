@@ -66,7 +66,7 @@ Git 管理需要长期保留的项目事实；本机文件保存运行中的状�
 
 ## 让工作进入 Loop
 
-接受所需计划后，`buildbeat-v2` 在隔离 Git worktree 中调用配置好的 Worker，推进实现、验证、审查与修复。审查由一个不带上下文、只读的 reviewer worker 执行，任何工作树写入都会被前后快照比对捕获并按失败落账。
+接受所需计划后，`buildbeat` 在隔离 Git worktree 中调用配置好的 Worker，推进实现、验证、审查与修复。审查由一个不带上下文、只读的 reviewer worker 执行，任何工作树写入都会被前后快照比对捕获并按失败落账。
 
 ```mermaid
 flowchart LR
@@ -92,20 +92,20 @@ flowchart LR
 
 需要 Node.js ≥ 20、Git、Bash，以及已安装并完成鉴权的 AI 编程工具。
 
-**1. 安装运行时。** 稳定发布包使用 `@latest`，同包包含 `buildbeat-v2` 运行时与 `buildbeat` v1 生命周期命令。
+**1. 安装运行时。** 稳定发布包使用 `@latest`，可执行文件只有一个：`buildbeat`。
 
 ```bash
 npm view @haiyangbg/buildbeat@latest version
 npm install --global @haiyangbg/buildbeat@latest
 ```
 
-> 快速开始用到的信封模板（`templates/v2/envelope/`）自 2.0.1 起随包分发；版本与内容对照见 [CHANGELOG](CHANGELOG.md)。
+> 快速开始用到的信封模板（`templates/v2/envelope/`）随包分发；版本与内容对照见 [CHANGELOG](CHANGELOG.md)。
 
 **2. 让会话加载入口。** 下载或检出本仓，让你的 AI 工具读取其中的 [`SKILL.md`](SKILL.md)，然后在目标项目中说：
 
-> 用 BuildBeat 接管这个项目。先检查代码和现有约束，为第一项工作准备 v2 上下文与运行配置。
+> 用 BuildBeat 接管这个项目。先检查代码和现有约束，为第一项工作准备上下文与运行配置。
 
-会话先检查项目，补齐目标、计划、验证命令和执行配置；你接受后再启动。完整步骤见 [快速开始](docs/v2/guide/01-quickstart.md)，已有 v1 项目见 [迁移指南](docs/v2/guide/08-migration-v1.md)。
+会话先检查项目，补齐目标、计划、验证命令和执行配置；你接受后再启动。完整步骤见 [快速开始](docs/v2/guide/01-quickstart.md)。
 
 **3. 试一次接力。** 在工作记录落盘后关闭旧会话，打开一个没有旧聊天历史的新会话；也可以同步记录与候选，让另一位有权限的成员用自己的工具接手：
 
@@ -128,19 +128,6 @@ npm install --global @haiyangbg/buildbeat@latest
 
 </details>
 
-<details>
-<summary>v1 生命周期与旧名称</summary>
-
-`buildbeat doctor` 检查 v1 骨架，`init/adopt/upgrade` 管理其生命周期；它们不会生成或迁移完整的 v2 Work。
-
-```bash
-npx --yes --package=@haiyangbg/buildbeat@latest buildbeat doctor /path/to/project
-```
-
-完整合同见 [CLI 参考](docs/CLI.md)。BuildBeat 旧称 Solobaton，`solobaton` 可执行文件保留兼容别名；历史示例在 [example/](example/README.md)。
-
-</details>
-
 ## 日常使用与适用范围
 
 完成配置后，直接在会话里说：
@@ -160,7 +147,7 @@ BuildBeat 适合持续迭代、经常切换 AI 上下文、需要多角色协作
 ## 深入了解与贡献
 
 - [文档总入口](docs/README.md)：当前指南、规范与历史记录。
-- [能力矩阵](docs/CAPABILITY-MATRIX.md)：手工协议、v1 CLI、v2 运行时与插件的能力和验证范围。
+- [能力矩阵](docs/CAPABILITY-MATRIX.md)：手工协议、运行时与插件的能力和验证范围。
 - [跨会话接续](docs/v2/guide/11-session-handoff.md) · [运行恢复](docs/v2/guide/10-recovery.md) · [批准与分诊](docs/v2/guide/07-approval-guide.md)。
 - [Skill](SKILL.md)：会话如何使用 BuildBeat；[lessons](lessons.md)：机制背后的真实事故。
 - [CHANGELOG](CHANGELOG.md) · [贡献指南](CONTRIBUTING.md) · [MIT 许可](LICENSE)。

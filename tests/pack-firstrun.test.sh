@@ -58,9 +58,8 @@ npm install --global --prefix "$PREFIX" --ignore-scripts --no-audit --no-fund --
   || fail "isolated global install of the packed artifact failed"
 BIN_DIR="$PREFIX/bin"
 PKG_DIR="$PREFIX/lib/node_modules/@haiyangbg/buildbeat"
-[ -x "$BIN_DIR/buildbeat-v2" ] || fail "installed package has no executable buildbeat-v2"
 [ -x "$BIN_DIR/buildbeat" ] || fail "installed package has no executable buildbeat"
-pass "packed artifact installs both executables"
+pass "packed artifact installs the buildbeat executable"
 for relative in \
   src/v2/presets/software-delivery.yaml \
   templates/v2/run-config.example.yaml \
@@ -75,10 +74,7 @@ done
 pass "packed artifact carries the quickstart's preset, templates, envelope, and guide"
 for relative in \
   docs/README.md \
-  docs/CLI.md \
-  docs/CHECKS.md \
   docs/CAPABILITY-MATRIX.md \
-  docs/LEGACY-V1.16-MIGRATION.md \
   docs/RELEASING.md \
   docs/v2/RFC-0001-product-definition.md \
   docs/v2/RFC-0002-domain-model.md \
@@ -88,7 +84,7 @@ for relative in \
   docs/v2/guide/11-session-handoff.md; do
   [ -f "$PKG_DIR/$relative" ] || fail "packed artifact is missing current doc $relative"
 done
-pass "packed artifact carries every current doc (index, v1 CLI contract, matrix, RFC/SPEC, guides)"
+pass "packed artifact carries every current doc (index, matrix, RFC/SPEC, guides)"
 # Historical records (iteration logs, release evidence, pilots, plans) stay in
 # the repository only; package.json "files" negates them so installs do not
 # carry them. Guard the negation so a later edit cannot quietly ship them again.
@@ -104,8 +100,8 @@ pass "packed artifact excludes historical docs (iteration logs, release evidence
 [ ! -e "$PKG_DIR/CHANGELOG-v1.md" ] || fail "packed artifact ships the repository-only CHANGELOG-v1.md"
 pass "packed artifact carries CHANGELOG.md and not the v1 changelog archive"
 
-OUTPUT="$("$BIN_DIR/buildbeat-v2" 2>&1 || true)"
-expect_contains "BuildBeat v2 runtime" "installed buildbeat-v2 prints its usage"
+OUTPUT="$("$BIN_DIR/buildbeat" 2>&1 || true)"
+expect_contains "BuildBeat runtime" "installed buildbeat prints its usage"
 
 # 2. Fixture project laid out the way docs/v2/guide/01-quickstart.md §1 does,
 #    reading every BuildBeat file from the installed package.
@@ -186,25 +182,25 @@ git -C "$PROJECT" commit -q -m "baseline"
 
 # 3. The quickstart order: accept -> doctor -> start -> read evidence.
 export PATH="$BIN_DIR:$PATH"
-OUTPUT="$(cd "$PROJECT" && buildbeat-v2 accept --repo . --work WORK-PACK --artifact plan --by owner 2>&1)"
+OUTPUT="$(cd "$PROJECT" && buildbeat accept --repo . --work WORK-PACK --artifact plan --by owner 2>&1)"
 expect_contains "accepted plan as A-WORK-PACK-" "accept records the plan digest"
 
-OUTPUT="$(cd "$PROJECT" && buildbeat-v2 doctor --config delivery/work/WORK-PACK/run-config.yaml 2>&1)"
+OUTPUT="$(cd "$PROJECT" && buildbeat doctor --config delivery/work/WORK-PACK/run-config.yaml 2>&1)"
 expect_contains "plan.md: accepted" "doctor reads the accepted plan"
 expect_contains "fixer: env allowlist" "doctor reports the fixer's env posture"
 
-OUTPUT="$(cd "$PROJECT" && buildbeat-v2 start --config delivery/work/WORK-PACK/run-config.yaml --attempt new 2>&1)"
+OUTPUT="$(cd "$PROJECT" && buildbeat start --config delivery/work/WORK-PACK/run-config.yaml --attempt new 2>&1)"
 expect_contains "status: WAITING_HUMAN" "start stops for a human"
 expect_contains "waiting on human: enter-wait-merge" "start stops at the merge decision"
 expect_not_contains "$TMP_ROOT" "start output never prints the host absolute path"
 
-OUTPUT="$(cd "$PROJECT" && buildbeat-v2 status --repo . --run RUN-PACK-01 2>&1)"
+OUTPUT="$(cd "$PROJECT" && buildbeat status --repo . --run RUN-PACK-01 2>&1)"
 expect_contains "step verify: SUCCEEDED (attempts 2)" "verify failed once and passed after the fixer"
 expect_contains "step fix: SUCCEEDED (attempts 1)" "the packaged wrapper drove the fixer"
 expect_contains "evidence [passed/L2] review" "the reviewer envelope became evidence"
 expect_not_contains "infra" "no step was misread as an infrastructure failure"
 
-OUTPUT="$(cd "$PROJECT" && buildbeat-v2 overview --repo . 2>&1)"
+OUTPUT="$(cd "$PROJECT" && buildbeat overview --repo . 2>&1)"
 expect_contains "WORK-PACK" "overview lists the work"
 
 printf 'PASS: packaged first run reached the merge decision from the installed artifact (%d assertions)\n' "$ASSERTIONS"

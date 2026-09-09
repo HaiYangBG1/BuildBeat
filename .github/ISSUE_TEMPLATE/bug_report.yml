@@ -13,8 +13,8 @@ body:
     id: version
     attributes:
       label: BuildBeat version
-      description: Run `buildbeat --version` (legacy alias: `solobaton --version`), or provide the source commit.
-      placeholder: 1.20.0 or a commit SHA
+      description: Run `buildbeat --version`, or provide the source commit.
+      placeholder: 3.0.0 or a commit SHA
     validations:
       required: true
 

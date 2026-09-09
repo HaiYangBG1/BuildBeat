@@ -50,4 +50,4 @@ rule:
 
 ## 接入
 
-run 配置 `policies:` 列表引用文件路径；risk 预设（`fast`/`standard`/`controlled`/`legacy-four-gates`）自带一组策略与停点，`riskPreset:` 一行即可启用，再叠加项目自定义策略。
+run 配置 `policies:` 列表引用文件路径；risk 预设（`fast`/`standard`/`controlled`/`release`）自带一组策略与停点，`riskPreset:` 一行即可启用，再叠加项目自定义策略。

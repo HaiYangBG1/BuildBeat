@@ -3,11 +3,11 @@ set -euo pipefail
 
 package_name="${BUILDBEAT_PACKAGE_NAME:-@haiyangbg/buildbeat}"
 official_registry="https://registry.npmjs.org/"
-package_version="${BUILDBEAT_PACKAGE_VERSION:-${SOLOBATON_PACKAGE_VERSION:-}}"
-candidate_integrity="${BUILDBEAT_CANDIDATE_INTEGRITY:-${SOLOBATON_CANDIDATE_INTEGRITY:-}}"
-candidate_tarball="${BUILDBEAT_CANDIDATE_TARBALL:-${SOLOBATON_CANDIDATE_TARBALL:-}}"
-reconcile_attempts="${BUILDBEAT_RECONCILE_ATTEMPTS:-${SOLOBATON_RECONCILE_ATTEMPTS:-12}}"
-reconcile_delay_seconds="${BUILDBEAT_RECONCILE_DELAY_SECONDS:-${SOLOBATON_RECONCILE_DELAY_SECONDS:-5}}"
+package_version="${BUILDBEAT_PACKAGE_VERSION:-}"
+candidate_integrity="${BUILDBEAT_CANDIDATE_INTEGRITY:-}"
+candidate_tarball="${BUILDBEAT_CANDIDATE_TARBALL:-}"
+reconcile_attempts="${BUILDBEAT_RECONCILE_ATTEMPTS:-12}"
+reconcile_delay_seconds="${BUILDBEAT_RECONCILE_DELAY_SECONDS:-5}"
 
 if [[ "${NPM_CONFIG_REGISTRY:-}" != "$official_registry" ]]; then
   echo "NPM_CONFIG_REGISTRY must be pinned to $official_registry" >&2

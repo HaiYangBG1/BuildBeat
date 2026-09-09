@@ -9,11 +9,11 @@
 ## 日常操作
 
 ```bash
-buildbeat-v2 inbox --repo .                 # 所有等人的 Run：transition、candidate、digest、理由
-buildbeat-v2 status --repo . --run RUN-X    # 单个 Run 的完整派生视图（步、证据、findings）
-buildbeat-v2 approve --repo . --run RUN-X --transition enter-wait-merge --by <名字> --config <run-config>
-buildbeat-v2 reject  --repo . --run RUN-X --reason "<为什么>" --by <名字>
-buildbeat-v2 accept  --repo . --work WORK-X --artifact plan --by <名字>   # 工件接受（digest 绑定）
+buildbeat inbox --repo .                 # 所有等人的 Run：transition、candidate、digest、理由
+buildbeat status --repo . --run RUN-X    # 单个 Run 的完整派生视图（步、证据、findings）
+buildbeat approve --repo . --run RUN-X --transition enter-wait-merge --by <名字> --config <run-config>
+buildbeat reject  --repo . --run RUN-X --reason "<为什么>" --by <名字>
+buildbeat accept  --repo . --work WORK-X --artifact plan --by <名字>   # 工件接受（digest 绑定）
 ```
 
 决定落 Git 面 `delivery/work/<id>/decisions.jsonl`，事件台账同步记 `DECISION_RECORDED`。
@@ -41,7 +41,7 @@ buildbeat-v2 accept  --repo . --work WORK-X --artifact plan --by <名字>   # �
 
 ## 人批点由 Risk Preset 决定
 
-`fast` 仅 Merge；`standard` Plan+Merge；`controlled` Intent+Plan+Merge+Release；`legacy-four-gates` 为 v1 四 Gate 完整形态（迁移期用，见 [迁移指南](08-migration-v1.md)）。待批项强制携带 findings 摘要与理由——防"秒批"退化；人批等待时长进 `metrics`。
+`fast` 仅 Merge；`standard` Plan+Merge；`controlled` Intent+Plan+Merge+Release。待批项强制携带 findings 摘要与理由——防"秒批"退化；人批等待时长进 `metrics`。
 
 ## 发现分诊门与锚定审查
 
@@ -52,8 +52,8 @@ buildbeat-v2 accept  --repo . --work WORK-X --artifact plan --by <名字>   # �
 2. **裁决台账**：finding 全部落 Git 面 `delivery/work/<id>/review-findings.jsonl`（指纹 = 严重度+正文规范化 hash）：
 
    ```bash
-   buildbeat-v2 findings list --repo . --work WORK-X
-   buildbeat-v2 findings adjudicate --repo . --work WORK-X --fingerprint <fp> --action dismiss --by <名字> --note "<为什么>"
+   buildbeat findings list --repo . --work WORK-X
+   buildbeat findings adjudicate --repo . --work WORK-X --fingerprint <fp> --action dismiss --by <名字> --note "<为什么>"
    ```
 
    `dismiss` 后同指纹不再阻断（重提会以 `RE-RAISED` 记账可见，但不重启循环）；**严重度升级=新指纹，自动重新阻断**——压噪不压真信号，与 observe 的 dismiss 回调同一原则。
@@ -90,7 +90,7 @@ buildbeat-v2 accept  --repo . --work WORK-X --artifact plan --by <名字>   # �
 ## 从「等我批」到「到哪了」：overview
 
 > 自 2.0.0-beta.4（迭代 08）起。
-`inbox` 只知道哪个 Run 在等人；`buildbeat-v2 overview --repo .` 按 Work 回答「走到哪、下一步该谁」——intent/plan 是否被接受（接受后改过即 `stale`）、最新 Run 状态与候选、候选是否已合入当前分支、未裁决 P0/P1 数、是否有 `env-facts.md`，每行附下一句命令。运行时被删后由 Git 面 run-record 补足。会话开场先跑它，再回答用户「当前进度」。
+`inbox` 只知道哪个 Run 在等人；`buildbeat overview --repo .` 按 Work 回答「走到哪、下一步该谁」——intent/plan 是否被接受（接受后改过即 `stale`）、最新 Run 状态与候选、候选是否已合入当前分支、未裁决 P0/P1 数、是否有 `env-facts.md`，每行附下一句命令。运行时被删后由 Git 面 run-record 补足。会话开场先跑它，再回答用户「当前进度」。
 
 **阶段判定的真相修正（迭代 09）**：候选只要合入了当前分支，Work 就是 `MERGED`，哪怕最新 Run 是 CANCELLED（试点一条应用登录 Run 因预算问题被取消，候选却已在生产，overview 曾报 `STOPPED_CANCELLED` 并催重试）；`release-readback` 车道成功关窗的 Work 显示 `RELEASED`，不再说 "nothing to merge"；已合并 / 已发布 / 已关闭的 Work 不再提示未裁决 finding 数。`overview` 每个 Work 还多一行 `cost:`（见 [Workflow 指南](02-workflow-guide.md) 的 Work 级预算）。
 
@@ -100,7 +100,7 @@ buildbeat-v2 accept  --repo . --work WORK-X --artifact plan --by <名字>   # �
 Run 停在 `enter-fix` / `resume-fix` 时，驾驶会话或人常常已经在 Run 的 worktree 里把问题修掉并提交了。此时再 `approve` 会派一个无事可做的 fixer，再多跑一次 verify（试点一条前端 Run 因此跑到 verify 第 5 次、fix 第 3 次）。改用：
 
 ```bash
-buildbeat-v2 resume --config <run-config.yaml> --adopt <sha> --by <名字>
+buildbeat resume --config <run-config.yaml> --adopt <sha> --by <名字>
 ```
 
 内核回读 worktree：树必须干净、HEAD 必须就是 `<sha>`（前缀 7 位起），否则拒绝；然后以人为 actor 落 `CANDIDATE_PINNED`（`adopted: true`）、以该提交为 subject 记 `DECISION_RECORDED`（`adopted`、`resumeAt`），并从 verify 继续（预设里 fix 成功后的下一步）。台账里看得出这一版候选是谁供的。合并决定处不接受 adopt。

@@ -11,10 +11,10 @@
 - `REVIEW-MUST-003`: 核对受影响自动化测试、真渲染走查和 evidence；完成声明必须可追溯到候选与证据。
 - `REVIEW-MUST-004`: 核对 Secret、鉴权、租户、输入、持久化、依赖与不可逆副作用风险。
 - `REVIEW-SHOULD-001`: 识别不必要复杂度、重复抽象、不可维护分支和缺少回滚路径的设计。
-- `REVIEW-SHOULD-002`: 核对看板、status、decisions 与交付候选一致，不把旧报告复用于变化后的候选。
+- `REVIEW-SHOULD-002`: 核对 intent / plan、decisions 与交付候选一致，不把旧报告复用于变化后的候选。
 
 ## 项目增量
 
 <项目特有 Review 条件>
 
-review-ready、milestone、risk-delta 与 closure 的触发节奏仍以 `AGENTS.md` 为准，本文件不新建第二套流程。
+review 何时跑、跑几轮、哪些 finding 阻断，以 run 配置（`reviewTriage`、`budgets`）与 `AGENTS.md` 为准，本文件不新建第二套流程。

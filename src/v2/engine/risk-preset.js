@@ -1,5 +1,5 @@
 // Risk presets per docs/v2/RFC-0003-workflow-policy.md §7: fast / standard /
-// controlled plus the legacy-four-gates migration preset. A preset is data —
+// controlled, plus release. A preset is data —
 // human boundaries (stopAt) and a policy set — never kernel-fixed gates.
 
 import { readFileSync } from "node:fs";

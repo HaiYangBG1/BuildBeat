@@ -159,6 +159,8 @@ review 修复轮次：2
 | `controlled` | Intent、Plan、Merge、Release |
 | `legacy-four-gates` | v1 四 Gate 完整形态（迁移用） |
 
+> **生效修订（2026-09-09）**：`legacy-four-gates` 预设随 v1 于 3.0.0 移除；上行保留为原文。
+
 ## 8. observe 预设与 bands schema（随本 RFC 冻结，实现 M5）
 
 裁决 #6：**接口现在冻结，实现推后**。冻结内容为以下 schema 形状与语义；M5 前不实现，但 M1 起任何内核设计不得与之冲突（尤其：Evidence Provider 产出的记录必须能进入同一 Evidence Contract 与事件台账）。

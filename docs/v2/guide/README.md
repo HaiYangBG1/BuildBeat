@@ -31,10 +31,4 @@
 | [Worker 合同](05-worker-contract.md) | 输入输出信封（`severity` + `summary`）、阻断语义、各角色纪律、包装脚本 |
 | [安全与权限边界](09-security-boundaries.md) | 内核实际做到的 vs 不能由此推出的；无人值守三层前置条件 |
 
-## 迁移
-
-| 文档 | 一句话 |
-|---|---|
-| [v1 迁移指南](08-migration-v1.md) | 升级 CLI 与迁移项目状态分开；手工 runbook，单向迁移不双写 |
-
 observe v0（探测→分层响应→Intent 草稿→人分诊）在 [快速开始 §9](01-quickstart.md) 与 [Evidence 指南](06-evidence-guide.md) 中覆盖；schema 冻结见 [`RFC-0003 §8`](../RFC-0003-workflow-policy.md)。

@@ -207,7 +207,7 @@ test("findings CLI lists and adjudicates from the Git plane", () => {
     findings: [finding],
     ts: "2026-08-31T00:00:00.000Z",
   });
-  const CLI = join(import.meta.dirname, "..", "bin", "buildbeat-v2.js");
+  const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
   const fingerprint = fingerprintFinding(finding);
   const listed = execFileSync("node", [CLI, "findings", "list", "--repo", root, "--work", "WORK-CLI"], {
     encoding: "utf8",

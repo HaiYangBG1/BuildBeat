@@ -7,7 +7,7 @@ import test from "node:test";
 
 import { acceptArtifact } from "../src/v2/runtime/decisions.js";
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat-v2.js");
+const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 
 function git(cwd, args) {

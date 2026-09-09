@@ -8,7 +8,7 @@
 
 | # | 状态 | `ROADMAP.md` §15 门槛 | 当前证据 | 不可外推 / 待办 |
 |---:|:---:|---|---|---|
-| 1 | `[x]` | 执行同步不变量有明确文档和自动检查 | [`CHECKS.md`](CHECKS.md) INV-1–INV-8；`test-scripts.sh` human/JSON 同源回归 | 只证明已登记不变量和本地观测范围 |
+| 1 | `[x]` | 执行同步不变量有明确文档和自动检查 | `CHECKS.md`（已于 3.0.0 移除）INV-1–INV-8；`test-scripts.sh` human/JSON 同源回归 | 只证明已登记不变量和本地观测范围 |
 | 2 | `[x]` | 完成状态不能在无 evidence 时静默通过 strict | `board-done-no-evidence`、`evidence-valid`、`evidence-outside-archive` fixtures | symlink/权限未读证据诚实保留 unverified，不误报缺失 |
 | 3 | `[x]` | Gate `N/A` 必须有理由 | `gate-na-no-reason` strict 冲突；`gate-na-ui-inconsistent` 显式 warning | 机器只核语法/正向 UI 矛盾，不代替人工判定理由正确 |
 | 4 | `[x]` | standards 缺失不报错，存在时能检查可观测部分 | missing/partial/valid/Draft/invalid + STACK 三态 fixtures | 不观测自然语言宣言的语义正确性 |

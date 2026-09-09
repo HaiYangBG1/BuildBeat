@@ -7,7 +7,7 @@ import test from "node:test";
 
 import { acquireLock, listHeldRunLocks, releaseLock } from "../src/v2/workspace/workspace-manager.js";
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat-v2.js");
+const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 
 function git(cwd, args) {
@@ -35,7 +35,7 @@ test("a start blocked by the repository lock names the run it is queued behind",
     const result = spawnSync(process.execPath, [CLI, "start", "--config", join(root, "run-config.yaml")], { encoding: "utf8" });
     assert.equal(result.status, 1);
     assert.match(result.stderr, /blocked by RUN-BUSY: \(no ledger found\)/);
-    assert.match(result.stderr, /watch it: buildbeat-v2 status --repo <repo-path> --run RUN-BUSY/);
+    assert.match(result.stderr, /watch it: buildbeat status --repo <repo-path> --run RUN-BUSY/);
     assert.match(result.stderr, /queue position/);
     assert.match(result.stderr, /error: another run is active/);
     assert.doesNotMatch(result.stderr, new RegExp(root));
