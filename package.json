@@ -1,6 +1,6 @@
 {
   "name": "@haiyangbg/buildbeat",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "BuildBeat: Git-based AI delivery across models, tools, sessions, and people, with context in project files, build-test-review-fix loops, and human decisions.",
   "type": "module",
   "bin": {
