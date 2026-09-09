@@ -1,0 +1,13 @@
+# 通知通道样例。URL 只能来自环境变量（这里是 BUILDBEAT_NOTIFY_URL），永远不写进 Git；
+# 变量没设置就静默跳过、不影响 Run（fail-open）。【BOOTSTRAP】决策：简账先不接通知，
+# 所以所有者没有 export 这个变量，等待只在 inbox 里；要开就 export 一个 webhook 地址。
+kind: notify
+version: 1
+channels:
+  - id: owner-webhook
+    type: webhook
+    urlEnv: BUILDBEAT_NOTIFY_URL
+    events:
+      - HUMAN_REQUESTED
+      - RUN_TERMINAL
+      - STALLED

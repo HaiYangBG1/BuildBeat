@@ -105,7 +105,7 @@ npm install --global @haiyangbg/buildbeat@latest
 
 > Set up BuildBeat for this project. Inspect the code and existing constraints first, then prepare context and execution configuration for the first piece of work.
 
-The session inspects the project and prepares a goal, plan, verification commands, and Worker configuration. Execution starts after your acceptance. See the [quickstart](docs/v2/guide/01-quickstart.md) (Chinese).
+The session inspects the project and prepares a goal, plan, verification commands, and Worker configuration. Execution starts after your acceptance. See the [quickstart](docs/v2/guide/01-quickstart.md) and the [example project](example/README.md) (Chinese).
 
 **3. Try a handoff.** Once work records are saved, close the old session and open one without its chat history. Or synchronize the records and candidate so another authorized teammate can take over with their own tool:
 

@@ -1,0 +1,31 @@
+# observe 配置样例：一次 `buildbeat observe run --config .buildbeat/observe.yaml` = 一轮只读体检。
+# 简账没有线上环境，这里只挂一个"测试还绿吗"的探针，示范 provider 的形状；真实项目换成部署平台的只读查询。
+kind: workflow
+version: 1
+name: observe
+providers:
+  - id: tests-green
+    command: bash
+    args:
+      - -lc
+      - npm test
+    schedule: manual
+    evidence:
+      kind: health
+      subject: jianzhang-tests
+    severity:
+      failed: error
+      unverified: warn
+bands:
+  - level: log
+    when: "severity >= info"
+  - level: diagnose
+    when: "severity >= error"
+  - level: intent
+    when: "severity >= error"
+triage:
+  actions:
+    - fix_now
+    - schedule
+    - dismiss
+  dismissFeedback: bands

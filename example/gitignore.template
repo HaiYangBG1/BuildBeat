@@ -1,0 +1,20 @@
+# 拷入新项目根后改名为 .gitignore(模板文件名不带点,避开 cp 通配符丢点文件的坑)
+
+# macOS
+.DS_Store
+
+# 凭据 / 本地环境(红线①:凭据不入 git)
+*.env
+.env
+.env.*
+*.local
+*.key
+*.pem
+
+# BuildBeat v2 运行时面与隔离工作树(可随时整删重建;不入 git)
+# 同时让 rg / 尊重 .gitignore 的工具不再走进旧工作树;vitest / jest 等要另配 exclude,见 docs/v2/guide/02-workflow-guide.md
+.buildbeat/runtime/
+.buildbeat/worktrees/
+
+# 单仓项目：没有子仓
+node_modules/

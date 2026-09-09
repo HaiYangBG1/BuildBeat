@@ -1,0 +1,13 @@
+{
+  "name": "jianzhang",
+  "version": "0.3.0",
+  "private": true,
+  "description": "简账：一个虚构的个人记账小工具（BuildBeat 示例项目）",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

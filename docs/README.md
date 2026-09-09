@@ -12,6 +12,7 @@
 | 关闭旧会话后继续，或由其他成员/工具接手 | [`跨会话接续`](v2/guide/11-session-handoff.md) · [English](v2/guide/11-session-handoff.en.md) |
 | 三个可用面各能做什么（Skill-only / 运行时 / 插件） | [`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) |
 | 项目装载入口与信封模板 | [`../templates/v2/`](../templates/v2/AGENTS.md) |
+| 填好之后长什么样：一个 Work 跑到合并决定的快照 | [`../example/`](../example/README.md) |
 
 ## 现行：规范与维护
 

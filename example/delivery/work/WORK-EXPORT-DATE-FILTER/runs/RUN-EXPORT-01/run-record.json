@@ -1,0 +1,108 @@
+{
+  "run": "RUN-EXPORT-01",
+  "work": "WORK-EXPORT-DATE-FILTER",
+  "workflow": "software-delivery",
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 31,
+    "lastDigest": "sha256:fb0aad2e3f356dd8cdd3d12c70421536c9033b6bfdac80808023a49df4509dc8"
+  },
+  "startedAt": "2026-09-09T15:09:50.530Z",
+  "finishedAt": "2026-09-09T15:09:51.628Z",
+  "attempts": {
+    "build": 1,
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 3,
+      "remaining": 1
+    }
+  },
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "infraFailures": 0,
+    "workerMs": 853
+  },
+  "workspaces": {
+    "RUN-EXPORT-01": {
+      "repo": ".",
+      "branch": "run/RUN-EXPORT-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-EXPORT-01",
+      "base": "8f4ef5d4a4bd75c7765fbec860c3f5cbf1e0d02f",
+      "candidate": "be7e4f9c4d3d5dcd26132f98f660f9e217c47a97"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-EXPORT-01/logs/build-1.log",
+      "kind": "command",
+      "subject": "be7e4f9c4d3d5dcd26132f98f660f9e217c47a97",
+      "digest": "sha256:1192f1c2a9a09f23c69d2c3935d2f7a0b3945f2b8aab979f811dd508183755c2",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-EXPORT-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "be7e4f9c4d3d5dcd26132f98f660f9e217c47a97",
+      "digest": "sha256:603a7dd74be408af1575dca2c5a79bc5b211b9de3366812fb70603aa6121fc99",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:4425cad04706cc2c7f45e5306c573bf756d39d7aa0815d46406810331592e0ea"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-EXPORT-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "be7e4f9c4d3d5dcd26132f98f660f9e217c47a97",
+      "digest": "sha256:65b9474c69d677a43341ee0af9f6865ca66a6c620d0ca71e7c1d61e6b806913e",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-EXPORT-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "be7e4f9c4d3d5dcd26132f98f660f9e217c47a97",
+      "digest": "sha256:7c00d8d23d7d1b3f56006f4686a99bd8b3cc0839f105b524cabadd50dfa04f67",
+      "status": "passed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P2",
+          "summary": "日期区间用字符串比较依赖 YYYY-MM-DD 格式，已有校验兜底，但可以在 export.js 顶部注释里写明这个前提"
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "be7e4f9c4d3d5dcd26132f98f660f9e217c47a97",
+        "planDigest": "sha256:4f770dd7b20f14c3e64371ec475ea18f0b82e052fba1f3b8649b04d3ac7ec07a",
+        "evidenceDigest": "sha256:7c00d8d23d7d1b3f56006f4686a99bd8b3cc0839f105b524cabadd50dfa04f67"
+      },
+      "decisionRef": "D-RUN-EXPORT-01-1"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-EXPORT-01-1",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "be7e4f9c4d3d5dcd26132f98f660f9e217c47a97",
+        "planDigest": "sha256:4f770dd7b20f14c3e64371ec475ea18f0b82e052fba1f3b8649b04d3ac7ec07a",
+        "evidenceDigest": "sha256:7c00d8d23d7d1b3f56006f4686a99bd8b3cc0839f105b524cabadd50dfa04f67"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

@@ -53,6 +53,13 @@ ACTIVE_DOCS = (
     "templates/standards/DESIGN.md",
     "plugins/buildbeat/README.md",
     "tests/README.md",
+    "example/README.md",
+    "example/AGENTS.md",
+    "example/指挥台.md",
+    "example/BUILDBEAT.md",
+    "example/pm/decisions.md",
+    "example/delivery/work/WORK-EXPORT-DATE-FILTER/intent.md",
+    "example/delivery/work/WORK-EXPORT-DATE-FILTER/plan.md",
 )
 # Claims that were true once and are wrong today, plus contract wording the
 # parser rejects. Each entry: (regex, what it means). Found in an active doc =
@@ -93,6 +100,12 @@ CRITICAL_TEMPLATE_FILES = (
     "templates/v2/envelope/prompts/builder.md",
     "templates/v2/envelope/prompts/reviewer.md",
     "templates/v2/envelope/prompts/fixer.md",
+    "example/README.md",
+    "example/AGENTS.md",
+    "example/delivery/work/WORK-EXPORT-DATE-FILTER/run-config.yaml",
+    "example/delivery/work/WORK-EXPORT-DATE-FILTER/runs/RUN-EXPORT-01/run-record.json",
+    "example/delivery/work/WORK-EXPORT-DATE-FILTER/decisions.jsonl",
+    "tests/example-firstrun.test.js",
 )
 CRITICAL_CLI_FILES = (
     ".github/scripts/publish-candidate.sh",
@@ -136,7 +149,6 @@ REMOVED_PATHS = (
     "src/cli.js",
     "src/constants.js",
     "src/upgrader.js",
-    "example",
     "docs/CLI.md",
     "docs/CHECKS.md",
     "docs/LEGACY-V1.16-MIGRATION.md",
@@ -393,6 +405,7 @@ def check_claude_plugin() -> list[str]:
         "SKILL.md": "../../SKILL.md",
         "templates": "../../templates",
         "docs": "../../docs",
+        "example": "../../example",
         "lessons.md": "../../lessons.md",
         "LICENSE": "../../LICENSE",
         "CHANGELOG.md": "../../CHANGELOG.md",
@@ -413,9 +426,8 @@ def check_claude_plugin() -> list[str]:
             errors.append(
                 f"plugins/buildbeat/{relative}: link target must exist inside marketplace root"
             )
-    for stale in ("bin", "example"):
-        if (plugin_root / stale).exists() or (plugin_root / stale).is_symlink():
-            errors.append(f"plugins/buildbeat/{stale}: must not enter the plugin boundary")
+    if (plugin_root / "bin").exists():
+        errors.append("plugins/buildbeat: npm CLI bin must not enter the plugin boundary")
     return errors
 
 
@@ -545,7 +557,7 @@ def check_cli_package() -> list[str]:
     if package.get("bin") != {"buildbeat": "bin/buildbeat.js"}:
         errors.append("package.json: the only executable is buildbeat -> bin/buildbeat.js")
     package_files = package.get("files", [])
-    for required in ("bin/", "src/", "docs/", "templates/", "SKILL.md", "lessons.md", "CHANGELOG.md"):
+    for required in ("bin/", "src/", "docs/", "example/", "templates/", "SKILL.md", "lessons.md", "CHANGELOG.md"):
         if required not in package_files:
             errors.append(f"package.json: published files must include {required}")
     if package.get("engines", {}).get("node") != ">=20":
