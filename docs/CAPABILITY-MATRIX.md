@@ -1,6 +1,6 @@
 # BuildBeat 能力矩阵 / Capability Matrix
 
-> 状态：BuildBeat `@haiyangbg/buildbeat@2.0.0`（dist-tag `latest`，2026-09-05）。本页按**产品层次**区分四个可用面：Skill-only 手工路径、v1 生命周期 CLI（`buildbeat`）、v2 运行时（`buildbeat-v2`）、Claude Code 插件；并保留 v1.21 分发合同的原始条目与 legacy npm v0 的边界。源码、registry artifact 与真实项目证据仍分别核验。
+> 状态：BuildBeat `@haiyangbg/buildbeat@2.0.2`（dist-tag `latest`，2026-09-09；2.0.0 于 2026-09-05 首次把 v2 发到 `latest`）。本页按**产品层次**区分四个可用面：Skill-only 手工路径、v1 生命周期 CLI（`buildbeat`）、v2 运行时（`buildbeat-v2`）、Claude Code 插件；并保留 v1.21 分发合同的原始条目与 legacy npm v0 的边界。源码、registry artifact 与真实项目证据仍分别核验。
 
 ## 0. 四个可用面
 
@@ -73,7 +73,7 @@ WP4.2 所说的“CLI 三命令”按职责分成三组，不是把 `version` �
 
 - **Skill-only:** first-class and complete for protocol semantics; it does not need a lifecycle manifest or a runtime CLI.
 - **Legacy npm v0:** `solobaton@latest` is frozen on `doctor`, `init/adopt --dry-run`, and version inspection, then deprecated toward the scoped package. Project writes and `upgrade` remain unavailable there.
-- **BuildBeat 2.0.0 (current `latest`):** `@haiyangbg/buildbeat@2.0.0` ships the unchanged v1 lifecycle CLI `buildbeat` and the v2 runtime `buildbeat-v2` in one package (evidence: [`V2.0.0-RELEASE-EVIDENCE-2026-09-05.md`](V2.0.0-RELEASE-EVIDENCE-2026-09-05.md)). The managed v1 scaffold stays at `v1.21`.
+- **BuildBeat 2.0.x (current `latest` = 2.0.2):** since `@haiyangbg/buildbeat@2.0.0` (evidence: [`V2.0.0-RELEASE-EVIDENCE-2026-09-05.md`](V2.0.0-RELEASE-EVIDENCE-2026-09-05.md)) one package ships the unchanged v1 lifecycle CLI `buildbeat` and the v2 runtime `buildbeat-v2`; 2.0.1 fixed run-config `env:` passthrough and added `templates/v2/` (evidence: [`V2.0.1-RELEASE-EVIDENCE-2026-09-06.md`](V2.0.1-RELEASE-EVIDENCE-2026-09-06.md)); 2.0.2 only trims historical documents from the tarball. The managed v1 scaffold stays at `v1.21`.
 - **BuildBeat 1.21 (previous stable, 2026-08-25 → 2026-09-05):** `@haiyangbg/buildbeat@1.21.0` was the independently verified canonical scoped distribution before 2.0.0. It keeps the bounded `init/adopt` and schema-2-only mechanical `upgrade` surface established in 1.20, and adds the standard domain-response contract to Skill/scaffold handoffs. Registry availability, provenance, signatures, and exact artifact identity are archived in [`V1.21-RELEASE-EVIDENCE-2026-08-25.md`](V1.21-RELEASE-EVIDENCE-2026-08-25.md) and remain live-recheck requirements for future releases.
 - **Claude Code plugin:** the local marketplace candidate distributes the canonical Skill/templates/docs, not the top-level npm CLI `bin/`; installation evidence does not authorize project writes or npm publication.
 - **Project runtime:** after scaffolding, the Git files and project-local scripts remain independently usable. BuildBeat has no account service, telemetry, remote project database, or hosted agents; the v2 runtime is a local process that orchestrates the commands you configure and never carries a model of its own.
