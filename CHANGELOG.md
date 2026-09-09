@@ -4,6 +4,8 @@
 
 ## v3.0.0 — 2026-09-09（大版本：只剩一个产品，v1 移除）
 
+> **发布状态**：`@haiyangbg/buildbeat@3.0.0` 已于 2026-09-09 从 `main`（PR #37，merge commit `0289415`，tag `v3.0.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34362068004；publish 一次成功，verify 因 npm 异步处理约 6 分钟才可见而首次超时、版本可见后重跑成功；所有者授权「合并，然后发 3.0.0」）。独立回读（直连 npmjs.org）：`latest` = 3.0.0、integrity 与本地 dry-run 一致、attestation、隔离安装只有 `buildbeat` 一个可执行文件、裸调用零写入、包内无 v1 面全过，GitHub Release v3.0.0 标 Latest，证据见 [`docs/V3.0.0-RELEASE-EVIDENCE-2026-09-09.md`](docs/V3.0.0-RELEASE-EVIDENCE-2026-09-09.md)。
+
 > **3.0.0（破坏性变更）**：v1 已移除。需要 v1 文件总线或 `buildbeat doctor/init/adopt/upgrade` 的项目请停留在 2.0.2；3.0.0 起仓库与包只描述一个产品。
 
 - **可执行文件只剩 `buildbeat`**：它就是运行时（原 `buildbeat-v2`）；`buildbeat-v2` 与 `solobaton` 两个入口删除。新增 `buildbeat --version`。所有文档、模板、信封、`overview` / `inbox` / 通知里可复制的下一句命令统一改名。
