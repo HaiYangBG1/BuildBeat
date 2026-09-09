@@ -2,6 +2,10 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- **示例项目回来了**：`example/` 现在是虚构单仓项目「简账」跑完一个 Work 的快照——填好的 `AGENTS.md` / `指挥台.md` / `BUILDBEAT.md` / `pm/decisions.md`、通知与 observe 配置样例、带项目环境事实的信封、完整的 `delivery/work/WORK-EXPORT-DATE-FILTER/`（intent / plan / run-config / workflow 副本）以及运行时真跑一遍得到的 `decisions.jsonl` 与 `run-record.json`，外加应用本体与真实 `npm test`。随 npm 包与 Claude 插件分发；`tests/example-firstrun.test.js` 锁住工件一致性并把原样拷贝再跑到合并决定。README、docs 索引、SKILL §8.3 指向它。
+
 ## v3.0.0 — 2026-09-09（大版本：只剩一个产品，v1 移除）
 
 > **发布状态**：`@haiyangbg/buildbeat@3.0.0` 已于 2026-09-09 从 `main`（PR #37，merge commit `0289415`，tag `v3.0.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34362068004；publish 一次成功，verify 因 npm 异步处理约 6 分钟才可见而首次超时、版本可见后重跑成功；所有者授权「合并，然后发 3.0.0」）。独立回读（直连 npmjs.org）：`latest` = 3.0.0、integrity 与本地 dry-run 一致、attestation、隔离安装只有 `buildbeat` 一个可执行文件、裸调用零写入、包内无 v1 面全过，GitHub Release v3.0.0 标 Latest，证据见 [`docs/V3.0.0-RELEASE-EVIDENCE-2026-09-09.md`](docs/V3.0.0-RELEASE-EVIDENCE-2026-09-09.md)。

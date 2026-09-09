@@ -1,0 +1,66 @@
+# 简账 · WORK-EXPORT-DATE-FILTER 的 run 配置。路径相对本文件解析。
+# 起跑前：buildbeat doctor --config <本文件>；起跑：buildbeat start --config <本文件> --attempt new
+repo: ../../..
+work: WORK-EXPORT-DATE-FILTER
+run: RUN-EXPORT
+# 从 $(npm root -g)/@haiyangbg/buildbeat/src/v2/presets/software-delivery.yaml 复制到本目录
+workflow: workflow.yaml
+riskPreset: standard
+entry: build
+allowedPaths:
+  - src
+  - tests
+reviewTriage: required
+# 对应 intent 的止损线：3 轮 review
+budgets:
+  maxAttempts:
+    review: 2
+  reviewRoundsPerWork: 3
+cache:
+  verify: tree
+envelope:
+  prompts: ../../envelope/prompts
+  vars:
+    component: export
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+requires:
+  - command: node
+    min: "20"
+# 换工具只改 -- 后面的命令
+workers:
+  builder:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - builder
+      - --
+      - codex
+      - exec
+      - -s
+      - workspace-write
+  verifier:
+    command: bash
+    args:
+      - -lc
+      - npm test
+  reviewer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only
+  fixer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - fixer
+      - --
+      - codex
+      - exec
+      - -s
+      - workspace-write

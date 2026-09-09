@@ -22,6 +22,7 @@
     "!docs/PHASE*.md",
     "!docs/CLI-STRATEGY-2026-08.md",
     "!docs/CLI-PILOT-2026-08-23.md",
+    "example/",
     "src/",
     "templates/",
     "CHANGELOG.md",

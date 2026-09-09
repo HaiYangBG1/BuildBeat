@@ -390,7 +390,7 @@ worker prompt 里要写清三条环境事实(模板 AGENTS 第 ⑨ 条):沙箱�
 - [ ] 8. 收尾一屏:生成了什么 / 默认拿主意的项 / 首跑停在哪、证据在哪 / 下一步由谁做(合并是人的动作)
 ```
 
-> 可核对的样例:`tests/v2-templates-firstrun.test.js` 用脚本 worker 代替真实模型,从上面的模板走到合并决定(含一次 verify 失败→fixer→重验)。它证明包内路径、配置、信封、提交机制、reviewer 信封连得上;不证明某个真实模型能完成业务任务。
+> 各文件「填好之后长什么样」,参照 [example/](example/README.md)(虚构「简账」项目跑完一个 Work 的快照)。可核对的样例:`tests/v2-templates-firstrun.test.js` 与 `tests/example-firstrun.test.js` 用脚本 worker 代替真实模型,从上面的模板走到合并决定(含一次 verify 失败→fixer→重验)。它证明包内路径、配置、信封、提交机制、reviewer 信封连得上;不证明某个真实模型能完成业务任务。
 
 ## 8.5 接管存量项目(10→N 入口:先摸底、划边界、补验证)
 
