@@ -32,6 +32,7 @@
 | 发布证据 | `V2.0.2-RELEASE-EVIDENCE-2026-09-09.md`（当前 `latest`）、`V2.0.1-RELEASE-EVIDENCE-2026-09-06.md`、`V2.0.0-RELEASE-EVIDENCE-2026-09-05.md`、`V2.0.0-BETA.1～5-RELEASE-EVIDENCE-*.md`、`V1.21-RELEASE-EVIDENCE-2026-08-25.md`、`WP4.3-RELEASE-EVIDENCE-2026-08-25.md` |
 | v2 规划与决策 | [`V2-PLAN.md`](V2-PLAN.md)（执行基线，已交付）、[`V2-PROPOSAL.md`](V2-PROPOSAL.md)、[`V2-DECISIONS.md`](V2-DECISIONS.md)、[`V2-D2-DECISION-CARD.md`](V2-D2-DECISION-CARD.md)、[《BuildBeat v2：AI 原生软件交付控制平面》](BuildBeat%20v2%EF%BC%9AAI%20%E5%8E%9F%E7%94%9F%E8%BD%AF%E4%BB%B6%E4%BA%A4%E4%BB%98%E6%8E%A7%E5%88%B6%E5%B9%B3%E9%9D%A2.md) |
 | v2 迭代与里程碑记录 | `V2-ITERATION-01～08.md`、[`v2/`](v2/) 下的 M1/M2/M4 验收与试点记录 |
+| v1 版本史 | [`../CHANGELOG-v1.md`](../CHANGELOG-v1.md)（v1 ～ v1.21.0 条目原文；v2 系列在根 [`CHANGELOG.md`](../CHANGELOG.md)） |
 | v1 路线与阶段试点 | [`ROADMAP.md`](ROADMAP.md)、[`EXECUTION-PLAN.md`](EXECUTION-PLAN.md)、`PHASE1/2/4-*.md`、[`CLI-STRATEGY-2026-08.md`](CLI-STRATEGY-2026-08.md)、[`CLI-PILOT-2026-08-23.md`](CLI-PILOT-2026-08-23.md)、[`PHASE4-STABILITY-AUDIT-2026-08-25.md`](PHASE4-STABILITY-AUDIT-2026-08-25.md) |
 
 历史文件里的版本号、通道与测试数字是它们日期当天的事实，出现"`latest` 留 v1"之类的旧策略是正常的；判断现状只看现行文档与 registry 回读（`npm view @haiyangbg/buildbeat dist-tags`）。

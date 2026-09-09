@@ -100,6 +100,9 @@ HISTORICAL_SHIPPED="$(cd "$PKG_DIR/docs" && find . -type f \( \
   -o -name 'BuildBeat v2*.md' \) | sort)"
 [ -z "$HISTORICAL_SHIPPED" ] || { OUTPUT="$HISTORICAL_SHIPPED"; fail "packed artifact ships historical docs that package.json files should exclude"; }
 pass "packed artifact excludes historical docs (iteration logs, release evidence, pilots, plans)"
+[ -f "$PKG_DIR/CHANGELOG.md" ] || fail "packed artifact is missing CHANGELOG.md"
+[ ! -e "$PKG_DIR/CHANGELOG-v1.md" ] || fail "packed artifact ships the repository-only CHANGELOG-v1.md"
+pass "packed artifact carries CHANGELOG.md and not the v1 changelog archive"
 
 OUTPUT="$("$BIN_DIR/buildbeat-v2" 2>&1 || true)"
 expect_contains "BuildBeat v2 runtime" "installed buildbeat-v2 prints its usage"
