@@ -35,3 +35,5 @@
 | v1 路线与阶段试点 | [`ROADMAP.md`](ROADMAP.md)、[`EXECUTION-PLAN.md`](EXECUTION-PLAN.md)、`PHASE1/2/4-*.md`、[`CLI-STRATEGY-2026-08.md`](CLI-STRATEGY-2026-08.md)、[`CLI-PILOT-2026-08-23.md`](CLI-PILOT-2026-08-23.md)、[`PHASE4-STABILITY-AUDIT-2026-08-25.md`](PHASE4-STABILITY-AUDIT-2026-08-25.md) |
 
 历史文件里的版本号、通道与测试数字是它们日期当天的事实，出现"`latest` 留 v1"之类的旧策略是正常的；判断现状只看现行文档与 registry 回读（`npm view @haiyangbg/buildbeat dist-tags`）。
+
+历史文件只保存在 GitHub 仓库里，不随 npm 包分发（`package.json` 的 `files` 显式排除）；从安装目录点开现行文档里指向历史文件的链接会落空，到 [`HaiYangBG1/BuildBeat`](https://github.com/HaiYangBG1/BuildBeat/tree/main/docs) 看即可。现行文档全部随包分发，`tests/pack-firstrun.test.sh` 守着这两条边界。

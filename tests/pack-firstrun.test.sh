@@ -73,6 +73,33 @@ for relative in \
   [ -f "$PKG_DIR/$relative" ] || fail "packed artifact is missing $relative"
 done
 pass "packed artifact carries the quickstart's preset, templates, envelope, and guide"
+for relative in \
+  docs/README.md \
+  docs/CLI.md \
+  docs/CHECKS.md \
+  docs/CAPABILITY-MATRIX.md \
+  docs/LEGACY-V1.16-MIGRATION.md \
+  docs/RELEASING.md \
+  docs/v2/RFC-0001-product-definition.md \
+  docs/v2/RFC-0002-domain-model.md \
+  docs/v2/RFC-0003-workflow-policy.md \
+  docs/v2/SPEC-0001-events-v1.md \
+  docs/v2/guide/README.md \
+  docs/v2/guide/11-session-handoff.md; do
+  [ -f "$PKG_DIR/$relative" ] || fail "packed artifact is missing current doc $relative"
+done
+pass "packed artifact carries every current doc (index, v1 CLI contract, matrix, RFC/SPEC, guides)"
+# Historical records (iteration logs, release evidence, pilots, plans) stay in
+# the repository only; package.json "files" negates them so installs do not
+# carry them. Guard the negation so a later edit cannot quietly ship them again.
+HISTORICAL_SHIPPED="$(cd "$PKG_DIR/docs" && find . -type f \( \
+  -name '*-RELEASE-EVIDENCE-*.md' -o -name 'V2-ITERATION-*.md' -o -name 'PHASE*.md' \
+  -o -name 'V2-PLAN.md' -o -name 'V2-PROPOSAL.md' -o -name 'V2-DECISIONS.md' \
+  -o -name 'V2-D2-DECISION-CARD.md' -o -name 'ROADMAP.md' -o -name 'EXECUTION-PLAN.md' \
+  -o -name 'CLI-STRATEGY-*.md' -o -name 'CLI-PILOT-*.md' -o -name 'M[124]-*.md' \
+  -o -name 'BuildBeat v2*.md' \) | sort)"
+[ -z "$HISTORICAL_SHIPPED" ] || { OUTPUT="$HISTORICAL_SHIPPED"; fail "packed artifact ships historical docs that package.json files should exclude"; }
+pass "packed artifact excludes historical docs (iteration logs, release evidence, pilots, plans)"
 
 OUTPUT="$("$BIN_DIR/buildbeat-v2" 2>&1 || true)"
 expect_contains "BuildBeat v2 runtime" "installed buildbeat-v2 prints its usage"
