@@ -2,6 +2,10 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- **npm 包不再携带历史文档**：`package.json` 的 `files` 显式排除发布证据、迭代记录、阶段试点、路线与规划类文件（`docs/*-RELEASE-EVIDENCE-*.md`、`V2-ITERATION-*`、`PHASE*`、`V2-PLAN/PROPOSAL/DECISIONS`、`ROADMAP`、`EXECUTION-PLAN`、`CLI-STRATEGY/PILOT`、`docs/v2/M1/M2/M4-*` 与 v2 长文），它们只留在仓库；现行文档（总入口、v1 CLI 合同与检查、能力矩阵、迁移、发布手册、RFC/SPEC、十件套指南）照常分发。包内 `docs/` 从 61 个文件降到 24 个，压缩包约 497 kB → 362 kB，解压约 1.3 MB → 1.0 MB。安装目录里现行文档指向历史文件的链接会落空，`docs/README.md` 已说明去 GitHub 看。回归：`tests/pack-firstrun.test.sh` 新增两条断言——每份现行文档都在包内、历史文件一个都不在。运行时行为不变。
+
 ## v2.0.1 — 2026-09-06（补丁：合同与文档同步、`env:` 透传修复、v2 模板与首跑回归、首页重写）
 
 > **发布状态**：`@haiyangbg/buildbeat@2.0.1` 已于 2026-09-06 从 `main`（PR #29，merge commit `4b2362f`，tag `v2.0.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34032278315，双 job success；所有者授权「发」）。独立回读（直连 npmjs.org）：`latest` = 2.0.1、integrity 与本地 dry-run 一致、attestation、隔离安装、`doctor` 有界 JSON、包内 `templates/v2/envelope/` 全过，GitHub Release v2.0.1 标 Latest，证据见 [`docs/V2.0.1-RELEASE-EVIDENCE-2026-09-06.md`](docs/V2.0.1-RELEASE-EVIDENCE-2026-09-06.md)。
