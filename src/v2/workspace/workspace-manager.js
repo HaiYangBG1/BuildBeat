@@ -7,7 +7,7 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, linkSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join } from "node:path";
 
@@ -41,9 +41,6 @@ function git(cwd, args) {
 // only way out was deleting runtime directories by hand.
 const OWNER_FILE = "owner.json";
 const CLAIM_SLOTS = 16;
-// A claim with no readable claimer is only the instant between creating it
-// and writing it; older than this, its writer died in that instant.
-const UNREADABLE_CLAIM_MS = 10_000;
 
 function lockPathFor(repoRoot, id) {
   return join(repoRoot, ".buildbeat", "runtime", "locks", `${id}.lock`);
@@ -123,16 +120,28 @@ function ownerGeneration(owner) {
   return createHash("sha256").update(`${owner.pid}|${owner.host}|${owner.acquiredAt}`).digest("hex").slice(0, 16);
 }
 
+// A claim is abandoned only when its claimer is provably gone (this host,
+// pid no longer exists). Never by age: a claimer paused by the scheduler or
+// SIGSTOP is still alive and may still finish (review of the second version).
 function claimAbandoned(claimPath, isAlive) {
   try {
     const claimer = JSON.parse(readFileSync(claimPath, "utf8"));
     return claimer.host === hostname() && !isAlive(claimer.pid);
   } catch {
-    try {
-      return Date.now() - statSync(claimPath).mtimeMs > UNREADABLE_CLAIM_MS;
-    } catch {
-      return false;
-    }
+    return false;
+  }
+}
+
+// Creates the claim with its content already in place: the claimer is
+// written aside and hard-linked to the claim name, and link() fails if the
+// name exists. There is no instant in which a claim exists but is empty.
+function createClaim(lockPath, claimPath) {
+  const temp = join(lockPath, `.claim.${process.pid}-${randomBytes(4).toString("hex")}`);
+  writeFileSync(temp, JSON.stringify({ pid: process.pid, host: hostname() }));
+  try {
+    linkSync(temp, claimPath);
+  } finally {
+    unlinkSync(temp);
   }
 }
 
@@ -141,7 +150,7 @@ function claimAbandoned(claimPath, isAlive) {
 // a plain acquire always sees it held and cannot slip in between (the
 // review of the first version found exactly that window: renaming the lock
 // aside let a third process take a fresh one). Reclaimers race on a claim
-// file created with O_EXCL and named after the dead owner's generation:
+// file created by link() and named after the dead owner's generation:
 // exactly one wins per generation. A winner that died before finishing
 // leaves its claim behind; the next slot is tried once that claimer is
 // provably gone. After winning, the owner record is re-read: if it is no
@@ -151,7 +160,7 @@ export function reclaimStaleLock(lockPath, expectedOwner, { isAlive = pidAlive }
   for (let slot = 1; slot <= CLAIM_SLOTS; slot += 1) {
     const claimPath = join(lockPath, `claim-${generation}-${slot}`);
     try {
-      writeFileSync(claimPath, JSON.stringify({ pid: process.pid, host: hostname() }), { flag: "wx" });
+      createClaim(lockPath, claimPath);
     } catch (error) {
       if (error.code === "ENOENT") {
         return false;

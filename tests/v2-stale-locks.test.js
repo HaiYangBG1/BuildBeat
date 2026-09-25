@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -146,28 +146,53 @@ test("processes racing for one stale lock produce exactly one holder", async (t)
   const root = tempRoot(t);
   plantLock(root, "RUN-A", owner(deadPid()));
   const go = join(root, "go");
+  const done = join(root, "done");
   const module = new URL("../src/v2/workspace/workspace-manager.js", import.meta.url).href;
+  // Every racer stays alive until all have tried: a winner that exited
+  // early would leave a lock a late racer may legitimately reclaim.
   const script = `
     const { existsSync } = await import("node:fs");
     const { acquireLock } = await import(${JSON.stringify(module)});
-    while (!existsSync(${JSON.stringify(go)})) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2);
-    try { acquireLock(${JSON.stringify(root)}, "RUN-A"); process.stdout.write("won " + process.pid); }
-    catch { process.stdout.write("lost"); }
+    const nap = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2);
+    while (!existsSync(${JSON.stringify(go)})) nap();
+    try { acquireLock(${JSON.stringify(root)}, "RUN-A"); process.stdout.write("won " + process.pid + "\\n"); }
+    catch { process.stdout.write("lost\\n"); }
+    while (!existsSync(${JSON.stringify(done)})) nap();
   `;
   const racers = Array.from({ length: 6 }, () => {
     const child = spawn(process.execPath, ["--input-type=module", "-e", script], { stdio: ["ignore", "pipe", "ignore"] });
-    let out = "";
-    child.stdout.on("data", (chunk) => {
-      out += chunk;
+    const racer = { out: "" };
+    racer.reported = new Promise((resolve) => {
+      child.stdout.on("data", (chunk) => {
+        racer.out += chunk;
+        if (racer.out.includes("\n")) resolve();
+      });
     });
-    return new Promise((done) => child.on("close", () => done(out)));
+    racer.closed = new Promise((resolve) => child.on("close", resolve));
+    return racer;
   });
   await pause(300);
   writeFileSync(go, "");
-  const outcomes = await Promise.all(racers);
-  const winners = outcomes.filter((out) => out.startsWith("won"));
-  assert.equal(winners.length, 1, outcomes.join(" | "));
+  await Promise.all(racers.map((racer) => racer.reported));
+  const winners = racers.map((racer) => racer.out.trim()).filter((out) => out.startsWith("won"));
+  assert.equal(winners.length, 1, racers.map((racer) => racer.out.trim()).join(" | "));
   assert.equal(readOwnerFile(root, "RUN-A").pid, Number(winners[0].split(" ")[1]));
+  writeFileSync(done, "");
+  await Promise.all(racers.map((racer) => racer.closed));
+});
+
+test("an alive claimer keeps its claim however long it pauses", (t) => {
+  const root = tempRoot(t);
+  const dead = owner(deadPid());
+  plantLock(root, "RUN-A", dead);
+  assert.equal(reclaimStaleLock(lockPath(root, "RUN-A"), dead), true);
+  const claim = readdirSync(lockPath(root, "RUN-A")).find((entry) => entry.startsWith("claim-"));
+  // Age the claim far beyond any timeout: its claimer (this process) is alive.
+  const old = new Date(Date.now() - 24 * 3600 * 1000);
+  utimesSync(join(lockPath(root, "RUN-A"), claim), old, old);
+  assert.equal(reclaimStaleLock(lockPath(root, "RUN-A"), dead), false);
+  assert.deepEqual(readdirSync(lockPath(root, "RUN-A")).filter((entry) => entry.startsWith("claim-")), [claim]);
+  assert.ok(!readdirSync(lockPath(root, "RUN-A")).some((entry) => entry.startsWith(".claim.")));
 });
 
 test("gc reclaims an active-run lock whose owner is gone and keeps a live one", (t) => {
