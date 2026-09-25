@@ -1,0 +1,2 @@
+{"ts":"2026-09-25T15:04:29.227Z","decisionRef":"A-WORK-STALE-LOCKS-1","decision":"approved","transition":"accept-intent","subject":{"artifact":"intent","digest":"sha256:e8e539abdd978a29bb708a7d9cf940c31195394584bbd3863c2f48cd8b59c908"},"by":"haiyangbg"}
+{"ts":"2026-09-25T15:04:29.284Z","decisionRef":"A-WORK-STALE-LOCKS-2","decision":"approved","transition":"accept-plan","subject":{"artifact":"plan","digest":"sha256:e5d60219febf3bcf6dbbb9eaa892e3ca373da812e36a3a4408cb53aedde3497e"},"by":"haiyangbg"}

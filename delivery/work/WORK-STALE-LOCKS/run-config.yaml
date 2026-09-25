@@ -1,0 +1,65 @@
+# Run config for WORK-STALE-LOCKS. Paths resolve relative to this file.
+repo: ../../..
+work: WORK-STALE-LOCKS
+run: RUN-STALE-LOCKS
+workflow: workflow.yaml
+riskPreset: standard
+entry: build
+allowedPaths:
+  - src/v2/workspace
+  - src/v2/cli
+  - src/v2/runtime
+  - tests
+  - docs/v2/guide
+  - SKILL.md
+  - CHANGELOG.md
+  - delivery/work/WORK-STALE-LOCKS
+reviewTriage: required
+budgets:
+  maxAttempts:
+    review: 2
+  reviewRoundsPerWork: 3
+cache:
+  verify: tree
+envelope:
+  prompts: ../../envelope/prompts
+  vars:
+    component: runtime
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+workers:
+  builder:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - builder
+      - --
+      - codex
+      - exec
+      - -s
+      - workspace-write
+  verifier:
+    command: bash
+    args:
+      - -lc
+      - "npm test && npm run check:docs"
+  reviewer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only
+  fixer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - fixer
+      - --
+      - codex
+      - exec
+      - -s
+      - workspace-write
