@@ -1,0 +1,2 @@
+{"ts":"2026-09-25T15:18:15.499Z","decisionRef":"A-WORK-LEDGER-RACE-1","decision":"approved","transition":"accept-intent","subject":{"artifact":"intent","digest":"sha256:5056bebeec9ec2263d1662573a6e6a45b6cf44b8bd076f3b0d1cfb1929d31fd1"},"by":"haiyangbg"}
+{"ts":"2026-09-25T15:18:15.551Z","decisionRef":"A-WORK-LEDGER-RACE-2","decision":"approved","transition":"accept-plan","subject":{"artifact":"plan","digest":"sha256:9fe89080ae08f80af6722a8fcbcfabecc40a7b11fcc96b5fd216853d86af0974"},"by":"haiyangbg"}
