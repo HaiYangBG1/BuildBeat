@@ -1,0 +1,2 @@
+{"ts":"2026-09-25T14:20:46.327Z","decisionRef":"A-WORK-RESUME-RUN-FAMILY-1","decision":"approved","transition":"accept-intent","subject":{"artifact":"intent","digest":"sha256:7806599c879bc30733e84dbf8144791898e7de694e6ca498ba25a2c16b76d6b7"},"by":"claude-delegated"}
+{"ts":"2026-09-25T14:20:46.377Z","decisionRef":"A-WORK-RESUME-RUN-FAMILY-2","decision":"approved","transition":"accept-plan","subject":{"artifact":"plan","digest":"sha256:ea50762dee5410c876fd8945bded6b99b038f2dbb77fe285b1d7b86a18dcf424"},"by":"claude-delegated"}
