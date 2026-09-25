@@ -162,9 +162,13 @@ export function applyGc(repoRoot, rows, { force = false } = {}) {
       results.push(result);
       try {
         if (action.kind === "remove-lock" && action.owner) {
-          result.done = reclaimStaleLock(action.path, action.owner);
-          if (!result.done) {
-            result.error = "lock changed hands since the plan; left in place";
+          // Winning the takeover makes this process the only one entitled
+          // to the lock; only then is it removed.
+          if (reclaimStaleLock(action.path, action.owner)) {
+            rmSync(action.path, { recursive: true, force: true });
+            result.done = true;
+          } else {
+            result.error = "lock changed hands since the plan (or is being taken over); left in place";
           }
         } else if (action.kind === "remove-lock") {
           rmSync(action.path, { recursive: true, force: true });

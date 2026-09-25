@@ -40,6 +40,8 @@ function deadPid() {
   return spawnSync(process.execPath, ["-e", ""]).pid;
 }
 
+const pause = (ms) => new Promise((done) => setTimeout(done, ms));
+
 const owner = (pid, extra = {}) => ({ pid, host: hostname(), acquiredAt: "2026-01-01T00:00:00.000Z", command: "start", ...extra });
 
 test("a lock records its owner process", (t) => {
@@ -106,11 +108,66 @@ test("reclaim leaves a lock alone when it changed hands after inspection", (t) =
   assert.deepEqual(readdirSync(join(root, ".buildbeat", "runtime", "locks")), ["RUN-A.lock"]);
 });
 
-test("tombstones are not reported as held run locks", (t) => {
+test("claims stay inside the lock and go with it on release", (t) => {
   const root = tempRoot(t);
-  plantLock(root, "RUN-A", owner(process.pid));
-  mkdirSync(`${lockPath(root, "RUN-B")}.stale-1-abcd`, { recursive: true });
+  plantLock(root, "RUN-A", owner(deadPid()));
+  acquireLock(root, "RUN-A");
   assert.deepEqual(listHeldRunLocks(root), ["RUN-A"]);
+  assert.ok(readdirSync(lockPath(root, "RUN-A")).some((entry) => entry.startsWith("claim-")));
+  releaseLock(root, "RUN-A");
+  assert.deepEqual(readdirSync(join(root, ".buildbeat", "runtime", "locks")), []);
+});
+
+test("while a takeover is in progress every other acquirer is kept out", (t) => {
+  const root = tempRoot(t);
+  const dead = owner(deadPid());
+  plantLock(root, "RUN-A", dead);
+  // This process wins the takeover but has not written its owner yet.
+  assert.equal(reclaimStaleLock(lockPath(root, "RUN-A"), dead), true);
+  assert.throws(() => acquireLock(root, "RUN-A"), /whose process is gone; another process is taking it over right now/);
+  assert.equal(existsSync(lockPath(root, "RUN-A")), true);
+});
+
+test("a reclaimer that died mid-takeover does not wedge the lock", (t) => {
+  const root = tempRoot(t);
+  const dead = owner(deadPid());
+  plantLock(root, "RUN-A", dead);
+  const module = new URL("../src/v2/workspace/workspace-manager.js", import.meta.url).href;
+  const child = spawnSync(process.execPath, ["--input-type=module", "-e", `
+    const { reclaimStaleLock } = await import(${JSON.stringify(module)});
+    process.stdout.write(String(reclaimStaleLock(${JSON.stringify(lockPath(root, "RUN-A"))}, ${JSON.stringify(dead)})));
+  `], { encoding: "utf8" });
+  assert.equal(child.stdout, "true", child.stderr);
+  acquireLock(root, "RUN-A");
+  assert.equal(readOwnerFile(root, "RUN-A").pid, process.pid);
+});
+
+test("processes racing for one stale lock produce exactly one holder", async (t) => {
+  const root = tempRoot(t);
+  plantLock(root, "RUN-A", owner(deadPid()));
+  const go = join(root, "go");
+  const module = new URL("../src/v2/workspace/workspace-manager.js", import.meta.url).href;
+  const script = `
+    const { existsSync } = await import("node:fs");
+    const { acquireLock } = await import(${JSON.stringify(module)});
+    while (!existsSync(${JSON.stringify(go)})) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2);
+    try { acquireLock(${JSON.stringify(root)}, "RUN-A"); process.stdout.write("won " + process.pid); }
+    catch { process.stdout.write("lost"); }
+  `;
+  const racers = Array.from({ length: 6 }, () => {
+    const child = spawn(process.execPath, ["--input-type=module", "-e", script], { stdio: ["ignore", "pipe", "ignore"] });
+    let out = "";
+    child.stdout.on("data", (chunk) => {
+      out += chunk;
+    });
+    return new Promise((done) => child.on("close", () => done(out)));
+  });
+  await pause(300);
+  writeFileSync(go, "");
+  const outcomes = await Promise.all(racers);
+  const winners = outcomes.filter((out) => out.startsWith("won"));
+  assert.equal(winners.length, 1, outcomes.join(" | "));
+  assert.equal(readOwnerFile(root, "RUN-A").pid, Number(winners[0].split(" ")[1]));
 });
 
 test("gc reclaims an active-run lock whose owner is gone and keeps a live one", (t) => {
@@ -155,8 +212,6 @@ function killFixture(t) {
   const ledgerPath = join(root, ".buildbeat", "runtime", "runs", "RUN-KILL-01", "events.jsonl");
   return { root, hang, configPath, ledgerPath };
 }
-
-const pause = (ms) => new Promise((done) => setTimeout(done, ms));
 
 async function startAndKill(f) {
   const driver = spawn(process.execPath, [CLI, "start", "--config", f.configPath, "--attempt", "new"], {

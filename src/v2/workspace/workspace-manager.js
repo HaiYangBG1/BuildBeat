@@ -6,8 +6,8 @@
 // evidence.
 
 import { execFileSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join } from "node:path";
 
@@ -40,7 +40,10 @@ function git(cwd, args) {
 // resume answered "another run is active" and stop "already locked", and the
 // only way out was deleting runtime directories by hand.
 const OWNER_FILE = "owner.json";
-const TOMBSTONE = ".stale-";
+const CLAIM_SLOTS = 16;
+// A claim with no readable claimer is only the instant between creating it
+// and writing it; older than this, its writer died in that instant.
+const UNREADABLE_CLAIM_MS = 10_000;
 
 function lockPathFor(repoRoot, id) {
   return join(repoRoot, ".buildbeat", "runtime", "locks", `${id}.lock`);
@@ -90,46 +93,81 @@ export function inspectLock(lockPath, { host = hostname(), isAlive = pidAlive } 
   return { state: isAlive(owner.pid) ? "alive" : "dead", owner };
 }
 
-function takeLock(lockPath) {
-  mkdirSync(lockPath);
-  const owner = {
+function ownerRecord() {
+  return {
     pid: process.pid,
     host: hostname(),
     acquiredAt: new Date().toISOString(),
     command: process.argv[2] ?? null,
   };
+}
+
+// Readers never see a half-written owner: write aside, then rename over.
+function writeOwner(lockPath) {
+  const temp = join(lockPath, `.${OWNER_FILE}.${process.pid}-${randomBytes(4).toString("hex")}`);
+  writeFileSync(temp, `${JSON.stringify(ownerRecord())}\n`);
+  renameSync(temp, join(lockPath, OWNER_FILE));
+}
+
+function takeLock(lockPath) {
+  mkdirSync(lockPath);
   try {
-    writeFileSync(join(lockPath, OWNER_FILE), `${JSON.stringify(owner)}\n`);
+    writeOwner(lockPath);
   } catch (error) {
     rmSync(lockPath, { recursive: true, force: true });
     throw error;
   }
 }
 
-// Removes a lock only if it is still the one whose owner was judged dead:
-// the lock is renamed to a tombstone first and its owner re-read there, so
-// a lock another process re-took in the meantime is put back, not deleted.
-export function reclaimStaleLock(lockPath, expectedOwner) {
-  const tombstone = `${lockPath}${TOMBSTONE}${process.pid}-${randomBytes(4).toString("hex")}`;
+function ownerGeneration(owner) {
+  return createHash("sha256").update(`${owner.pid}|${owner.host}|${owner.acquiredAt}`).digest("hex").slice(0, 16);
+}
+
+function claimAbandoned(claimPath, isAlive) {
   try {
-    renameSync(lockPath, tombstone);
-  } catch (error) {
-    if (error.code === "ENOENT") {
+    const claimer = JSON.parse(readFileSync(claimPath, "utf8"));
+    return claimer.host === hostname() && !isAlive(claimer.pid);
+  } catch {
+    try {
+      return Date.now() - statSync(claimPath).mtimeMs > UNREADABLE_CLAIM_MS;
+    } catch {
       return false;
     }
-    throw error;
   }
-  const moved = readOwner(tombstone);
-  if (!moved || !sameOwner(moved, expectedOwner)) {
+}
+
+// Wins the right to take over a lock whose owner was judged dead, or
+// returns false. The lock directory never disappears during a takeover, so
+// a plain acquire always sees it held and cannot slip in between (the
+// review of the first version found exactly that window: renaming the lock
+// aside let a third process take a fresh one). Reclaimers race on a claim
+// file created with O_EXCL and named after the dead owner's generation:
+// exactly one wins per generation. A winner that died before finishing
+// leaves its claim behind; the next slot is tried once that claimer is
+// provably gone. After winning, the owner record is re-read: if it is no
+// longer the dead owner, nothing is taken over.
+export function reclaimStaleLock(lockPath, expectedOwner, { isAlive = pidAlive } = {}) {
+  const generation = ownerGeneration(expectedOwner);
+  for (let slot = 1; slot <= CLAIM_SLOTS; slot += 1) {
+    const claimPath = join(lockPath, `claim-${generation}-${slot}`);
     try {
-      renameSync(tombstone, lockPath);
-    } catch {
-      // Someone took the path in between; the tombstone stays for a human.
+      writeFileSync(claimPath, JSON.stringify({ pid: process.pid, host: hostname() }), { flag: "wx" });
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        return false;
+      }
+      if (error.code !== "EEXIST") {
+        throw error;
+      }
+      if (claimAbandoned(claimPath, isAlive)) {
+        continue;
+      }
+      return false;
     }
-    return false;
+    const current = readOwner(lockPath);
+    return Boolean(current && sameOwner(current, expectedOwner));
   }
-  rmSync(tombstone, { recursive: true, force: true });
-  return true;
+  return false;
 }
 
 function heldError(id, seen) {
@@ -137,6 +175,8 @@ function heldError(id, seen) {
   let detail;
   if (seen.state === "alive") {
     detail = `held by ${describeLockOwner(seen.owner)}; that process is still running: wait for it, or end it once you are sure it is stuck`;
+  } else if (seen.state === "dead") {
+    detail = `held by ${describeLockOwner(seen.owner)}, whose process is gone; another process is taking it over right now: retry in a moment`;
   } else if (seen.state === "foreign-host") {
     detail = `held by ${describeLockOwner(seen.owner)}, another host; release it there`;
   } else {
@@ -160,14 +200,7 @@ export function acquireLock(repoRoot, runId) {
   if (seen.state !== "dead" || !reclaimStaleLock(lockPath, seen.owner)) {
     throw heldError(runId, seen.state === "dead" ? inspectLock(lockPath) : seen);
   }
-  try {
-    takeLock(lockPath);
-  } catch (error) {
-    if (error.code === "EEXIST") {
-      throw heldError(runId, inspectLock(lockPath));
-    }
-    throw error;
-  }
+  writeOwner(lockPath);
   process.stderr.write(`reclaimed stale lock ${runId} (owner ${describeLockOwner(seen.owner)} is gone)\n`);
   return lockPath;
 }
