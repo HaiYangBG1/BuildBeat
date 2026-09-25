@@ -149,7 +149,7 @@ test("a crash on the final budgeted attempt stops for a human, not a rerun", () 
     adapters: { builder: createMockAdapter({ build: ["succeed"] }) },
   });
   assert.equal(result.state.run.status, "WAITING_HUMAN");
-  assert.match(result.state.pendingHuman.reasons[0], /build 已用 1\/1 次.*budget exhausted/);
+  assert.match(result.state.pendingHuman.reasons[0], /build budget exhausted: 1\/1 charged attempt\(s\) used/);
   assert.equal(result.state.steps.build.attempts, 1);
 });
 

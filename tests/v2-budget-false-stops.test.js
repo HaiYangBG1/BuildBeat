@@ -86,7 +86,7 @@ for (const triage of ["required", undefined]) {
     assert.deepEqual(requests(result).at(-1).data.grants, [
       { step: "review", scope: "run" }, { step: "review", scope: "work" },
     ]);
-    assert.match(result.state.pendingHuman.reasons[0], /review 已用 2\/2 轮/);
+    assert.match(result.state.pendingHuman.reasons[0], /review budget exhausted: 2\/2 review round\(s\)/);
     result = approve(options, result);
     assert.equal(result.state.pendingHuman.kind, "final-decision");
     assert.equal(result.state.steps.review.attempts, 3);
@@ -136,7 +136,7 @@ test("successful verification between failures does not spend the remaining fail
   const result = startRun(options);
   assert.equal(result.state.steps.verify.attempts, 3);
   assert.equal(result.state.steps.verify.freeAttempts, 1);
-  assert.match(result.state.pendingHuman.reasons[0], /verify 已用 2\/2 次\(真失败 2 次\)/);
+  assert.match(result.state.pendingHuman.reasons[0], /verify budget exhausted: 2\/2 charged attempt\(s\) used, 2 real failure\(s\)/);
 });
 
 test("resuming after a partially recorded combined grant does not grant twice", () => {
@@ -151,6 +151,39 @@ test("resuming after a partially recorded combined grant does not grant twice", 
   assert.equal(resumed.state.pendingHuman.kind, "final-decision");
   assert.equal(resumed.state.budgetExtensions.review, 1);
   assert.equal(resumed.state.workReviewGrants, 1);
+});
+
+test("a crash between the run and work grants of one approval replays the pinned plan", () => {
+  const script = { review: [{ finding: "one" }, { code: 1, error: "reviewer crashed" }] };
+  const options = fixture({ budgets: { reviewRoundsPerWork: 2 } }, script);
+  const started = startRun(options);
+  assert.equal(started.state.pendingHuman.transition, "resume-review");
+  assert.deepEqual(requests(started).at(-1).data.grants, [
+    { step: "review", scope: "run" },
+    { step: "review", scope: "work" },
+  ]);
+  approveRun(options.repoRoot, options.runId, { by: "owner", transition: "resume-review" });
+  const append = EventLedger.prototype.append;
+  let granted = 0;
+  EventLedger.prototype.append = function (event) {
+    if (event.type === "BUDGET_EXTENDED" && ++granted === 2) {
+      throw new Error("simulated host kill between grants");
+    }
+    return append.call(this, event);
+  };
+  try {
+    assert.throws(() => resumeRun(options), /simulated host kill/);
+  } finally {
+    EventLedger.prototype.append = append;
+  }
+  const partial = EventLedger.open(started.ledgerPath).state;
+  assert.equal(partial.budgetExtensions.review, 1);
+  assert.equal(partial.workReviewGrants ?? 0, 0);
+  const resumed = resumeRun(options);
+  assert.equal(resumed.state.pendingHuman.kind, "final-decision");
+  assert.equal(resumed.state.budgetExtensions.review, 1);
+  assert.equal(resumed.state.workReviewGrants, 1);
+  assert.equal(requests(started).filter((event) => event.data.transition === "enter-review").length, 0);
 });
 
 test("a refreshed request cannot reuse grants from the previous request", () => {
@@ -173,7 +206,7 @@ test("E: real verify failures still exhaust their budget before another fix", ()
   });
   const result = startRun(options);
   assert.equal(result.state.pendingHuman.transition, "resume-verify");
-  assert.match(result.state.pendingHuman.reasons[0], /verify 已用 2\/2 次\(真失败 2 次\).*budget/);
+  assert.match(result.state.pendingHuman.reasons[0], /verify budget exhausted: 2\/2 charged attempt\(s\) used, 2 real failure\(s\)/);
   assert.equal(result.state.steps.fix.attempts, 1);
   assert.equal(result.state.budgets.attempts.consumed, 2);
   const resumed = approve(options, result);
@@ -202,7 +235,7 @@ test("successful self-loop has a finite total-attempt safeguard and can be exten
   const result = startRun(options);
   assert.equal(result.state.pendingHuman.kind, "budget");
   assert.equal(result.state.steps.verify.attempts, 3);
-  assert.match(result.state.pendingHuman.reasons[0], /兜底.*budget/);
+  assert.match(result.state.pendingHuman.reasons[0], /budget exhausted \(runaway safeguard\): 3\/3 total attempt/);
   const resumed = approve(options, result);
   assert.equal(resumed.state.budgetExtensions.verify, 1);
   assert.equal(resumed.state.steps.verify.attempts, 6);

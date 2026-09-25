@@ -71,8 +71,8 @@ test("approving the exhausted review round before fix grants one more round inst
   const started = startRun(options(root, "RUN-B1", adapters));
   assert.equal(started.state.run.status, "WAITING_HUMAN");
   assert.equal(started.state.pendingHuman.transition, "enter-fix");
-  assert.match(started.state.pendingHuman.reasons[0], /review 已用 2\/2 轮.*budget exhausted/);
-  assert.match(started.state.pendingHuman.reasons[0], /批准 = 修复 \+ 重新验证 \+ 再审一轮/);
+  assert.match(started.state.pendingHuman.reasons[0], /review budget exhausted: 2\/2 review round\(s\) used in this run/);
+  assert.match(started.state.pendingHuman.reasons[0], /approve enter-fix = fix \+ re-verify \+ one more review round/);
 
   const approval = approveRun(root, "RUN-B1", { by: "owner", transition: "enter-fix" });
   assert.equal(approval.approved, true);
@@ -111,7 +111,7 @@ test("a final-attempt failure also becomes one more attempt on approval, not a f
   const adapters = { builder: mock, verifier: mock, reviewer: mock };
   const started = startRun(options(root, "RUN-B3", adapters, { maxAttemptsPerStep: 1 }));
   assert.equal(started.state.pendingHuman.transition, "resume-build");
-  assert.match(started.state.pendingHuman.reasons[0], /build 已用 1\/1 次\(真失败 1 次\).*budget exhausted/);
+  assert.match(started.state.pendingHuman.reasons[0], /build budget exhausted: 1\/1 charged attempt\(s\) used, 1 real failure\(s\)/);
   approveRun(root, "RUN-B3", { by: "owner", transition: "resume-build" });
   const resumed = resumeRun(options(root, "RUN-B3", adapters, { maxAttemptsPerStep: 1 }));
   assert.equal(resumed.state.budgetExtensions.build, 1);
