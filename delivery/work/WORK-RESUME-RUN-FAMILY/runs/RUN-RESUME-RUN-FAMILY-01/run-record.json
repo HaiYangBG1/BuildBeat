@@ -1,0 +1,103 @@
+{
+  "run": "RUN-RESUME-RUN-FAMILY-01",
+  "work": "WORK-RESUME-RUN-FAMILY",
+  "workflow": "software-delivery",
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 30,
+    "lastDigest": "sha256:ce54b8f0b1a72003aeea4126009e6d4ac5105f88ab8e098b11e8feacf3e5facc"
+  },
+  "startedAt": "2026-09-25T14:20:46.661Z",
+  "finishedAt": "2026-09-25T14:28:50.204Z",
+  "attempts": {
+    "build": 1,
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 3,
+      "remaining": 1
+    }
+  },
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "infraFailures": 0,
+    "workerMs": 443800
+  },
+  "workspaces": {
+    "RUN-RESUME-RUN-FAMILY-01": {
+      "repo": ".",
+      "branch": "run/RUN-RESUME-RUN-FAMILY-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-RESUME-RUN-FAMILY-01",
+      "base": "2f6d2b9681cb8aa74dd61c7f6d8622a7c3aaf473",
+      "candidate": "47f786b968357c81e49286e114db5b96cf1699d9"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-RESUME-RUN-FAMILY-01/logs/build-1.log",
+      "kind": "command",
+      "subject": "47f786b968357c81e49286e114db5b96cf1699d9",
+      "digest": "sha256:0f16a8302aceca4e044d6e80bc80382300bd9e7f5a7ebff6038688cafc6019f6",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-RESUME-RUN-FAMILY-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "47f786b968357c81e49286e114db5b96cf1699d9",
+      "digest": "sha256:e5bcfc70176c5543d4e6fd2884589470be274f06821f1f255e21dff7c8760ef5",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:c4dfdc2327ff3e16729ec510bbae407399fb00d287898cd0b8a136792fd5353b"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-RESUME-RUN-FAMILY-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "47f786b968357c81e49286e114db5b96cf1699d9",
+      "digest": "sha256:664ff632b7824cb8f53a2d606f067779f00c9049a9d83d8656506a0368ff42cc",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-RESUME-RUN-FAMILY-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "47f786b968357c81e49286e114db5b96cf1699d9",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "47f786b968357c81e49286e114db5b96cf1699d9",
+        "planDigest": "sha256:ea50762dee5410c876fd8945bded6b99b038f2dbb77fe285b1d7b86a18dcf424",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-RESUME-RUN-FAMILY-01-1"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-RESUME-RUN-FAMILY-01-1",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "47f786b968357c81e49286e114db5b96cf1699d9",
+        "planDigest": "sha256:ea50762dee5410c876fd8945bded6b99b038f2dbb77fe285b1d7b86a18dcf424",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
