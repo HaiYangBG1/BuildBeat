@@ -27,17 +27,10 @@ envelope:
     component: runtime
 redact:
   - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+# builder / fixer are deliberately absent: the driving session writes the code
+# (owner instruction) and hands each commit over with resume --adopt; verify and
+# the read-only reviewer stay independent workers.
 workers:
-  builder:
-    command: bash
-    args:
-      - delivery/envelope/worker.sh
-      - builder
-      - --
-      - codex
-      - exec
-      - -s
-      - workspace-write
   verifier:
     command: bash
     args:
@@ -53,13 +46,3 @@ workers:
       - exec
       - -s
       - read-only
-  fixer:
-    command: bash
-    args:
-      - delivery/envelope/worker.sh
-      - fixer
-      - --
-      - codex
-      - exec
-      - -s
-      - workspace-write
