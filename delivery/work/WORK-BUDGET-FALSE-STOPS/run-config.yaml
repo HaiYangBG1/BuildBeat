@@ -1,0 +1,64 @@
+# Run config for WORK-BUDGET-FALSE-STOPS. Paths resolve relative to this file.
+repo: ../../..
+work: WORK-BUDGET-FALSE-STOPS
+run: RUN-BUDGET-FALSE-STOPS
+workflow: workflow.yaml
+riskPreset: standard
+entry: build
+allowedPaths:
+  - src/v2
+  - tests
+  - docs/v2/guide
+  - templates/v2
+  - SKILL.md
+  - CHANGELOG.md
+  - delivery/work/WORK-BUDGET-FALSE-STOPS
+reviewTriage: required
+budgets:
+  maxAttempts:
+    review: 2
+  reviewRoundsPerWork: 4
+cache:
+  verify: tree
+envelope:
+  prompts: ../../envelope/prompts
+  vars:
+    component: runtime
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+workers:
+  builder:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - builder
+      - --
+      - codex
+      - exec
+      - -s
+      - workspace-write
+  verifier:
+    command: bash
+    args:
+      - -lc
+      - "npm test && npm run check:docs"
+  reviewer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only
+  fixer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - fixer
+      - --
+      - codex
+      - exec
+      - -s
+      - workspace-write

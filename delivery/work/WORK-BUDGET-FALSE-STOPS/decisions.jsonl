@@ -1,0 +1,2 @@
+{"ts":"2026-09-25T13:37:49.001Z","decisionRef":"A-WORK-BUDGET-FALSE-STOPS-1","decision":"approved","transition":"accept-intent","subject":{"artifact":"intent","digest":"sha256:2372768dc3e89f13d470e16efc67d3b638961abc7a8485cc90ab55b9b41ac9fc"},"by":"haiyangbg"}
+{"ts":"2026-09-25T13:37:49.067Z","decisionRef":"A-WORK-BUDGET-FALSE-STOPS-2","decision":"approved","transition":"accept-plan","subject":{"artifact":"plan","digest":"sha256:356dd32c5b37f5a745270f4894d885da381f1ff1ce7c407b63827887dd72e724"},"by":"haiyangbg"}
