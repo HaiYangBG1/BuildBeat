@@ -920,17 +920,12 @@ export function startRun(options) {
   if (options.requires?.length) {
     assertRequires(options.requires);
   }
-  if (openLedgerFor(repoRoot, runId).ledger.events.length > 0) {
+  const { ledger, ledgerPath } = openLedgerFor(repoRoot, runId);
+  if (ledger.events.length > 0) {
     throw new OrchestratorError(`run ${runId} already has a ledger; use resumeRun`);
   }
 
   return withRunLocks(repoRoot, runId, () => {
-    // Re-read under the locks: a concurrent start of the same run id may
-    // have created the ledger since the check above.
-    const { ledger, ledgerPath } = openLedgerFor(repoRoot, runId);
-    if (ledger.events.length > 0) {
-      throw new OrchestratorError(`run ${runId} already has a ledger; use resumeRun`);
-    }
     const workspace = createWorkspace({ repoRoot, runId, base });
     const context = makeContext(options, ledger, workspace);
     const now = context.now;

@@ -127,11 +127,25 @@ test("stop racing approve: the ledger stays intact and ends cancelled", async (t
   ], 4);
   const ledger = intact(f.ledgerPath);
   const types = ledger.events.map((event) => event.type);
-  assert.ok(types.filter((type) => type === "DECISION_RECORDED").length <= 1);
-  if (results.some((result) => result.args[0] === "stop" && result.code === 0)) {
+  const approved = results.filter((result) => result.args[0] === "approve" && result.code === 0).length;
+  const stopped = results.filter((result) => result.args[0] === "stop" && result.code === 0).length;
+  // Whoever takes the run lock first always completes: never all fail.
+  assert.ok(approved + stopped >= 1, results.map((result) => result.stderr).join("\n"));
+  for (const result of results.filter((item) => item.code !== 0)) {
+    assert.match(result.stderr, /error: .+/);
+  }
+  // The ledger records exactly what succeeded, in one consistent order.
+  assert.equal(types.filter((type) => type === "DECISION_RECORDED").length, approved);
+  assert.equal(types.filter((type) => type === "RUN_TERMINAL").length, stopped > 0 ? 1 : 0);
+  if (stopped > 0) {
     assert.equal(ledger.state.terminal.status, "CANCELLED");
-    assert.equal(types.filter((type) => type === "RUN_TERMINAL").length, 1);
     assert.deepEqual(types.slice(types.indexOf("RUN_TERMINAL") + 1), ["RUN_COMPACTED"]);
+    if (approved > 0) {
+      // Approved first, then stopped: never a decision written after the end.
+      assert.ok(types.indexOf("DECISION_RECORDED") < types.indexOf("RUN_TERMINAL"));
+    }
+  } else {
+    assert.equal(ledger.state.terminal, null);
   }
 });
 
