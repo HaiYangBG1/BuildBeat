@@ -83,7 +83,7 @@ test("release-readback preset: human pause before apply, L4 evidence, any failed
   });
   assert.equal(failing.state.run.status, "WAITING_HUMAN");
   assert.equal(failing.state.pendingHuman.transition, "resume-preflight");
-  assert.match(failing.state.pendingHuman.reasons[0], /budget exhausted: preflight failed its final attempt/);
+  assert.match(failing.state.pendingHuman.reasons[0], /preflight 已用 1\/1 次\(真失败 1 次\).*budget exhausted/);
 });
 
 test("requires probes check environment facts, not just binary versions", () => {

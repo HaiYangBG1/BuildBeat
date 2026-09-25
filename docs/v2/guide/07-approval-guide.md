@@ -34,7 +34,7 @@ buildbeat accept  --repo . --work WORK-X --artifact plan --by <名字>   # 工�
 | 词 | 命令 | 含义 | 不等于 |
 |---|---|---|---|
 | **接受**（accept） | `accept --artifact intent\|plan` | 一份工件的 digest 被人认可；改过即 `stale` | 开工；不产生任何 Run |
-| **批准某转换**（approve） | `approve --transition <t>` | 允许 Run 走**这一条** transition：`enter-fix`（放行分诊后的 fixer）、`resume-<step>`（预算耗尽 / infra 停人后再跑一次，会落 `BUDGET_EXTENDED`）、`enter-review`（Work 级 review 上限后再审一轮）、`enter-apply-readback`（上线车道"我做完了"） | 批准了别的转换；非终态转换批准后 Run **不会自己动**，要 `resume --config <run-config>` 续跑（`approve` 输出的 `next:` 行会写明） |
+| **批准某转换**（approve） | `approve --transition <t>` | 允许 Run 走**这一条** transition：`enter-fix`（放行 fixer；附带 grants 时还放行重验后的下一轮 review）、`resume-<step>`（预算耗尽后扩额，或 infra 退款后重试）、`enter-review`（Work 级 review 上限后再审一轮）、`enter-apply-readback`（上线车道"我做完了"） | 批准了别的转换；非终态转换批准后 Run **不会自己动**，要 `resume --config <run-config>` 续跑（`approve` 输出的 `next:` 行会写明） |
 | **合并决定**（最终批准） | `approve --transition enter-wait-merge` | 候选已具备合并条件：candidate + planDigest + evidenceDigest 此刻全部成立；Run 进终态 `SUCCEEDED`，run-record 压进 Git 面 | 代码已合并、已 push、已部署——这三件永远是你在 Runner 之外的动作 |
 | **Run SUCCEEDED** | — | Run 停在了它该停的地方，证据齐 | Work 完成。`overview` 只有回读到候选在当前分支上才显示 `MERGED` |
 | **拒绝**（reject） | `reject --reason` | Run 终止（`FAILED`，理由入账） | 工件失效；intent/plan 的接受状态不变 |
@@ -44,6 +44,16 @@ buildbeat accept  --repo . --work WORK-X --artifact plan --by <名字>   # 工�
 ## 人批点由 Risk Preset 决定
 
 `fast` 仅 Merge；`standard` Plan+Merge；`controlled` Intent+Plan+Merge+Release。待批项强制携带 findings 摘要与理由——防"秒批"退化；人批等待时长进 `metrics`。
+
+## 预算停车：成功不扣次数，一轮一问
+
+- 非只读步（build / verify / fix）成功的 attempt 不扣 `maxAttempts`，只读步仍消耗次数，review 按轮计费。`STEP_FINISHED.free: true` 与 `BUDGET_CONSUMED.amount: 0` 记录退款；没有新字段的旧台账保持原有回放结果。
+- 真失败到顶仍停 `resume-<step>`，同指纹两次仍停，release 预设的 `maxAttempts: 1` 仍有效。infra 故障仍不扣次数。默认预算数值不变。
+- review 发现阻断问题时，若下一轮会超过 Run 或 Work 上限，立即停 `enter-fix`，在花费修复、重验之前问一次。有分诊时 kind 为 `finding-triage`，无分诊时为 `budget`。批准表示「修复 + 重新验证 + 再审一轮」；拒绝结束本 Run，由人按现有证据决定是否合并。
+- 该请求的可选 `grants` 列出需要放行的 Run/Work 上限，`resume` 校验批准仍有效后逐条落 `BUDGET_EXTENDED`。旧的 Work 级 `enter-review` 或 Run 级 `resume-review` 停车也会同时放行已到顶的另一层上限；过期批准、新请求不继承旧 grants。
+- 防止自定义 workflow 的成功循环失控：同一步总 attempt 达到有效上限（配置预算 + 人批扩额）的 **3 倍**后，在下一次执行前仍以 kind `budget` 兜底停人。成功/infra 退款不增加兜底上限；批准扩额会提高它。
+
+停车首行显示已用次数（或 review 轮数）、有效上限与真失败次数，并保留 `budget` 标识供度量使用。`status` 的 attempt 序号和 `overview` 的成本累计仍表示实际运行量，不是失败次数；`doctor` 展示配置上限。
 
 ## 发现分诊门与锚定审查
 

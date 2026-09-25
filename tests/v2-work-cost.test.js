@@ -104,7 +104,7 @@ test("budgets.reviewRoundsPerWork stops a new run before its review once the wor
   assert.equal(capped.state.run.status, "WAITING_HUMAN");
   assert.equal(capped.state.pendingHuman.kind, "work-review-cap");
   assert.equal(capped.state.pendingHuman.transition, "enter-review");
-  assert.match(capped.state.pendingHuman.reasons[0], /work review cap reached: 2 review round\(s\) across 2 run\(s\)/);
+  assert.match(capped.state.pendingHuman.reasons[0], /review 已用 2\/2 轮\(Work 累计.*budget exhausted/);
   assert.equal(capped.state.steps.review, undefined, "review did not run");
 
   approveRun(root, "RUN-CAP-02", { by: "owner", transition: "enter-review" });

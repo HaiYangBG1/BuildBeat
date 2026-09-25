@@ -2,6 +2,12 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- 修复预算误停车：非只读步成功不扣次数，真失败与只读 review 轮次继续消耗预算；增加总 attempt 的 3 倍兜底，防止成功循环失控。
+- review 到顶且发现阻断问题时提前在 `enter-fix` 一次批准修复、重验、再审；Run/Work review 上限同时放行，过期请求不继承扩额。预算提示显示实际用量、真失败次数及批准/拒绝的含义。
+- 事件仅增加可选 `free` / `grants` 字段，旧台账回放保持兼容；默认预算数值不变。
+
 ## v3.0.1 — 2026-09-09（补丁：示例项目、英文指南）
 
 > **发布状态**：`@haiyangbg/buildbeat@3.0.1` 已于 2026-09-09 从 `main`（PR #41，merge commit `c322ce9`，tag `v3.0.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34370800960，双 job 一次 success；所有者授权「发 3.0.1」）。独立回读（直连 npmjs.org）：`latest` = 3.0.1、integrity 与本地 dry-run 一致、attestation、隔离安装、包内 `example/` 与四篇英文指南在位全过，GitHub Release v3.0.1 标 Latest，证据见 [`docs/V3.0.1-RELEASE-EVIDENCE-2026-09-09.md`](docs/V3.0.1-RELEASE-EVIDENCE-2026-09-09.md)。

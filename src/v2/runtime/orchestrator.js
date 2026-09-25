@@ -149,12 +149,17 @@ function makeContext(options, ledger, workspace) {
   // review rounds could not be raised from the run config, and approving
   // resume-review re-asked the same question forever.
   context.runBudgets = options.budgets ?? {};
-  context.maxAttemptsFor = (step) =>
+  context.budgetLimitFor = (step) =>
     (context.runBudgets.maxAttempts?.[step] ??
       workflow.budgets?.maxAttempts?.[step] ??
       maxAttemptsPerStep) +
-    (ledger.state.budgetExtensions?.[step] ?? 0) +
-    (ledger.state.steps[step]?.infraAttempts ?? 0);
+    (ledger.state.budgetExtensions?.[step] ?? 0);
+  context.maxAttemptsFor = (step) => context.budgetLimitFor(step) +
+    (ledger.state.steps[step]?.infraAttempts ?? 0) +
+    (ledger.state.steps[step]?.freeAttempts ?? 0);
+  // Refunds must not move this ceiling: otherwise a success-only loop has
+  // an ever-growing limit. Human extensions deliberately raise it.
+  context.totalAttemptsFor = (step) => context.budgetLimitFor(step) * 3;
   context.policies = options.policies ?? [];
   context.allowedPaths = options.allowedPaths ?? null;
   context.reviewTriage = options.reviewTriage ?? null;
@@ -179,15 +184,58 @@ function makeContext(options, ledger, workspace) {
       evidenceDigest: lastEvidence?.digest ?? "UNVERIFIED",
     };
   };
-  context.waitHuman = (transition, reasons, kind = "boundary") => {
+  context.waitHuman = (transition, reasons, kind = "boundary", grants = []) => {
     ledger.append({
       type: "HUMAN_REQUESTED",
       actor: KERNEL,
       ts: context.now(),
-      data: { transition, subject: context.subjectNow(), reasons, kind },
+      data: { transition, subject: context.subjectNow(), reasons, kind, ...(grants.length ? { grants } : {}) },
     });
   };
   return context;
+}
+
+// Keep the charged budget distinct from the worker invocation number.
+function budgetUsage(context, step) {
+  const state = context.ledger.state.steps[step];
+  const attempts = state?.attempts ?? 0;
+  const used = attempts - (state?.infraAttempts ?? 0) - (state?.freeAttempts ?? 0);
+  const failures = context.ledger.events.filter((event) =>
+    event.type === "STEP_FINISHED" && event.data.step === step &&
+    event.data.status !== "succeeded" && event.data.infra !== true).length;
+  return { attempts, used, failures, limit: context.budgetLimitFor(step) };
+}
+
+function budgetReasons(context, step, safeguard = false) {
+  const { attempts, used, failures, limit } = budgetUsage(context, step);
+  return [
+    safeguard
+      ? `${step} 已用 ${attempts}/${context.totalAttemptsFor(step)} 次(真失败 ${failures} 次);总 attempt 兜底 budget exhausted`
+      : `${step} 已用 ${used}/${limit} 次(真失败 ${failures} 次);budget exhausted`,
+    `批准 = ${safeguard ? "提高兜底上限并继续" : "再执行一次"};拒绝 = 结束本 Run、按现有证据决定合并与否`,
+  ];
+}
+
+function workReviewBudget(context, step) {
+  const stepDef = context.workflow.steps.find((item) => item.id === step);
+  const cap = context.runBudgets.reviewRoundsPerWork;
+  if (cap === undefined || !(step === "review" || stepDef?.worker === "reviewer")) return null;
+  const prior = computeWorkCost(context.repoRoot, context.ledger.state.run.work, {
+    excludeRun: context.ledger.state.run.id,
+  });
+  const rounds = prior.reviewRounds + (context.ledger.state.steps[step]?.attempts ?? 0);
+  const allowed = cap + (context.ledger.state.workReviewGrants ?? 0);
+  return { rounds, allowed, exhausted: rounds >= allowed };
+}
+
+function reviewGrants(context, step) {
+  const grants = [];
+  if ((context.ledger.state.steps[step]?.attempts ?? 0) >= context.maxAttemptsFor(step) ||
+      (context.ledger.state.steps[step]?.attempts ?? 0) >= context.totalAttemptsFor(step)) {
+    grants.push({ step, scope: "run" });
+  }
+  if (workReviewBudget(context, step)?.exhausted) grants.push({ step, scope: "work" });
+  return grants;
 }
 
 // Evaluates configured policies of `type` for `appliesTo`, records every
@@ -249,10 +297,7 @@ function settleOutcome(context, step, outcome, tree, exec) {
     // A step that failed its final attempt can never run again, so routing
     // to fix would spend a worker on a candidate nothing can verify.
     if ((ledger.state.steps[step]?.attempts ?? 0) >= context.maxAttemptsFor(step)) {
-      context.waitHuman(`resume-${step}`, [
-        `budget exhausted: ${step} failed its final attempt (maxAttempts=${context.maxAttemptsFor(step)}); not routing to fix`,
-        `approving resume-${step} grants one more attempt; rejecting ends the run`,
-      ]);
+      context.waitHuman(`resume-${step}`, budgetReasons(context, step), "budget");
       return null;
     }
   }
@@ -336,24 +381,18 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
     // every run of the work, superseded ones included, so "one run per
     // round" cannot slip past the per-run budget. Reaching the cap is a
     // human decision (review once more, or merge/close as-is), not a stop.
-    const workCap = context.runBudgets.reviewRoundsPerWork;
-    if (workCap !== undefined && (stepDef.worker === "reviewer" || step === "review")) {
-      const prior = computeWorkCost(context.repoRoot, ledger.state.run.work, {
-        excludeRun: ledger.state.run.id,
-      });
-      const rounds = prior.reviewRounds + (ledger.state.steps[step]?.attempts ?? 0);
-      const allowed = workCap + (ledger.state.workReviewGrants ?? 0);
-      if (rounds >= allowed) {
-        context.waitHuman(
-          `enter-${step}`,
-          [
-            `work review cap reached: ${rounds} review round(s) across ${prior.runs + 1} run(s) of ${ledger.state.run.work} (budgets.reviewRoundsPerWork=${workCap})`,
-            `approve enter-${step} to review once more, or reject and merge/close the work on the evidence you have`,
-          ],
-          "work-review-cap",
-        );
-        return;
-      }
+    const workBudget = workReviewBudget(context, step);
+    if (workBudget?.exhausted) {
+      const { failures } = budgetUsage(context, step);
+      context.waitHuman(
+        `enter-${step}`,
+        [
+          `${step} 已用 ${workBudget.rounds}/${workBudget.allowed} 轮(Work 累计,本 Run 真失败 ${failures} 次);work review budget exhausted`,
+          "批准 = 再审一轮,同时放行已到顶的 Run 上限;拒绝 = 结束本 Run、按现有证据决定合并与否",
+        ],
+        "work-review-cap",
+      );
+      return;
     }
 
     const preGate = runPolicyGate(context, "pre", step);
@@ -375,10 +414,12 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
     const attempt = (ledger.state.steps[step]?.attempts ?? 0) + 1;
     const maxAttempts = context.maxAttemptsFor(step);
     if (attempt > maxAttempts) {
-      context.waitHuman(`resume-${step}`, [
-        `budget exhausted: ${step} would exceed maxAttempts=${maxAttempts}`,
-        `approving resume-${step} grants one more attempt; rejecting ends the run`,
-      ]);
+      context.waitHuman(`resume-${step}`, budgetReasons(context, step), "budget");
+      return;
+    }
+
+    if (attempt > context.totalAttemptsFor(step)) {
+      context.waitHuman(`resume-${step}`, budgetReasons(context, step, true), "budget");
       return;
     }
 
@@ -581,11 +622,13 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
       stepStatus === "crashed" ||
       stepStatus === "invalid-output" ||
       (stepStatus === "failed" && exec.exitCode === 75);
+    const free = stepStatus === "succeeded" && stepDef.readonly !== true;
     ledger.append({
       type: "STEP_FINISHED",
       actor: KERNEL,
       ts: now(),
-      data: { step, attempt, status: stepStatus, exitCode: exec.exitCode, ...(infra ? { infra: true } : {}) },
+      data: { step, attempt, status: stepStatus, exitCode: exec.exitCode,
+        ...(infra ? { infra: true } : {}), ...(free ? { free: true } : {}) },
     });
     ledger.append({
       type: "BUDGET_CONSUMED",
@@ -593,7 +636,7 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
       ts: now(),
       data: {
         kind: "attempts",
-        amount: infra ? 0 : 1,
+        amount: infra || free ? 0 : 1,
         remaining: context.maxAttemptsFor(step) - attempt,
       },
     });
@@ -736,26 +779,31 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
       outcome = "succeeded";
     }
     const routed = settleOutcome(context, step, outcome, tree, exec);
-    // Finding triage gate (reviewTriage: required): blocking findings stop
-    // for a human verdict before any fixer runs. Findings are prescriptions,
-    // not facts — auto-routing them to a fixer burned four oscillation
-    // rounds in the deploy campaign before a human stopped the loop.
-    if (routed && outcome === "findings-blocking" && context.reviewTriage === "required") {
-      context.waitHuman(
-        `enter-${routed}`,
-        [
-          `review found ${blockingFindings.length} blocking finding(s); triage before ${routed} runs`,
-          ...blockingFindings
-            .slice(0, 5)
-            .map(
-              (finding) =>
-                `[${finding.severity} ${fingerprintFinding(finding)}] ${finding.summary.slice(0, 200)}`,
-            ),
-          `adjudicate fingerprints (findings adjudicate), then approve enter-${routed} or reject the run`,
-        ],
-        "finding-triage",
-      );
-      return;
+    // Ask before spending fix/verify workers: one approval covers the next
+    // round and both review caps, with the grant bound to this request.
+    if (routed && outcome === "findings-blocking") {
+      const isReview = step === "review" || stepDef.worker === "reviewer";
+      const grants = isReview ? reviewGrants(context, step) : [];
+      const triage = context.reviewTriage === "required";
+      if (triage || grants.length) {
+        const { used, limit, failures } = budgetUsage(context, step);
+        const workBudget = workReviewBudget(context, step);
+        context.waitHuman(
+          `enter-${routed}`,
+          [
+            ...(grants.length ? [
+              `${step} 已用 ${used}/${limit} 轮(真失败 ${failures} 次)${workBudget ? `;Work 已用 ${workBudget.rounds}/${workBudget.allowed} 轮` : ""};budget exhausted;批准 = 修复 + 重新验证 + 再审一轮,拒绝 = 结束本 Run、按现有证据决定合并与否`,
+            ] : []),
+            `review found ${blockingFindings.length} blocking finding(s); ${triage ? "triage" : "approve another round"} before ${routed} runs`,
+            ...blockingFindings.slice(0, 5).map((finding) =>
+              `[${finding.severity} ${fingerprintFinding(finding)}] ${finding.summary.slice(0, 200)}`),
+            `adjudicate fingerprints (findings adjudicate), then approve enter-${routed} or reject the run`,
+          ],
+          triage ? "finding-triage" : "budget",
+          grants,
+        );
+        return;
+      }
     }
     step = routed;
   }
@@ -1004,35 +1052,44 @@ export function resumeRun(options) {
       // "one more"; record the grant before driving or the same request
       // comes straight back (the pilot's app-login runs ended CANCELLED
       // with their candidates in production because of exactly that).
-      const requestKind = [...ledger.events]
-        .reverse()
-        .find((event) => event.type === "HUMAN_REQUESTED" && event.data.transition === approval.transition)
-        ?.data.kind;
-      if (requestKind === "work-review-cap") {
+      const decisionIndex = ledger.events.findIndex((event) =>
+        event.type === "DECISION_RECORDED" && event.data.decisionRef === approval.decisionRef);
+      // APPROVAL_STALE is itself a new request, with no inherited grants.
+      // Restrict lookup to this decision, rather than an older request for
+      // the same transition (or one whose subject was refreshed).
+      const request = ledger.events.slice(0, decisionIndex).reverse().find((event) =>
+        event.type === "HUMAN_REQUESTED" || event.type === "APPROVAL_STALE");
+      const requestData = request?.type === "HUMAN_REQUESTED" &&
+        request.data.transition === approval.transition ? request.data : null;
+      const grants = requestData && canonicalJson(requestData.subject) === canonicalJson(approval.subject)
+        ? [...(requestData.grants ?? [])] : [];
+      const workCapApproval = requestData?.kind === "work-review-cap";
+      const runCapApproval = approval.transition.startsWith("resume-") &&
+        ((state.steps[step]?.attempts ?? 0) >= context.maxAttemptsFor(step) ||
+         (state.steps[step]?.attempts ?? 0) >= context.totalAttemptsFor(step));
+      if (workCapApproval || runCapApproval) {
+        if (workCapApproval) grants.push({ step, scope: "work" });
+        if (runCapApproval) grants.push({ step, scope: "run" });
+        grants.push(...reviewGrants(context, step));
+      }
+      const extended = new Set(ledger.events.filter((event) =>
+        event.type === "BUDGET_EXTENDED" && event.data.approvalRef === approval.decisionRef)
+        .map((event) => `${event.data.step}:${event.data.scope ?? "run"}`));
+      for (const grant of grants) {
+        const key = `${grant.step}:${grant.scope}`;
+        if (extended.has(key)) continue;
+        extended.add(key);
         ledger.append({
           type: "BUDGET_EXTENDED",
           actor: KERNEL,
           ts: now(),
           data: {
-            step,
+            step: grant.step,
             amount: 1,
-            scope: "work",
-            maxAttempts: (context.runBudgets.reviewRoundsPerWork ?? 0) + (state.workReviewGrants ?? 0) + 1,
-            approvalRef: approval.decisionRef,
-          },
-        });
-      } else if (
-        approval.transition.startsWith("resume-") &&
-        (state.steps[step]?.attempts ?? 0) >= context.maxAttemptsFor(step)
-      ) {
-        ledger.append({
-          type: "BUDGET_EXTENDED",
-          actor: KERNEL,
-          ts: now(),
-          data: {
-            step,
-            amount: 1,
-            maxAttempts: context.maxAttemptsFor(step) + 1,
+            ...(grant.scope === "work" ? { scope: "work" } : {}),
+            maxAttempts: grant.scope === "work"
+              ? (context.runBudgets.reviewRoundsPerWork ?? 0) + (ledger.state.workReviewGrants ?? 0) + 1
+              : context.maxAttemptsFor(grant.step) + 1,
             approvalRef: approval.decisionRef,
           },
         });

@@ -108,7 +108,7 @@ test("the preset caps review at two rounds; the third stops for a human", () => 
   const state = result.state;
   assert.equal(state.steps.review.attempts, 2);
   assert.equal(state.run.status, "WAITING_HUMAN");
-  assert.match(state.pendingHuman.reasons[0], /budget exhausted: review would exceed maxAttempts=2/);
+  assert.match(state.pendingHuman.reasons[0], /review 已用 2\/2 轮.*budget exhausted/);
 });
 
 test("a reviewer that writes to the workspace is blocked, not merged", () => {
