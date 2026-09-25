@@ -41,6 +41,8 @@ Sessions and documents used to mix "accept / approve / resume / succeeded / merg
 
 Likewise, `fix_now` on an observe draft is only acceptance; a human starts the Run. Protected actions are listed under [Security boundaries](09-security-boundaries.md) (Chinese).
 
+After `start --attempt new` numbers a Run, `resume --config <run-config.yaml>` resumes the family’s only non-terminal Run and prints its ID. Use `--run <RUN-ID>` to select the configured Run itself or `<family>-NN` explicitly (at least two digits). An existing ledger for the exact configured ID takes precedence. Multiple non-terminal Runs are listed with a request to select one using `--run`; if none remain, the error reports the latest ID and terminal status, or states that no ledgers were found.
+
 ## Risk presets decide where humans approve
 
 `fast`: Merge only; `standard`: Plan + Merge; `controlled`: Intent + Plan + Merge + Release. A pending request must carry the findings summary and the reason, which prevents the "rubber stamp" decay; human waiting time goes into `metrics`.
@@ -102,7 +104,7 @@ Notification is not an approval channel: decisions are still made only through t
 When a Run stops at `enter-fix` / `resume-fix`, the driving session or a person has often already fixed the problem in the Run's worktree and committed it. Approving at that point dispatches a fixer with nothing to do and runs verify once more (a pilot frontend Run reached its 5th verify and 3rd fix this way). Use instead:
 
 ```bash
-buildbeat resume --config <run-config.yaml> --adopt <sha> --by <name>
+buildbeat resume --config <run-config.yaml> --run <RUN-ID> --adopt <sha> --by <name>
 ```
 
 The kernel reads the worktree back: the tree must be clean and HEAD must be exactly `<sha>` (7-character prefix or longer), otherwise it refuses; then it records `CANDIDATE_PINNED` with a human actor (`adopted: true`), records `DECISION_RECORDED` with that commit as subject (`adopted`, `resumeAt`), and continues from verify (the step after a successful fix in the preset). The ledger shows who supplied this candidate. Adoption is not accepted at the merge decision.

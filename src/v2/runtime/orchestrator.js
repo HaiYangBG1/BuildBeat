@@ -208,10 +208,12 @@ function budgetUsage(context, step) {
 
 function budgetReasons(context, step, safeguard = false) {
   const { attempts, used, failures, limit } = budgetUsage(context, step);
+  const charging = context.workflow.steps.find((item) => item.id === step)?.readonly
+    ? "each round is charged" : "successful attempts are not charged";
   return [
     safeguard
       ? `${step} budget exhausted (runaway safeguard): ${attempts}/${context.totalAttemptsFor(step)} total attempt(s), ${failures} real failure(s)`
-      : `${step} budget exhausted: ${used}/${limit} charged attempt(s) used, ${failures} real failure(s) (successful attempts are not charged)`,
+      : `${step} budget exhausted: ${used}/${limit} charged attempt(s) used, ${failures} real failure(s) (${charging})`,
     `approve resume-${step} = ${safeguard ? "raise the safeguard and continue" : "one more attempt"}; reject = end this run and decide the merge on the evidence you have`,
   ];
 }

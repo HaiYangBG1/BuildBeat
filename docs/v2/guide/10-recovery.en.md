@@ -20,6 +20,8 @@ Design premise (invariant 23 in [`V2-PLAN.md`](../../V2-PLAN.md), Chinese): **th
 buildbeat resume --config <run-config.yaml>
 ```
 
+After `start --attempt new` numbers a Run, `resume --config <run-config.yaml>` resumes the family’s only non-terminal Run and prints its ID. Use `--run <RUN-ID>` to select the configured Run itself or `<family>-NN` explicitly (at least two digits). An existing ledger for the exact configured ID takes precedence. Multiple non-terminal Runs are listed with a request to select one using `--run`; if none remain, the error reports the latest ID and terminal status, or states that no ledgers were found.
+
 The in-flight step is closed as `crashed` (the fact is recorded), then **the step itself is rerun** (changed in beta.3): a dead process says nothing about the candidate; the lost attempt still counts against the step's budget, and an exhausted budget stops for a human. The earlier semantics treated a crash as a step failure and followed the failure edge; real incident (deploy-18): the host tool's timeout killed the verify worker, the crash was routed to fix, and the fixer burned a round facing zero verifier evidence. A dirty worktree still stops for a human first. Resuming with approvals re-checks candidate/plan freshness and turns `APPROVAL_STALE` over to a human if anything changed. If it cannot be recovered, delete the runtime and rerun: the candidate branch and the Git-plane records are not lost.
 
 **Launch discipline** (the other half of the same incident): a Run longer than minutes must be launched in a way that escapes the host tool's timeout (`nohup`/`setsid`); `start` prints this reminder in an interactive shell.

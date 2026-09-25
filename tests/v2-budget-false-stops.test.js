@@ -137,6 +137,7 @@ test("successful verification between failures does not spend the remaining fail
   assert.equal(result.state.steps.verify.attempts, 3);
   assert.equal(result.state.steps.verify.freeAttempts, 1);
   assert.match(result.state.pendingHuman.reasons[0], /verify budget exhausted: 2\/2 charged attempt\(s\) used, 2 real failure\(s\)/);
+  assert.match(result.state.pendingHuman.reasons[0], /\(successful attempts are not charged\)/);
 });
 
 test("resuming after a partially recorded combined grant does not grant twice", () => {
@@ -226,6 +227,8 @@ test("E: release readback still stops on its first real failure", () => {
   assert.equal(result.state.pendingHuman.transition, "resume-preflight");
   assert.equal(result.state.steps.preflight.attempts, 1);
   assert.equal(result.state.steps.preflight.freeAttempts, undefined);
+  assert.match(result.state.pendingHuman.reasons[0], /\(each round is charged\)/);
+  assert.doesNotMatch(result.state.pendingHuman.reasons[0], /successful attempts are not charged/);
 });
 
 test("successful self-loop has a finite total-attempt safeguard and can be extended", () => {

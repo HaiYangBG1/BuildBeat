@@ -41,6 +41,8 @@ buildbeat accept  --repo . --work WORK-X --artifact plan --by <名字>   # 工�
 
 同理 observe 草稿的 `fix_now` 只是接受，Run 由人发起。保护动作见 [安全边界](09-security-boundaries.md)。
 
+使用 `start --attempt new` 自动编号时，`resume --config <run-config.yaml>` 会续跑该家族唯一未终态的 Run，并打印选中的 ID；也可用 `--run <RUN-ID>` 显式指定配置中的 Run 本身或 `<家族>-NN`（数字至少两位）。配置本身已有台账时优先使用该精确 ID。多个未终态 Run 会列出候选并要求用 `--run` 选择；没有未终态 Run 会报告最新一次的 ID 和终态，没有台账则明确说明。
+
 ## 人批点由 Risk Preset 决定
 
 `fast` 仅 Merge；`standard` Plan+Merge；`controlled` Intent+Plan+Merge+Release。待批项强制携带 findings 摘要与理由——防"秒批"退化；人批等待时长进 `metrics`。
@@ -112,7 +114,7 @@ buildbeat accept  --repo . --work WORK-X --artifact plan --by <名字>   # 工�
 Run 停在 `enter-fix` / `resume-fix` 时，驾驶会话或人常常已经在 Run 的 worktree 里把问题修掉并提交了。此时再 `approve` 会派一个无事可做的 fixer，再多跑一次 verify（试点一条前端 Run 因此跑到 verify 第 5 次、fix 第 3 次）。改用：
 
 ```bash
-buildbeat resume --config <run-config.yaml> --adopt <sha> --by <名字>
+buildbeat resume --config <run-config.yaml> --run <RUN-ID> --adopt <sha> --by <名字>
 ```
 
 内核回读 worktree：树必须干净、HEAD 必须就是 `<sha>`（前缀 7 位起），否则拒绝；然后以人为 actor 落 `CANDIDATE_PINNED`（`adopted: true`）、以该提交为 subject 记 `DECISION_RECORDED`（`adopted`、`resumeAt`），并从 verify 继续（预设里 fix 成功后的下一步）。台账里看得出这一版候选是谁供的。合并决定处不接受 adopt。

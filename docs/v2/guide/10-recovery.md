@@ -20,6 +20,8 @@
 buildbeat resume --config <run-config.yaml>
 ```
 
+使用 `start --attempt new` 自动编号时，`resume --config <run-config.yaml>` 会续跑该家族唯一未终态的 Run，并打印选中的 ID；也可用 `--run <RUN-ID>` 显式指定配置中的 Run 本身或 `<家族>-NN`（数字至少两位）。配置本身已有台账时优先使用该精确 ID。多个未终态 Run 会列出候选并要求用 `--run` 选择；没有未终态 Run 会报告最新一次的 ID 和终态，没有台账则明确说明。
+
 在途步会以 `crashed` 关闭（事实落账），然后**重跑该步本身**（beta.3 改）：进程死掉不说明候选有问题，丢失的那次尝试照常计入该步预算，预算耗尽即停人工。此前的语义是把 crash 当步骤失败走 failure 边——真实事故（deploy-18）：宿主工具超时杀掉 verify worker，crash 被路由去 fix，fixer 面对零 verifier 证据白烧一轮。工作树脏了仍然先停人工。带批准恢复时会做 candidate/plan 新鲜度检查，变了即 `APPROVAL_STALE` 转人工。恢复不了就删 runtime 重跑——候选分支与 Git 面记录不丢。
 
 **启动纪律**（同一事故的另一半）：长于分钟级的 Run 必须以脱离宿主工具超时的方式启动（`nohup`/`setsid`），交互式 shell 里 `start` 会打印这条提醒。

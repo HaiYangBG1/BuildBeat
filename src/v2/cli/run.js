@@ -11,7 +11,7 @@
 
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -60,7 +60,7 @@ const USAGE = `BuildBeat runtime
 Usage:
   buildbeat --version
   buildbeat start --config <run-config.yaml> [--attempt new]
-  buildbeat resume --config <run-config.yaml> [--adopt <sha> --by <name>]   # --adopt: hand fix committed in the worktree; skip fix, resume at verify
+  buildbeat resume --config <run-config.yaml> [--run <RUN-ID>] [--adopt <sha> --by <name>]   # --adopt: hand fix committed in the worktree; skip fix, resume at verify
   buildbeat status --repo <path> --run <RUN-ID> [--stall-after <minutes>]
   buildbeat inbox --repo <path>
   buildbeat overview --repo <path> [--work <WORK-ID>] [--json true]
@@ -531,8 +531,42 @@ async function commandStart(flags) {
   await notifyForState(options.repoRoot, repoLabel, ledger.state);
 }
 
+// Resolve only from runtime ledgers. Reading candidates does not acquire
+// their locks; resumeRun still owns the lock and freshness checks.
+function resolveResumeRun(repoRoot, family, explicitRun) {
+  const pattern = new RegExp(`^${family.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-\\d{2,}$`);
+  if (explicitRun !== undefined) {
+    if (explicitRun !== family && !pattern.test(explicitRun)) {
+      throw new Error(`--run ${explicitRun} is not in run family ${family} of this config`);
+    }
+    if (!existsSync(ledgerPathFor(repoRoot, explicitRun))) {
+      throw new Error(`no ledger for run ${explicitRun}`);
+    }
+    return explicitRun;
+  }
+  if (existsSync(ledgerPathFor(repoRoot, family))) {
+    return family;
+  }
+  const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
+  const runs = (existsSync(runsDir) ? readdirSync(runsDir) : [])
+    .filter((id) => pattern.test(id) && existsSync(ledgerPathFor(repoRoot, id)))
+    .sort((a, b) => a.localeCompare(b, "en", { numeric: true }))
+    .map((id) => ({ id, state: EventLedger.open(ledgerPathFor(repoRoot, id)).state }));
+  const open = runs.filter(({ state }) => !state.terminal);
+  if (open.length === 1) {
+    console.log(`resuming ${open[0].id} (the open run of family ${family})`);
+    return open[0].id;
+  }
+  if (open.length === 0) {
+    const latest = runs.at(-1);
+    throw new Error(`no open run in family ${family}; ${latest ? `latest run ${latest.id}: ${latest.state.terminal.status}` : "no ledgers found"}; use --run <RUN-ID> to select an existing run explicitly`);
+  }
+  throw new Error(`multiple open runs in family ${family}: ${open.map(({ id }) => id).join(", ")}; use --run <RUN-ID> to select one`);
+}
+
 async function commandResume(flags) {
   const options = loadRunConfig(flags, "resume");
+  options.runId = resolveResumeRun(options.repoRoot, options.runId, flags.run);
   if (flags.adopt !== undefined) {
     const resumeAt = nextStep(options.workflow, "fix", "succeeded") ?? "verify";
     const adopted = adoptCandidate(options.repoRoot, options.runId, {
@@ -624,7 +658,7 @@ function commandApprove(flags) {
   if (result.terminal) {
     console.log("run is terminal: SUCCEEDED (merge itself stays a manual external action)");
   } else {
-    console.log("decision recorded; continue with: run.js resume --config <run-config.yaml>");
+    console.log(`decision recorded; continue with: buildbeat resume --config <run-config.yaml> --run ${flags.run}`);
   }
 }
 

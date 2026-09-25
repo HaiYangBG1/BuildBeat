@@ -139,6 +139,8 @@ buildbeat approve --repo . --run RUN-DEMO-01 --transition enter-wait-merge --by 
 
 **Be clear about which step you are approving** ([Approval guide](07-approval-guide.en.md)): `enter-wait-merge` is the merge decision; the Run reaches the terminal state `SUCCEEDED`, meaning the candidate is fit to merge. The actual merge, push and release are always your actions outside the Runner. `enter-fix` / `resume-<step>` are non-terminal transitions: after approving them, `resume --config …` lets the Run continue. When findings block, the Run routes fix → verify → review on its own; when the budget is exhausted or a failure fingerprint repeats, it stops and hands back to you ([Recovery](10-recovery.en.md)).
 
+After `start --attempt new` numbers a Run, `resume --config <run-config.yaml>` resumes the family’s only non-terminal Run and prints its ID. Use `--run <RUN-ID>` to select the configured Run itself or `<family>-NN` explicitly (at least two digits). An existing ledger for the exact configured ID takes precedence. Multiple non-terminal Runs are listed with a request to select one using `--run`; if none remain, the error reports the latest ID and terminal status, or states that no ledgers were found.
+
 ## 7. Walk the failure branch once
 
 To see the automatic repair loop, commit a failing test case under `tests/` and `start --attempt new` again: verify fails → the fixer repairs with the failure summary → verify reruns → review. `status` shows `step fix: SUCCEEDED` and a second `verify`. To route findings through your hands first: `reviewTriage: required` together with `findings list` / `findings adjudicate` adjudicates fingerprint by fingerprint; a dismissed fingerprint no longer blocks.
