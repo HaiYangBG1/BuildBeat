@@ -42,6 +42,10 @@ Only three cases still answer `another run is active` / `already locked`, and th
 - **The owner is on another host** (a repository on a shared disk): deal with it on that machine; this host never reclaims it;
 - **No owner record**: a lock left by an older buildbeat, or a crash in the instant of taking it; once no buildbeat process is running, delete the lock directory the error names.
 
+### Ledger "changed on disk since it was read"
+
+`ledger for RUN-X changed on disk since it was read (another writer); re-read it and retry`: another session or process wrote the same Run's ledger just before you (two approvals at once, a `stop` racing a `resume`). The kernel refused this write; **the ledger was not changed and is not corrupted**. Run the same command again: it decides afresh on the current state (and may simply tell you it is already approved or terminal). Approve, reject, `--adopt`, `stop`, `resume` and supersede all read the ledger only after taking the Run lock, so ordinary use never meets this error; seeing it means there really was a concurrent operation.
+
 ### Abnormal worker behaviour
 
 - **Worker infrastructure failure (iteration 09)**: a timeout, a crash, output that is not an envelope (`invalid-output`), or the worker ending itself with exit code **75** (`EX_TEMPFAIL`, "environment unavailable"): the kernel classifies it as `infra`: no failure fingerprint is recorded, no fixer is dispatched, **the step's budget is not consumed**, the Run stops at `WAITING_HUMAN` (kind `infra`, transition `resume-<step>`), notifications go out as usual. Once the backend is back, `approve --transition resume-<step>` reruns the step; `reject` ends the Run. Real incidents: a worker backend returning 404 and non-JSON output killed five Runs in two days while the driving session hand-wrote a probe every two minutes; a missing rg on PATH, a port collision and a host load of 280 each dispatched a fixer.

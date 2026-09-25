@@ -4,7 +4,7 @@
 // further appends — recovery is a human decision, never a silent repair.
 
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { ENVELOPE_VERSION, GENESIS_DIGEST, validateEventInput } from "../domain/event-registry.js";
@@ -49,6 +49,9 @@ export class EventLedger {
   #run = null;
   #work = null;
   #reducer;
+  // Bytes of the file this instance has read or written. A writer whose
+  // count no longer matches the file is stale: someone else appended since.
+  #size = 0;
 
   constructor(filePath, reducer = RUN_REDUCER) {
     this.path = filePath;
@@ -72,7 +75,10 @@ export class EventLedger {
   }
 
   #load() {
-    const lines = readFileSync(this.path, "utf8")
+    const raw = readFileSync(this.path);
+    this.#size = raw.length;
+    const lines = raw
+      .toString("utf8")
       .split("\n")
       .filter((line) => line.length > 0);
     for (const [index, line] of lines.entries()) {
@@ -142,8 +148,21 @@ export class EventLedger {
     };
     event.digest = eventDigest(event);
     const nextState = this.#reducer.applyEvent(this.state, event);
+    // Guard against a stale writer: every event carries seq and prev from
+    // this instance's memory, so appending after another writer would fork
+    // the hash chain and leave the ledger corrupted for good. Refuse
+    // instead; re-reading and retrying is always safe. Writers re-read under
+    // the run lock, so this only fires on a writer that forgot to.
+    const onDisk = existsSync(this.path) ? statSync(this.path).size : 0;
+    if (onDisk !== this.#size) {
+      throw new LedgerError(
+        `ledger for ${runId} changed on disk since it was read (another writer); re-read it and retry`,
+      );
+    }
+    const line = `${JSON.stringify(event)}\n`;
     mkdirSync(dirname(this.path), { recursive: true });
-    appendFileSync(this.path, `${JSON.stringify(event)}\n`, "utf8");
+    appendFileSync(this.path, line, "utf8");
+    this.#size += Buffer.byteLength(line, "utf8");
     this.events.push(event);
     this.state = nextState;
     this.lastDigest = event.digest;

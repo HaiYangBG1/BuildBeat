@@ -990,16 +990,21 @@ function commandStop(flags) {
     throw new Error("stop requires --repo and --run");
   }
   const repoRoot = resolve(flags.repo);
-  const ledger = EventLedger.open(ledgerPathFor(repoRoot, flags.run));
-  if (!ledger.state.run) {
+  if (!existsSync(ledgerPathFor(repoRoot, flags.run))) {
     throw new Error(`no ledger for run ${flags.run}`);
   }
-  if (ledger.state.terminal) {
-    console.log(`run already terminal: ${ledger.state.terminal.status}`);
-    return;
-  }
+  // Read and decide under the run lock: a ledger read before it may be
+  // stale by the time RUN_TERMINAL is written.
   acquireLock(repoRoot, flags.run);
   try {
+    const ledger = EventLedger.open(ledgerPathFor(repoRoot, flags.run));
+    if (!ledger.state.run) {
+      throw new Error(`no ledger for run ${flags.run}`);
+    }
+    if (ledger.state.terminal) {
+      console.log(`run already terminal: ${ledger.state.terminal.status}`);
+      return;
+    }
     ledger.append({
       type: "RUN_TERMINAL",
       actor: KERNEL,

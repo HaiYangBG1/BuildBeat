@@ -42,6 +42,10 @@ buildbeat resume --config <run-config.yaml>
 - **持有者在别的主机**（共享盘上的仓库）：到那台机器处理，本机不会替它回收；
 - **没有持有者信息**：旧版本 buildbeat 留下的锁，或拿锁瞬间崩溃；确认没有 buildbeat 进程在跑后，删除报错里给出的那个锁目录。
 
+### 台账「changed on disk since it was read」
+
+`ledger for RUN-X changed on disk since it was read (another writer); re-read it and retry`：另一个会话或进程刚好在你之前写了同一个 Run 的台账（例如两边同时批准、一边 `stop` 一边 `resume`）。内核拒绝了这次写入，**台账没有被改动、也没有损坏**；重新执行同一条命令即可，它会基于最新状态重新判断（可能直接告诉你「已经批过了 / 已终态」）。批准、拒绝、`--adopt`、`stop`、`resume` 与自动取代都在拿到 Run 锁之后才读台账，正常使用不会遇到这条报错；看到它说明确实有并发操作。
+
 ### Worker 行为异常
 
 - **worker 基础设施故障（迭代 09）**：超时、崩溃、输出不是信封（`invalid-output`）、或 worker 自己以退出码 **75**（`EX_TEMPFAIL`，"环境不可用"）结束——内核判为 `infra`：不记失败指纹、不派 fixer、**不扣该步预算**，停 `WAITING_HUMAN`（kind `infra`，transition `resume-<step>`），通知照常出站。后端恢复后 `approve --transition resume-<step>` 重跑该步；`reject` 结束 Run。真实事故：worker 服务端 404 与非 JSON 输出两天杀掉 5 个 Run，驾驶会话手写探针每两分钟试一次；PATH 缺 rg、端口撞车、宿主负载 280 各派了一次 fixer。

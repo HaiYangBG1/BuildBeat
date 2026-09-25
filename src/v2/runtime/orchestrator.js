@@ -854,13 +854,26 @@ function supersedeWaitingRuns(repoRoot, workId, newRunId, now) {
       continue;
     }
     try {
-      ledger.append({
+      // Re-read under the lock: the run may have been approved, resumed or
+      // stopped since the scan, and the scan's read must not be written to.
+      const locked = EventLedger.open(ledgerPath);
+      const fresh = locked.state;
+      if (
+        locked.corruption ||
+        !fresh.run ||
+        fresh.run.work !== workId ||
+        fresh.terminal ||
+        fresh.run.status !== "WAITING_HUMAN"
+      ) {
+        continue;
+      }
+      locked.append({
         type: "RUN_TERMINAL",
         actor: KERNEL,
         ts: now(),
         data: { status: "SUPERSEDED", reason: `superseded by ${newRunId} (same work ${workId})` },
       });
-      writeRunRecord({ repoRoot, ledger, ts: now() });
+      writeRunRecord({ repoRoot, ledger: locked, ts: now() });
       superseded.push(entry);
     } finally {
       releaseLock(repoRoot, entry);
@@ -907,12 +920,17 @@ export function startRun(options) {
   if (options.requires?.length) {
     assertRequires(options.requires);
   }
-  const { ledger, ledgerPath } = openLedgerFor(repoRoot, runId);
-  if (ledger.events.length > 0) {
+  if (openLedgerFor(repoRoot, runId).ledger.events.length > 0) {
     throw new OrchestratorError(`run ${runId} already has a ledger; use resumeRun`);
   }
 
   return withRunLocks(repoRoot, runId, () => {
+    // Re-read under the locks: a concurrent start of the same run id may
+    // have created the ledger since the check above.
+    const { ledger, ledgerPath } = openLedgerFor(repoRoot, runId);
+    if (ledger.events.length > 0) {
+      throw new OrchestratorError(`run ${runId} already has a ledger; use resumeRun`);
+    }
     const workspace = createWorkspace({ repoRoot, runId, base });
     const context = makeContext(options, ledger, workspace);
     const now = context.now;
@@ -974,15 +992,8 @@ function resumeStepFromTransition(transition) {
   return null;
 }
 
-export function resumeRun(options) {
-  const { repoRoot, workflow, workflowDigest, runId, planDigest } = options;
-  if (!repoRoot || !runId) {
-    throw new OrchestratorError("repoRoot and runId are required");
-  }
-  if (options.requires?.length) {
-    assertRequires(options.requires);
-  }
-  const { ledger, ledgerPath } = openLedgerFor(repoRoot, runId);
+function resumeTarget(options, { ledger, ledgerPath }) {
+  const { repoRoot, workflowDigest, runId } = options;
   const state = ledger.state;
   if (!state.run) {
     throw new OrchestratorError(`no ledger for run ${runId}; use startRun`);
@@ -993,12 +1004,11 @@ export function resumeRun(options) {
     );
   }
   if (state.terminal) {
-    return { runId, ledgerPath, state, resumed: false, reason: "run is terminal" };
+    return { early: { runId, ledgerPath, state, resumed: false, reason: "run is terminal" } };
   }
   if (state.run.status === "WAITING_HUMAN" && state.pendingHuman) {
-    return { runId, ledgerPath, state, resumed: false, reason: "waiting on a human decision" };
+    return { early: { runId, ledgerPath, state, resumed: false, reason: "waiting on a human decision" } };
   }
-
   const bound = state.workspaces[runId];
   if (!bound) {
     throw new OrchestratorError(`run ${runId} has no bound workspace; cannot resume`);
@@ -1009,15 +1019,43 @@ export function resumeRun(options) {
       "worktree missing; recovery requires a human decision",
     );
   }
-  const workspace = {
-    workspaceId: runId,
-    repoRoot,
-    worktreePath,
-    branch: bound.branch,
-    base: bound.base,
+  return {
+    workspace: {
+      workspaceId: runId,
+      repoRoot,
+      worktreePath,
+      branch: bound.branch,
+      base: bound.base,
+    },
   };
+}
+
+export function resumeRun(options) {
+  const { repoRoot, runId, planDigest } = options;
+  if (!repoRoot || !runId) {
+    throw new OrchestratorError("repoRoot and runId are required");
+  }
+  if (options.requires?.length) {
+    assertRequires(options.requires);
+  }
+  // The read before the locks only answers early (terminal, waiting on a
+  // human) without taking the repository lock. Everything resume decides is
+  // decided again on a ledger read under the locks: another session may
+  // have approved, resumed or stopped the run in between, and writing
+  // through the earlier read would fork the hash chain.
+  const outside = resumeTarget(options, openLedgerFor(repoRoot, runId));
+  if (outside.early) {
+    return outside.early;
+  }
 
   return withRunLocks(repoRoot, runId, () => {
+    const { ledger, ledgerPath } = openLedgerFor(repoRoot, runId);
+    const target = resumeTarget(options, { ledger, ledgerPath });
+    if (target.early) {
+      return target.early;
+    }
+    const { workspace } = target;
+    const state = ledger.state;
     const context = makeContext(options, ledger, workspace);
     const now = context.now;
 
