@@ -28,13 +28,19 @@ buildbeat resume --config <run-config.yaml>
 
 ### 锁卡住（"another run is active"）
 
-上一个 Run 异常退出可能留下仓库锁：确认真的没有活动 Run 后
+每把锁记录持有者（进程号、主机名、获取时间、命令）。驱动进程被杀、被宿主超时结束或机器重启后，锁会残留；下一次 `resume` / `stop` / `start` 拿锁时，若持有者**在本机且进程已不存在**，自动回收并打印 `reclaimed stale lock <id> (owner pid … is gone)`，无需手删任何文件。所以驱动被杀后直接：
 
 ```bash
-buildbeat stop --repo . --run RUN-X --reason "crashed; releasing lock"
+buildbeat resume --config <run-config.yaml>
 ```
 
-`stop` 落终态与理由；单纯锁残留也可删 `.buildbeat/runtime/` 后重来。
+内核走上文的崩溃恢复（`RUN_INTERRUPTED` → 重跑中断步）；不想续跑就 `buildbeat stop --repo . --run RUN-X --reason "…"`。
+
+只有三种情况仍会报 `another run is active` / `already locked`，报错里写明持有者：
+
+- **持有者还活着**：另一个 Run 真的在跑，等它结束；确认它卡死再结束该进程；
+- **持有者在别的主机**（共享盘上的仓库）：到那台机器处理，本机不会替它回收；
+- **没有持有者信息**：旧版本 buildbeat 留下的锁，或拿锁瞬间崩溃；确认没有 buildbeat 进程在跑后，删除报错里给出的那个锁目录。
 
 ### Worker 行为异常
 
@@ -80,6 +86,6 @@ rm -rf .buildbeat/runtime/
 - 只动**终态且已压成 run-record** 的 Run（Git 面有账才动运行时面）；
 - 工作树可删（提交都在分支上）；脏工作树不带 `--force true` 不动；
 - 分支只在候选**已可从其他 ref 到达**（已合并 / 打 tag / 在远端）或 Run 未产出候选时删；否则明示"仅此分支可达，保留"——它是证据的最后一根线；
-- 终态 Run 的残留 `locks/<RUN>.lock` 一并清；`active-run` 锁仍按上文人工处置。
+- 终态 Run 的残留 `locks/<RUN>.lock` 一并清；`active-run` 锁在持有者进程已不存在时一并回收（计划里写明持有者），持有者还活着 / 在别的主机 / 没有持有者信息时保留并说明原因。
 
 gc 永不写台账（终态后只允许 `RUN_COMPACTED`），所以随时可跑、可重复。

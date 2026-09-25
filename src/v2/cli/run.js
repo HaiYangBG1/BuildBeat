@@ -495,7 +495,9 @@ async function commandStart(flags) {
       const label = repoLabelFor(options.repoRoot);
       const holders = listHeldRunLocks(options.repoRoot);
       if (holders.length === 0) {
-        console.error("blocked by: a stale active-run lock with no run holding it (a killed process?); `gc` clears locks of terminal runs, or remove .buildbeat/runtime/locks/active-run.lock after checking no driver process is alive");
+        // A dead owner would already have been reclaimed; the error below
+        // names who holds the lock and what to do.
+        console.error("blocked by: the active-run lock alone (no run lock beside it); its owner is named below");
       }
       for (const holder of holders) {
         const ledgerPath = join(options.repoRoot, ".buildbeat", "runtime", "runs", holder, "events.jsonl");
@@ -1042,7 +1044,7 @@ function commandGc(flags) {
       if (action.kind === "delete-branch") {
         return `delete branch ${action.branch} (${action.reason})`;
       }
-      return "remove stale lock";
+      return action.owner ? "remove active-run lock (owner process is gone)" : "remove stale lock";
     });
     actionable += row.actions.length;
     const keep = row.keep.map((reason) => `keep: ${reason}`);

@@ -59,9 +59,13 @@ const ACTIVE_LOCK = "active-run";
 function lockActive(repoRoot) {
   try {
     acquireLock(repoRoot, ACTIVE_LOCK);
-  } catch {
+  } catch (error) {
+    // A lock whose owner is gone was already reclaimed inside acquireLock;
+    // what reaches here is held (or unreadable), and the owner is the one
+    // fact a blocked caller needs.
+    const detail = error.lock?.detail;
     throw new OrchestratorError(
-      "another run is active in this repository (MVP allows a single active run)",
+      `another run is active in this repository (MVP allows a single active run)${detail ? `; ${detail}` : ""}`,
     );
   }
 }

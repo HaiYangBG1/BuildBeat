@@ -28,13 +28,19 @@ The in-flight step is closed as `crashed` (the fact is recorded), then **the ste
 
 ### A stuck lock ("another run is active")
 
-A Run that exited abnormally may leave the repository lock behind. Once you have confirmed that no Run is really active:
+Every lock records its owner (pid, host name, time acquired, command). When a driver is killed, ended by a host-tool timeout or lost to a reboot, its locks stay behind; the next `resume` / `stop` / `start` that needs the lock reclaims it automatically when the owner is **on this host and its process no longer exists**, printing `reclaimed stale lock <id> (owner pid … is gone)`. No file needs deleting by hand. After a killed driver, simply run:
 
 ```bash
-buildbeat stop --repo . --run RUN-X --reason "crashed; releasing lock"
+buildbeat resume --config <run-config.yaml>
 ```
 
-`stop` records the terminal state and the reason; for a mere leftover lock you may also delete `.buildbeat/runtime/` and start over.
+The kernel takes the crash-recovery path above (`RUN_INTERRUPTED`, then the interrupted step reruns); if you would rather not continue, `buildbeat stop --repo . --run RUN-X --reason "…"`.
+
+Only three cases still answer `another run is active` / `already locked`, and the error names the owner:
+
+- **The owner is alive**: another Run really is driving; wait for it, or end that process once you are sure it is stuck;
+- **The owner is on another host** (a repository on a shared disk): deal with it on that machine; this host never reclaims it;
+- **No owner record**: a lock left by an older buildbeat, or a crash in the instant of taking it; once no buildbeat process is running, delete the lock directory the error names.
 
 ### Abnormal worker behaviour
 
@@ -80,6 +86,6 @@ Terminal Runs leave worktrees, `run/*` branches and the occasional lock. `buildb
 - It touches only Runs that are **terminal and already compacted into a run-record** (the Git plane must have the record before the runtime plane is touched);
 - Worktrees may be deleted (the commits are on the branch); a dirty worktree is left alone without `--force true`;
 - A branch is deleted only when the candidate **is reachable from another ref** (merged / tagged / on the remote) or the Run produced no candidate; otherwise it reports "reachable only from this branch, kept": that branch is the last thread to the evidence;
-- Leftover `locks/<RUN>.lock` of terminal Runs are cleaned; the `active-run` lock is still handled by hand as above.
+- Leftover `locks/<RUN>.lock` of terminal Runs are cleaned; the `active-run` lock is reclaimed too when its owner process is gone (the plan names the owner), and kept with the reason when the owner is alive, on another host, or unrecorded.
 
 gc never writes to the ledger (after the terminal state only `RUN_COMPACTED` is allowed), so it can run at any time and repeatedly.
