@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -13,6 +12,7 @@ import {
   typicalDurations,
 } from "../src/v2/runtime/liveness.js";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
+import { tempDir } from "./support/tmp.js";
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const KERNEL = { kind: "kernel", id: "test" };
@@ -69,7 +69,7 @@ function runningLedger(root, runId, { workId = "WORK-L", origin } = {}) {
 }
 
 test("shell adapter streams worker output to live files while the step runs, then folds them into the result", () => {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-live-"));
+  const root = tempDir("bb-v2-live-");
   const liveDir = join(root, "runs", "RUN-LIVE");
   const adapter = createShellAdapter({
     name: "shell:builder",
@@ -103,7 +103,7 @@ test("shell adapter streams worker output to live files while the step runs, the
 });
 
 test("shell adapter without liveDir keeps the buffered behaviour", () => {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-live-"));
+  const root = tempDir("bb-v2-live-");
   const adapter = createShellAdapter({ command: "bash", args: ["-lc", "echo plain; echo warn >&2; exit 3"] });
   const result = adapter.execute({ step: "build", worker: "builder", workspacePath: root, input: {} });
   assert.equal(result.exitCode, 3);
@@ -112,7 +112,7 @@ test("shell adapter without liveDir keeps the buffered behaviour", () => {
 });
 
 test("timeline, typical durations and stall detection derive from the ledger and live files only", () => {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-live-"));
+  const root = tempDir("bb-v2-live-");
   // Anchored to the real clock: the CLI half of this test reads the live
   // files with Date.now(), so the fixture's "20 minutes ago" must be 20
   // minutes before *now*, not before a fixed date (a fixed date made the

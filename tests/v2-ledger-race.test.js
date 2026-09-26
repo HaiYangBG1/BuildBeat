@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -10,12 +9,13 @@ import { loadWorkflow } from "../src/v2/engine/workflow.js";
 import { approveRun, rejectRun } from "../src/v2/runtime/decisions.js";
 import { resumeRun, startRun } from "../src/v2/runtime/orchestrator.js";
 import { EventLedger, LedgerError } from "../src/v2/storage/event-ledger.js";
+import { tempDir } from "./support/tmp.js";
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 
 function tempRoot(t) {
-  const root = mkdtempSync(join(tmpdir(), "bb-ledger-race-"));
+  const root = tempDir("bb-ledger-race-");
   t.after(() => rmSync(root, { recursive: true, force: true }));
   return root;
 }

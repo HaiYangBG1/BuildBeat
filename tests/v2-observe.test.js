@@ -5,8 +5,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -18,11 +17,12 @@ import {
   runObserveCycle,
   triageIntent,
 } from "../src/v2/observe/observe.js";
+import { tempDir } from "./support/tmp.js";
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 
 function makeRepo() {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-obs-"));
+  const root = tempDir("bb-v2-obs-");
   mkdirSync(join(root, ".buildbeat"), { recursive: true });
   return root;
 }

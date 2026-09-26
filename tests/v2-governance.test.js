@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -13,6 +12,7 @@ import { DecisionError, acceptArtifact, approveRun } from "../src/v2/runtime/dec
 import { resumeRun, startRun } from "../src/v2/runtime/orchestrator.js";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
 import { createWorkspace } from "../src/v2/workspace/workspace-manager.js";
+import { tempDir } from "./support/tmp.js";
 
 const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 const WORKFLOW = loadWorkflow(PRESET_PATH);
@@ -24,7 +24,7 @@ function git(cwd, args) {
 }
 
 function fixtureRepo() {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-gov-"));
+  const root = tempDir("bb-v2-gov-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);
@@ -143,7 +143,7 @@ test("a transition policy refuses the stamp until required evidence exists", () 
 test("workers get an env allowlist by default; inherit is an explicit opt-in", () => {
   process.env.BB_TEST_SECRET = "s3cret-token";
   try {
-    const workspace = mkdtempSync(join(tmpdir(), "bb-v2-env-"));
+    const workspace = tempDir("bb-v2-env-");
     const probe = (config) =>
       createShellAdapter({ name: "probe", command: "bash", ...config }).execute({
         step: "build",
@@ -170,7 +170,7 @@ test("workers get an env allowlist by default; inherit is an explicit opt-in", (
 
 test("a worker cannot push from the workspace; the main checkout still can", () => {
   const { root } = fixtureRepo();
-  const bare = mkdtempSync(join(tmpdir(), "bb-v2-remote-"));
+  const bare = tempDir("bb-v2-remote-");
   execFileSync("git", ["init", "-q", "--bare", bare]);
   git(root, ["remote", "add", "origin", bare]);
 

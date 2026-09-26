@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { hostname, tmpdir } from "node:os";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
+import { tempDir } from "./support/tmp.js";
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
@@ -13,7 +14,7 @@ const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software
 // A repository with two works whose verifiers sleep while `hang` exists and
 // log when they ran, so overlap (or its absence) is observable.
 function repo(t) {
-  const root = mkdtempSync(join(tmpdir(), "bb-parallel-"));
+  const root = tempDir("bb-parallel-");
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8" }).trim();
   git("init", "-q", "-b", "main");

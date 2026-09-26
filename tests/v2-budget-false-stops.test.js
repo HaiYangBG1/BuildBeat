@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -11,11 +10,12 @@ import { loadWorkflow } from "../src/v2/engine/workflow.js";
 import { adoptCandidate, approveRun, rejectRun } from "../src/v2/runtime/decisions.js";
 import { resumeRun, startRun } from "../src/v2/runtime/orchestrator.js";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
+import { tempDir } from "./support/tmp.js";
 
 const workflow = loadWorkflow(new URL("../src/v2/presets/software-delivery.yaml", import.meta.url));
 const release = loadWorkflow(new URL("../src/v2/presets/release-readback.yaml", import.meta.url));
 function fixture(extra = {}, script = {}) {
-  const root = mkdtempSync(join(tmpdir(), "bb-false-stops-"));
+  const root = tempDir("bb-false-stops-");
   const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8" }).trim();
   git("init", "-q", "-b", "main");
   git("config", "user.name", "Test");

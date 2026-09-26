@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { appendFileSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -11,12 +10,13 @@ import {
 } from "../src/v2/domain/event-registry.js";
 import { IllegalEventError } from "../src/v2/engine/reducer.js";
 import { EventLedger, LedgerError, eventDigest } from "../src/v2/storage/event-ledger.js";
+import { tempDir } from "./support/tmp.js";
 
 const KERNEL = { kind: "kernel", id: "orchestrator" };
 const TS = "2026-08-28T00:00:00.000Z";
 
 function freshPath() {
-  return join(mkdtempSync(join(tmpdir(), "bb-v2-ledger-")), "events.jsonl");
+  return join(tempDir("bb-v2-ledger-"), "events.jsonl");
 }
 
 function startedLedger(path = freshPath()) {

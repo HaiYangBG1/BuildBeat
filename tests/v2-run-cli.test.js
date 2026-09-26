@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { tempDir } from "./support/tmp.js";
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
@@ -20,7 +20,7 @@ function cli(args, env) {
 }
 
 function fixtureRepo(prefix) {
-  const root = mkdtempSync(join(tmpdir(), prefix));
+  const root = tempDir(prefix);
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);
@@ -31,7 +31,7 @@ function fixtureRepo(prefix) {
 }
 
 test("run start, status, and stop work end to end through the CLI", () => {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-cli-"));
+  const root = tempDir("bb-v2-cli-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);

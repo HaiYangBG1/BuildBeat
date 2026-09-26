@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 
 import { checkRunConfigAgainstWorkflow, checkRunConfigShape, suggest } from "../src/v2/cli/run-config-check.js";
 import { loadWorkflow } from "../src/v2/engine/workflow.js";
 import { parseYamlSubset } from "../src/v2/engine/yaml-subset.js";
+import { tempDir } from "./support/tmp.js";
 
 const ROOT = join(import.meta.dirname, "..");
 const CLI = join(ROOT, "bin", "buildbeat.js");
@@ -106,7 +106,7 @@ test("an explicit null is reported, not treated as the default", () => {
 });
 
 test("the CLI reports the problem list instead of an internal error", (t) => {
-  const root = mkdtempSync(join(tmpdir(), "bb-run-config-"));
+  const root = tempDir("bb-run-config-");
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const config = join(root, "run-config.yaml");
   writeFileSync(config, ["work: WORK-X", "run: RUN-X", `workflow: ${PRESET}`, "stopat:", "  - review", "workers:", "  reviwer:", "    command: codex", "    inheritEnv: yes"].join("\n"));
