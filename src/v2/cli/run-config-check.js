@@ -29,6 +29,7 @@ const TOP_KEYS = [
   "stallAfterMs",
 ];
 const REQUIRED = ["repo", "work", "run", "workflow"];
+const NULL_REPORTED = ["base", "entry", "riskPreset", "stepTimeoutMs", "maxAttemptsPerStep"];
 const WORKER_KEYS = ["command", "args", "timeoutMs", "inheritEnv", "env"];
 const ENVELOPE_KEYS = ["prompts", "vars", "pin"];
 const LISTS = ["stopAt", "allowedPaths", "policies", "redact", "requires"];
@@ -110,10 +111,11 @@ export function checkRunConfigShape(config) {
       problems.push(`${key}: required and missing`);
     }
   }
-  // An explicit null (key: null, key: ~) is never "use the default": say so
-  // instead of silently falling back.
-  for (const [key, value] of Object.entries(config)) {
-    if (value === null && TOP_KEYS.includes(key) && !REQUIRED.includes(key)) {
+  // An explicit null on a scalar key (base: null, entry: ~) would silently
+  // fall back to the default: say so. Other keys keep their own handling
+  // (cache: null has always meant no cache; lists must be lists).
+  for (const key of NULL_REPORTED) {
+    if (Object.hasOwn(config, key) && config[key] === null) {
       problems.push(`${key}: has no value; remove the line to use the default, or give it a value`);
     }
   }

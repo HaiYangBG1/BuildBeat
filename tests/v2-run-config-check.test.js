@@ -94,6 +94,11 @@ test("suggestions only fire for plausible typos", () => {
   assert.equal(suggest("runUnexpected", ["run", "repo"]), null);
 });
 
+test("cache: null keeps meaning no cache; lists still must be lists", () => {
+  assert.deepEqual(shape({ cache: null }), []);
+  one(shape({ stopAt: null }), /^stopAt: must be a list/);
+});
+
 test("an explicit null is reported, not treated as the default", () => {
   one(shape({ base: null }), /^base: has no value; remove the line to use the default/);
   one(shape({ entry: null }), /^entry: has no value/);
