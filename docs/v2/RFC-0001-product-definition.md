@@ -3,7 +3,7 @@
 > 状态：`FINAL`（2026-08-28 项目所有者定稿，`V2-D3`；M0 随三份 RFC 与 [`SPEC-0001-events-v1.md`](SPEC-0001-events-v1.md) 定稿退出）
 > 日期：2026-08-28
 > 上游：[`V2-PLAN.md`](../history/V2-PLAN.md)（执行基线，`V2-D0=B`）；内核范围：完整内核（`V2-D2=A`，[`V2-DECISIONS.md`](../history/V2-DECISIONS.md)）
-> 需求来源：M-1 试点记录——[`pilot/metrics.md`](../../pilot/metrics.md)（能力矩阵 + 卡点 1–5）、[`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../../pilot/evidence/2026-08-28-m1-runtime-gap.md)（F5/F6）、[`V2-ITERATION-01.md`](../history/V2-ITERATION-01.md)
+> 需求来源：M-1 试点记录——[`history/pilot/metrics.md`](../history/pilot/metrics.md)（能力矩阵 + 卡点 1–5）、[`history/pilot/evidence/2026-08-28-m1-runtime-gap.md`](../history/pilot/evidence/2026-08-28-m1-runtime-gap.md)（F5/F6）、[`V2-ITERATION-01.md`](../history/V2-ITERATION-01.md)
 
 ---
 

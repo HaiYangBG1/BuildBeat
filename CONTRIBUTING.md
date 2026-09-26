@@ -14,7 +14,7 @@ When these disagree, the disagreement is the bug: either fix the code and add a 
 
 ## Branches and releases
 
-- `main` is protected: pull request only, seven required checks (static/docs, pilot-driver behaviour on two OSes, CLI on three Node/OS combinations, CodeQL), branch must be up to date, rules apply to admins, no force-push, no deletion. Zero required reviewers: a solo maintainer merges their own PR once the checks are green.
+- `main` is protected: pull request only, seven required checks (static/docs, envelope script behaviour on two OSes, CLI on three Node/OS combinations, CodeQL), branch must be up to date, rules apply to admins, no force-push, no deletion. Zero required reviewers: a solo maintainer merges their own PR once the checks are green.
 - Day-to-day development happens on `v2`; feature branches fork from it and open PRs against `main` (stack them when one depends on another). CI runs on every PR and on pushes to `main` and `v2`.
 - Stable releases publish from the tip of `main` to dist-tag `latest`; pre-releases publish from the dispatching release branch to dist-tag `next` and never move `latest`. The exact mechanics, invariants, and the post-release synchronization checklist are in [`docs/RELEASING.md`](docs/RELEASING.md).
 
@@ -25,7 +25,7 @@ Use Node.js 20 or newer, Git, and Bash:
 ```bash
 npm ci --ignore-scripts
 npm test                      # Node unit + CLI end-to-end (runtime, templates first run, publish helper mocks)
-npm run test:pilot            # M-1 pilot driver preflight guards (historical driver, kept green)
+npm run test:envelope         # envelope worker.sh shell contract (bash 3.2 compatible)
 npm run test:plugin           # Claude Code plugin manifests and isolated install
 npm run test:pack-firstrun    # pack → isolated install → drive a run from the installed templates
 npm run check:docs            # links, README shape, contracts, package metadata, active-doc currency

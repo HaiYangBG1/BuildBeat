@@ -4,7 +4,7 @@
 > 日期：2026-08-28
 > 冻结范围：**信封字段、通用规则、损坏处理、reducer 合同、初始事件类型注册表的语义**。文件摆放位置、快照格式、CLI 展示均为非规范内容，可变。
 > 演进规则：一切修改 **additive-only**（新增可选字段、新增事件类型）；破坏性变更必须升 `v` 并提供旧版读取器。
-> 需求来源：[`pilot/metrics.md`](../../pilot/metrics.md) 卡点 1（无统一 ledger）、卡点 5（无 Run 登记）；F5/F6 见 [`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../../pilot/evidence/2026-08-28-m1-runtime-gap.md)
+> 需求来源：[`history/pilot/metrics.md`](../history/pilot/metrics.md) 卡点 1（无统一 ledger）、卡点 5（无 Run 登记）；F5/F6 见 [`history/pilot/evidence/2026-08-28-m1-runtime-gap.md`](../history/pilot/evidence/2026-08-28-m1-runtime-gap.md)
 
 ---
 

@@ -595,7 +595,7 @@ def check_cli_package() -> list[str]:
     prepublish = package.get("scripts", {}).get("prepublishOnly", "")
     for required in (
         "npm test",
-        "npm run test:pilot",
+        "npm run test:envelope",
         "npm run test:plugin",
         "npm run test:pack-firstrun",
         "npm run check:docs",

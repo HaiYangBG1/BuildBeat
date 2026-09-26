@@ -36,7 +36,7 @@ bash -n .github/scripts/*.sh tests/*.sh
 shellcheck -x .github/scripts/*.sh tests/*.sh
 actionlint .github/workflows/*.yml
 bash tests/check-docs.sh
-npm run test:pilot
+npm run test:envelope
 npm run test:plugin
 npm test
 npm publish --dry-run --access public --registry=https://registry.npmjs.org/

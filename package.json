@@ -26,11 +26,11 @@
   "scripts": {
     "check:docs": "bash tests/check-docs.sh",
     "test": "node --test tests/*.test.js",
-    "test:pilot": "bash tests/pilot-loop.test.sh",
+    "test:envelope": "bash tests/envelope-worker.test.sh",
     "test:plugin": "bash tests/plugin-marketplace.test.sh",
     "test:pack-firstrun": "bash tests/pack-firstrun.test.sh",
     "pack:check": "npm pack --dry-run",
-    "prepublishOnly": "npm test && npm run test:pilot && npm run test:plugin && npm run test:pack-firstrun && npm run check:docs && npm run pack:check"
+    "prepublishOnly": "npm test && npm run test:envelope && npm run test:plugin && npm run test:pack-firstrun && npm run check:docs && npm run pack:check"
   },
   "engines": {
     "node": ">=20"

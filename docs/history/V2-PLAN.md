@@ -6,7 +6,7 @@
 > 基线日期：2026-08-27
 > 合并来源：报告 A（[`V2-PROPOSAL.md`](V2-PROPOSAL.md)，产品/方向层）× 报告 B（[《BuildBeat v2：AI 原生软件交付控制平面》](BuildBeat%20v2%EF%BC%9AAI%20%E5%8E%9F%E7%94%9F%E8%BD%AF%E4%BB%B6%E4%BA%A4%E4%BB%98%E6%8E%A7%E5%88%B6%E5%B9%B3%E9%9D%A2.md)，运行时工程层）
 > 合并原则：**"为什么做、做成什么样"以 A 为准；"引擎怎么造"以 B 为准**；两者冲突处在 §2 逐条裁决并给理由。
-> 收尾修订：纳入盲点复盘的三处修正（§2 末「收尾修正」）——**M-1 人肉内核试点先于一切**、**组装优先于自研**、范围裁剪与新增风险。第一个迭代已就绪：[`V2-ITERATION-01.md`](V2-ITERATION-01.md) + 试点套件 [`pilot/`](../../pilot/README.md)。
+> 收尾修订：纳入盲点复盘的三处修正（§2 末「收尾修正」）——**M-1 人肉内核试点先于一切**、**组装优先于自研**、范围裁剪与新增风险。第一个迭代已就绪：[`V2-ITERATION-01.md`](V2-ITERATION-01.md) + 试点套件 [`pilot/`](pilot/README.md)。
 
 ---
 
@@ -216,15 +216,15 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 
 在真实项目上手动完整走一遍 v2 工作流：**人扮演 Kernel**（批转换、做合并决定），一个百行级 shell 脚本只自动化 build→verify→fix 内环，agent 经 CLI headless 调用。
 
-- 试点套件已就绪：[`pilot/`](../../pilot/README.md)（驱动脚本 + intent/plan 模板 + 度量表）；执行细则见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)；
-- 建议跑 3 轮（修 bug / 小功能 / 含 UI 各一），同时执行 F1–F6 故障注入；记录计划外人工介入、token/费用、卡点，并按 [`pilot/metrics.md`](../../pilot/metrics.md) 计算有明确分母的**可组装能力加权覆盖率**；
+- 试点套件已就绪：[`pilot/`](pilot/README.md)（驱动脚本 + intent/plan 模板 + 度量表）；执行细则见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)；
+- 建议跑 3 轮（修 bug / 小功能 / 含 UI 各一），同时执行 F1–F6 故障注入；记录计划外人工介入、token/费用、卡点，并按 [`pilot/metrics.md`](pilot/metrics.md) 计算有明确分母的**可组装能力加权覆盖率**；
 - 时间盒 ≤2 周，超时即按已有记录强制做分叉决定，防止试点本身变成拖延；
 - **分叉退出（M-1 唯一的交付就是这个决定）**：
   - **结论 (a)** 可组装能力覆盖率 <80%，或重复出现无法由薄控制面修补的 CRITICAL 运行缺口 → 按完整 M1–M3 造内核，需求以试点记录为准，总窗口 ~12–15 周；
   - **结论 (b)** 可组装能力覆盖率 ≥80%、三轮平均计划外介入 ≤2，且无重复的未处置 CRITICAL 运行缺口 → M1–M3 收缩为**薄内核**（只造 approval staleness、统一证据台账、policy/gate 检查器三件），总窗口 ~5–8 周；
   - 未跑场景一律记 `UNVERIFIED`，不得按通过计分；中间态默认少造，将存疑能力挂到 M4 复验。
 
-> **进展（2026-08-28）**：pilot-app、Tide 与 `V2-D1A` 后续的 AI 试点工作区 `WP-B1-AUTHZ` 推进均未激活 `pilot/loop.sh`，自动 Run ledger 为 `0/3`；第三项不倒算合格自动 Run，只作为重复激活失败的负向证据。F5 已确认只能 fail-closed、不能恢复，F6 已确认没有持久化 Approval 对象或 stale 事件；暂定可组装覆盖率仍为 45.8%。[`V2-D2-DECISION-CARD.md`](V2-D2-DECISION-CARD.md) 推荐完整内核，项目所有者已于 2026-08-28 拍板 **`V2-D2=A`**：M-1 关闭，进入 M0；主判据为重复 CRITICAL 缺口，暂定覆盖率仅旁证（台账见 [`V2-DECISIONS.md`](V2-DECISIONS.md)）。明细见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)、[`pilot/metrics.md`](../../pilot/metrics.md) 与 [`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../../pilot/evidence/2026-08-28-m1-runtime-gap.md)。
+> **进展（2026-08-28）**：pilot-app、Tide 与 `V2-D1A` 后续的 AI 试点工作区 `WP-B1-AUTHZ` 推进均未激活 `pilot/loop.sh`，自动 Run ledger 为 `0/3`；第三项不倒算合格自动 Run，只作为重复激活失败的负向证据。F5 已确认只能 fail-closed、不能恢复，F6 已确认没有持久化 Approval 对象或 stale 事件；暂定可组装覆盖率仍为 45.8%。[`V2-D2-DECISION-CARD.md`](V2-D2-DECISION-CARD.md) 推荐完整内核，项目所有者已于 2026-08-28 拍板 **`V2-D2=A`**：M-1 关闭，进入 M0；主判据为重复 CRITICAL 缺口，暂定覆盖率仅旁证（台账见 [`V2-DECISIONS.md`](V2-DECISIONS.md)）。明细见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)、[`pilot/metrics.md`](pilot/metrics.md) 与 [`pilot/evidence/2026-08-28-m1-runtime-gap.md`](pilot/evidence/2026-08-28-m1-runtime-gap.md)。
 
 ### M0 — 核心重置（1 周）
 

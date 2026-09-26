@@ -19,7 +19,7 @@ M0 退出：核心名词、MVP 范围、旧概念处置（保留/转换/删除�
 
 ## 需求来源纪律
 
-三份 RFC 的每个非纯工程条目均引用 M-1 试点记录（[`pilot/metrics.md`](../../pilot/metrics.md) 卡点 1–5、能力矩阵、F1–F6，[`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../../pilot/evidence/2026-08-28-m1-runtime-gap.md)），不引入无试点来源的新需求。
+三份 RFC 的每个非纯工程条目均引用 M-1 试点记录（[`pilot/metrics.md`](pilot/metrics.md) 卡点 1–5、能力矩阵、F1–F6，[`pilot/evidence/2026-08-28-m1-runtime-gap.md`](pilot/evidence/2026-08-28-m1-runtime-gap.md)），不引入无试点来源的新需求。
 
 ## 边界
 

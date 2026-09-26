@@ -30,6 +30,7 @@
 | 发布证据（[`releases/`](releases/)） | 每个发布一份 `<版本>-RELEASE-EVIDENCE-<日期>.md`；当前 `latest` 是哪一版以 [`RELEASING.md`](RELEASING.md) 顶部的现状段与 registry 回读为准 |
 | 规划与决策（2026-08） | [`V2-PLAN.md`](history/V2-PLAN.md)（执行基线，已交付）、[`V2-PROPOSAL.md`](history/V2-PROPOSAL.md)、[`V2-DECISIONS.md`](history/V2-DECISIONS.md)、[`V2-D2-DECISION-CARD.md`](history/V2-D2-DECISION-CARD.md)、[《BuildBeat v2：AI 原生软件交付控制平面》](history/BuildBeat%20v2%EF%BC%9AAI%20%E5%8E%9F%E7%94%9F%E8%BD%AF%E4%BB%B6%E4%BA%A4%E4%BB%98%E6%8E%A7%E5%88%B6%E5%B9%B3%E9%9D%A2.md) |
 | 迭代与里程碑记录 | [`history/`](history/) 下的 `V2-ITERATION-01～08.md`、[`v2/`](v2/) 下的 M1/M2/M4 验收与试点记录 |
+| M-1 脚本驱动试点（2026-08，已被运行时取代，不再执行） | [`history/pilot/`](history/pilot/README.md)（`loop.sh`、试点度量与证据） |
 | 早期版本史 | [`../CHANGELOG-v1.md`](../CHANGELOG-v1.md)（2026-06 ～ 2026-08 的条目原文；当前条目在根 [`CHANGELOG.md`](../CHANGELOG.md)） |
 | 早期路线与阶段试点（2026-08，已移除的文件总线时代） | [`ROADMAP.md`](history/ROADMAP.md)、[`EXECUTION-PLAN.md`](history/EXECUTION-PLAN.md)、[`history/`](history/) 下的 `PHASE1/2/4-*.md`、[`CLI-STRATEGY-2026-08.md`](history/CLI-STRATEGY-2026-08.md)、[`CLI-PILOT-2026-08-23.md`](history/CLI-PILOT-2026-08-23.md)、[`PHASE4-STABILITY-AUDIT-2026-08-25.md`](history/PHASE4-STABILITY-AUDIT-2026-08-25.md) |
 
