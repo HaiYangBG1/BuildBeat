@@ -4,6 +4,8 @@
 
 ## v3.1.0 — 2026-09-26（运行时修复：预算误报、锁残留、台账并发、配置与 YAML 校验）
 
+> **发布状态**：`@haiyangbg/buildbeat@3.1.0` 已于 2026-09-26 从 `main`（PR #47 内容、release PR #48，merge commit `ace9ff5`，tag `v3.1.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 36231006557，publish 与 verify 双 job 一次 success；所有者授权「推送并发 3.1.0 / 继续，CI 过了就发」）。独立回读（直连 npmjs.org）：`latest` = 3.1.0、integrity 与发布前本地候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 3.1.0、裸调用零写入、`doctor` 只读、`npm audit signatures` 通过；GitHub Release v3.1.0 标 Latest，证据见 [`docs/V3.1.0-RELEASE-EVIDENCE-2026-09-26.md`](docs/V3.1.0-RELEASE-EVIDENCE-2026-09-26.md)。
+
 - YAML 子集解析器不再绊倒常见写法：空的 `[]` / `{}` 可用（非空行内集合仍拒绝，报错提示改成每项一行）；列表项可与所属键同缩进；不带引号的 `- http://x` 按字符串解析，含 `": "` 且前半截不是合法键的项（如 `- echo a: b`）不猜、报错要求加引号；开头的 BOM 被忽略；`007` 这类前导零保留为字符串；「has no value」报错给出改法。修改前的解析器冻结在 `tests/support/yaml-subset-v1.js`，测试断言仓库内它能解析的每个 YAML 新旧结果完全一致；SKILL.md、快速上手（中英）与 run-config 样板同步。
 
 - run-config 在做任何事之前整体校验并一次列出全部问题：必填键、未知顶层键与 worker / envelope 未知字段（给最接近的拼写）、类型与取值（`inheritEnv: yes` 不再静默当 false）、worker 名须被工作流用到、`stopAt` / `entry` 须是工作流步骤、`work` / `run` 的字符与类型（`run: 007` 要求加引号）。缺 `repo` 不再报 Node 内部错误 `paths[1]`。`start` / `resume` / `doctor` / `preflight` / `approve --config` 统一经由它；仓库内全部 run-config 有测试兜底兼容。Workflow 指南与恢复手册（中英）同步。
