@@ -1,0 +1,243 @@
+{
+  "run": "RUN-REVIEW-CLEANUP-01",
+  "work": "WORK-REVIEW-CLEANUP",
+  "workflow": "software-delivery",
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 60,
+    "lastDigest": "sha256:deaa77255d684fa8161f6e12d9785a8cf10dff2a4714b8efcd25f1bb7c86afbe"
+  },
+  "startedAt": "2026-09-26T09:07:55.832Z",
+  "finishedAt": "2026-09-26T09:40:31.249Z",
+  "attempts": {
+    "verify": 4,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 0
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 5,
+    "infraFailures": 0,
+    "workerMs": 319637
+  },
+  "workspaces": {
+    "RUN-REVIEW-CLEANUP-01": {
+      "repo": ".",
+      "branch": "run/RUN-REVIEW-CLEANUP-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-REVIEW-CLEANUP-01",
+      "base": "faa27423142fcc5d0ad15962e8ca14bacefbebfd",
+      "candidate": "272a219e032434cf49737906078c6edc8fdc0d34"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CLEANUP-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "007742c8a04b63a0b8442451aff9da845cca55ef",
+      "digest": "sha256:6e42a7ab568dc25cb952287f866db7ef203d4f3b42be4b8b36a4aa0b73ac1232",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:10d50eef2d3ab4bdaadc3af383cc06f3ff4562963fb7add552e2bd1caddd81fc"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CLEANUP-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "007742c8a04b63a0b8442451aff9da845cca55ef",
+      "digest": "sha256:07c9968ce01bd8c3391755b46823c81d81a1c108a9857db7320236c13143ce9f",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:10d50eef2d3ab4bdaadc3af383cc06f3ff4562963fb7add552e2bd1caddd81fc",
+      "reused": {
+        "run": "RUN-REVIEW-CLEANUP-01",
+        "evidenceRef": ".buildbeat/runtime/runs/RUN-REVIEW-CLEANUP-01/logs/verify-1.log",
+        "digest": "sha256:6e42a7ab568dc25cb952287f866db7ef203d4f3b42be4b8b36a4aa0b73ac1232"
+      }
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CLEANUP-01/logs/verify-3.log",
+      "kind": "command",
+      "subject": "007742c8a04b63a0b8442451aff9da845cca55ef",
+      "digest": "sha256:07c9968ce01bd8c3391755b46823c81d81a1c108a9857db7320236c13143ce9f",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:10d50eef2d3ab4bdaadc3af383cc06f3ff4562963fb7add552e2bd1caddd81fc",
+      "reused": {
+        "run": "RUN-REVIEW-CLEANUP-01",
+        "evidenceRef": ".buildbeat/runtime/runs/RUN-REVIEW-CLEANUP-01/logs/verify-1.log",
+        "digest": "sha256:6e42a7ab568dc25cb952287f866db7ef203d4f3b42be4b8b36a4aa0b73ac1232"
+      }
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CLEANUP-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "007742c8a04b63a0b8442451aff9da845cca55ef",
+      "digest": "sha256:77883e1a83125b9f8356b2b85e91d05e95ccda712a3b3f9b0b5910ba9a69b8f4",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CLEANUP-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "007742c8a04b63a0b8442451aff9da845cca55ef",
+      "digest": "sha256:bafd543208205e1f632b7d92b77bfa04b8407845b652f51294dc16ad26834e9d",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "计划 E 要求的包文件清单逐项回归测试缺失：tests/check_docs.py 只检查白名单配置，tests/pack-firstrun.test.sh 未比较 3.1.0 基线，notes.md 的一次性比较也未覆盖最终新增七份参考文档的候选。"
+        },
+        {
+          "severity": "P1",
+          "summary": "tests/v2-run-config-check.test.js:97 仅断言 cache: null 通过形状校验，未覆盖计划 A 要求的实际配置加载成功且不开启缓存的行为。"
+        },
+        {
+          "severity": "P2",
+          "summary": "临时目录改造超出计划 C 明确的“已自行清理的文件不动”边界：tests/publish-workflow.test.js、tests/v2-stale-locks.test.js 等已有清理钩子的文件也被转换为 tempDir，形成重复清理。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CLEANUP-01/logs/verify-4.log",
+      "kind": "command",
+      "subject": "272a219e032434cf49737906078c6edc8fdc0d34",
+      "digest": "sha256:bc28ebb0f3e4a289097d64e30eda1488ccf2a14416ec19e903b547316d8a3730",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:743b5ac032d5523d7abb7b3f022d9a873483d42cbdead26dececd637feea3c1b"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CLEANUP-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "272a219e032434cf49737906078c6edc8fdc0d34",
+      "digest": "sha256:95db1a1079ae06d03ecc62227d6a7478d5dabb8ba2f4139967dbbada0344791b",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CLEANUP-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "272a219e032434cf49737906078c6edc8fdc0d34",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "007742c8a04b63a0b8442451aff9da845cca55ef",
+        "planDigest": "sha256:33af577acbf8a4c0e96ad583c21144a268de294a28ccb85ef37de59782194867",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-REVIEW-CLEANUP-01-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "resume-verify",
+      "subject": {
+        "candidate": "007742c8a04b63a0b8442451aff9da845cca55ef",
+        "planDigest": "sha256:33af577acbf8a4c0e96ad583c21144a268de294a28ccb85ef37de59782194867",
+        "evidenceDigest": "sha256:6e42a7ab568dc25cb952287f866db7ef203d4f3b42be4b8b36a4aa0b73ac1232"
+      },
+      "decisionRef": "D-RUN-REVIEW-CLEANUP-01-2"
+    },
+    {
+      "decision": "approved",
+      "transition": "resume-verify",
+      "subject": {
+        "candidate": "007742c8a04b63a0b8442451aff9da845cca55ef",
+        "planDigest": "sha256:33af577acbf8a4c0e96ad583c21144a268de294a28ccb85ef37de59782194867",
+        "evidenceDigest": "sha256:07c9968ce01bd8c3391755b46823c81d81a1c108a9857db7320236c13143ce9f"
+      },
+      "decisionRef": "D-RUN-REVIEW-CLEANUP-01-3"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "272a219e032434cf49737906078c6edc8fdc0d34",
+        "planDigest": "sha256:33af577acbf8a4c0e96ad583c21144a268de294a28ccb85ef37de59782194867",
+        "evidenceDigest": "sha256:bafd543208205e1f632b7d92b77bfa04b8407845b652f51294dc16ad26834e9d"
+      },
+      "decisionRef": "D-RUN-REVIEW-CLEANUP-01-4"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "272a219e032434cf49737906078c6edc8fdc0d34",
+        "planDigest": "sha256:33af577acbf8a4c0e96ad583c21144a268de294a28ccb85ef37de59782194867",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-REVIEW-CLEANUP-01-5"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-REVIEW-CLEANUP-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "007742c8a04b63a0b8442451aff9da845cca55ef",
+        "planDigest": "sha256:33af577acbf8a4c0e96ad583c21144a268de294a28ccb85ef37de59782194867",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-REVIEW-CLEANUP-01-2",
+      "transition": "resume-verify",
+      "subject": {
+        "candidate": "007742c8a04b63a0b8442451aff9da845cca55ef",
+        "planDigest": "sha256:33af577acbf8a4c0e96ad583c21144a268de294a28ccb85ef37de59782194867",
+        "evidenceDigest": "sha256:6e42a7ab568dc25cb952287f866db7ef203d4f3b42be4b8b36a4aa0b73ac1232"
+      },
+      "stale": false
+    },
+    {
+      "decisionRef": "D-RUN-REVIEW-CLEANUP-01-3",
+      "transition": "resume-verify",
+      "subject": {
+        "candidate": "007742c8a04b63a0b8442451aff9da845cca55ef",
+        "planDigest": "sha256:33af577acbf8a4c0e96ad583c21144a268de294a28ccb85ef37de59782194867",
+        "evidenceDigest": "sha256:07c9968ce01bd8c3391755b46823c81d81a1c108a9857db7320236c13143ce9f"
+      },
+      "stale": false
+    },
+    {
+      "decisionRef": "D-RUN-REVIEW-CLEANUP-01-4",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "272a219e032434cf49737906078c6edc8fdc0d34",
+        "planDigest": "sha256:33af577acbf8a4c0e96ad583c21144a268de294a28ccb85ef37de59782194867",
+        "evidenceDigest": "sha256:bafd543208205e1f632b7d92b77bfa04b8407845b652f51294dc16ad26834e9d"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-REVIEW-CLEANUP-01-5",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "272a219e032434cf49737906078c6edc8fdc0d34",
+        "planDigest": "sha256:33af577acbf8a4c0e96ad583c21144a268de294a28ccb85ef37de59782194867",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
