@@ -23,6 +23,8 @@ budgets:
   maxAttempts:
     review: 2
   reviewRoundsPerWork: 6
+# 默认一个仓库同时只驱动一个 Run。确认本项目的测试不抢固定端口、不共用数据库后，
+# 可加 parallel: true，让本 Work 的 Run 与其他同样打开开关的 Work 并行（同一 Work 仍互斥）
 # 同树 + 同命令 + 同信封已通过就复用 verify 证据
 cache:
   verify: tree

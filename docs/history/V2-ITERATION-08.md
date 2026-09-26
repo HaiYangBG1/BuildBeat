@@ -1,7 +1,7 @@
 # v2 迭代 08：等待要能找到人（会话复盘回灌）
 
 > 状态：**C1–C10 + Skill 驾驶手册已实现（源码在 `v2` 分支，未发布）**
-> 上游：[`V2-PLAN.md`](V2-PLAN.md)；上一迭代 [`V2-ITERATION-07.md`](V2-ITERATION-07.md)；变更明细见 [`CHANGELOG.md`](../CHANGELOG.md) Unreleased
+> 上游：[`V2-PLAN.md`](V2-PLAN.md)；上一迭代 [`V2-ITERATION-07.md`](V2-ITERATION-07.md)；变更明细见 [`CHANGELOG.md`](../../CHANGELOG.md) Unreleased
 > 授权边界沿用 `V2-D2=A`（仅本地 `v2` 分支，不含 push、merge、tag、发布）；`npm publish 2.0.0-beta.4` 是独立生产动作，须所有者单独授权
 
 ## 输入：复盘了什么

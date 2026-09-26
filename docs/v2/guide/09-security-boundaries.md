@@ -1,6 +1,6 @@
 # 安全与权限边界
 
-权威：[`RFC-0001 §保护动作`](../RFC-0001-product-definition.md)、[`V2-PLAN.md`](../../V2-PLAN.md) §9 不变量。设计哲学：**保护动作 = 能力移除**——不是"请 Agent 别做"，而是让它做不到。
+权威：[`RFC-0001 §保护动作`](../RFC-0001-product-definition.md)、[`V2-PLAN.md`](../../history/V2-PLAN.md) §9 不变量。设计哲学：**保护动作 = 能力移除**——不是"请 Agent 别做"，而是让它做不到。
 
 ## Runner 侧的本地边界（LOCAL_ENFORCED，均有测试）
 

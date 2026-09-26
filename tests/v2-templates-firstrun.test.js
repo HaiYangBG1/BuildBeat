@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
 import { parseYamlSubset } from "../src/v2/engine/yaml-subset.js";
+import { tempDir } from "./support/tmp.js";
 
 // Deterministic first run through the shipped v2 templates: the run-config
 // sample, the worker wrapper and the three prompts must carry a run from
@@ -52,7 +52,7 @@ test("every documented run-config sample parses with the strict YAML subset", ()
 });
 
 test("templates/v2 envelope drives a run to the merge decision with a scripted agent", () => {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-templates-"));
+  const root = tempDir("bb-v2-templates-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);
@@ -148,7 +148,7 @@ test("templates/v2 envelope drives a run to the merge decision with a scripted a
 });
 
 test("worker.sh reports a missing tool as infrastructure (exit 75)", () => {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-wrapper-"));
+  const root = tempDir("bb-v2-wrapper-");
   execFileSync("git", ["init", "-q", root]);
   let code = 0;
   try {

@@ -1,12 +1,12 @@
 # BuildBeat v2 终版规划：工件协议 × 确定性内核 × 可恢复 Agent Loop
 
-> **状态更新（2026-09-05）**：本计划的目标已交付——`@haiyangbg/buildbeat@2.0.0` 发布到 `latest`（[`CHANGELOG.md`](../CHANGELOG.md)）。本文件此后是**历史执行基线**，原文不再修改；§8 里"`latest` 留 v1、`next` 发预发布"是 beta 期策略，已按计划结束。现行文档入口见 [`docs/README.md`](README.md)。
+> **状态更新（2026-09-05）**：本计划的目标已交付——`@haiyangbg/buildbeat@2.0.0` 发布到 `latest`（[`CHANGELOG.md`](../../CHANGELOG.md)）。本文件此后是**历史执行基线**，原文不再修改；§8 里"`latest` 留 v1、`next` 发预发布"是 beta 期策略，已按计划结束。现行文档入口见 [`docs/README.md`](../README.md)。
 >
 > 文档状态：**正式执行基线**（2026-08-27，项目所有者已拍板 `V2-D0=B`；决策见 [`V2-DECISIONS.md`](V2-DECISIONS.md)）
 > 基线日期：2026-08-27
 > 合并来源：报告 A（[`V2-PROPOSAL.md`](V2-PROPOSAL.md)，产品/方向层）× 报告 B（[《BuildBeat v2：AI 原生软件交付控制平面》](BuildBeat%20v2%EF%BC%9AAI%20%E5%8E%9F%E7%94%9F%E8%BD%AF%E4%BB%B6%E4%BA%A4%E4%BB%98%E6%8E%A7%E5%88%B6%E5%B9%B3%E9%9D%A2.md)，运行时工程层）
 > 合并原则：**"为什么做、做成什么样"以 A 为准；"引擎怎么造"以 B 为准**；两者冲突处在 §2 逐条裁决并给理由。
-> 收尾修订：纳入盲点复盘的三处修正（§2 末「收尾修正」）——**M-1 人肉内核试点先于一切**、**组装优先于自研**、范围裁剪与新增风险。第一个迭代已就绪：[`V2-ITERATION-01.md`](V2-ITERATION-01.md) + 试点套件 [`pilot/`](../pilot/README.md)。
+> 收尾修订：纳入盲点复盘的三处修正（§2 末「收尾修正」）——**M-1 人肉内核试点先于一切**、**组装优先于自研**、范围裁剪与新增风险。第一个迭代已就绪：[`V2-ITERATION-01.md`](V2-ITERATION-01.md) + 试点套件 [`pilot/`](../../pilot/README.md)。
 
 ---
 
@@ -216,15 +216,15 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 
 在真实项目上手动完整走一遍 v2 工作流：**人扮演 Kernel**（批转换、做合并决定），一个百行级 shell 脚本只自动化 build→verify→fix 内环，agent 经 CLI headless 调用。
 
-- 试点套件已就绪：[`pilot/`](../pilot/README.md)（驱动脚本 + intent/plan 模板 + 度量表）；执行细则见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)；
-- 建议跑 3 轮（修 bug / 小功能 / 含 UI 各一），同时执行 F1–F6 故障注入；记录计划外人工介入、token/费用、卡点，并按 [`pilot/metrics.md`](../pilot/metrics.md) 计算有明确分母的**可组装能力加权覆盖率**；
+- 试点套件已就绪：[`pilot/`](../../pilot/README.md)（驱动脚本 + intent/plan 模板 + 度量表）；执行细则见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)；
+- 建议跑 3 轮（修 bug / 小功能 / 含 UI 各一），同时执行 F1–F6 故障注入；记录计划外人工介入、token/费用、卡点，并按 [`pilot/metrics.md`](../../pilot/metrics.md) 计算有明确分母的**可组装能力加权覆盖率**；
 - 时间盒 ≤2 周，超时即按已有记录强制做分叉决定，防止试点本身变成拖延；
 - **分叉退出（M-1 唯一的交付就是这个决定）**：
   - **结论 (a)** 可组装能力覆盖率 <80%，或重复出现无法由薄控制面修补的 CRITICAL 运行缺口 → 按完整 M1–M3 造内核，需求以试点记录为准，总窗口 ~12–15 周；
   - **结论 (b)** 可组装能力覆盖率 ≥80%、三轮平均计划外介入 ≤2，且无重复的未处置 CRITICAL 运行缺口 → M1–M3 收缩为**薄内核**（只造 approval staleness、统一证据台账、policy/gate 检查器三件），总窗口 ~5–8 周；
   - 未跑场景一律记 `UNVERIFIED`，不得按通过计分；中间态默认少造，将存疑能力挂到 M4 复验。
 
-> **进展（2026-08-28）**：pilot-app、Tide 与 `V2-D1A` 后续的 AI 试点工作区 `WP-B1-AUTHZ` 推进均未激活 `pilot/loop.sh`，自动 Run ledger 为 `0/3`；第三项不倒算合格自动 Run，只作为重复激活失败的负向证据。F5 已确认只能 fail-closed、不能恢复，F6 已确认没有持久化 Approval 对象或 stale 事件；暂定可组装覆盖率仍为 45.8%。[`V2-D2-DECISION-CARD.md`](V2-D2-DECISION-CARD.md) 推荐完整内核，项目所有者已于 2026-08-28 拍板 **`V2-D2=A`**：M-1 关闭，进入 M0；主判据为重复 CRITICAL 缺口，暂定覆盖率仅旁证（台账见 [`V2-DECISIONS.md`](V2-DECISIONS.md)）。明细见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)、[`pilot/metrics.md`](../pilot/metrics.md) 与 [`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../pilot/evidence/2026-08-28-m1-runtime-gap.md)。
+> **进展（2026-08-28）**：pilot-app、Tide 与 `V2-D1A` 后续的 AI 试点工作区 `WP-B1-AUTHZ` 推进均未激活 `pilot/loop.sh`，自动 Run ledger 为 `0/3`；第三项不倒算合格自动 Run，只作为重复激活失败的负向证据。F5 已确认只能 fail-closed、不能恢复，F6 已确认没有持久化 Approval 对象或 stale 事件；暂定可组装覆盖率仍为 45.8%。[`V2-D2-DECISION-CARD.md`](V2-D2-DECISION-CARD.md) 推荐完整内核，项目所有者已于 2026-08-28 拍板 **`V2-D2=A`**：M-1 关闭，进入 M0；主判据为重复 CRITICAL 缺口，暂定覆盖率仅旁证（台账见 [`V2-DECISIONS.md`](V2-DECISIONS.md)）。明细见 [`V2-ITERATION-01.md`](V2-ITERATION-01.md)、[`pilot/metrics.md`](../../pilot/metrics.md) 与 [`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../../pilot/evidence/2026-08-28-m1-runtime-gap.md)。
 
 ### M0 — 核心重置（1 周）
 
@@ -234,7 +234,7 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 - v1 冻结 + 分支建立；本文档拍板即 M0 的人工 Gate。
 - **退出**：核心名词、MVP 范围、旧概念处置（保留/转换/删除）无歧义。
 
-> **进展（2026-08-28）**：三份 RFC 草案与事件格式规格已就绪——[`v2/RFC-0001-product-definition.md`](v2/RFC-0001-product-definition.md)（含自研面逐项"厂商结构性不做"标注）、[`v2/RFC-0002-domain-model.md`](v2/RFC-0002-domain-model.md)（含核心名词消歧与 v1 概念处置表）、[`v2/RFC-0003-workflow-policy.md`](v2/RFC-0003-workflow-policy.md)（含 observe/bands schema 冻结）、[`v2/SPEC-0001-events-v1.md`](v2/SPEC-0001-events-v1.md)（定稿即 FROZEN）。项目所有者已于 2026-08-28 定稿（`V2-D3`），M0 退出，SPEC-0001 进入 FROZEN；进入 M1，跟踪见 [`V2-ITERATION-02.md`](V2-ITERATION-02.md) 与 [`V2-ITERATION-03.md`](V2-ITERATION-03.md)。
+> **进展（2026-08-28）**：三份 RFC 草案与事件格式规格已就绪——[`v2/RFC-0001-product-definition.md`](../v2/RFC-0001-product-definition.md)（含自研面逐项"厂商结构性不做"标注）、[`v2/RFC-0002-domain-model.md`](../v2/RFC-0002-domain-model.md)（含核心名词消歧与 v1 概念处置表）、[`v2/RFC-0003-workflow-policy.md`](../v2/RFC-0003-workflow-policy.md)（含 observe/bands schema 冻结）、[`v2/SPEC-0001-events-v1.md`](../v2/SPEC-0001-events-v1.md)（定稿即 FROZEN）。项目所有者已于 2026-08-28 定稿（`V2-D3`），M0 退出，SPEC-0001 进入 FROZEN；进入 M1，跟踪见 [`V2-ITERATION-02.md`](V2-ITERATION-02.md) 与 [`V2-ITERATION-03.md`](V2-ITERATION-03.md)。
 
 ### M1 — 最小纵切（2–3 周）
 
@@ -247,7 +247,7 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 - **验收**：真实项目上 `build → verify` 两步由 Shell Adapter 驱动跑通，证据全部来自回读。
 - **止损**：纵切显示单人维护成本过高 → 降级为"单步推进 + 审批收件箱"半自动形态，M2 以后重排。
 
-> **进展（2026-08-28）**：M1 验收通过——BuildBeat 仓库 self-host，Shell Adapter 驱动 build（真实 candidate `30b3a0d`）→ verify（真实测试 20/20 回读），停在 `WAITING_HUMAN` 后终态压实；`resume`（F5 纵切）同迭代关闭。证据见 [`v2/M1-ACCEPTANCE-2026-08-28.md`](v2/M1-ACCEPTANCE-2026-08-28.md)，跟踪见 [`V2-ITERATION-03.md`](V2-ITERATION-03.md)。进入 M2。
+> **进展（2026-08-28）**：M1 验收通过——BuildBeat 仓库 self-host，Shell Adapter 驱动 build（真实 candidate `30b3a0d`）→ verify（真实测试 20/20 回读），停在 `WAITING_HUMAN` 后终态压实；`resume`（F5 纵切）同迭代关闭。证据见 [`v2/M1-ACCEPTANCE-2026-08-28.md`](../v2/M1-ACCEPTANCE-2026-08-28.md)，跟踪见 [`V2-ITERATION-03.md`](V2-ITERATION-03.md)。进入 M2。
 
 ### M2 — 自动修复环（2–3 周）★ MVP 承诺在此达成
 
@@ -256,7 +256,7 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 - `WAITING_HUMAN` + `approve/reject` + inbox；Approval 绑定与 stale 检测；
 - **验收**：B §20 的 20 条 MVP DoD 逐条通过（含预埋 Bug 自动修复、进程中断可恢复、candidate 变更 Approval 失效、停在合并前不自动 merge）。
 
-> **进展（2026-08-28）**：M2 核验 **18/20 通过**——预埋 Bug 自动修复端到端（真实红测试→fix→绿→只读 review→停在合并前→人批终态）、F6 Approval stale 运行时关闭、approve/reject + inbox、决策落 Git。#1（plan"被接受"的 Policy 强制）与 #20（coverage 纪律）标 `PARTIAL` 挂 M3 既定范围。核验表见 [`v2/M2-DOD-2026-08-28.md`](v2/M2-DOD-2026-08-28.md)，跟踪见 [`V2-ITERATION-04.md`](V2-ITERATION-04.md)。进入 M3。
+> **进展（2026-08-28）**：M2 核验 **18/20 通过**——预埋 Bug 自动修复端到端（真实红测试→fix→绿→只读 review→停在合并前→人批终态）、F6 Approval stale 运行时关闭、approve/reject + inbox、决策落 Git。#1（plan"被接受"的 Policy 强制）与 #20（coverage 纪律）标 `PARTIAL` 挂 M3 既定范围。核验表见 [`v2/M2-DOD-2026-08-28.md`](../v2/M2-DOD-2026-08-28.md)，跟踪见 [`V2-ITERATION-04.md`](V2-ITERATION-04.md)。进入 M3。
 
 ### M3 — 治理硬化（2 周）
 
@@ -273,11 +273,11 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 - Self-host 试点（BuildBeat builds BuildBeat）+ 外部试点 ≥2（一个有真实测试的单仓项目 + 一个含 UI 变更的项目，建议从一个真实企业工作区选）；
 - **退出指标**（B M5 表采纳）：状态转换可追溯 100%、stale Approval 复用 0、超预算继续运行 0、试点 Run 自动到达 WAITING_HUMAN ≥70%、证据完整率 ≥95%、Reviewer 改代码 0。
 
-> **进展（2026-08-28）**：工程面完成——九场景行为 evals（[`evals/`](../evals/README.md)）、`metrics` v0、Scope 越界即停、单活动 Run 锁、Adapter 故障路径回归；Self-host 试点 `RUN-SELF-001` 真实跑通并停在合并决定（真实 remote 上实测推送保护、抓到并修复一个 YAML 解析真实缺陷），证据与六指标核验见 [`v2/M4-SELFHOST-2026-08-28.md`](v2/M4-SELFHOST-2026-08-28.md)。**外部试点 ≥2 待项目所有者点名（D6），回填指标后 M4 关闭**；跟踪见 [`V2-ITERATION-06.md`](V2-ITERATION-06.md)。
+> **进展（2026-08-28）**：工程面完成——九场景行为 evals（[`evals/`](../../evals/README.md)）、`metrics` v0、Scope 越界即停、单活动 Run 锁、Adapter 故障路径回归；Self-host 试点 `RUN-SELF-001` 真实跑通并停在合并决定（真实 remote 上实测推送保护、抓到并修复一个 YAML 解析真实缺陷），证据与六指标核验见 [`v2/M4-SELFHOST-2026-08-28.md`](../v2/M4-SELFHOST-2026-08-28.md)。**外部试点 ≥2 待项目所有者点名（D6），回填指标后 M4 关闭**；跟踪见 [`V2-ITERATION-06.md`](V2-ITERATION-06.md)。
 >
-> **进展（2026-08-28 补）**：外部试点完成——所有者点名的真实需求 `LXJ-AUTH-PILOT-EXT-01`（pilot-backend）由 codex CLI 经 Shell Adapter 全自动 5.2 分钟推进到合并决定（15 文件干净候选、JDK17 全量真实测试、只读 review、portal 页真渲染截图 + UI 门），证据见 [`v2/M4-EXTERNAL-PILOT-2026-08-28.md`](v2/M4-EXTERNAL-PILOT-2026-08-28.md)。六退出指标全部达标（自动到达率 2/2）；仅余 D6 口径（1 项目覆盖双验收面是否即满足"≥2"）待所有者定夺后 M4 关闭。
+> **进展（2026-08-28 补）**：外部试点完成——所有者点名的真实需求 `LXJ-AUTH-PILOT-EXT-01`（pilot-backend）由 codex CLI 经 Shell Adapter 全自动 5.2 分钟推进到合并决定（15 文件干净候选、JDK17 全量真实测试、只读 review、portal 页真渲染截图 + UI 门），证据见 [`v2/M4-EXTERNAL-PILOT-2026-08-28.md`](../v2/M4-EXTERNAL-PILOT-2026-08-28.md)。六退出指标全部达标（自动到达率 2/2）；仅余 D6 口径（1 项目覆盖双验收面是否即满足"≥2"）待所有者定夺后 M4 关闭。
 >
-> **进展（2026-08-28 再补）：M4 关闭。** 第二外部项目 pilot-app Bug 看板积压批处理（[`v2/M4-PILOT-APP-2026-08-28.md`](v2/M4-PILOT-APP-2026-08-28.md)）：钉钉 AI 表格读积压 → 两个 bug 各一 Run，其中 RUN-CHICK-0037 走出**完整 Build–Verify–Fix–Review 闭环**（reviewer 以 P1/P2 真实阻断、codex fixer 修复、二轮全绿）。外部项目数 2，D6 原文满足；六指标 4/4 Run 同向达标。进入 M5。
+> **进展（2026-08-28 再补）：M4 关闭。** 第二外部项目 pilot-app Bug 看板积压批处理（[`v2/M4-PILOT-APP-2026-08-28.md`](../v2/M4-PILOT-APP-2026-08-28.md)）：钉钉 AI 表格读积压 → 两个 bug 各一 Run，其中 RUN-CHICK-0037 走出**完整 Build–Verify–Fix–Review 闭环**（reviewer 以 P1/P2 真实阻断、codex fixer 修复、二轮全绿）。外部项目数 2，D6 原文满足；六指标 4/4 Run 同向达标。进入 M5。
 
 ### M5 — 闭环起步、迁移与 Beta（2–3 周）
 
@@ -285,7 +285,7 @@ v1 的"Skill-only 完整等价"拆成两个承诺分别处置：
 - v1 迁移改为**半天手工 runbook**（收尾修正三：装机量 N=1，importer 工具砍掉；"不猜旧状态有效性、单向迁移、禁止双写"原则不变）；
 - 文档十件套（B WP6.3）；发布 `@haiyangbg/buildbeat@2.0.0-beta.1`（dist-tag `next`）。
 
-> **进展（2026-08-28）：M5 完成，Beta 已发布。** observe v0 按 RFC-0003 §8 冻结契约实现（bands 三层 + intent 草稿只入队 + dismiss 回调；`tests/v2-observe.test.js` 8 项，含不变量 23）并在本仓库真实接入（探针=文档漂移守卫，cycle 1 证据入账）；迁移 runbook 与文档十件套落 [`v2/guide/`](v2/guide/README.md)；**`@haiyangbg/buildbeat@2.0.0-beta.1` 经所有者授权已发布（dist-tag `next`，`latest` 保持 v1.21.0）**，OIDC Trusted Publishing + 五项独立回读，证据：[`v2.0.0-beta.1 evidence`](V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md)。全量测试 142/142。跟踪见 [`V2-ITERATION-07.md`](V2-ITERATION-07.md)。
+> **进展（2026-08-28）：M5 完成，Beta 已发布。** observe v0 按 RFC-0003 §8 冻结契约实现（bands 三层 + intent 草稿只入队 + dismiss 回调；`tests/v2-observe.test.js` 8 项，含不变量 23）并在本仓库真实接入（探针=文档漂移守卫，cycle 1 证据入账）；迁移 runbook 与文档十件套落 [`v2/guide/`](../v2/guide/README.md)；**`@haiyangbg/buildbeat@2.0.0-beta.1` 经所有者授权已发布（dist-tag `next`，`latest` 保持 v1.21.0）**，OIDC Trusted Publishing + 五项独立回读，证据：[`v2.0.0-beta.1 evidence`](../releases/V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md)。全量测试 142/142。跟踪见 [`V2-ITERATION-07.md`](V2-ITERATION-07.md)。
 
 ---
 

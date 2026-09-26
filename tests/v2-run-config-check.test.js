@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 
 import { checkRunConfigAgainstWorkflow, checkRunConfigShape, suggest } from "../src/v2/cli/run-config-check.js";
 import { loadWorkflow } from "../src/v2/engine/workflow.js";
 import { parseYamlSubset } from "../src/v2/engine/yaml-subset.js";
+import { tempDir } from "./support/tmp.js";
 
 const ROOT = join(import.meta.dirname, "..");
 const CLI = join(ROOT, "bin", "buildbeat.js");
@@ -94,6 +94,47 @@ test("suggestions only fire for plausible typos", () => {
   assert.equal(suggest("runUnexpected", ["run", "repo"]), null);
 });
 
+test("cache: null keeps meaning no cache; lists still must be lists", () => {
+  assert.deepEqual(shape({ cache: null }), []);
+  one(shape({ stopAt: null }), /^stopAt: must be a list/);
+});
+
+test("a real config with cache: null loads and runs with the cache off", async () => {
+  const { execFileSync } = await import("node:child_process");
+  const { EventLedger } = await import("../src/v2/storage/event-ledger.js");
+  const { tempDir } = await import("./support/tmp.js");
+  // Two runs on the same tree: with cache: verify: tree the second verify is
+  // reused; with cache: null it must run again.
+  const reusedOnSecondRun = (cacheLines) => {
+    const root = tempDir("bb-cache-null-");
+    const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8" });
+    git("init", "-q", "-b", "main");
+    git("config", "user.name", "Test");
+    git("config", "user.email", "test@example.com");
+    writeFileSync(join(root, "README.md"), "fixture\n");
+    git("add", "README.md");
+    git("commit", "-qm", "baseline");
+    const config = join(root, "run-config.yaml");
+    const envelope = '      - \'require("node:fs").writeFileSync(process.env.BUILDBEAT_OUTPUT, JSON.stringify({status: "succeeded", findings: []}))\'';
+    writeFileSync(config, [
+      "repo: .", "work: WORK-C", "run: RUN-C", `workflow: ${PRESET}`, "riskPreset: fast", "entry: build", ...cacheLines,
+      "stopAt:", "  - review", "workers:",
+      "  builder:", `    command: ${process.execPath}`, "    args:", "      - -e", envelope,
+      "  verifier:", `    command: ${process.execPath}`, "    args:", "      - -e", "      - '0'",
+      "  reviewer:", `    command: ${process.execPath}`, "    args:", "      - -e", envelope,
+    ].join("\n"));
+    for (let i = 0; i < 2; i += 1) {
+      execFileSync(process.execPath, [CLI, "start", "--config", config, "--attempt", "new"], { encoding: "utf8" });
+    }
+    const second = EventLedger.open(join(root, ".buildbeat", "runtime", "runs", "RUN-C-02", "events.jsonl"));
+    const verify = second.events.find((event) => event.type === "EVIDENCE_RECORDED" && event.data.evidenceRef.includes("verify"));
+    assert.ok(verify, "second run recorded verify evidence");
+    return Boolean(verify.data.reused);
+  };
+  assert.equal(reusedOnSecondRun(["cache:", "  verify: tree"]), true);
+  assert.equal(reusedOnSecondRun(["cache: null"]), false);
+});
+
 test("an explicit null is reported, not treated as the default", () => {
   one(shape({ base: null }), /^base: has no value; remove the line to use the default/);
   one(shape({ entry: null }), /^entry: has no value/);
@@ -101,7 +142,7 @@ test("an explicit null is reported, not treated as the default", () => {
 });
 
 test("the CLI reports the problem list instead of an internal error", (t) => {
-  const root = mkdtempSync(join(tmpdir(), "bb-run-config-"));
+  const root = tempDir("bb-run-config-");
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const config = join(root, "run-config.yaml");
   writeFileSync(config, ["work: WORK-X", "run: RUN-X", `workflow: ${PRESET}`, "stopat:", "  - review", "workers:", "  reviwer:", "    command: codex", "    inheritEnv: yes"].join("\n"));

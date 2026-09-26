@@ -214,17 +214,76 @@ export function acquireLock(repoRoot, runId) {
   return lockPath;
 }
 
-// Run ids currently holding a lock in this repository (the repository-wide
-// active-run marker excluded): who a blocked `start` is queued behind.
+// Locks that belong to no single run: the repository-wide active-run lock,
+// and names starting with "@" (per-work, parallel-run marker, repo-git),
+// which no run id can contain.
+export function isRunLockName(name) {
+  return name !== "active-run" && !name.startsWith("@");
+}
+
+// Run ids currently holding a lock in this repository: who a blocked
+// `start` is queued behind.
 export function listHeldRunLocks(repoRoot) {
   const lockDir = join(repoRoot, ".buildbeat", "runtime", "locks");
   if (!existsSync(lockDir)) {
     return [];
   }
   return readdirSync(lockDir)
-    .filter((entry) => entry.endsWith(".lock") && entry !== "active-run.lock")
+    .filter((entry) => entry.endsWith(".lock"))
     .map((entry) => entry.slice(0, -".lock".length))
+    .filter(isRunLockName)
     .sort();
+}
+
+// Parallel-run markers (@parallel.<RUN>) whose owner is alive or cannot be
+// judged; markers of dead owners are reclaimed on the way and not returned.
+export function liveParallelMarkers(repoRoot) {
+  const lockDir = join(repoRoot, ".buildbeat", "runtime", "locks");
+  if (!existsSync(lockDir)) {
+    return [];
+  }
+  const live = [];
+  for (const entry of readdirSync(lockDir).sort()) {
+    if (!entry.startsWith("@parallel.") || !entry.endsWith(".lock")) {
+      continue;
+    }
+    const lockPath = join(lockDir, entry);
+    const seen = inspectLock(lockPath);
+    if (seen.state === "dead" && reclaimStaleLock(lockPath, seen.owner)) {
+      rmSync(lockPath, { recursive: true, force: true });
+      continue;
+    }
+    live.push({ run: entry.slice("@parallel.".length, -".lock".length), ...seen });
+  }
+  return live;
+}
+
+function pause(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+// Writes to the repository's shared git state (worktree add/remove, branch
+// create/delete, .git/config) are serialised: with parallel runs two drivers
+// could otherwise race on .git/config.lock or index.lock. Held for
+// milliseconds, so a busy lock is waited for (bounded), not reported.
+export function withRepoGitLock(repoRoot, fn, { waitMs = 10_000 } = {}) {
+  const deadline = Date.now() + waitMs;
+  for (;;) {
+    try {
+      acquireLock(repoRoot, "@repo-git");
+      break;
+    } catch (error) {
+      if (!error.lock || Date.now() >= deadline) {
+        throw error;
+      }
+      pause(100);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    releaseLock(repoRoot, "@repo-git");
+  }
 }
 
 export function releaseLock(repoRoot, runId) {

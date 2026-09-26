@@ -1,17 +1,10 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import {
-  chmodSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import os from "node:os";
+import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { tempDir } from "./support/tmp.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const PUBLISH_SCRIPT = path.join(REPO_ROOT, ".github", "scripts", "publish-candidate.sh");
@@ -19,7 +12,7 @@ const CANDIDATE_INTEGRITY = `sha512-${"A".repeat(86)}==`;
 const DIFFERENT_INTEGRITY = `sha512-${"B".repeat(86)}==`;
 
 function fixture(t, { views, publishStatus, version = "1.20.0", distTag = "latest" }) {
-  const root = mkdtempSync(path.join(os.tmpdir(), "buildbeat-publish-test-"));
+  const root = tempDir("buildbeat-publish-test-");
   t.after(() => rmSync(root, { recursive: true, force: true }));
 
   const bin = path.join(root, "bin");

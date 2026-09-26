@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -12,6 +11,7 @@ import { loadWorkflow } from "../src/v2/engine/workflow.js";
 import { approveRun, rejectRun } from "../src/v2/runtime/decisions.js";
 import { resumeRun, startRun } from "../src/v2/runtime/orchestrator.js";
 import { computeOverview, renderOverview } from "../src/v2/runtime/overview.js";
+import { tempDir } from "./support/tmp.js";
 
 const DELIVERY = loadWorkflow(join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml"));
 const RELEASE = loadWorkflow(join(import.meta.dirname, "..", "src", "v2", "presets", "release-readback.yaml"));
@@ -21,7 +21,7 @@ function git(cwd, args) {
 }
 
 function fixtureRepo() {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-stages-"));
+  const root = tempDir("bb-v2-stages-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);

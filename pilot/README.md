@@ -1,6 +1,6 @@
 # M-1 人肉内核试点套件
 
-> 属于 [BuildBeat v2 正式执行基线](../docs/V2-PLAN.md) 的里程碑 M-1；执行细则见 [迭代 01](../docs/V2-ITERATION-01.md)。
+> 属于 [BuildBeat v2 正式执行基线](../docs/history/V2-PLAN.md) 的里程碑 M-1；执行细则见 [迭代 01](../docs/history/V2-ITERATION-01.md)。
 > `V2-D0=B` 已决定做 v2；M-1 不再回答“做不做”，只用真实证据决定哪些运行能力组装、哪些进入薄内核、是否需要完整内核。
 
 ## 唯一交付
@@ -60,4 +60,4 @@ ACCEPT_CMD='npm test -- acceptance.test.js' \
 
 ## 退出
 
-三轮跑完或两周时间盒到期后，按 [`metrics.md`](metrics.md) 的预置算法形成 `V2-D2`，回写 [`V2-PLAN.md`](../docs/V2-PLAN.md) §8 与 [`V2-DECISIONS.md`](../docs/V2-DECISIONS.md)。
+三轮跑完或两周时间盒到期后，按 [`metrics.md`](metrics.md) 的预置算法形成 `V2-D2`，回写 [`V2-PLAN.md`](../docs/history/V2-PLAN.md) §8 与 [`V2-DECISIONS.md`](../docs/history/V2-DECISIONS.md)。

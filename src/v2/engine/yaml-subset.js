@@ -142,20 +142,26 @@ function parseList(lines, start, indent) {
     }
     const first = childLines[0].content;
     const quotedScalar = first.startsWith('"') || first.startsWith("'");
-    const mapItem = !quotedScalar && MAP_ITEM.test(first);
-    if (childLines.length === 1 && !mapItem) {
-      // Real YAML reads "echo a: b" as a map; rather than guess, ask for quotes.
-      if (!quotedScalar && (first.includes(": ") || first.endsWith(":"))) {
-        throw new YamlSubsetError(
-          `list item ${JSON.stringify(first)} contains ": "; quote it (- ${JSON.stringify(first)}) or write it as key: value`,
-          line.lineNo,
-        );
+    if (childLines.length > 1) {
+      // Multi-line items keep the previous rule and messages unchanged.
+      if (!quotedScalar && first.includes(":")) {
+        result.push(parseMapFromLines(childLines, itemIndent));
+      } else {
+        throw new YamlSubsetError("unsupported list item shape", line.lineNo);
       }
-      result.push(parseScalar(first, childLines[0].lineNo));
-    } else if (mapItem) {
+      index = cursor;
+      continue;
+    }
+    if (!quotedScalar && MAP_ITEM.test(first)) {
       result.push(parseMapFromLines(childLines, itemIndent));
+    } else if (!quotedScalar && (first.includes(": ") || first.endsWith(":"))) {
+      // Real YAML reads "echo a: b" as a map; rather than guess, ask for quotes.
+      throw new YamlSubsetError(
+        `list item ${JSON.stringify(first)} contains ": "; quote it (- ${JSON.stringify(first)}) or write it as key: value`,
+        line.lineNo,
+      );
     } else {
-      throw new YamlSubsetError("unsupported list item shape", line.lineNo);
+      result.push(parseScalar(first, childLines[0].lineNo));
     }
     index = cursor;
   }

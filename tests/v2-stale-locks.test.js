@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
-import { hostname, tmpdir } from "node:os";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -15,12 +15,13 @@ import {
   releaseLock,
   WorkspaceError,
 } from "../src/v2/workspace/workspace-manager.js";
+import { tempDir } from "./support/tmp.js";
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 
 function tempRoot(t) {
-  const root = mkdtempSync(join(tmpdir(), "bb-stale-locks-"));
+  const root = tempDir("bb-stale-locks-");
   t.after(() => rmSync(root, { recursive: true, force: true }));
   return root;
 }

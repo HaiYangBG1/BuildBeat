@@ -1,7 +1,7 @@
 # Phase 4 / WP4.3 稳定性硬门槛刷新（2026-08-25）
 
 > 审计对象：以本地提交 `1887cf2` 为已保全输入，叠加 scoped `1.20.0` 迁移候选、真实版本增量 upgrade、多仓刷新与根内 legacy link 兼容修复。
-> 证据等级：本地源码/文档静态闭合 + disposable 沙箱 + Wave 1/2 真实 Git 项目 + 真实多仓只读投影。下表保留发布前审计口径，不倒改当时尚未执行 push、tag、Release、publish 或远端改名的边界；后续外部分发另由 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md) 关闭。
+> 证据等级：本地源码/文档静态闭合 + disposable 沙箱 + Wave 1/2 真实 Git 项目 + 真实多仓只读投影。下表保留发布前审计口径，不倒改当时尚未执行 push、tag、Release、publish 或远端改名的边界；后续外部分发另由 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](../releases/WP4.3-RELEASE-EVIDENCE-2026-08-25.md) 关闭。
 > 结论：**12 条源码/真实试点候选口径与后续 scoped 外部分发证据均已闭合；两类证据继续分开，不以发布成功外推业务项目 Gate、部署或生产状态。**
 
 ## 逐条审计
@@ -19,7 +19,7 @@
 | 9 | `[x]` | 项目本地脚本仍可独立运行 | Skill-only/CLI-created 两个一次性项目均在 Node 失效时运行 `scripts/bus-check.sh --strict` | live adapters/项目真实测试未配置时仍必须报告降级 |
 | 10 | `[x]` | 不引入账号、遥测、远程数据库、团队模型或 `emit` | package 零 runtime dependencies；CLI 生命周期仅本地 Git/文件系统；产品非目标中英契约 + 关键文件检查 | npm 下载本身是包管理器行为，不是项目遥测/远程运行时 |
 | 11 | `[x]` | 真实项目试点通过，而不仅是模板测试 | [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md)：真实 schema 2 `v1.16 → v1.20` upgrade、project-owned 零 diff、doctor 0/0、项目 strict 0；另对真实四子仓协调层完成只读刷新 | 多仓刷新正确暴露业务仓 `lessons.md` 断链和 map/适配器未验证，不把目标业务仓冒充全绿 |
-| 12 | `[x]` | README、SKILL、AGENTS、示例和 CLI 帮助不存在相互矛盾的定位 | 中英 README 终校；[`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) 三面区分；`check_docs.py` 锁定定位/能力/发布边界 | 远端 npm README 是不可变已发布产物，须在真实发布后独立 registry 回读 |
+| 12 | `[x]` | README、SKILL、AGENTS、示例和 CLI 帮助不存在相互矛盾的定位 | 中英 README 终校；[`CAPABILITY-MATRIX.md`](../CAPABILITY-MATRIX.md) 三面区分；`check_docs.py` 锁定定位/能力/发布边界 | 远端 npm README 是不可变已发布产物，须在真实发布后独立 registry 回读 |
 
 ## 发布前外部分发清单（后续已关闭）
 

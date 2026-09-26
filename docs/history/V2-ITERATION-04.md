@@ -1,7 +1,7 @@
 # v2 迭代 04：M2 自动修复环
 
-> 状态：**已完成——M2 于 2026-08-28 核验 18/20 通过**（2 项 `PARTIAL` 挂 M3；核验表：[`v2/M2-DOD-2026-08-28.md`](v2/M2-DOD-2026-08-28.md)）
-> 上游：[`V2-PLAN.md`](V2-PLAN.md) §8 M2；M1 验收：[`v2/M1-ACCEPTANCE-2026-08-28.md`](v2/M1-ACCEPTANCE-2026-08-28.md)
+> 状态：**已完成——M2 于 2026-08-28 核验 18/20 通过**（2 项 `PARTIAL` 挂 M3；核验表：[`v2/M2-DOD-2026-08-28.md`](../v2/M2-DOD-2026-08-28.md)）
+> 上游：[`V2-PLAN.md`](V2-PLAN.md) §8 M2；M1 验收：[`v2/M1-ACCEPTANCE-2026-08-28.md`](../v2/M1-ACCEPTANCE-2026-08-28.md)
 > 时间盒：**≤3 周**；授权边界沿用 `V2-D2=A`（仅本地 `v2` 分支，不含 push/merge/发布/部署/生产）
 
 ## 迭代目标
@@ -16,7 +16,7 @@ MVP 核心承诺在此达成：**给 BuildBeat 一个已批准的目标和计划
 - [x] **T4 F6 运行时关闭**：批准后 candidate/plan 变化 → resume 时机器检出 → `APPROVAL_STALE` → 回 `WAITING_HUMAN`；stale 请求的重批先刷新 subject 再绑定新对象；批准后干净恢复则跳过已批边界继续驱动（`v2-approval` 第 1/2 例）。
 - [x] **T5 Intent/Plan 读取**：run 启动读取 work 目录 intent/plan 并 pin digest 进 RUN_CREATED 与 Approval subject（`v2-mvp-loop` 断言 planDigest 贯穿到 final-decision subject）。
 - [x] **T6 预埋 Bug 自动修复端到端**：真实测试项目 fixture——builder 提交带 bug 候选 → verify 真实红 → fixer 修复 → verify 绿 → review 只读通过 → 停在合并前 → approve 终态 + 压实 + ledger 重放一致（`tests/v2-mvp-loop.test.js`）。
-- [x] **T7 MVP DoD 20 条逐条核验**：[`v2/M2-DOD-2026-08-28.md`](v2/M2-DOD-2026-08-28.md)——18/20 通过；#1（plan 的"被接受"强制）与 #20（coverage 纪律）标 `PARTIAL` 挂 M3，属 M3 Policy Engine 既定范围。
+- [x] **T7 MVP DoD 20 条逐条核验**：[`v2/M2-DOD-2026-08-28.md`](../v2/M2-DOD-2026-08-28.md)——18/20 通过；#1（plan 的"被接受"强制）与 #20（coverage 纪律）标 `PARTIAL` 挂 M3，属 M3 Policy Engine 既定范围。
 
 ## 实现口径
 

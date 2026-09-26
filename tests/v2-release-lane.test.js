@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -11,6 +10,7 @@ import { loadWorkflow, parseWorkflow } from "../src/v2/engine/workflow.js";
 import { approveRun } from "../src/v2/runtime/decisions.js";
 import { checkRequires } from "../src/v2/runtime/env-contract.js";
 import { resumeRun, startRun } from "../src/v2/runtime/orchestrator.js";
+import { tempDir } from "./support/tmp.js";
 
 const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "release-readback.yaml");
 
@@ -19,7 +19,7 @@ function git(cwd, args) {
 }
 
 function fixtureRepo() {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-release-"));
+  const root = tempDir("bb-v2-release-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);

@@ -13,7 +13,7 @@
 
 > 第 1～3 行均是**真实流程观察**，但都不是 `pilot/loop.sh` 的有效 run record；第 3 行尤其发生在 `V2-D1A` 之后，证明“选定目标 + 写下协议”仍不能自动激活 Loop。attempts 仅表示人工阶段，不进入自动 Run 平均值；token 与费用继续保持 `UNVERIFIED`。第 4 行不是既成任务，只表示选择 B 后的等待路径。
 
-> **使用判定**：三次真实工作足以证明工件协议、冻结验收、隔离 candidate 与独立审查有价值，也足以证明“靠人记得调用薄脚本”不能兑现 v2 的自动闭环。F5/F6 已从 `UNVERIFIED` 收敛为 `MISSING`；当前证据足以形成 `V2-D2` 决策卡，但不支持薄内核结论。详见 [`../docs/V2-D2-DECISION-CARD.md`](../docs/V2-D2-DECISION-CARD.md)。
+> **使用判定**：三次真实工作足以证明工件协议、冻结验收、隔离 candidate 与独立审查有价值，也足以证明“靠人记得调用薄脚本”不能兑现 v2 的自动闭环。F5/F6 已从 `UNVERIFIED` 收敛为 `MISSING`；当前证据足以形成 `V2-D2` 决策卡，但不支持薄内核结论。详见 [`../docs/history/V2-D2-DECISION-CARD.md`](../docs/history/V2-D2-DECISION-CARD.md)。
 
 > **第三项目口径**：`<试点工作区>` 已选定，`WP-B1-AUTHZ` 后续又在 Loop 外推进到 Gate3 写者 L4。该事件是合格的激活失败证据，不是合格的自动 Run。选择 A 后不再等第四项任务；选择 B 时才等下一项自然工作包并从旁路干净 worktree 开跑。
 
@@ -103,7 +103,7 @@
 - 三次真实流程的自动激活率：`0/3`；没有合格自动 attempts 平均值，不伪造。
 - 组装覆盖率：暂定 `45.8%（5.5/12）`，低于薄内核门槛 80%。
 - 重复出现的 CRITICAL 结构性缺口：Run 未自动登记/激活、无统一 ledger；F5 无恢复；F6 无 Approval stale。
-- 推荐结论：**(a) 完整内核**；决策卡见 [`../docs/V2-D2-DECISION-CARD.md`](../docs/V2-D2-DECISION-CARD.md)。
+- 推荐结论：**(a) 完整内核**；决策卡见 [`../docs/history/V2-D2-DECISION-CARD.md`](../docs/history/V2-D2-DECISION-CARD.md)。
 - 依据：继续增加手工案例不能改变激活、恢复与审批状态缺失；完整内核仍按纵切止损，不等于一次性实现全部 M1～M3。
 - 各缺口去向：M1 关闭 Run/event/recovery 最小纵切；M2 关闭 Approval stale 与 fix/review loop；M3 完成 policy/protected actions。
 - 决定日期与拍板人：2026-08-28，项目所有者；`V2-D2=A`（完整内核）。主判据为重复 CRITICAL 缺口；暂定覆盖率 45.8% 按本文件口径仅作旁证，不作分叉依据。

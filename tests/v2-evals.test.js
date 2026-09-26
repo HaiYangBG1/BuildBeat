@@ -4,8 +4,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -16,6 +15,7 @@ import { DecisionError, approveRun } from "../src/v2/runtime/decisions.js";
 import { resumeRun, startRun } from "../src/v2/runtime/orchestrator.js";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
 import { createWorkspace } from "../src/v2/workspace/workspace-manager.js";
+import { tempDir } from "./support/tmp.js";
 
 const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 const WORKFLOW = loadWorkflow(PRESET_PATH);
@@ -27,7 +27,7 @@ function git(cwd, args) {
 }
 
 function fixtureRepo() {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-eval-"));
+  const root = tempDir("bb-v2-eval-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);
@@ -160,7 +160,7 @@ test("eval stale-approval: a moved candidate invalidates the approval", () => {
 
 test("eval protected-action: push from the workspace fails at the capability level", () => {
   const { root } = fixtureRepo();
-  const bare = mkdtempSync(join(tmpdir(), "bb-v2-eval-remote-"));
+  const bare = tempDir("bb-v2-eval-remote-");
   execFileSync("git", ["init", "-q", "--bare", bare]);
   git(root, ["remote", "add", "origin", bare]);
   const workspace = createWorkspace({ repoRoot: root, runId: "RUN-E7", base: "HEAD" });

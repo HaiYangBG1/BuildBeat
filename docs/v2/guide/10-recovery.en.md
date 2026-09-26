@@ -2,7 +2,7 @@
 
 [简体中文](10-recovery.md) | **English**
 
-Design premise (invariant 23 in [`V2-PLAN.md`](../../V2-PLAN.md), Chinese): **the whole `.buildbeat/runtime/` directory can be deleted at any time**. Accepted artifacts, decisions, Intent drafts with their triage, and the compacted records of finished Runs all live in the Git plane. "Delete and rebuild" is the default troubleshooting move, not the last resort.
+Design premise (invariant 23 in [`V2-PLAN.md`](../../history/V2-PLAN.md), Chinese): **the whole `.buildbeat/runtime/` directory can be deleted at any time**. Accepted artifacts, decisions, Intent drafts with their triage, and the compacted records of finished Runs all live in the Git plane. "Delete and rebuild" is the default troubleshooting move, not the last resort.
 
 ## Symptom → action
 

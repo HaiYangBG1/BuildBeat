@@ -5,16 +5,16 @@
 
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { tempDir } from "./support/tmp.js";
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 
 function fixtureRepo() {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-preflight-"));
+  const root = tempDir("bb-v2-preflight-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   execFileSync("git", ["-C", root, "config", "user.email", "pilot@example.com"]);
   execFileSync("git", ["-C", root, "config", "user.name", "Pilot"]);

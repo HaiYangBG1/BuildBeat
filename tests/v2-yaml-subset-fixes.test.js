@@ -50,6 +50,24 @@ test("leading zeros are kept as written", () => {
   });
 });
 
+test("multi-line list items keep the previous rule and messages", () => {
+  for (const text of ["args:\n  - http://x\n    more: 1\n", "args:\n  - plain\n    more: 1\n", "args:\n  - name: a\n    more: 1\n"]) {
+    let before;
+    let after;
+    try {
+      before = { value: parseV1(text) };
+    } catch (error) {
+      before = { error: error.message };
+    }
+    try {
+      after = { value: parseYamlSubset(text) };
+    } catch (error) {
+      after = { error: error.message };
+    }
+    assert.deepEqual(after, before, text);
+  }
+});
+
 test("a key with no value says how to fix it", () => {
   rejects("stopAt:\nentry: build\n", /key "stopAt" has no value: give it a value, write stopAt: \[\] for an empty list, or indent its items under it/);
 });

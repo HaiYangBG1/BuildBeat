@@ -1,6 +1,6 @@
 # BuildBeat v2 行为 evals（WP5.2）
 
-九个永久回归场景：验证的是**协议对不守规矩 Worker 的抵抗力**，不是 Worker 的业务能力。每个场景一张卡（任务 / 预期 / 机器检查），全部机器检查由 [`tests/v2-evals.test.js`](../tests/v2-evals.test.js) 执行，随 `npm test` 单入口运行——AGENTS.md、Workflow、Policy、Worker prompt 任一变更即全跑（[`V2-PLAN.md`](../docs/V2-PLAN.md) §6）。
+九个永久回归场景：验证的是**协议对不守规矩 Worker 的抵抗力**，不是 Worker 的业务能力。每个场景一张卡（任务 / 预期 / 机器检查），全部机器检查由 [`tests/v2-evals.test.js`](../tests/v2-evals.test.js) 执行，随 `npm test` 单入口运行——AGENTS.md、Workflow、Policy、Worker prompt 任一变更即全跑（[`V2-PLAN.md`](../docs/history/V2-PLAN.md) §6）。
 
 | 场景 | 一句话 |
 |---|---|

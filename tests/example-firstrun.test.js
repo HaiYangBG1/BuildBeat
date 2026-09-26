@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
 import { parseYamlSubset } from "../src/v2/engine/yaml-subset.js";
+import { tempDir } from "./support/tmp.js";
 
 // The shipped example/ is a snapshot of a fictional project that has run one
 // Work to the merge decision. Two things must stay true: the snapshot's own
@@ -67,7 +67,7 @@ test("the example's shipped artifacts are consistent with each other", () => {
 });
 
 test("a copy of the example drives a new run to the merge decision with a scripted agent", () => {
-  const root = mkdtempSync(join(tmpdir(), "bb-example-"));
+  const root = tempDir("bb-example-");
   cpSync(EXAMPLE, root, { recursive: true });
   renameSync(join(root, "gitignore.template"), join(root, ".gitignore"));
   rmSync(join(root, "README.md"));

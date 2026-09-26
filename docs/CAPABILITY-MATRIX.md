@@ -1,6 +1,6 @@
 # BuildBeat 能力矩阵 / Capability Matrix
 
-> 状态：BuildBeat `@haiyangbg/buildbeat`（dist-tag `latest`；发布证据按版本归档在本目录的 `*-RELEASE-EVIDENCE-*.md`）。本页按**产品层次**区分三个可用面：Skill-only 手工路径、运行时 `buildbeat`、Claude Code 插件。源码、registry artifact 与真实项目证据仍分别核验。
+> 状态：BuildBeat `@haiyangbg/buildbeat`（dist-tag `latest`；发布证据按版本归档在 [`releases/`](releases/) 的 `*-RELEASE-EVIDENCE-*.md`）。本页按**产品层次**区分三个可用面：Skill-only 手工路径、运行时 `buildbeat`、Claude Code 插件。源码、registry artifact 与真实项目证据仍分别核验。
 
 ## 0. 三个可用面
 

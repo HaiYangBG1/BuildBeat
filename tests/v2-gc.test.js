@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -11,6 +10,7 @@ import { loadWorkflow } from "../src/v2/engine/workflow.js";
 import { rejectRun } from "../src/v2/runtime/decisions.js";
 import { applyGc, planGc } from "../src/v2/runtime/gc.js";
 import { startRun } from "../src/v2/runtime/orchestrator.js";
+import { tempDir } from "./support/tmp.js";
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
@@ -25,7 +25,7 @@ function cli(args) {
 }
 
 function fixtureRepo() {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-gc-"));
+  const root = tempDir("bb-v2-gc-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);
