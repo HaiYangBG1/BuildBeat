@@ -1,0 +1,2 @@
+{"ts":"2026-09-26T08:20:35.845Z","decisionRef":"A-WORK-YAML-SUBSET-1","decision":"approved","transition":"accept-intent","subject":{"artifact":"intent","digest":"sha256:71c0ead9408f808dd72f529cbaa8f6d1eefbc0610353bbca2beffac9cc16b08d"},"by":"haiyangbg"}
+{"ts":"2026-09-26T08:20:35.907Z","decisionRef":"A-WORK-YAML-SUBSET-2","decision":"approved","transition":"accept-plan","subject":{"artifact":"plan","digest":"sha256:db969c57dd5196c096f9ed6686d6405515fde410aeae72778dbb402808c84aa3"},"by":"haiyangbg"}
