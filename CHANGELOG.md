@@ -2,7 +2,7 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
-## Unreleased
+## v3.2.1 — 2026-09-26（补丁：开关参数单写、drive() 拆分、信封脚本测试、英文指南）
 
 - CLI 开关参数可单写：`--json`、`--apply`、`--force`、`--once` 不必再跟 `true`（旧写法照旧有效）；缺值时报错点名参数（`--config needs a value`），多余的裸词报 `unexpected argument`。
 - `drive()` 从 459 行的单一循环体拆成五个有名字的阶段函数（原代码按原顺序搬移，循环本身 19 行），review 步判定收成一处 `isReviewStep()`；行为零变化——未改动任何测试，全量通过。
