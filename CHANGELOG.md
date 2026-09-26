@@ -2,6 +2,11 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- 修正 3.1.0 延后的两个 P2：run-config「显式 null 报错」只作用于会静默回落默认值的标量键（`cache: null` 重新表示不开缓存）；YAML 多行列表项恢复修改前的判定与报错原文。
+- 并行 Run（开关，默认关）：run 配置 `parallel: true` 的 Work 可与其他同样打开开关的 Work 同时驱动，同一 Work 的 Run 仍互斥；未打开的 Run 照旧独占仓库，两种模式互不越界（独占 Run 持有 `active-run` 全程，并行 Run 只在建立自己的标记时短暂经过它）。共享仓库的 git 写操作（建/删 worktree、分支、`.git/config`）改在短时 `@repo-git` 锁内执行；`gc` 同样回收持有者已死的 `@work` / `@parallel` / `@repo-git` 锁。`doctor` 打印当前模式。
+
 ## v3.1.0 — 2026-09-26（运行时修复：预算误报、锁残留、台账并发、配置与 YAML 校验）
 
 > **发布状态**：`@haiyangbg/buildbeat@3.1.0` 已于 2026-09-26 从 `main`（PR #47 内容、release PR #48，merge commit `ace9ff5`，tag `v3.1.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 36231006557，publish 与 verify 双 job 一次 success；所有者授权「推送并发 3.1.0 / 继续，CI 过了就发」）。独立回读（直连 npmjs.org）：`latest` = 3.1.0、integrity 与发布前本地候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 3.1.0、裸调用零写入、`doctor` 只读、`npm audit signatures` 通过；GitHub Release v3.1.0 标 Latest，证据见 [`docs/V3.1.0-RELEASE-EVIDENCE-2026-09-26.md`](docs/V3.1.0-RELEASE-EVIDENCE-2026-09-26.md)。

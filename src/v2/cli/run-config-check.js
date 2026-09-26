@@ -27,6 +27,7 @@ const TOP_KEYS = [
   "reviewTriage",
   "supersede",
   "stallAfterMs",
+  "parallel",
 ];
 const REQUIRED = ["repo", "work", "run", "workflow"];
 const NULL_REPORTED = ["base", "entry", "riskPreset", "stepTimeoutMs", "maxAttemptsPerStep"];
@@ -135,6 +136,9 @@ export function checkRunConfigShape(config) {
     } else if (!ID.test(value) || value.includes("..") || value.length > 100) {
       problems.push(`${key}: "${value}" may only use letters, digits, ".", "_" and "-", start with a letter or digit, contain no "..", and be at most 100 characters (it becomes part of paths and branch names)`);
     }
+  }
+  if (config.parallel !== undefined && typeof config.parallel !== "boolean") {
+    problems.push(`parallel: must be true or false, got ${JSON.stringify(config.parallel)}`);
   }
   for (const key of ["stepTimeoutMs", "maxAttemptsPerStep"]) {
     if (config[key] !== undefined && !positiveInteger(config[key])) {

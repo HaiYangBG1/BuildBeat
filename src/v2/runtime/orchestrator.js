@@ -21,9 +21,12 @@ import { EventLedger, canonicalJson } from "../storage/event-ledger.js";
 import {
   acquireLock,
   createWorkspace,
+  describeLockOwner,
   listChangedPaths,
+  liveParallelMarkers,
   readback,
   releaseLock,
+  withRepoGitLock,
 } from "../workspace/workspace-manager.js";
 import { writeRunRecord } from "./run-record.js";
 import { computeWorkCost } from "./work-cost.js";
@@ -52,8 +55,14 @@ function sha256(text) {
   return `sha256:${createHash("sha256").update(text, "utf8").digest("hex")}`;
 }
 
-// MVP is single project, single active run: driving a run takes a
-// repository-wide lock in addition to the per-run lock.
+// By default one run drives a repository at a time: it holds the
+// repository-wide active-run lock for its whole drive. A run whose config
+// sets `parallel: true` instead holds a per-work lock and a marker, passing
+// the active-run lock only briefly as a gate, so runs of different works can
+// drive together while runs of the same work stay exclusive. Real incident:
+// a session waited 3h23m behind another work's run although worktrees were
+// already isolated; parallelism is opt-in because verifiers that bind fixed
+// ports or share a database would collide.
 const ACTIVE_LOCK = "active-run";
 
 function lockActive(repoRoot) {
@@ -70,17 +79,81 @@ function lockActive(repoRoot) {
   }
 }
 
-function withRunLocks(repoRoot, runId, fn) {
-  lockActive(repoRoot);
-  try {
-    acquireLock(repoRoot, runId);
+function lockActiveWaiting(repoRoot, waitMs) {
+  const deadline = Date.now() + waitMs;
+  for (;;) {
     try {
-      return fn();
+      acquireLock(repoRoot, ACTIVE_LOCK);
+      return;
+    } catch (error) {
+      if (!error.lock || Date.now() >= deadline) {
+        break;
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+    }
+  }
+  lockActive(repoRoot);
+}
+
+function holdRunLock(repoRoot, runId, fn) {
+  acquireLock(repoRoot, runId);
+  try {
+    return fn();
+  } finally {
+    releaseLock(repoRoot, runId);
+  }
+}
+
+function withRunLocks(repoRoot, runId, fn, { workId = null, parallel = false } = {}) {
+  if (!parallel) {
+    lockActive(repoRoot);
+    try {
+      const running = liveParallelMarkers(repoRoot);
+      if (running.length > 0) {
+        throw new OrchestratorError(
+          `another run is active in this repository (parallel run(s) ${running
+            .map((marker) => (marker.owner ? `${marker.run}, ${describeLockOwner(marker.owner)}` : marker.run))
+            .join("; ")}); this run is exclusive (set parallel: true in its run config to drive alongside other works)`,
+        );
+      }
+      return holdRunLock(repoRoot, runId, fn);
     } finally {
-      releaseLock(repoRoot, runId);
+      releaseLock(repoRoot, ACTIVE_LOCK);
+    }
+  }
+  if (!workId) {
+    throw new OrchestratorError("a parallel run needs its work id");
+  }
+  const workLock = `@work.${workId}`;
+  const marker = `@parallel.${runId}`;
+  try {
+    acquireLock(repoRoot, workLock);
+  } catch (error) {
+    const detail = error.lock?.detail;
+    throw new OrchestratorError(
+      `another run of ${workId} is active (runs of the same work never drive together)${detail ? `; ${detail}` : ""}`,
+    );
+  }
+  try {
+    // Gate: an exclusive run holds active-run for its whole drive, so a
+    // parallel run cannot slip in while it runs; the marker, created under
+    // the gate, is what an exclusive run checks before it starts. Another
+    // parallel run holds the gate for milliseconds, so a busy gate is waited
+    // for briefly before it is reported (two parallel starts at the same
+    // instant must both get through).
+    lockActiveWaiting(repoRoot, 2000);
+    try {
+      acquireLock(repoRoot, marker);
+    } finally {
+      releaseLock(repoRoot, ACTIVE_LOCK);
+    }
+    try {
+      return holdRunLock(repoRoot, runId, fn);
+    } finally {
+      releaseLock(repoRoot, marker);
     }
   } finally {
-    releaseLock(repoRoot, ACTIVE_LOCK);
+    releaseLock(repoRoot, workLock);
   }
 }
 
@@ -926,7 +999,7 @@ export function startRun(options) {
   }
 
   return withRunLocks(repoRoot, runId, () => {
-    const workspace = createWorkspace({ repoRoot, runId, base });
+    const workspace = withRepoGitLock(repoRoot, () => createWorkspace({ repoRoot, runId, base }));
     const context = makeContext(options, ledger, workspace);
     const now = context.now;
     const supersession =
@@ -974,7 +1047,7 @@ export function startRun(options) {
       superseded: supersession.superseded,
       supersedeSkipped: supersession.skipped,
     };
-  });
+  }, { workId, parallel: options.parallel === true });
 }
 
 function resumeStepFromTransition(transition) {
@@ -1038,7 +1111,9 @@ export function resumeRun(options) {
   // decided again on a ledger read under the locks: another session may
   // have approved, resumed or stopped the run in between, and writing
   // through the earlier read would fork the hash chain.
-  const outside = resumeTarget(options, openLedgerFor(repoRoot, runId));
+  const outer = openLedgerFor(repoRoot, runId);
+  const outerLedger = outer.ledger;
+  const outside = resumeTarget(options, outer);
   if (outside.early) {
     return outside.early;
   }
@@ -1216,5 +1291,5 @@ export function resumeRun(options) {
       drive(context, startStep);
     }
     return { runId, ledgerPath, state: ledger.state, resumed: true, reason: null };
-  });
+  }, { workId: outerLedger.state.run.work, parallel: options.parallel === true });
 }

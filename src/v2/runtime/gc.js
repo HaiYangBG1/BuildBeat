@@ -19,7 +19,14 @@ import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 
 import { EventLedger } from "../storage/event-ledger.js";
-import { describeLockOwner, inspectLock, readback, reclaimStaleLock } from "../workspace/workspace-manager.js";
+import {
+  describeLockOwner,
+  inspectLock,
+  isRunLockName,
+  readback,
+  reclaimStaleLock,
+  withRepoGitLock,
+} from "../workspace/workspace-manager.js";
 import { resolveRepoRef } from "./repo-ref.js";
 
 function git(cwd, args) {
@@ -65,18 +72,25 @@ export function planGc(repoRoot) {
   const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
   const locksDir = join(repoRoot, ".buildbeat", "runtime", "locks");
   const rows = [];
-  // The repository-wide lock belongs to no run: reclaimable only when its
-  // owner process is provably gone (same host, pid no longer exists).
-  const activeLock = join(locksDir, "active-run.lock");
-  if (existsSync(activeLock)) {
-    const seen = inspectLock(activeLock);
-    const row = { run: "(repository)", status: "active-run lock", actions: [], keep: [] };
+  // Locks that belong to no single run (active-run, and the @work /
+  // @parallel / @repo-git locks): reclaimable only when their owner process
+  // is provably gone (same host, pid no longer exists).
+  const sharedLocks = existsSync(locksDir)
+    ? readdirSync(locksDir)
+        .filter((entry) => entry.endsWith(".lock") && !isRunLockName(entry.slice(0, -".lock".length)))
+        .sort()
+    : [];
+  for (const entry of sharedLocks) {
+    const name = entry.slice(0, -".lock".length);
+    const lockPath = join(locksDir, entry);
+    const seen = inspectLock(lockPath);
+    const row = { run: "(repository)", status: `${name} lock`, actions: [], keep: [] };
     if (seen.state === "dead") {
-      row.actions.push({ kind: "remove-lock", path: activeLock, owner: seen.owner });
+      row.actions.push({ kind: "remove-lock", path: lockPath, owner: seen.owner });
     } else if (seen.state === "unknown") {
-      row.keep.push("active-run lock has no owner record (older buildbeat?); remove it by hand once no buildbeat process is running");
+      row.keep.push(`${name} lock has no owner record (older buildbeat?); remove it by hand once no buildbeat process is running`);
     } else {
-      row.keep.push(`active-run lock held by ${describeLockOwner(seen.owner)}${seen.state === "foreign-host" ? " (another host)" : " (still running)"}`);
+      row.keep.push(`${name} lock held by ${describeLockOwner(seen.owner)}${seen.state === "foreign-host" ? " (another host)" : " (still running)"}`);
     }
     rows.push(row);
   }
@@ -178,24 +192,26 @@ export function applyGc(repoRoot, rows, { force = false } = {}) {
             result.error = "worktree dirty; rerun with --force true to discard";
             continue;
           }
-          if (action.registered) {
-            const args = ["worktree", "remove"];
-            if (force || action.dirty) {
-              args.push("--force");
+          withRepoGitLock(repoRoot, () => {
+            if (action.registered) {
+              const args = ["worktree", "remove"];
+              if (force || action.dirty) {
+                args.push("--force");
+              }
+              args.push(action.path);
+              git(repoRoot, args);
+            } else if (action.present) {
+              rmSync(action.path, { recursive: true, force: true });
             }
-            args.push(action.path);
-            git(repoRoot, args);
-          } else if (action.present) {
-            rmSync(action.path, { recursive: true, force: true });
-          }
-          try {
-            git(repoRoot, ["worktree", "prune"]);
-          } catch {
-            // prune is best-effort
-          }
+            try {
+              git(repoRoot, ["worktree", "prune"]);
+            } catch {
+              // prune is best-effort
+            }
+          });
           result.done = true;
         } else if (action.kind === "delete-branch") {
-          git(repoRoot, ["branch", "-D", action.branch]);
+          withRepoGitLock(repoRoot, () => git(repoRoot, ["branch", "-D", action.branch]));
           result.done = true;
         }
       } catch (error) {

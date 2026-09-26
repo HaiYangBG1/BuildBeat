@@ -48,6 +48,10 @@ error: run config delivery/work/WORK-X/run-config.yaml has 3 problem(s):
 
 校验范围：必填键（`repo` `work` `run` `workflow` `workers`）；未知顶层键与 worker / envelope 的未知字段（给最接近的拼写）；类型与取值（正整数、列表、`inheritEnv` 只能是 `true` / `false`）；worker 名必须被工作流步骤用到；`stopAt` / `entry` 必须是工作流步骤；`work` / `run` 只允许字母、数字、`.` `_` `-`，写成数字要加引号。
 
+**并行 Run（`parallel: true`，默认关）**：默认一个仓库同时只驱动一个 Run，其他 Work 的 `start` 会被挡并提示在谁后面排队（真实事故：一个会话在另一个 Work 的 Run 后面等了 3 小时 23 分钟）。
+run 配置写 `parallel: true` 的 Work，可以与其他同样打开开关的 Work 同时驱动；同一 Work 的 Run 永远互斥；没打开的 Run 照旧独占整个仓库——它在跑时并行 Run 起不来，并行 Run 在跑时它也起不来。
+打开前先确认：verify 不抢固定端口、不共用同一个数据库或其他外部状态，否则并行会互相打架。`doctor` 会打印当前模式；被杀进程留下的并行标记与锁一样按持有者自动回收。
+
 run 配置还可声明（beta.3，皆来自三十轮部署战役的真实事故）：
 
 - **`requires:` 环境契约**——信封隐式依赖的二进制与最低版本，Run 启动前 fail-closed 全量核验，一次报清所有问题（真实事故：`rg` 只在某会话 vendored PATH、`/bin/bash` 3.2、新 shell 解析到 Node 14，各烧掉整轮 Run 才见真因）：

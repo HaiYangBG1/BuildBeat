@@ -406,6 +406,7 @@ function loadRunConfig(flags, command) {
     requires: config.requires ?? [],
     reviewTriage: config.reviewTriage === "required" ? "required" : null,
     supersede: config.supersede ?? "waiting",
+    parallel: config.parallel === true,
     stallAfterMs: config.stallAfterMs !== undefined ? Number(config.stallAfterMs) : DEFAULT_STALL_AFTER_MS,
     planDigest: digestOfWorkFile("plan.md"),
     intentDigest: digestOfWorkFile("intent.md"),
@@ -531,7 +532,7 @@ async function commandStart(flags) {
         console.error(`blocked by ${holder}: ${summary}`);
         console.error(`  watch it: buildbeat status --repo ${label} --run ${holder}`);
       }
-      console.error("queue position: next after the holder(s) above stop or wait on a human (the repository allows one driving run at a time; worktrees are already isolated)");
+      console.error("queue position: next after the holder(s) above stop or wait on a human (by default one run drives a repository at a time; works whose run configs both set parallel: true can drive together)");
     }
     throw error;
   }
@@ -829,6 +830,11 @@ function commandDoctor(flags) {
     console.log("environment contract: none declared (implicit PATH facts stay unchecked)");
   }
   console.log(`supersede: ${options.supersede} (new run for the same work ${options.supersede === "off" ? "leaves" : "supersedes"} older WAITING_HUMAN runs)`);
+  console.log(
+    options.parallel
+      ? "concurrency: parallel (runs of other works with parallel: true may drive at the same time; runs of this work stay exclusive; verifiers must not share fixed ports or databases)"
+      : "concurrency: exclusive (default: one driving run per repository; set parallel: true to drive alongside other works)",
+  );
   console.log(`stall threshold: ${formatMs(options.stallAfterMs)} without worker output`);
   const { config: notify, error: notifyError } = notifyConfigFor(options.repoRoot);
   if (notifyError) {
