@@ -4,13 +4,13 @@
 > 基线日期：2026-08-24
 > 上游文档：[`ROADMAP.md`](ROADMAP.md)（下称“演进书”）；竞品调研见 [`CLI-STRATEGY-2026-08.md`](CLI-STRATEGY-2026-08.md)
 > 基线代码：`@haiyangbg/buildbeat@1.20.0`（npm 已验证发布，Git tag `v1.20.0`）；legacy `solobaton@1.16.3` 保留并已 deprecate
-> 实施状态（更新于 2026-08-25）：**WP0.1–WP4.3 已完成**。Phase 0–3 合并为 `1.20.0`，未补造 v1.17/v1.18/v1.19 artifacts；canonical package/repository 已迁移为 `@haiyangbg/buildbeat` / `HaiYangBG1/BuildBeat`。真实 schema 2 `v1.16 → v1.20` 升级试点以 `a136ff6f33d5814d36593f85a3b9ec2f1e223827` 闭合；GitHub 改名、push、Trusted Publisher、受保护 tag、OIDC publish、registry/provenance/签名/隔离安装、GitHub Release 与 legacy deprecation 已逐项回读。真实项目边界见 [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md)，外部分发关闭证据见 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。
+> 实施状态（更新于 2026-08-25）：**WP0.1–WP4.3 已完成**。Phase 0–3 合并为 `1.20.0`，未补造 v1.17/v1.18/v1.19 artifacts；canonical package/repository 已迁移为 `@haiyangbg/buildbeat` / `HaiYangBG1/BuildBeat`。真实 schema 2 `v1.16 → v1.20` 升级试点以 `a136ff6f33d5814d36593f85a3b9ec2f1e223827` 闭合；GitHub 改名、push、Trusted Publisher、受保护 tag、OIDC publish、registry/provenance/签名/隔离安装、GitHub Release 与 legacy deprecation 已逐项回读。真实项目边界见 [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md)，外部分发关闭证据见 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](../releases/WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。
 >
 > **决策链（2026-08-24）**：
 > ① 先拍板"CLI 全冻结于 v0 只读"；
 > ② 经对 Spec Kit / OpenSpec / BMAD 官方能力的限定范围调研（结论：CLI 分发/更新有明确价值，命令面并不相同；所核对页面未记录三方合并），修订为**选择性解冻**；
 > ③ 最终边界：解冻 **Wave 1（init/adopt 真写入）** 与 **Wave 2（机械 upgrade）**；三方合并、uninstall 引擎、CLI 命令面扩张（gate/adr/standards/check）**继续冻结**。
-> 原待拍板决策 D1（双实现权威）按"bus-check 唯一同步权威"执行；D3（写入事实注入）的"哑脚手架 + AI 渲染"已通过旧名与 BuildBeat canonical 两轮真实目录本地 Git/Hook/hash 验证。WP2.8 Gate3、WP3.1–WP3.4、WP4.1–WP4.2 与真实版本增量 upgrade 试点均已完成。WP4.3 选择 scoped package + 新仓库名并合并首发 `1.20.0`，现已完成外部分发和独立回读；后续版本仍须重新执行 [`RELEASING.md`](RELEASING.md) 的可变远端检查。
+> 原待拍板决策 D1（双实现权威）按"bus-check 唯一同步权威"执行；D3（写入事实注入）的"哑脚手架 + AI 渲染"已通过旧名与 BuildBeat canonical 两轮真实目录本地 Git/Hook/hash 验证。WP2.8 Gate3、WP3.1–WP3.4、WP4.1–WP4.2 与真实版本增量 upgrade 试点均已完成。WP4.3 选择 scoped package + 新仓库名并合并首发 `1.20.0`，现已完成外部分发和独立回读；后续版本仍须重新执行 [`RELEASING.md`](../RELEASING.md) 的可变远端检查。
 
 ---
 
@@ -118,7 +118,7 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 ### WP0.1 规划书与调研入库 + 决策落盘
 
 - [`ROADMAP.md`](ROADMAP.md) 文首加修订框：记录 CLI 选择性解冻决策 + 失效/修订条款清单（§3.2 改为“CLI 限定为脚手架与机械升级”；§10.2 命令清单缩减为五命令；§10.4 事务条款按哑脚手架修订；§11 Phase 2/3 与 §17 执行顺序同步修订；三方合并相关条款删除）。
-- [`CLI-STRATEGY-2026-08.md`](CLI-STRATEGY-2026-08.md) 与本文随库，本文固定路径为 `docs/EXECUTION-PLAN.md`。
+- [`CLI-STRATEGY-2026-08.md`](CLI-STRATEGY-2026-08.md) 与本文随库，本文固定路径为 `docs/history/EXECUTION-PLAN.md`。
 - `演进规划书参考的文档/` 不入库，ROADMAP 附录 A 改注存档说明。
 - CHANGELOG Unreleased：产品方向收敛声明（团队层/Preset/emit 不做）+ CLI 边界决策声明。
 - 验收：`check:docs` 链接检查过；README「继续阅读」挂三份文档。
@@ -389,7 +389,7 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 - `docs/CAPABILITY-MATRIX.md` 把 CLI 命令面固定为检查 `doctor`、建骨架 `init/adopt`、机械升级 `upgrade` 三组；`version` 只是信息工具，`diff/uninstall` 仍保留不可用，工作流命令不进 CLI。矩阵逐项区分 Skill-only、legacy npm v0 和 scoped BuildBeat 1.20。
 - `tests/skill-only.test.sh` 补齐双向互操作：Skill 手工项目可被 CLI `doctor` 保守识别并显式报 `manifest.missing`；CLI 真实 `init` 的一次性项目经 Skill 渲染后，屏蔽 Node/CLI 仍可运行项目本地 strict 检查。
 - README 中英终校同步了 Phase 3 范围、三个可用面、示例边界和能力矩阵入口；真实试点补证后又同步 scoped 1.20 与源码/registry/项目三面边界；`check_docs.py` 锁定成对字段和零第三方 runtime dependency。
-- `docs/PHASE4-STABILITY-AUDIT-2026-08-25.md` 最初按 11/12 归档；真实版本增量 upgrade、多仓刷新和兼容性修复完成后刷新为 12/12 源码/真实试点候选口径，外部分发仍独立开放。
+- `docs/history/PHASE4-STABILITY-AUDIT-2026-08-25.md` 最初按 11/12 归档；真实版本增量 upgrade、多仓刷新和兼容性修复完成后刷新为 12/12 源码/真实试点候选口径，外部分发仍独立开放。
 
 **候选验收**：Node `55/55`、Shell `221/221`、Skill-only + CLI/Skill 双向互操作、Claude plugin `7/7`、109 份 Markdown 契约检查、78 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过。本次未重跑真实项目、未查询 npm/GitHub 可变远端状态，未执行任何外部动作。
 
@@ -398,7 +398,7 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 - 用户已拍板 canonical npm package=`@haiyangbg/buildbeat`、repository=`HaiYangBG1/BuildBeat`；unscoped `buildbeat` 已被其他项目占用，不冒用。
 - 版本序列选择合并 `1.20.0`：Phase 0–3 的真实代码和文档一次交付，不补造从未发布的 v1.17/v1.18/v1.19 artifacts。
 - package/workflow/plugin/docs 已切换 scoped identity；真实 `v1.16 → v1.20` schema 2 upgrade 与真实多仓刷新证据见 [`PHASE4-V1.20-PILOT-2026-08-25.md`](PHASE4-V1.20-PILOT-2026-08-25.md)。
-- 外部执行已按固定顺序完成：本地全门禁与候选提交 → GitHub 仓库改名并核规则/环境 → push/CI → scoped 包 bootstrap → 绑定 Trusted Publisher → 受保护 tag 驱动 `1.20.0` publish → registry/provenance/签名/隔离安装回读 → GitHub Release → legacy `solobaton` deprecation。精确身份和偏差记录见 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。
+- 外部执行已按固定顺序完成：本地全门禁与候选提交 → GitHub 仓库改名并核规则/环境 → push/CI → scoped 包 bootstrap → 绑定 Trusted Publisher → 受保护 tag 驱动 `1.20.0` publish → registry/provenance/签名/隔离安装回读 → GitHub Release → legacy `solobaton` deprecation。精确身份和偏差记录见 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](../releases/WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。
 
 ---
 
@@ -460,7 +460,7 @@ Skill   = 全部语义：占位符渲染、Bootstrap 提问、Adopt 摸底、Gat
 14. [x] **Phase 4 / WP4.1**：`example/` 已补齐四态语法与 schema 2 合成教学 manifest，v1.16 legacy 拷出项目的手工维护/受控建基线路径已集中成指南；未执行发布或真实项目升级。
 15. [x] **Phase 4 / WP4.2**：Skill-only ↔ CLI 三组生命周期入口矩阵、双语终校、双向互操作回归和§15 硬门槛归档已闭合；真实升级补证后 12 条达到源码/试点候选口径。
 16. [x] **Phase 4 / WP4.3 决策**：迁移到 `@haiyangbg/buildbeat` 与 `HaiYangBG1/BuildBeat`，合并首发 `1.20.0`，legacy `solobaton` 保留只读并 deprecate。
-17. [x] **Phase 4 / WP4.3 外部执行**：远端改名/push、Trusted Publisher、受保护 `v1.20.0` tag、OIDC npm publish、registry/provenance/签名/隔离安装回读、GitHub Release 与 legacy deprecation 已完成；关闭证据见 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。
+17. [x] **Phase 4 / WP4.3 外部执行**：远端改名/push、Trusted Publisher、受保护 `v1.20.0` tag、OIDC npm publish、registry/provenance/签名/隔离安装回读、GitHub Release 与 legacy deprecation 已完成；关闭证据见 [`WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](../releases/WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。
 
 Phase 0–2 已由 `b062f25` 本地提交保全，WP3.1–WP3.4 分别由 `a378b2f`、`168dfd3`、`7f4cf08`、`f02686f` 形成后续源码候选，WP4.1/WP4.2 由 `5179e99` / `1887cf2` 保全。BuildBeat Wave 1、真实 v1.20 Wave 2 upgrade 试点与 WP4.3 外部分发均已完成；可变远端状态未来仍按发布 runbook 重新读回。
 

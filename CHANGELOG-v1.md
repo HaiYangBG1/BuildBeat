@@ -6,7 +6,7 @@
 
 > 主题：统一各域的收口回复，让人一眼看清做成了什么、证据在哪、还有什么没做，以及下一棒或真实求助。
 > **拷出项目升级**:在根 `AGENTS.md` 的任务包规则后补入「域回复格式」;未改过的 `指挥台.md` 可随后续版本机械替换。历史 status、看板和证据不回改,`pm/status/**` 持久口径不变。
-> **发布状态**：`@haiyangbg/buildbeat@1.21.0` 已通过 GitHub Actions OIDC / Trusted Publishing 发布；官方 registry exact artifact、SLSA provenance、签名、attestation、隔离安装、README 与 GitHub Release 均已独立回读。关闭证据见 [`docs/V1.21-RELEASE-EVIDENCE-2026-08-25.md`](docs/V1.21-RELEASE-EVIDENCE-2026-08-25.md)。
+> **发布状态**：`@haiyangbg/buildbeat@1.21.0` 已通过 GitHub Actions OIDC / Trusted Publishing 发布；官方 registry exact artifact、SLSA provenance、签名、attestation、隔离安装、README 与 GitHub Release 均已独立回读。关闭证据见 [`docs/releases/V1.21-RELEASE-EVIDENCE-2026-08-25.md`](docs/releases/V1.21-RELEASE-EVIDENCE-2026-08-25.md)。
 
 - **域回复契约**:产品/全栈/测试等 AI 视角面向人收口时统一按「已做 → 未做 → 下一步」输出;已做只写功能/业务结果,证据紧跟对应事项,未做必须写原因,下一步明确交棒对象或真实求助
 - **发挥边界**:回复契约只约束收口/交接,不要求中间进展和探索讨论套模板;本域仍能安全推进时继续做,不伪造求助或固定域流水线
@@ -17,7 +17,7 @@
 
 > 主题：把 Phase 0–3 合并为 BuildBeat 首个 scoped 正式版本，canonical 分发迁移到 `@haiyangbg/buildbeat` 与 `HaiYangBG1/BuildBeat`；旧 `solobaton` 包冻结为只读兼容入口。
 > **拷出项目升级**：真实 schema 2 v1.16 安装可先运行 `buildbeat upgrade --dry-run`，无 blocker 后再机械升级到 v1.20；legacy/无 manifest 项目继续走手工迁移指南。`--force` 不覆盖 project-owned，项目 uninstall 仍不开放。
-> **发布状态**：`@haiyangbg/buildbeat@1.20.0` 已通过 GitHub Actions OIDC / Trusted Publishing 发布；官方 registry exact artifact、SLSA provenance、签名、attestation、隔离安装、README 与 GitHub Release 均已独立回读。关闭证据见 [`docs/WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](docs/WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。
+> **发布状态**：`@haiyangbg/buildbeat@1.20.0` 已通过 GitHub Actions OIDC / Trusted Publishing 发布；官方 registry exact artifact、SLSA provenance、签名、attestation、隔离安装、README 与 GitHub Release 均已独立回读。关闭证据见 [`docs/releases/WP4.3-RELEASE-EVIDENCE-2026-08-25.md`](docs/releases/WP4.3-RELEASE-EVIDENCE-2026-08-25.md)。
 
 - **WP4.3 scoped 分发决策**：用户拍板立即迁移到 `@haiyangbg/buildbeat` 和 `HaiYangBG1/BuildBeat`；不冒用已被占用的 unscoped `buildbeat`。canonical executable 保持 `buildbeat`，`solobaton` 只保留包内兼容别名
 - **版本序列合并**：未对外发布的 v1.17/v1.18/v1.19 不伪造成中间 artifact；当前 Phase 0–3 统一进入 `1.20.0`，scaffold version 从 v1.16 形成真实增量到 v1.20
@@ -30,7 +30,7 @@
 - **canonical namespace 迁移**：新写入只生成 `.buildbeat/manifest.json`、BuildBeat `.gitignore` marker 与 `buildbeat-stack-baseline:v1`；doctor/bus-check 继续读取旧 `SOLOBATON.md`、`.solobaton/manifest.json`、marker 与 STACK 基线，双 manifest 或混合安装 fail-closed
 - **legacy 分发兼容**：已发布 npm 包 `solobaton` 保留为 BuildBeat 的 legacy read-only distribution ID；新 scoped 包同时暴露 canonical `buildbeat` 与兼容 `solobaton` executable。未加 scope 的 `buildbeat` 包名已被其他项目占用，canonical package/repository 已迁移并完成远端回读
 - **改名证据边界**：WP2.7 三条真实目录试点及其 hash 保持为 legacy namespace 历史证据；WP2.8 已用全新的隔离目录完成 BuildBeat canonical init/adopt/Skill-only 回归，二者不混写、不互相外推
-- **新版方向与执行基线入库**：新增 `docs/ROADMAP.md`、`docs/EXECUTION-PLAN.md` 与官方来源可复核的 CLI 策略对照；产品方向由路线图承载，当前交付范围与依赖顺序由执行计划 v3 承载
+- **新版方向与执行基线入库**：新增 `docs/history/ROADMAP.md`、`docs/history/EXECUTION-PLAN.md` 与官方来源可复核的 CLI 策略对照；产品方向由路线图承载，当前交付范围与依赖顺序由执行计划 v3 承载
 - **CLI 选择性解冻决策**：未来只开放 `init/adopt` 哑脚手架写入与 manifest/hash 驱动的机械 `upgrade`；三方合并、项目 uninstall 引擎、`gate/adr/standards/check` 命令扩张继续冻结，语义渲染和冲突合并归 AI 会话/Skill
 - **Wave 2 机械升级源码候选**：新增 schema-2-only `buildbeat upgrade [path] [--dry-run] [--json] [--force] [--major]`；同 major 按 manifest baseline/current/bundled template 三组 hash 做 replace/create/retain/report，跨 major 需显式确认，安装版本更新于 bundle 时拒绝降级
 - **Wave 2 所有权与事务边界**：任一未解决冲突使整次 apply 零写；`--force` 仅可覆盖已登记的 `replace-if-unmodified` 或唯一 `.gitignore` owned fragment，永不触碰 project-owned、未登记碰撞、异常 marker、symlink/目录等不安全路径；写前复核 hash/absence，manifest 最后写，失败逐字节与 mode 回滚，成功后回读 doctor 并提示 bus-check
@@ -47,7 +47,7 @@
 - **WP4.1 本地门禁**：Node `55/55`（其中 CLI `50/50`）、Shell `221/221`、Skill-only、Claude plugin 隔离安装 `7/7`、107 份 Markdown 契约检查、76 文件 pack dry-run、ShellCheck、Bash/Node 语法、actionlint、gitleaks 与 `git diff --check` 全部通过；未执行真实项目迁移、push、tag、GitHub Release、npm publish 或远端改名
 - **WP4.2 能力矩阵与双语终校**：新增 `docs/CAPABILITY-MATRIX.md`，把可用面固定为检查 `doctor`、脚手架 `init/adopt`、机械升级 `upgrade` 三组生命周期入口，并逐项区分 Skill-only、已发布 `solobaton@1.16.3` 只读 v0 与当前本地源码候选；中英 README 同步 Phase 3 范围、真实试点缺口、示例边界和能力矩阵入口
 - **WP4.2 双向互操作**：Skill-only 手工项目可由源码 CLI `doctor` 保守识别并明确返回 `manifest.missing`；CLI 真实 `init` 的一次性项目经 Skill 渲染后，在屏蔽 Node/CLI 的环境中仍可运行项目本地 strict 检查。该回归只证明结构兼容，不把沙箱结果外推为真实项目升级或 npm 可用性
-- **WP4.2 硬门槛归档与本地门禁**：`docs/PHASE4-STABILITY-AUDIT-2026-08-25.md` 对演进书§15 逐条归档，12 条中 11 条达到本地源码候选口径；第 11 条仍缺真实版本增量 upgrade 和 WP3.3/WP3.4 真实环境刷新。Node `55/55`、Shell `221/221`、Skill-only + CLI/Skill 双向互操作、Claude plugin `7/7`、109 份 Markdown 契约检查、78 文件 pack dry-run及全部静态检查通过；未查询 npm/GitHub 可变远端状态，未执行 push、tag、Release、publish、部署或远端改名
+- **WP4.2 硬门槛归档与本地门禁**：`docs/history/PHASE4-STABILITY-AUDIT-2026-08-25.md` 对演进书§15 逐条归档，12 条中 11 条达到本地源码候选口径；第 11 条仍缺真实版本增量 upgrade 和 WP3.3/WP3.4 真实环境刷新。Node `55/55`、Shell `221/221`、Skill-only + CLI/Skill 双向互操作、Claude plugin `7/7`、109 份 Markdown 契约检查、78 文件 pack dry-run及全部静态检查通过；未查询 npm/GitHub 可变远端状态，未执行 push、tag、Release、publish、部署或远端改名
 - **仓库安全基线**：新增 npm/GitHub Actions Dependabot 周检、JavaScript/TypeScript CodeQL、SECURITY/贡献/行为规范、CODEOWNERS、Issue/PR 模板；CI 中第三方 Action 改为不可变完整 commit SHA
 - **发布引用保护**：GitHub 服务端 `Protect release tags` ruleset 覆盖 `refs/tags/v*`，禁止更新和删除已创建的发布 tag，且无绕过角色；发布 runbook 增加回读步骤
 - **CLI v0 真实试点**：使用官方 npm registry 的 `solobaton@1.16.3` 对三个存量项目运行只读 `doctor` 和 `adopt --dry-run`；Git 可见状态前后一致，并正确区分未安装、旧版已安装和部分安装状态
@@ -57,7 +57,7 @@
 - **Phase 1 执行同步**：`SKILL.md` 与 AGENTS/status 模板固化开工 7 步、执行中 5 守则、收工 7 步；看板模板和教学沙盘新增四行 canonical Gate 状态与完成工作包 `**证据**:` 令牌
 - **Phase 1 检查实现**：`bus-check` 新增 Gate、完成证据、作用域引用、扫描截断和显式 coverage 检查；`verify-status --format=machine` 返回 `sync.l3_stale` / `sync.l3_unconfigured`，`verify-status --run` 在任一真实套件失败时非零退出，warning/unverified 保持可见但不冒充绿灯
 - **Phase 1 fixture 闭环**：健康、坏指针、无证据完成、Gate n/a 无理由、passed 不可追溯、非法 Gate、有效证据、幽灵 hash、陈旧看板和扫描截断场景逐项核对 JSON code/level/count/coverage/path 与 strict 退出码
-- **Phase 1 只读试点**：example 的 11 个教学假 hash 全部被拦；活跃多仓投影稳定暴露 4 个 NOW 引用迁移项、4 条 legacy Gate warning 与旧 verify 机器协议缺口；真实单仓代码树投影基线 strict 通过，注入无证据完成/n-a 无理由/幽灵 hash 后分别命中唯一目标 conflict。三类源项目试点前后 Git 可见状态一致；详见 `docs/PHASE1-PILOT-2026-08-24.md`
+- **Phase 1 只读试点**：example 的 11 个教学假 hash 全部被拦；活跃多仓投影稳定暴露 4 个 NOW 引用迁移项、4 条 legacy Gate warning 与旧 verify 机器协议缺口；真实单仓代码树投影基线 strict 通过，注入无证据完成/n-a 无理由/幽灵 hash 后分别命中唯一目标 conflict。三类源项目试点前后 Git 可见状态一致；详见 `docs/history/PHASE1-PILOT-2026-08-24.md`
 - **Phase 2-A 可选规范**：新增 project-owned 的 STACK/CODE/REVIEW/DESIGN 模板与教学沙盘完成态；三行声明、稳定 Rule ID、CODE 安全底线和 UI-only DESIGN 契约已冻结。`OPTIONAL_TEMPLATE_PREFIXES` 确保默认 CLI 计划和 Skill-only 骨架不生成它们；缺失零 finding，Draft 显式 `unverified`，结构损坏进入 strict
 - **Phase 2-A ADR**：新增五判据 README、七字段 ADR 模板和 decisions 索引口径；`bus-check` 校验四种 Status 与 Superseded 终止链，能拦缺失目标、自指、循环和非法目标状态；ADR 仍只记录长期技术决定，不承载成员或审批管理
 - **Phase 2-A Bootstrap/Adopt 契约**：技术栈事实先形成一屏 STACK Draft 卡，可选规范默认不落文件且不增加提问预算；只有 UI 项目建议 DESIGN；确认无 UI/无部署时生成 canonical Gate2/Gate4 n/a 理由草案。存量摸底固定区分已确认历史债务、未验证范围、新地盘、只维护老地盘和明确不碰边界

@@ -561,9 +561,16 @@ def check_cli_package() -> list[str]:
     if package.get("bin") != {"buildbeat": "bin/buildbeat.js"}:
         errors.append("package.json: the only executable is buildbeat -> bin/buildbeat.js")
     package_files = package.get("files", [])
-    for required in ("bin/", "src/", "docs/", "example/", "templates/", "SKILL.md", "lessons.md", "CHANGELOG.md"):
+    for required in (
+        "bin/", "src/", "docs/README.md", "docs/CAPABILITY-MATRIX.md", "docs/RELEASING.md", "docs/v2/",
+        "example/", "templates/", "SKILL.md", "lessons.md", "CHANGELOG.md",
+    ):
         if required not in package_files:
             errors.append(f"package.json: published files must include {required}")
+    # docs/ ships by whitelist: history and release evidence live in
+    # docs/history/ and docs/releases/ and must never be packed by default.
+    if "docs/" in package_files or any(entry.startswith(("docs/history", "docs/releases")) for entry in package_files):
+        errors.append("package.json: docs/ ships by whitelist; do not publish docs/ wholesale or docs/history|releases")
     if package.get("engines", {}).get("node") != ">=20":
         errors.append("package.json: supported Node floor must stay explicit at >=20")
     if package.get("dependencies") not in (None, {}):

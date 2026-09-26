@@ -1,7 +1,7 @@
 # M1 验收证据：真实项目 build → verify 由 Shell Adapter 驱动
 
 > 日期：2026-08-28
-> 验收对象：[`V2-PLAN.md`](../V2-PLAN.md) §8 M1——"真实项目上 `build → verify` 两步由 Shell Adapter 驱动跑通，证据全部来自回读"
+> 验收对象：[`V2-PLAN.md`](../history/V2-PLAN.md) §8 M1——"真实项目上 `build → verify` 两步由 Shell Adapter 驱动跑通，证据全部来自回读"
 > 真实项目：BuildBeat 仓库自身（self-host）；run 由 [`src/v2/cli/run.js`](../../src/v2/cli/run.js) 前台驱动
 
 ## 运行事实（全部来自 ledger 与 Runner 回读，非人工声明）
