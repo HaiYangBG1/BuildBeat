@@ -52,7 +52,7 @@ buildbeat accept  --repo . --work WORK-X --artifact plan --by <名字>   # 工�
 - 非只读步（build / verify / fix）成功的 attempt 不扣 `maxAttempts`，只读步仍消耗次数，review 按轮计费。`STEP_FINISHED.free: true` 与 `BUDGET_CONSUMED.amount: 0` 记录退款；没有新字段的旧台账保持原有回放结果。
 - 真失败到顶仍停 `resume-<step>`，同指纹两次仍停，release 预设的 `maxAttempts: 1` 仍有效。infra 故障仍不扣次数。默认预算数值不变。
 - review 发现阻断问题时，若下一轮会超过 Run 或 Work 上限，立即停 `enter-fix`，在花费修复、重验之前问一次。有分诊时 kind 为 `finding-triage`，无分诊时为 `budget`。批准表示「修复 + 重新验证 + 再审一轮」；拒绝结束本 Run，由人按现有证据决定是否合并。
-- 每一次预算停车（`enter-fix`、`resume-<step>`、Work 级 `enter-review`）都在请求上记可选 `grants`，列出下一次执行会撞到的 Run/Work 上限；批准一次即同时放行两层，不再连问两次。`resume` 校验批准仍有效后逐条落 `BUDGET_EXTENDED`，并把整份放行计划钉在第一条上：放行落到一半进程被杀，再次 `resume` 按钉住的计划补齐剩余项，不从已被抬高的状态重算。过期批准、新请求不继承旧 grants。
+- 每一次预算停车（`enter-fix`、`resume-<step>`、Work 级 `enter-review`）都在请求上记可选 `grants`，列出下一次执行会撞到的 Run/Work 上限；批准一次即同时放行两层，不再连问两次。`resume` 校验批准仍有效后逐条落 `BUDGET_EXTENDED`，并把整份放行计划钉在第一条上：放行落到一半进程被杀，再次 `resume` 按钉住的计划补齐剩余项，不从已被抬高的状态重算。过期批准、新请求不继承旧 grants。会话在 worktree 里手修并用 `resume --adopt <sha>` 回答该请求时，候选虽换成新提交，仍继承请求上的 grants（grants 属于这一轮，不属于某个候选；计划变了则不继承），修完重验后直接进入下一轮 review，不再二次停车。
 - 防止自定义 workflow 的成功循环失控：同一步总 attempt 达到有效上限（配置预算 + 人批扩额）的 **3 倍**后，在下一次执行前仍以 kind `budget` 兜底停人。成功/infra 退款不增加兜底上限；批准扩额会提高它。
 
 停车首行显示已用次数（或 review 轮数）、有效上限与真失败次数，并保留 `budget` 标识供度量使用。`status` 的 attempt 序号和 `overview` 的成本累计仍表示实际运行量，不是失败次数；`doctor` 展示配置上限。

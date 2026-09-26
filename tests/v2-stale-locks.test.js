@@ -161,15 +161,28 @@ test("processes racing for one stale lock produce exactly one holder", async (t)
   `;
   const racers = Array.from({ length: 6 }, () => {
     const child = spawn(process.execPath, ["--input-type=module", "-e", script], { stdio: ["ignore", "pipe", "ignore"] });
-    const racer = { out: "" };
+    const racer = { out: "", child };
+    racer.closed = new Promise((resolve) => child.on("close", resolve));
+    // A racer that dies before reporting must not leave the test waiting.
     racer.reported = new Promise((resolve) => {
       child.stdout.on("data", (chunk) => {
         racer.out += chunk;
         if (racer.out.includes("\n")) resolve();
       });
+      racer.closed.then(resolve);
     });
-    racer.closed = new Promise((resolve) => child.on("close", resolve));
     return racer;
+  });
+  // If an assertion fails before the racers are released, end them here;
+  // this must not depend on the temp directory, whose own cleanup may
+  // already have run.
+  t.after(async () => {
+    for (const racer of racers) {
+      if (racer.child.exitCode === null && racer.child.signalCode === null) {
+        racer.child.kill("SIGKILL");
+      }
+    }
+    await Promise.all(racers.map((racer) => racer.closed));
   });
   await pause(300);
   writeFileSync(go, "");

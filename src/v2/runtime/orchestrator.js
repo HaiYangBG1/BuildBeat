@@ -1114,7 +1114,13 @@ export function resumeRun(options) {
         grants = applied[0].data.grants;
       } else if (
         Array.isArray(requestData?.grants) &&
-        canonicalJson(requestData.subject) === canonicalJson(approval.subject)
+        (canonicalJson(requestData.subject) === canonicalJson(approval.subject) ||
+          // resume --adopt answers this very request with a new candidate by
+          // design; the grant belongs to the round, not to a candidate. Real
+          // incident: the session's hand fix was adopted and the run stopped
+          // again at resume-review for the round the human had just granted.
+          (ledger.events[decisionIndex]?.data.adopted &&
+            approval.subject.planDigest === requestData.subject.planDigest))
       ) {
         grants = requestData.grants;
       } else {

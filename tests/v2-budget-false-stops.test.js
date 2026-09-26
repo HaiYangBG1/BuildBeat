@@ -8,7 +8,7 @@ import test from "node:test";
 import { createShellAdapter } from "../src/v2/adapters/shell.js";
 import { applyEvent, initialState, reduceEvents } from "../src/v2/engine/reducer.js";
 import { loadWorkflow } from "../src/v2/engine/workflow.js";
-import { approveRun, rejectRun } from "../src/v2/runtime/decisions.js";
+import { adoptCandidate, approveRun, rejectRun } from "../src/v2/runtime/decisions.js";
 import { resumeRun, startRun } from "../src/v2/runtime/orchestrator.js";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
 
@@ -300,4 +300,32 @@ test("free attempts survive subsequent STEP_STARTED events", () => {
   let state = reduceEvents(input);
   state = applyEvent(state, { seq: 6, type: "STEP_STARTED", data: { step: "verify", attempt: 2, workspaceId: "main" } });
   assert.equal(state.steps.verify.freeAttempts, 1);
+});
+
+test("an adopted hand fix answering a budget request keeps the round's grants", () => {
+  // Real incident: after the second review round the run stopped at
+  // enter-fix with a grant; the session fixed by hand and adopted the
+  // commit, and the run stopped again at resume-review for the same round.
+  const options = fixture({ reviewTriage: "required" }, twoFindings);
+  const started = startRun(options);
+  assert.equal(started.state.pendingHuman.transition, "enter-fix");
+  const second = approve(options, started);
+  assert.equal(second.state.pendingHuman.transition, "enter-fix");
+  assert.deepEqual(requests(started).at(-1).data.grants, [{ step: "review", scope: "run" }]);
+
+  const worktree = started.workspace.worktreePath;
+  writeFileSync(join(worktree, "hand-fix.txt"), "fixed by the session\n");
+  execFileSync("git", ["-C", worktree, "add", "hand-fix.txt"]);
+  execFileSync("git", ["-C", worktree, "commit", "-qm", "hand fix"]);
+  const sha = execFileSync("git", ["-C", worktree, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  const adopted = adoptCandidate(options.repoRoot, options.runId, { sha, by: "session", resumeAt: "verify" });
+
+  const resumed = resumeRun(options);
+  assert.equal(resumed.state.pendingHuman.kind, "final-decision");
+  assert.equal(resumed.state.steps.review.attempts, 3);
+  const grants = events(started).filter((event) => event.type === "BUDGET_EXTENDED");
+  assert.equal(grants.length, 1);
+  assert.equal(grants[0].data.step, "review");
+  assert.equal(grants[0].data.approvalRef, adopted.decisionRef);
+  assert.equal(requests(started).filter((event) => event.data.transition === "resume-review").length, 0);
 });
