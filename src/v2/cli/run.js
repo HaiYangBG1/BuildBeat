@@ -52,6 +52,7 @@ import { resumeRun, startRun } from "../runtime/orchestrator.js";
 import { toRepoRef } from "../runtime/repo-ref.js";
 import { EventLedger } from "../storage/event-ledger.js";
 import { acquireLock, listHeldRunLocks, releaseLock } from "../workspace/workspace-manager.js";
+import { checkRunConfigAgainstWorkflow, checkRunConfigShape, RunConfigError } from "./run-config-check.js";
 
 const KERNEL = { kind: "kernel", id: "cli" };
 
@@ -256,11 +257,29 @@ function loadRunConfig(flags, command) {
   }
   const configPath = resolve(flags.config);
   const config = parseYamlSubset(readFileSync(configPath, "utf8"));
+  // Validate before anything runs and list every problem at once: the
+  // workflow does not depend on repo, so its checks run whenever it loads.
+  const problems = checkRunConfigShape(config);
   const configDir = dirname(configPath);
+  let workflow = null;
+  let workflowPath = null;
+  let workflowText = null;
+  if (typeof config?.workflow === "string" && config.workflow.trim() !== "") {
+    workflowPath = resolve(configDir, config.workflow);
+    try {
+      workflowText = readFileSync(workflowPath, "utf8");
+      workflow = loadWorkflow(workflowPath);
+    } catch (error) {
+      problems.push(`workflow: cannot load ${config.workflow}: ${error.message}`);
+    }
+  }
+  if (workflow) {
+    problems.push(...checkRunConfigAgainstWorkflow(config, workflow));
+  }
+  if (problems.length > 0) {
+    throw new RunConfigError(flags.config, problems);
+  }
   const repoRoot = resolve(configDir, config.repo);
-  const workflowPath = resolve(configDir, config.workflow);
-  const workflowText = readFileSync(workflowPath, "utf8");
-  const workflow = loadWorkflow(workflowPath);
   const workflowDigest = `sha256:${createHash("sha256").update(workflowText, "utf8").digest("hex")}`;
 
   const adapters = {};

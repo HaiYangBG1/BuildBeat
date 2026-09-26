@@ -6,6 +6,10 @@ Design premise (invariant 23 in [`V2-PLAN.md`](../../V2-PLAN.md), Chinese): **th
 
 ## Symptom → action
 
+### "run config … has N problem(s)"
+
+The run config has mistakes; no Run started and nothing changed. Fix the list item by item (each names the key, what is wrong and the closest valid spelling), then rerun the same command; `buildbeat doctor --config …` checks it on its own first.
+
 ### The ledger reports corrupted
 
 `status`/`inbox` shows `LEDGER CORRUPTED after seq=N (<reason>)`: the ledger truncates its view at the last valid event and **refuses to append**; recovery is a human decision, nothing is repaired silently.

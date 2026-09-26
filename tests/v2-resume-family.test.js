@@ -135,14 +135,16 @@ for (const explicit of [false, true]) {
 }
 
 test("family matching escapes regex characters and ignores terminal siblings", (t) => {
-  const f = fixture(t, "RUN.FAMILY+");
+  // "." is a regex metacharacter allowed in run ids; RUNxFAMILY would match
+  // an unescaped family pattern.
+  const f = fixture(t, "RUN.FAMILY");
   f.start(f.config("RUNxFAMILY"));
   f.start();
-  f.stop("RUN.FAMILY+-01");
+  f.stop("RUN.FAMILY-01");
   f.start();
-  f.approve("RUN.FAMILY+-02");
+  f.approve("RUN.FAMILY-02");
   const out = cli(["resume", "--config", f.path]);
-  assert.ok(out.includes("resuming RUN.FAMILY+-02 (the open run of family RUN.FAMILY+)"));
+  assert.ok(out.includes("resuming RUN.FAMILY-02 (the open run of family RUN.FAMILY)"));
   assert.match(out, /waiting on human: enter-wait-merge/);
   assert.match(fails(["resume", "--config", f.path, "--run", "RUNxFAMILY-01"]), /is not in run family/);
 });

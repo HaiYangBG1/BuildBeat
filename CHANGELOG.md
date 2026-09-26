@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- run-config 在做任何事之前整体校验并一次列出全部问题：必填键、未知顶层键与 worker / envelope 未知字段（给最接近的拼写）、类型与取值（`inheritEnv: yes` 不再静默当 false）、worker 名须被工作流用到、`stopAt` / `entry` 须是工作流步骤、`work` / `run` 的字符与类型（`run: 007` 要求加引号）。缺 `repo` 不再报 Node 内部错误 `paths[1]`。`start` / `resume` / `doctor` / `preflight` / `approve --config` 统一经由它；仓库内全部 run-config 有测试兜底兼容。Workflow 指南与恢复手册（中英）同步。
+
 - 修复会话手修交回时丢额度：`resume --adopt <sha>` 回答一次带 `grants` 的预算停车时，候选虽换成新提交，仍继承请求上的 grants（计划未变的前提下），重验后直接进入下一轮 review，不再在同一轮第二次停 `resume-review`。普通批准仍要求 subject 一致，刷新过的请求仍不继承。抢锁测试在断言失败时也会结束子进程、不再挂住测试进程。
 
 - 修复并发写台账把台账写坏：批准 / 拒绝 / `--adopt` / `stop` / `resume` / 自动取代改为拿到 Run 锁之后才读台账，并在锁内基于新读到的状态判断与写入（此前先读后锁，两个会话几乎同时操作同一 Run 时，后写者会写出重复 seq、断开哈希链，台账从此判定损坏）。台账写入另加兜底：文件在读取后被别人写过就拒绝写入（`changed on disk since it was read`），不写任何字节，重试即可。确定性交错测试在旧代码上复现「hash chain broken」，修复后通过；另有真实多进程并发测试；恢复手册（中英）同步。

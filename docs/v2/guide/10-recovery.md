@@ -6,6 +6,10 @@
 
 ## 症状 → 处置
 
+### 「run config … has N problem(s)」
+
+run 配置写错了，Run 没有起跑、什么都没改。按清单逐条改（每条写明是哪个键、错在哪、最接近的正确拼写），改完再跑同一条命令；`buildbeat doctor --config …` 可以先单独核对。
+
 ### 台账报 corrupted
 
 `status`/`inbox` 出现 `LEDGER CORRUPTED after seq=N (<原因>)`：台账在最后一条合法事件处截断视图并**拒绝追加**——恢复是人的决定，不静默修复。

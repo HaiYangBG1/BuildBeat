@@ -37,6 +37,17 @@ terminal:
 
 run 配置里 `entry` 可覆盖 workflow 的 `entry`（例如从 `build` 起步、跳过 intent/plan 步——digest 仍会绑进批准对象）；`stopAt` 指定停点。workflow 文件整体做 sha256 → `RUN_CREATED.workflowDigest`，事后可证明当时跑的是哪份流程。
 
+**写错时的报错形态**：`start` / `resume` / `doctor` / `preflight` / `approve --config` 读 run 配置时先整体校验，做任何事之前**一次列出全部问题**：
+
+```text
+error: run config delivery/work/WORK-X/run-config.yaml has 3 problem(s):
+  - stopat: unknown key (did you mean stopAt?)
+  - repo: required and missing
+  - workers.reviwer: no step of the workflow uses this worker (did you mean reviewer?); workers in this workflow: planner, builder, verifier, reviewer, fixer
+```
+
+校验范围：必填键（`repo` `work` `run` `workflow` `workers`）；未知顶层键与 worker / envelope 的未知字段（给最接近的拼写）；类型与取值（正整数、列表、`inheritEnv` 只能是 `true` / `false`）；worker 名必须被工作流步骤用到；`stopAt` / `entry` 必须是工作流步骤；`work` / `run` 只允许字母、数字、`.` `_` `-`，写成数字要加引号。
+
 run 配置还可声明（beta.3，皆来自三十轮部署战役的真实事故）：
 
 - **`requires:` 环境契约**——信封隐式依赖的二进制与最低版本，Run 启动前 fail-closed 全量核验，一次报清所有问题（真实事故：`rg` 只在某会话 vendored PATH、`/bin/bash` 3.2、新 shell 解析到 Node 14，各烧掉整轮 Run 才见真因）：
