@@ -2,6 +2,14 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- CLI 开关参数可单写：`--json`、`--apply`、`--force`、`--once` 不必再跟 `true`（旧写法照旧有效）；缺值时报错点名参数（`--config needs a value`），多余的裸词报 `unexpected argument`。
+- `drive()` 从 459 行的单一循环体拆成五个有名字的阶段函数（原代码按原顺序搬移，循环本身 19 行），review 步判定收成一处 `isReviewStep()`；行为零变化——未改动任何测试，全量通过。
+- CodeQL 也分析推到 `v2` 的提交。
+- M-1 脚本驱动试点 `pilot/` 归档到 `docs/history/pilot/`，不再进 CI 与发布前检查；CI 必需检查「Script behavior」改测随包发给用户的信封 `worker.sh`（`tests/envelope-worker.test.sh`，18 项，macOS 上用 `/bin/bash` 3.2 跑），`test:envelope` 取代 `test:pilot`。
+- 7 份只有中文的指南补齐英文版（怎么和会话说话、Workflow、Policy、Adapter、Worker 合同、安全边界、指南索引），中英互相切换；英文 README 改指英文指南；顺带更正两处 3.2.0 后过时的「每仓只有一个活动 Run」表述。
+
 ## v3.2.0 — 2026-09-26（并行 Run 开关、docs 归档、SKILL.md 瘦身、测试卫生）
 
 > **发布状态**：`@haiyangbg/buildbeat@3.2.0` 已于 2026-09-26 从 `main`（PR #50 内容、release PR #51，merge commit `cda4bd6`，tag `v3.2.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 36233928546，publish 与 verify 双 job 一次 success；所有者授权「推送并发 3.2.0 / 继续」）。独立回读（直连 npmjs.org）：`latest` = 3.2.0、integrity 与发布前本地候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 3.2.0、裸调用零写入、包内 7 份 `docs/v2/skill` 参考在位且无 `docs/history|releases`、已发布包的 `doctor` 正确报告 `parallel` 模式、`npm audit signatures` 通过；GitHub Release v3.2.0 标 Latest，证据见 [`docs/releases/V3.2.0-RELEASE-EVIDENCE-2026-09-26.md`](docs/releases/V3.2.0-RELEASE-EVIDENCE-2026-09-26.md)。

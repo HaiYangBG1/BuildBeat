@@ -1,5 +1,7 @@
 # Worker 合同
 
+**简体中文** | [English](05-worker-contract.en.md)
+
 权威：[`RFC-0003 §5`](../RFC-0003-workflow-policy.md)（报告 B §8.1）。Worker 是可替换的执行者；合同的另一半永远由 Runner 物理保证，不依赖 Worker 自觉。
 
 ## 通用合同

@@ -50,7 +50,7 @@ The project files carry the context needed to continue. A fresh session with Bui
 
 **Taking over anytime and anywhere starts with accessible records, a working environment, and appropriate permissions.** Whether you continue yourself or hand work to someone else, start from project files without carrying the old chat transcript. Git supplies version control and collaboration; repository hosting and execution platforms control access.
 
-Different tools can read and write the protocol. Running the Loop also requires a compatible adapter, permissions, and environment. Existing real Worker evidence covers `codex exec`, with deterministic tests for script Workers. Having a CLI alone does not establish that another tool is verified. See the [capability matrix](docs/CAPABILITY-MATRIX.md) and [adapter guide](docs/v2/guide/04-adapter-guide.md) (Chinese).
+Different tools can read and write the protocol. Running the Loop also requires a compatible adapter, permissions, and environment. Existing real Worker evidence covers `codex exec`, with deterministic tests for script Workers. Having a CLI alone does not establish that another tool is verified. See the [capability matrix](docs/CAPABILITY-MATRIX.md) and [adapter guide](docs/v2/guide/04-adapter-guide.en.md) (Chinese).
 
 ## Multiple perspectives, one shared objective
 
@@ -86,7 +86,7 @@ The diagram shows normal and repair paths. Risk presets, finding triage, infrast
 - **Interruption has a recovery path:** the Runner can resume from its ledger. An interrupted step may run again; a dirty worktree requires a decision first.
 - **Loops have limits:** budgets, repeated failures, and infrastructure problems become explicit pending actions. Notifications are configurable.
 
-The merge decision means the candidate is ready for a merge. A human or a separately authorized tool performs merge, push, and deployment outside the Runner. The `release-readback` workflow can record release checks and observations. Runtime checks and host isolation have distinct scopes; see [security and permission boundaries (Chinese)](docs/v2/guide/09-security-boundaries.md).
+The merge decision means the candidate is ready for a merge. A human or a separately authorized tool performs merge, push, and deployment outside the Runner. The `release-readback` workflow can record release checks and observations. Runtime checks and host isolation have distinct scopes; see [security and permission boundaries (Chinese)](docs/v2/guide/09-security-boundaries.en.md).
 
 ## Start your first handoff
 
@@ -142,7 +142,7 @@ Once configured, talk to the session directly:
 
 BuildBeat fits ongoing projects with frequent AI context changes, specialist collaboration, and a need for verifiable delivery records. Individuals can keep their own work moving; teams can hand work over through shared records. One-off scripts and very small changes usually do not need the full workflow. The project should have real verification commands, or establish minimum verification first.
 
-Teams collaborate through a shared Git repository and project agreements. BuildBeat does not provide multi-user accounts, roles and permissions. It does not collect or upload project usage data and has no telemetry collection. Configured AI tools and notification services have their own data practices. More examples are in the [conversation guide (Chinese)](docs/v2/guide/00-how-to-talk.md).
+Teams collaborate through a shared Git repository and project agreements. BuildBeat does not provide multi-user accounts, roles and permissions. It does not collect or upload project usage data and has no telemetry collection. Configured AI tools and notification services have their own data practices. More examples are in the [conversation guide (Chinese)](docs/v2/guide/00-how-to-talk.en.md).
 
 ## Learn more and contribute
 
