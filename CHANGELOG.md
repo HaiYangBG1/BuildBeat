@@ -6,6 +6,10 @@
 
 - 修正 3.1.0 延后的两个 P2：run-config「显式 null 报错」只作用于会静默回落默认值的标量键（`cache: null` 重新表示不开缓存）；YAML 多行列表项恢复修改前的判定与报错原文。
 - 并行 Run（开关，默认关）：run 配置 `parallel: true` 的 Work 可与其他同样打开开关的 Work 同时驱动，同一 Work 的 Run 仍互斥；未打开的 Run 照旧独占仓库，两种模式互不越界（独占 Run 持有 `active-run` 全程，并行 Run 只在建立自己的标记时短暂经过它）。共享仓库的 git 写操作（建/删 worktree、分支、`.git/config`）改在短时 `@repo-git` 锁内执行；`gc` 同样回收持有者已死的 `@work` / `@parallel` / `@repo-git` 锁。`doctor` 打印当前模式。
+- 测试不再泄漏临时目录：所有测试经 `tests/support/tmp.js` 的 `tempDir()` 建临时目录并在文件结束时删除；一次全量测试从留下 147 个目录（24 MB）降到 0，`tests/v2-test-hygiene.test.js` 禁止测试文件直接调用 `mkdtempSync`。
+- lessons 按标题引用：3.0.0 重新编号后指错的数字引用全部改成条目标题，docs 检查拒绝按编号引用。
+- `docs/` 归档：历史规划、迭代与试点记录移入 `docs/history/`，各版发布证据移入 `docs/releases/`，相对链接全部重算；npm 包对 `docs/` 改用白名单（docs 检查守住）。
+- `SKILL.md` 瘦身：438 行 → 158 行，保留触发条件、驾驶手册、红线摘要与「按需再读」索引；方法论正文（原 §1–§10）原文、原节号不变地移到 `docs/v2/skill/`，随包分发。
 
 ## v3.1.0 — 2026-09-26（运行时修复：预算误报、锁残留、台账并发、配置与 YAML 校验）
 
