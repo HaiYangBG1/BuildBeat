@@ -1,0 +1,2 @@
+{"ts":"2026-09-26T11:03:29.248Z","kind":"finding","run":"RUN-REVIEW-LEFTOVERS-01","step":"review","attempt":1,"id":"F-RUN-REVIEW-LEFTOVERS-01-review-1-1","severity":"P1","summary":"tests/v2-cli-flags.test.js:29–35 的 gc --apply 测试仅检查空仓库的退出码，commandGc 在没有 Run 台账时会提前返回，未覆盖 plan A.3 要求的实际清理行为；应创建可回收的 Run，并断言单写 --apply 后对应工作树或锁确实被删除。","fingerprint":"cc147dc01f1c0fc7"}
+{"ts":"2026-09-26T11:05:33.063Z","kind":"adjudication","fingerprint":"cc147dc01f1c0fc7","action":"accept","by":"claude-session","note":"fixed in 045142a: real terminal run, plan vs --apply"}
