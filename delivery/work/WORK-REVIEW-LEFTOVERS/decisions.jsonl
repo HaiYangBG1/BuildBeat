@@ -1,0 +1,2 @@
+{"ts":"2026-09-26T10:44:05.969Z","decisionRef":"A-WORK-REVIEW-LEFTOVERS-1","decision":"approved","transition":"accept-intent","subject":{"artifact":"intent","digest":"sha256:a5aa4c79b8ae5440b6629884b5ef4d64e828afe95a0731e25e9851de57126691"},"by":"haiyangbg"}
+{"ts":"2026-09-26T10:44:06.030Z","decisionRef":"A-WORK-REVIEW-LEFTOVERS-2","decision":"approved","transition":"accept-plan","subject":{"artifact":"plan","digest":"sha256:f451b1fc18773749457cf676697e7d7dc33ae6fa5c8b12b5300b029f4a2ee499"},"by":"haiyangbg"}

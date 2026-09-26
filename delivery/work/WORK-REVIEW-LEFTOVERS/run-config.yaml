@@ -1,0 +1,51 @@
+# Run config for WORK-REVIEW-LEFTOVERS. Paths resolve relative to this file.
+repo: ../../..
+work: WORK-REVIEW-LEFTOVERS
+run: RUN-REVIEW-LEFTOVERS
+workflow: workflow.yaml
+riskPreset: standard
+entry: build
+allowedPaths:
+  - src/v2
+  - tests
+  - docs
+  - pilot
+  - .github/workflows
+  - package.json
+  - CONTRIBUTING.md
+  - CHANGELOG.md
+  - README.md
+  - README.en.md
+  - delivery/work/WORK-REVIEW-LEFTOVERS
+reviewTriage: required
+budgets:
+  maxAttempts:
+    review: 2
+  reviewRoundsPerWork: 4
+cache:
+  verify: tree
+envelope:
+  prompts: ../../envelope/prompts
+  vars:
+    component: runtime
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+# builder / fixer are deliberately absent: the driving session writes the code
+# (owner instruction) and hands each commit over with resume --adopt; verify and
+# the read-only reviewer stay independent workers.
+workers:
+  verifier:
+    command: bash
+    args:
+      - -lc
+      - "npm test && npm run check:docs && npm run test:plugin && npm run test:pack-firstrun && bash tests/envelope-worker.test.sh"
+  reviewer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only
