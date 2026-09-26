@@ -35,7 +35,7 @@ git add delivery && git commit -qm "buildbeat: work WORK-DEMO-1 + envelope"
 
 ## 2. 写 run 配置
 
-`delivery/work/WORK-DEMO-1/run-config.yaml`。路径相对**本文件**解析；YAML 是严格子集：只有块列表与块映射，没有行内 `[]` / `{}`、没有锚点、注释必须独占一行。下面这份可以原样解析（机器验证在 `tests/v2-templates-firstrun.test.js`）；完整样板与信封模板在 [`templates/v2/`](../../../templates/v2/run-config.example.yaml)。
+`delivery/work/WORK-DEMO-1/run-config.yaml`。路径相对**本文件**解析；YAML 是严格子集：只有块列表与块映射（列表项可与键同缩进），行内只允许空的 `[]` / `{}`，没有锚点，注释必须独占一行；含 `": "` 的列表项要加引号。下面这份可以原样解析（机器验证在 `tests/v2-templates-firstrun.test.js`）；完整样板与信封模板在 [`templates/v2/`](../../../templates/v2/run-config.example.yaml)。
 
 ```yaml
 repo: ../../..

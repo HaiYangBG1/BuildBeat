@@ -127,7 +127,7 @@ workers:
       - workspace-write
 ```
 
-(严格 YAML 子集:只有块列表与块映射,没有行内 `[]` / `{}`,**注释必须独占一行**;上面这份可原样解析,机器验证在 `tests/v2-templates-firstrun.test.js`。**`fixer` 不能省**:没配它,verify 失败或 review 阻断时 Run 停 `WAITING_HUMAN` 等人手修,不会自动修。完整样板 [templates/v2/run-config.example.yaml](templates/v2/run-config.example.yaml),信封 [templates/v2/envelope/](templates/v2/envelope/worker.sh)。)通知通道另放 `.buildbeat/notify.yaml`(URL 只能来自环境变量),见 [docs/v2/guide/07-approval-guide.md](docs/v2/guide/07-approval-guide.md);指南索引 [docs/v2/guide/README.md](docs/v2/guide/README.md)。
+(严格 YAML 子集:只有块列表与块映射,行内只允许空的 `[]` / `{}`,列表项可与键同缩进,**注释必须独占一行**;上面这份可原样解析,机器验证在 `tests/v2-templates-firstrun.test.js`。**`fixer` 不能省**:没配它,verify 失败或 review 阻断时 Run 停 `WAITING_HUMAN` 等人手修,不会自动修。完整样板 [templates/v2/run-config.example.yaml](templates/v2/run-config.example.yaml),信封 [templates/v2/envelope/](templates/v2/envelope/worker.sh)。)通知通道另放 `.buildbeat/notify.yaml`(URL 只能来自环境变量),见 [docs/v2/guide/07-approval-guide.md](docs/v2/guide/07-approval-guide.md);指南索引 [docs/v2/guide/README.md](docs/v2/guide/README.md)。
 
 **第一次为一个项目写 run-config 时,会话要多问用户一句**:「Run 停下来等你批、跑完、或疑似卡住时,要不要推到钉钉/webhook?给我一个只放在环境变量里的 URL 就行」——试点一直没启用通知,一张合并卡就绪后隔夜等了 9.5 小时。用户说不要就记一句「通知未启用,等待只在 inbox 里」。
 

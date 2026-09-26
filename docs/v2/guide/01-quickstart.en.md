@@ -35,7 +35,7 @@ The envelope must be committed: workers run in an isolated worktree and only see
 
 ## 2. Write the run config
 
-`delivery/work/WORK-DEMO-1/run-config.yaml`. Paths resolve relative to **this file**; the YAML is a strict subset: block lists and block maps only, no inline `[]` / `{}`, no anchors, comments on their own line. The config below parses as-is (machine-checked by `tests/v2-templates-firstrun.test.js`); the full sample and the envelope templates are in [`templates/v2/`](../../../templates/v2/run-config.example.yaml).
+`delivery/work/WORK-DEMO-1/run-config.yaml`. Paths resolve relative to **this file**; the YAML is a strict subset: block lists and block maps only (list items may sit at their key's indentation), inline only for the empty `[]` / `{}`, no anchors, comments on their own line; quote a list item that contains `": "`. The config below parses as-is (machine-checked by `tests/v2-templates-firstrun.test.js`); the full sample and the envelope templates are in [`templates/v2/`](../../../templates/v2/run-config.example.yaml).
 
 ```yaml
 repo: ../../..

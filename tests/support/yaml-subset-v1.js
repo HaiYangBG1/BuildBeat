@@ -1,10 +1,12 @@
+// Frozen copy of src/v2/engine/yaml-subset.js as it was before WORK-YAML-SUBSET,
+// kept only so tests/v2-yaml-subset-fixes.test.js can prove every YAML file the
+// old parser accepted still parses to exactly the same value. Do not edit.
+
 // Fail-closed strict YAML subset parser for BuildBeat v2 config files.
-// Supports exactly what the official presets need: nested maps, block lists
-// (indented under their key or at the key's own indentation), the empty
-// inline [] and {}, and plain/quoted scalars with space indentation.
-// Everything else — tabs, anchors, aliases, tags, block/flow scalars,
-// non-empty inline collections, multi-document streams, duplicate keys — is
-// rejected with a line number and a way to rewrite it, never guessed at.
+// Supports exactly what the official presets need: nested maps, block lists,
+// and plain/quoted scalars with space indentation. Everything else — tabs,
+// anchors, aliases, tags, block/flow scalars, multi-document streams,
+// duplicate keys — is rejected with a line number, never guessed at.
 
 export class YamlSubsetError extends Error {
   constructor(message, lineNo) {
@@ -15,9 +17,6 @@ export class YamlSubsetError extends Error {
 }
 
 const KEY_PATTERN = /^[A-Za-z0-9_.-]+$/;
-// A list item is a map only when it starts like one: a valid key, then ": "
-// or a colon at the end of the line.
-const MAP_ITEM = /^[A-Za-z0-9_.-]+:( |$)/;
 const FORBIDDEN_SCALAR_START = ["&", "*", "!", "|", ">", "{", "[", "%", "@", "`"];
 
 function parseScalar(raw, lineNo) {
@@ -42,14 +41,6 @@ function parseScalar(raw, lineNo) {
     }
     return inner;
   }
-  if (/^\[\s*\]$/.test(text)) return [];
-  if (/^\{\s*\}$/.test(text)) return {};
-  if (text[0] === "[" || text[0] === "{") {
-    throw new YamlSubsetError(
-      `inline lists/maps are not supported except [] and {}; write one "- item" per line (or "key: value" per line): ${text}`,
-      lineNo,
-    );
-  }
   if (FORBIDDEN_SCALAR_START.includes(text[0])) {
     throw new YamlSubsetError(`unsupported YAML syntax at: ${text}`, lineNo);
   }
@@ -59,8 +50,6 @@ function parseScalar(raw, lineNo) {
   if (text === "true") return true;
   if (text === "false") return false;
   if (text === "null" || text === "~") return null;
-  // Leading zeros are kept as written (007 would otherwise silently be 7).
-  if (/^-?0\d+$/.test(text)) return text;
   if (/^-?\d+$/.test(text)) return Number.parseInt(text, 10);
   if (/^-?\d+\.\d+$/.test(text)) return Number.parseFloat(text);
   return text;
@@ -142,17 +131,9 @@ function parseList(lines, start, indent) {
     }
     const first = childLines[0].content;
     const quotedScalar = first.startsWith('"') || first.startsWith("'");
-    const mapItem = !quotedScalar && MAP_ITEM.test(first);
-    if (childLines.length === 1 && !mapItem) {
-      // Real YAML reads "echo a: b" as a map; rather than guess, ask for quotes.
-      if (!quotedScalar && (first.includes(": ") || first.endsWith(":"))) {
-        throw new YamlSubsetError(
-          `list item ${JSON.stringify(first)} contains ": "; quote it (- ${JSON.stringify(first)}) or write it as key: value`,
-          line.lineNo,
-        );
-      }
+    if (childLines.length === 1 && (quotedScalar || !first.includes(":"))) {
       result.push(parseScalar(first, childLines[0].lineNo));
-    } else if (mapItem) {
+    } else if (!quotedScalar && first.includes(":")) {
       result.push(parseMapFromLines(childLines, itemIndent));
     } else {
       throw new YamlSubsetError("unsupported list item shape", line.lineNo);
@@ -191,19 +172,8 @@ function parseMap(lines, start, indent) {
       continue;
     }
     const childStart = index + 1;
-    const child = lines[childStart];
-    // A list may sit at its key's own indentation ("key:" then "- a").
-    if (child && child.indent === indent && (child.content === "-" || child.content.startsWith("- "))) {
-      const parsed = parseList(lines, childStart, indent);
-      result[key] = parsed.value;
-      index = parsed.next;
-      continue;
-    }
-    if (!child || child.indent <= indent) {
-      throw new YamlSubsetError(
-        `key "${key}" has no value: give it a value, write ${key}: [] for an empty list, or indent its items under it`,
-        line.lineNo,
-      );
+    if (childStart >= lines.length || lines[childStart].indent <= indent) {
+      throw new YamlSubsetError(`key "${key}" has no value`, line.lineNo);
     }
     const parsed = parseNode(lines, childStart, lines[childStart].indent);
     result[key] = parsed.value;
@@ -213,8 +183,7 @@ function parseMap(lines, start, indent) {
 }
 
 export function parseYamlSubset(text) {
-  // A byte-order mark (Windows editors) is not content.
-  const lines = toLines(text.replace(/^\uFEFF/, ""));
+  const lines = toLines(text);
   if (lines.length === 0) {
     throw new YamlSubsetError("empty document");
   }
