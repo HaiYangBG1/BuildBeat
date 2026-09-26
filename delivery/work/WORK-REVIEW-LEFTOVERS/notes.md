@@ -1,0 +1,7 @@
+# Notes — WORK-REVIEW-LEFTOVERS
+
+- B: `drive()` is 19 lines; the phases are `checkBeforeStep` (72), `beginStep` (68), `executeOrReuse` (78), `recordStepResult` (214) and `routeAfterStep` (37). `recordStepResult` stays one phase: the plan asked for named phases and a `drive()` under 100 lines, not for every phase to be small, and splitting it further is a separate refactor. No test file was touched in part B; all tests passed unchanged.
+- D: CI's "Script behavior" job keeps its name (a required check on `main`) and now runs `tests/envelope-worker.test.sh`, with `BASH_UNDER_TEST=/bin/bash` on macOS. Locally the only bash is `/bin/bash` 3.2.57, so every local run already exercised bash 3.2.
+- E: two sentences in the Chinese originals had gone stale with 3.2.0 (the workflow guide said the one-run-per-repository lock "was not relaxed"; the security table said a repository always has exactly one active run). They were corrected in both languages rather than translated as stale claims. Each zh/en pair has the same number of headings, table rows and code fences.
+- E: the seven English guides live under `docs/v2/`, which ships, so the frozen package list (`tests/support/package-files.txt`) gained exactly those seven paths; the package-list test flagged them before the list was updated, as designed.
+- The docs check rejects a bare internal-reference marker word anywhere in Markdown; one English sentence in the how-to-talk guide used that verb and was reworded ("refers to it directly").

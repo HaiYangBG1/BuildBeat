@@ -1,5 +1,7 @@
 # Workflow 编写指南
 
+**简体中文** | [English](02-workflow-guide.en.md)
+
 权威：[`RFC-0003 §2`](../RFC-0003-workflow-policy.md)；实现：`src/v2/engine/workflow.js`。官方预设 [`software-delivery.yaml`](../../../src/v2/presets/software-delivery.yaml) 是最好的范本。
 
 ## 形状
@@ -95,7 +97,7 @@ Run 的隔离工作树在 `<repo>/.buildbeat/worktrees/<RUN>/`，运行时台账
 - pytest：`norecursedirs = .buildbeat`
 - Maven / Gradle 只收集 `src/**`，不受影响；Playwright 的 `testDir` 指到具体目录即可。
 
-`start` 被「another run is active」挡住时，CLI 现在打印持锁的 Run、它在哪一步、最后一次事件多久前，以及可复制的 `status` 命令；仓级单活动 Run 锁本身没放开——工作树已隔离，锁只剩台账与合并安全的意义，等真出现第二次多小时排队再动。
+`start` 被「another run is active」挡住时，CLI 现在打印持锁的 Run、它在哪一步、最后一次事件多久前，以及可复制的 `status` 命令。默认仍是一个仓库同时驱动一个 Run；自 3.2.0 起，测试互不抢端口/数据库的 Work 可在 run 配置里打开 `parallel: true` 并行驱动（见上文「并行 Run」）。
 
 ## 基础设施故障与候选缺陷分开算
 

@@ -298,7 +298,7 @@ function budgetReasons(context, step, safeguard = false) {
 function workReviewBudget(context, step) {
   const stepDef = context.workflow.steps.find((item) => item.id === step);
   const cap = context.runBudgets.reviewRoundsPerWork;
-  if (cap === undefined || !(step === "review" || stepDef?.worker === "reviewer")) return null;
+  if (cap === undefined || !isReviewStep(step, stepDef)) return null;
   const prior = computeWorkCost(context.repoRoot, context.ledger.state.run.work, {
     excludeRun: context.ledger.state.run.id,
   });
@@ -431,463 +431,518 @@ function settleOutcome(context, step, outcome, tree, exec) {
   return to;
 }
 
-function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
-  const { ledger, workflow, workspace, adapters, now } = context;
-  let step = startStep;
-  let firstStep = true;
-  while (step) {
-    if (workflow.terminal.has(step)) {
-      context.waitHuman(
-        `enter-${step}`,
-        ["terminal step requires a human decision"],
-        "final-decision",
-      );
-      return;
-    }
-    if (context.stopAt.includes(step) && !(skipBoundaryOnce && firstStep)) {
-      context.waitHuman(`enter-${step}`, [`automation boundary: stopAt includes ${step}`]);
-      return;
-    }
-    firstStep = false;
-    const stepDef = workflow.steps.find((candidate) => candidate.id === step);
-    const adapter = stepDef.worker ? adapters[stepDef.worker] : null;
-    if (!adapter) {
-      context.waitHuman(`enter-${step}`, [
-        `no adapter configured for worker ${stepDef.worker ?? "(none)"}; attended handoff`,
-      ]);
-      return;
-    }
+// A step's review rounds are budgeted and capped per work: the step named
+// "review" or any step run by the reviewer worker.
+function isReviewStep(step, stepDef) {
+  return step === "review" || stepDef?.worker === "reviewer";
+}
 
-    // Work-level review cap (iteration 09): review rounds are counted across
-    // every run of the work, superseded ones included, so "one run per
-    // round" cannot slip past the per-run budget. Reaching the cap is a
-    // human decision (review once more, or merge/close as-is), not a stop.
-    const workBudget = workReviewBudget(context, step);
-    if (workBudget?.exhausted) {
-      const { failures } = budgetUsage(context, step);
-      context.waitHuman(
-        `enter-${step}`,
-        [
-          `${step} work review budget exhausted: ${workBudget.rounds}/${workBudget.allowed} review round(s) across the work, ${failures} real failure(s) in this run`,
-          `approve enter-${step} = one more review round (also lifts this run's review cap if it is spent); reject = end this run and decide the merge on the evidence you have`,
-        ],
-        "work-review-cap",
-        budgetGrants(context, step),
-      );
-      return;
-    }
+// Everything that may stop a run before a step starts: terminal step, stop
+// boundary, missing adapter, the work-level review cap, pre policies and the
+// step budgets. Returns what the step needs, or null when the run stopped.
+function checkBeforeStep(context, step, { skipBoundary }) {
+  const { ledger, workflow, adapters, now } = context;
+  if (workflow.terminal.has(step)) {
+    context.waitHuman(
+      `enter-${step}`,
+      ["terminal step requires a human decision"],
+      "final-decision",
+    );
+    return null;
+  }
+  if (context.stopAt.includes(step) && !skipBoundary) {
+    context.waitHuman(`enter-${step}`, [`automation boundary: stopAt includes ${step}`]);
+    return null;
+  }
+  const stepDef = workflow.steps.find((candidate) => candidate.id === step);
+  const adapter = stepDef.worker ? adapters[stepDef.worker] : null;
+  if (!adapter) {
+    context.waitHuman(`enter-${step}`, [
+      `no adapter configured for worker ${stepDef.worker ?? "(none)"}; attended handoff`,
+    ]);
+    return null;
+  }
 
-    const preGate = runPolicyGate(context, "pre", step);
-    if (preGate.action === "block") {
-      ledger.append({
-        type: "RUN_TERMINAL",
-        actor: KERNEL,
-        ts: now(),
-        data: { status: "FAILED", reason: `pre policy blocked ${step}` },
-      });
-      writeRunRecord({ repoRoot: context.repoRoot, ledger, ts: now() });
-      return;
-    }
-    if (preGate.action === "wait") {
-      context.waitHuman(`resume-${step}`, policyReasons(preGate.rows));
-      return;
-    }
+  // Work-level review cap (iteration 09): review rounds are counted across
+  // every run of the work, superseded ones included, so "one run per
+  // round" cannot slip past the per-run budget. Reaching the cap is a
+  // human decision (review once more, or merge/close as-is), not a stop.
+  const workBudget = workReviewBudget(context, step);
+  if (workBudget?.exhausted) {
+    const { failures } = budgetUsage(context, step);
+    context.waitHuman(
+      `enter-${step}`,
+      [
+        `${step} work review budget exhausted: ${workBudget.rounds}/${workBudget.allowed} review round(s) across the work, ${failures} real failure(s) in this run`,
+        `approve enter-${step} = one more review round (also lifts this run's review cap if it is spent); reject = end this run and decide the merge on the evidence you have`,
+      ],
+      "work-review-cap",
+      budgetGrants(context, step),
+    );
+    return null;
+  }
 
-    const attempt = (ledger.state.steps[step]?.attempts ?? 0) + 1;
-    const maxAttempts = context.maxAttemptsFor(step);
-    if (attempt > maxAttempts) {
-      context.waitHuman(`resume-${step}`, budgetReasons(context, step), "budget", budgetGrants(context, step));
-      return;
-    }
-
-    if (attempt > context.totalAttemptsFor(step)) {
-      context.waitHuman(`resume-${step}`, budgetReasons(context, step, true), "budget", budgetGrants(context, step));
-      return;
-    }
-
+  const preGate = runPolicyGate(context, "pre", step);
+  if (preGate.action === "block") {
     ledger.append({
-      type: "STEP_STARTED",
+      type: "RUN_TERMINAL",
+      actor: KERNEL,
+      ts: now(),
+      data: { status: "FAILED", reason: `pre policy blocked ${step}` },
+    });
+    writeRunRecord({ repoRoot: context.repoRoot, ledger, ts: now() });
+    return null;
+  }
+  if (preGate.action === "wait") {
+    context.waitHuman(`resume-${step}`, policyReasons(preGate.rows));
+    return null;
+  }
+
+  const attempt = (ledger.state.steps[step]?.attempts ?? 0) + 1;
+  const maxAttempts = context.maxAttemptsFor(step);
+  if (attempt > maxAttempts) {
+    context.waitHuman(`resume-${step}`, budgetReasons(context, step), "budget", budgetGrants(context, step));
+    return null;
+  }
+
+  if (attempt > context.totalAttemptsFor(step)) {
+    context.waitHuman(`resume-${step}`, budgetReasons(context, step, true), "budget", budgetGrants(context, step));
+    return null;
+  }
+
+  return { stepDef, adapter, attempt };
+}
+
+// Records STEP_STARTED and prepares the worker's input: the read-only
+// snapshot, the output path, anchored findings, the envelope prompt and the
+// incremental-review base.
+function beginStep(context, step, stepDef, attempt) {
+  const { ledger, workspace, now } = context;
+  const adapter = context.adapters[stepDef.worker];
+  ledger.append({
+    type: "STEP_STARTED",
+    actor: KERNEL,
+    ts: now(),
+    data: {
+      step,
+      attempt,
+      worker: stepDef.worker,
+      adapter: adapter.name,
+      workspaceId: workspace.workspaceId,
+    },
+  });
+  const before = stepDef.readonly ? readback(workspace.worktreePath) : null;
+  const outputsDir = join(context.runtimeDir, "runs", ledger.state.run.id, "outputs");
+  mkdirSync(outputsDir, { recursive: true });
+  const outputPath = join(outputsDir, `${step}-${attempt}.json`);
+  // Anchored review: readonly (reviewer) steps receive the adjudicated
+  // findings history so a fresh reviewer inherits settled verdicts instead
+  // of re-litigating them; writing steps get the latest review findings
+  // with their adjudication status (the fixer's worklist).
+  const input = { workId: ledger.state.run.work, runId: ledger.state.run.id, step, attempt };
+  const anchor = buildAnchor(context.repoRoot, ledger.state.run.work);
+  if (anchor && stepDef.readonly) {
+    input.anchor = anchor;
+  } else if (anchor) {
+    const lastReview = [...ledger.state.evidence]
+      .reverse()
+      .find((item) => item.kind === "review");
+    if (lastReview?.findings?.length) {
+      const adjudicated = latestAdjudications(
+        readFindingsAccount(context.repoRoot, ledger.state.run.work),
+      );
+      input.findings = lastReview.findings.map((finding) => ({
+        severity: finding.severity,
+        summary: finding.summary,
+        fingerprint: fingerprintFinding(finding),
+        adjudication: adjudicated.get(fingerprintFinding(finding))?.action ?? "open",
+      }));
+    }
+  }
+  // Envelope (C6): the worker's prompt, materialised into the run
+  // directory and handed over as BUILDBEAT_PROMPT / input.envelope.
+  const prompt = materialisePrompt({
+    envelope: context.envelope,
+    worker: stepDef.worker,
+    runtimeDir: context.runtimeDir,
+    runId: ledger.state.run.id,
+    step,
+    attempt,
+    repoRoot: context.repoRoot,
+  });
+  if (prompt) {
+    input.envelope = { promptRef: prompt.ref, file: prompt.file, digest: context.envelope.digest, vars: context.envelope.vars };
+  }
+  // Incremental review (C7): tell a reviewer which candidate the last
+  // review saw when it is an ancestor of this one.
+  if (stepDef.readonly) {
+    const head = before.head;
+    const lastReviewed = lastReviewedCandidate(context.repoRoot, ledger.state.run.work, workspace.worktreePath, head);
+    if (lastReviewed) {
+      input.lastReviewed = lastReviewed;
+    }
+  }
+  return { before, outputPath, input, prompt };
+}
+
+// Runs the worker, or references identical passed evidence (verification
+// reuse), then records the command evidence for the tree git reads back.
+function executeOrReuse(context, step, stepDef, adapter, attempt, { before, outputPath, input, prompt }) {
+  const { ledger, workspace, now } = context;
+  // Verification reuse (C7): same tree + same worker + same envelope that
+  // already passed is referenced, not re-run. Failures always re-run.
+  let stepCacheKey = null;
+  let reused = null;
+  if (context.cache[step] === "tree") {
+    const current = readback(workspace.worktreePath);
+    if (!current.dirty) {
+      stepCacheKey = cacheKey({
+        tree: treeHash(workspace.worktreePath),
+        worker: stepDef.worker,
+        adapterSpec: context.adapterConfigs[stepDef.worker] ?? null,
+        adapterName: adapter.name,
+        envelopeDigest: context.envelope?.digest ?? null,
+      });
+      reused = findReusableEvidence(context.repoRoot, stepCacheKey);
+    }
+  }
+  let exec;
+  if (reused) {
+    const at = now();
+    exec = {
+      adapter: "cache",
+      command: `reuse ${reused.run} ${reused.evidenceRef}`,
+      exitCode: 0,
+      signal: null,
+      stdout: `REUSED: identical tree/worker/envelope already passed in ${reused.run} (${reused.evidenceRef}, ${reused.digest}); not re-run`,
+      stderr: "",
+      timedOut: false,
+      spawnError: null,
+      startedAt: at,
+      finishedAt: at,
+    };
+  } else {
+    exec = adapter.execute({
+      step,
+      worker: stepDef.worker,
+      workspacePath: workspace.worktreePath,
+      input,
+      timeoutMs: context.stepTimeoutMs,
+      outputPath,
+      // Live output streams + marker land in the run directory so `status`
+      // can answer "is it still doing something" while the step runs.
+      liveDir: join(context.runtimeDir, "runs", ledger.state.run.id),
+      promptPath: prompt?.path ?? null,
+      vars: context.envelope?.vars ?? null,
+    });
+  }
+  const tree = readback(workspace.worktreePath);
+  const evidence = collectCommandEvidence({
+    runtimeDir: context.runtimeDir,
+    runId: ledger.state.run.id,
+    step,
+    attempt,
+    execResult: exec,
+    subject: tree.head,
+    grade: reused ? reused.grade : stepDef.grade ?? "L2",
+    redact: context.redact,
+  });
+  ledger.append({
+    type: "EVIDENCE_RECORDED",
+    actor: KERNEL,
+    ts: now(),
+    data: {
+      evidenceRef: toRepoRef(context.repoRoot, evidence.location),
+      kind: evidence.kind,
+      subject: evidence.subject,
+      digest: evidence.digest,
+      status: evidence.status,
+      grade: evidence.grade,
+      ...(stepCacheKey ? { cacheKey: stepCacheKey } : {}),
+      ...(reused ? { reused: { run: reused.run, evidenceRef: reused.evidenceRef, digest: reused.digest } } : {}),
+    },
+  });
+
+  return { exec, tree };
+}
+
+// Classifies what the step did and records it: read-only enforcement, the
+// worker envelope, status and infrastructure failures, review findings,
+// scope, the pinned candidate and post policies. Returns the result to
+// route, or null when the run stopped.
+function recordStepResult(context, step, stepDef, attempt, { before, outputPath }, { exec, tree }) {
+  const { ledger, workspace, now } = context;
+  // Read-only enforcement: a reviewer that changed the workspace is a
+  // policy violation, not a candidate (invariants 9/17).
+  if (stepDef.readonly && (tree.head !== before.head || tree.dirty !== before.dirty)) {
+    ledger.append({
+      type: "POLICY_EVALUATED",
       actor: KERNEL,
       ts: now(),
       data: {
-        step,
-        attempt,
-        worker: stepDef.worker,
-        adapter: adapter.name,
-        workspaceId: workspace.workspaceId,
+        policy: "step.readonly",
+        phase: "action",
+        result: "BLOCK",
+        enforcement: "LOCAL_ENFORCED",
+        reason: `read-only step ${step} modified the workspace`,
       },
     });
-    const before = stepDef.readonly ? readback(workspace.worktreePath) : null;
-    const outputsDir = join(context.runtimeDir, "runs", ledger.state.run.id, "outputs");
-    mkdirSync(outputsDir, { recursive: true });
-    const outputPath = join(outputsDir, `${step}-${attempt}.json`);
-    // Anchored review: readonly (reviewer) steps receive the adjudicated
-    // findings history so a fresh reviewer inherits settled verdicts instead
-    // of re-litigating them; writing steps get the latest review findings
-    // with their adjudication status (the fixer's worklist).
-    const input = { workId: ledger.state.run.work, runId: ledger.state.run.id, step, attempt };
-    const anchor = buildAnchor(context.repoRoot, ledger.state.run.work);
-    if (anchor && stepDef.readonly) {
-      input.anchor = anchor;
-    } else if (anchor) {
-      const lastReview = [...ledger.state.evidence]
-        .reverse()
-        .find((item) => item.kind === "review");
-      if (lastReview?.findings?.length) {
-        const adjudicated = latestAdjudications(
-          readFindingsAccount(context.repoRoot, ledger.state.run.work),
-        );
-        input.findings = lastReview.findings.map((finding) => ({
-          severity: finding.severity,
-          summary: finding.summary,
-          fingerprint: fingerprintFinding(finding),
-          adjudication: adjudicated.get(fingerprintFinding(finding))?.action ?? "open",
-        }));
-      }
-    }
-    // Envelope (C6): the worker's prompt, materialised into the run
-    // directory and handed over as BUILDBEAT_PROMPT / input.envelope.
-    const prompt = materialisePrompt({
-      envelope: context.envelope,
-      worker: stepDef.worker,
-      runtimeDir: context.runtimeDir,
-      runId: ledger.state.run.id,
-      step,
-      attempt,
-      repoRoot: context.repoRoot,
+    ledger.append({
+      type: "STEP_FINISHED",
+      actor: KERNEL,
+      ts: now(),
+      data: { step, attempt, status: "blocked" },
     });
-    if (prompt) {
-      input.envelope = { promptRef: prompt.ref, file: prompt.file, digest: context.envelope.digest, vars: context.envelope.vars };
-    }
-    // Incremental review (C7): tell a reviewer which candidate the last
-    // review saw when it is an ancestor of this one.
-    if (stepDef.readonly) {
-      const head = before.head;
-      const lastReviewed = lastReviewedCandidate(context.repoRoot, ledger.state.run.work, workspace.worktreePath, head);
-      if (lastReviewed) {
-        input.lastReviewed = lastReviewed;
-      }
-    }
-    // Verification reuse (C7): same tree + same worker + same envelope that
-    // already passed is referenced, not re-run. Failures always re-run.
-    let stepCacheKey = null;
-    let reused = null;
-    if (context.cache[step] === "tree") {
-      const current = readback(workspace.worktreePath);
-      if (!current.dirty) {
-        stepCacheKey = cacheKey({
-          tree: treeHash(workspace.worktreePath),
-          worker: stepDef.worker,
-          adapterSpec: context.adapterConfigs[stepDef.worker] ?? null,
-          adapterName: adapter.name,
-          envelopeDigest: context.envelope?.digest ?? null,
-        });
-        reused = findReusableEvidence(context.repoRoot, stepCacheKey);
-      }
-    }
-    let exec;
-    if (reused) {
-      const at = now();
-      exec = {
-        adapter: "cache",
-        command: `reuse ${reused.run} ${reused.evidenceRef}`,
-        exitCode: 0,
-        signal: null,
-        stdout: `REUSED: identical tree/worker/envelope already passed in ${reused.run} (${reused.evidenceRef}, ${reused.digest}); not re-run`,
-        stderr: "",
-        timedOut: false,
-        spawnError: null,
-        startedAt: at,
-        finishedAt: at,
-      };
-    } else {
-      exec = adapter.execute({
-        step,
-        worker: stepDef.worker,
-        workspacePath: workspace.worktreePath,
-        input,
-        timeoutMs: context.stepTimeoutMs,
-        outputPath,
-        // Live output streams + marker land in the run directory so `status`
-        // can answer "is it still doing something" while the step runs.
-        liveDir: join(context.runtimeDir, "runs", ledger.state.run.id),
-        promptPath: prompt?.path ?? null,
-        vars: context.envelope?.vars ?? null,
-      });
-    }
-    const tree = readback(workspace.worktreePath);
-    const evidence = collectCommandEvidence({
-      runtimeDir: context.runtimeDir,
-      runId: ledger.state.run.id,
+    context.waitHuman(`resume-${step}`, [
+      `read-only step ${step} modified the workspace; human triage required`,
+    ]);
+    return null;
+  }
+
+  let envelopeRaw = exec.envelope;
+  if (exec.envelope !== undefined && exec.envelope !== null) {
+    writeFileSync(outputPath, `${JSON.stringify(exec.envelope, null, 2)}\n`, "utf8");
+  } else if (existsSync(outputPath)) {
+    envelopeRaw = readFileSync(outputPath, "utf8");
+  }
+  const { envelope, error: envelopeError } = parseEnvelope(envelopeRaw);
+
+  let stepStatus;
+  if (exec.spawnError) {
+    stepStatus = "crashed";
+  } else if (exec.timedOut) {
+    stepStatus = "timeout";
+  } else if (exec.signal) {
+    stepStatus = "crashed";
+  } else if (exec.exitCode !== 0) {
+    stepStatus = "failed";
+  } else if (envelopeError) {
+    stepStatus = "invalid-output";
+  } else {
+    stepStatus = "succeeded";
+  }
+  // Infrastructure failure vs candidate failure. A timeout, a crash,
+  // garbage output or the worker's own "environment unavailable" signal
+  // (exit 75, EX_TEMPFAIL) says nothing about the candidate: no failure
+  // fingerprint, no fixer, the attempt is refunded, and a human decides
+  // when the backend is back. Real incidents: a worker backend outage
+  // (review exit 97) and non-JSON reviewer output killed five runs in two
+  // days as "no transition for (review, failed)"; PATH, port and host-load
+  // verify failures dispatched fixers five times.
+  const infra =
+    stepStatus === "timeout" ||
+    stepStatus === "crashed" ||
+    stepStatus === "invalid-output" ||
+    (stepStatus === "failed" && exec.exitCode === 75);
+  const free = stepStatus === "succeeded" && stepDef.readonly !== true;
+  ledger.append({
+    type: "STEP_FINISHED",
+    actor: KERNEL,
+    ts: now(),
+    data: { step, attempt, status: stepStatus, exitCode: exec.exitCode,
+      ...(infra ? { infra: true } : {}), ...(free ? { free: true } : {}) },
+  });
+  ledger.append({
+    type: "BUDGET_CONSUMED",
+    actor: KERNEL,
+    ts: now(),
+    data: {
+      kind: "attempts",
+      amount: infra || free ? 0 : 1,
+      remaining: context.maxAttemptsFor(step) - attempt,
+    },
+  });
+  if (infra) {
+    const cause =
+      stepStatus === "failed"
+        ? "exit 75 (worker reports its environment unavailable)"
+        : stepStatus === "invalid-output"
+          ? "output is not a worker envelope"
+          : stepStatus;
+    context.waitHuman(
+      `resume-${step}`,
+      [
+        `worker infrastructure failure at ${step}: ${cause}; not a candidate defect, attempt not charged`,
+        ...(tree.dirty ? [`the failed worker left the worktree dirty; inspect before rerunning`] : []),
+        `approve resume-${step} to rerun once the backend/environment is back; reject to end the run`,
+      ],
+      "infra",
+    );
+    return null;
+  }
+
+  let blockingFindings = [];
+  if (envelope?.findings) {
+    recordReviewFindings(context.repoRoot, ledger.state.run.work, {
+      run: ledger.state.run.id,
       step,
       attempt,
-      execResult: exec,
-      subject: tree.head,
-      grade: reused ? reused.grade : stepDef.grade ?? "L2",
-      redact: context.redact,
+      findings: envelope.findings,
+      ts: now(),
+    });
+    // A fingerprint a human dismissed stays visible in the evidence but no
+    // longer blocks: settled verdicts do not reopen without a human.
+    const adjudicated = latestAdjudications(
+      readFindingsAccount(context.repoRoot, ledger.state.run.work),
+    );
+    const suppressed = [];
+    blockingFindings = envelope.findings.filter((finding) => {
+      if (adjudicated.get(fingerprintFinding(finding))?.action === "dismiss") {
+        suppressed.push(fingerprintFinding(finding));
+        return false;
+      }
+      return finding.severity === "P0" || finding.severity === "P1";
     });
     ledger.append({
       type: "EVIDENCE_RECORDED",
       actor: KERNEL,
       ts: now(),
       data: {
-        evidenceRef: toRepoRef(context.repoRoot, evidence.location),
-        kind: evidence.kind,
-        subject: evidence.subject,
-        digest: evidence.digest,
-        status: evidence.status,
-        grade: evidence.grade,
-        ...(stepCacheKey ? { cacheKey: stepCacheKey } : {}),
-        ...(reused ? { reused: { run: reused.run, evidenceRef: reused.evidenceRef, digest: reused.digest } } : {}),
+        evidenceRef: toRepoRef(context.repoRoot, outputPath),
+        kind: "review",
+        subject: tree.head,
+        digest: sha256(canonicalJson(envelope)),
+        status: blockingFindings.length > 0 ? "failed" : "passed",
+        grade: "L2",
+        findings: envelope.findings,
+        ...(suppressed.length > 0 ? { suppressedFingerprints: suppressed } : {}),
       },
     });
+  }
 
-    // Read-only enforcement: a reviewer that changed the workspace is a
-    // policy violation, not a candidate (invariants 9/17).
-    if (stepDef.readonly && (tree.head !== before.head || tree.dirty !== before.dirty)) {
+  // Scope enforcement (B §10: out-of-scope changes stop the loop): any
+  // path changed outside the allowed set means this candidate cannot
+  // proceed, whatever the exit code said.
+  if (!stepDef.readonly && context.allowedPaths) {
+    const changed = listChangedPaths(workspace.worktreePath, workspace.base);
+    const violations = changed.filter(
+      (path) =>
+        !context.allowedPaths.some(
+          (prefix) =>
+            path === prefix || path.startsWith(prefix.endsWith("/") ? prefix : `${prefix}/`),
+        ),
+    );
+    if (violations.length > 0) {
       ledger.append({
         type: "POLICY_EVALUATED",
         actor: KERNEL,
         ts: now(),
         data: {
-          policy: "step.readonly",
+          policy: "workspace.scope",
           phase: "action",
           result: "BLOCK",
           enforcement: "LOCAL_ENFORCED",
-          reason: `read-only step ${step} modified the workspace`,
+          reason: `out-of-scope changes: ${violations.slice(0, 5).join(", ")}`,
         },
       });
-      ledger.append({
-        type: "STEP_FINISHED",
-        actor: KERNEL,
-        ts: now(),
-        data: { step, attempt, status: "blocked" },
-      });
       context.waitHuman(`resume-${step}`, [
-        `read-only step ${step} modified the workspace; human triage required`,
+        `worker changed paths outside the allowed scope: ${violations.slice(0, 5).join(", ")}`,
       ]);
-      return;
+      return null;
     }
+  }
 
-    let envelopeRaw = exec.envelope;
-    if (exec.envelope !== undefined && exec.envelope !== null) {
-      writeFileSync(outputPath, `${JSON.stringify(exec.envelope, null, 2)}\n`, "utf8");
-    } else if (existsSync(outputPath)) {
-      envelopeRaw = readFileSync(outputPath, "utf8");
+  if (stepStatus === "succeeded" && !stepDef.readonly) {
+    if (tree.dirty) {
+      context.waitHuman(`resume-${step}`, [
+        `step ${step} left a dirty worktree; a candidate must be a committed state`,
+      ]);
+      return null;
     }
-    const { envelope, error: envelopeError } = parseEnvelope(envelopeRaw);
-
-    let stepStatus;
-    if (exec.spawnError) {
-      stepStatus = "crashed";
-    } else if (exec.timedOut) {
-      stepStatus = "timeout";
-    } else if (exec.signal) {
-      stepStatus = "crashed";
-    } else if (exec.exitCode !== 0) {
-      stepStatus = "failed";
-    } else if (envelopeError) {
-      stepStatus = "invalid-output";
-    } else {
-      stepStatus = "succeeded";
-    }
-    // Infrastructure failure vs candidate failure. A timeout, a crash,
-    // garbage output or the worker's own "environment unavailable" signal
-    // (exit 75, EX_TEMPFAIL) says nothing about the candidate: no failure
-    // fingerprint, no fixer, the attempt is refunded, and a human decides
-    // when the backend is back. Real incidents: a worker backend outage
-    // (review exit 97) and non-JSON reviewer output killed five runs in two
-    // days as "no transition for (review, failed)"; PATH, port and host-load
-    // verify failures dispatched fixers five times.
-    const infra =
-      stepStatus === "timeout" ||
-      stepStatus === "crashed" ||
-      stepStatus === "invalid-output" ||
-      (stepStatus === "failed" && exec.exitCode === 75);
-    const free = stepStatus === "succeeded" && stepDef.readonly !== true;
-    ledger.append({
-      type: "STEP_FINISHED",
-      actor: KERNEL,
-      ts: now(),
-      data: { step, attempt, status: stepStatus, exitCode: exec.exitCode,
-        ...(infra ? { infra: true } : {}), ...(free ? { free: true } : {}) },
-    });
-    ledger.append({
-      type: "BUDGET_CONSUMED",
-      actor: KERNEL,
-      ts: now(),
-      data: {
-        kind: "attempts",
-        amount: infra || free ? 0 : 1,
-        remaining: context.maxAttemptsFor(step) - attempt,
-      },
-    });
-    if (infra) {
-      const cause =
-        stepStatus === "failed"
-          ? "exit 75 (worker reports its environment unavailable)"
-          : stepStatus === "invalid-output"
-            ? "output is not a worker envelope"
-            : stepStatus;
-      context.waitHuman(
-        `resume-${step}`,
-        [
-          `worker infrastructure failure at ${step}: ${cause}; not a candidate defect, attempt not charged`,
-          ...(tree.dirty ? [`the failed worker left the worktree dirty; inspect before rerunning`] : []),
-          `approve resume-${step} to rerun once the backend/environment is back; reject to end the run`,
-        ],
-        "infra",
-      );
-      return;
-    }
-
-    let blockingFindings = [];
-    if (envelope?.findings) {
-      recordReviewFindings(context.repoRoot, ledger.state.run.work, {
-        run: ledger.state.run.id,
-        step,
-        attempt,
-        findings: envelope.findings,
-        ts: now(),
-      });
-      // A fingerprint a human dismissed stays visible in the evidence but no
-      // longer blocks: settled verdicts do not reopen without a human.
-      const adjudicated = latestAdjudications(
-        readFindingsAccount(context.repoRoot, ledger.state.run.work),
-      );
-      const suppressed = [];
-      blockingFindings = envelope.findings.filter((finding) => {
-        if (adjudicated.get(fingerprintFinding(finding))?.action === "dismiss") {
-          suppressed.push(fingerprintFinding(finding));
-          return false;
-        }
-        return finding.severity === "P0" || finding.severity === "P1";
-      });
+    const pinned = ledger.state.workspaces[workspace.workspaceId]?.candidate;
+    if (tree.head !== (pinned ?? workspace.base)) {
       ledger.append({
-        type: "EVIDENCE_RECORDED",
+        type: "CANDIDATE_PINNED",
         actor: KERNEL,
         ts: now(),
         data: {
-          evidenceRef: toRepoRef(context.repoRoot, outputPath),
-          kind: "review",
-          subject: tree.head,
-          digest: sha256(canonicalJson(envelope)),
-          status: blockingFindings.length > 0 ? "failed" : "passed",
-          grade: "L2",
-          findings: envelope.findings,
-          ...(suppressed.length > 0 ? { suppressedFingerprints: suppressed } : {}),
+          workspaceId: workspace.workspaceId,
+          base: workspace.base,
+          candidate: tree.head,
         },
       });
     }
+  }
 
-    // Scope enforcement (B §10: out-of-scope changes stop the loop): any
-    // path changed outside the allowed set means this candidate cannot
-    // proceed, whatever the exit code said.
-    if (!stepDef.readonly && context.allowedPaths) {
-      const changed = listChangedPaths(workspace.worktreePath, workspace.base);
-      const violations = changed.filter(
-        (path) =>
-          !context.allowedPaths.some(
-            (prefix) =>
-              path === prefix || path.startsWith(prefix.endsWith("/") ? prefix : `${prefix}/`),
-          ),
+  if (stepStatus === "succeeded") {
+    const postGate = runPolicyGate(context, "post", step);
+    if (postGate.action === "block") {
+      ledger.append({
+        type: "RUN_TERMINAL",
+        actor: KERNEL,
+        ts: now(),
+        data: { status: "FAILED", reason: `post policy blocked ${step}` },
+      });
+      writeRunRecord({ repoRoot: context.repoRoot, ledger, ts: now() });
+      return null;
+    }
+    if (postGate.action === "wait") {
+      context.waitHuman(`resume-${step}`, policyReasons(postGate.rows));
+      return null;
+    }
+  }
+
+  return { stepStatus, blockingFindings, tree, exec };
+}
+
+// Settles the outcome and picks the next step; blocking findings stop once
+// for triage or for the review budget before any fixer runs. Returns the
+// next step, or null when the run stopped.
+function routeAfterStep(context, step, stepDef, { stepStatus, blockingFindings, tree, exec }) {
+  let outcome;
+  if (stepStatus !== "succeeded") {
+    outcome = "failed";
+  } else if (blockingFindings.length > 0) {
+    outcome = "findings-blocking";
+  } else {
+    outcome = "succeeded";
+  }
+  const routed = settleOutcome(context, step, outcome, tree, exec);
+  // Ask before spending fix/verify workers: one approval covers the next
+  // round and both review caps, with the grant bound to this request.
+  if (routed && outcome === "findings-blocking") {
+    const grants = isReviewStep(step, stepDef) ? budgetGrants(context, step) : [];
+    const triage = context.reviewTriage === "required";
+    if (triage || grants.length) {
+      const { used, limit, failures } = budgetUsage(context, step);
+      const workBudget = workReviewBudget(context, step);
+      context.waitHuman(
+        `enter-${routed}`,
+        [
+          ...(grants.length ? [
+            `${step} budget exhausted: ${used}/${limit} review round(s) used in this run${workBudget ? `, ${workBudget.rounds}/${workBudget.allowed} across the work` : ""}, ${failures} real failure(s); approve enter-${routed} = fix + re-verify + one more review round; reject = end this run and decide the merge on the evidence you have`,
+          ] : []),
+          `review found ${blockingFindings.length} blocking finding(s); ${triage ? "triage" : "approve another round"} before ${routed} runs`,
+          ...blockingFindings.slice(0, 5).map((finding) =>
+            `[${finding.severity} ${fingerprintFinding(finding)}] ${finding.summary.slice(0, 200)}`),
+          `adjudicate fingerprints (findings adjudicate), then approve enter-${routed} or reject the run`,
+        ],
+        triage ? "finding-triage" : "budget",
+        grants,
       );
-      if (violations.length > 0) {
-        ledger.append({
-          type: "POLICY_EVALUATED",
-          actor: KERNEL,
-          ts: now(),
-          data: {
-            policy: "workspace.scope",
-            phase: "action",
-            result: "BLOCK",
-            enforcement: "LOCAL_ENFORCED",
-            reason: `out-of-scope changes: ${violations.slice(0, 5).join(", ")}`,
-          },
-        });
-        context.waitHuman(`resume-${step}`, [
-          `worker changed paths outside the allowed scope: ${violations.slice(0, 5).join(", ")}`,
-        ]);
-        return;
-      }
+      return null;
     }
+  }
+  return routed;
+}
 
-    if (stepStatus === "succeeded" && !stepDef.readonly) {
-      if (tree.dirty) {
-        context.waitHuman(`resume-${step}`, [
-          `step ${step} left a dirty worktree; a candidate must be a committed state`,
-        ]);
-        return;
-      }
-      const pinned = ledger.state.workspaces[workspace.workspaceId]?.candidate;
-      if (tree.head !== (pinned ?? workspace.base)) {
-        ledger.append({
-          type: "CANDIDATE_PINNED",
-          actor: KERNEL,
-          ts: now(),
-          data: {
-            workspaceId: workspace.workspaceId,
-            base: workspace.base,
-            candidate: tree.head,
-          },
-        });
-      }
+function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
+  let step = startStep;
+  let firstStep = true;
+  while (step) {
+    const entry = checkBeforeStep(context, step, { skipBoundary: skipBoundaryOnce && firstStep });
+    firstStep = false;
+    if (!entry) {
+      return;
     }
-
-    if (stepStatus === "succeeded") {
-      const postGate = runPolicyGate(context, "post", step);
-      if (postGate.action === "block") {
-        ledger.append({
-          type: "RUN_TERMINAL",
-          actor: KERNEL,
-          ts: now(),
-          data: { status: "FAILED", reason: `post policy blocked ${step}` },
-        });
-        writeRunRecord({ repoRoot: context.repoRoot, ledger, ts: now() });
-        return;
-      }
-      if (postGate.action === "wait") {
-        context.waitHuman(`resume-${step}`, policyReasons(postGate.rows));
-        return;
-      }
+    const { stepDef, adapter, attempt } = entry;
+    const started = beginStep(context, step, stepDef, attempt);
+    const ran = executeOrReuse(context, step, stepDef, adapter, attempt, started);
+    const result = recordStepResult(context, step, stepDef, attempt, started, ran);
+    if (!result) {
+      return;
     }
-
-    let outcome;
-    if (stepStatus !== "succeeded") {
-      outcome = "failed";
-    } else if (blockingFindings.length > 0) {
-      outcome = "findings-blocking";
-    } else {
-      outcome = "succeeded";
-    }
-    const routed = settleOutcome(context, step, outcome, tree, exec);
-    // Ask before spending fix/verify workers: one approval covers the next
-    // round and both review caps, with the grant bound to this request.
-    if (routed && outcome === "findings-blocking") {
-      const isReview = step === "review" || stepDef.worker === "reviewer";
-      const grants = isReview ? budgetGrants(context, step) : [];
-      const triage = context.reviewTriage === "required";
-      if (triage || grants.length) {
-        const { used, limit, failures } = budgetUsage(context, step);
-        const workBudget = workReviewBudget(context, step);
-        context.waitHuman(
-          `enter-${routed}`,
-          [
-            ...(grants.length ? [
-              `${step} budget exhausted: ${used}/${limit} review round(s) used in this run${workBudget ? `, ${workBudget.rounds}/${workBudget.allowed} across the work` : ""}, ${failures} real failure(s); approve enter-${routed} = fix + re-verify + one more review round; reject = end this run and decide the merge on the evidence you have`,
-            ] : []),
-            `review found ${blockingFindings.length} blocking finding(s); ${triage ? "triage" : "approve another round"} before ${routed} runs`,
-            ...blockingFindings.slice(0, 5).map((finding) =>
-              `[${finding.severity} ${fingerprintFinding(finding)}] ${finding.summary.slice(0, 200)}`),
-            `adjudicate fingerprints (findings adjudicate), then approve enter-${routed} or reject the run`,
-          ],
-          triage ? "finding-triage" : "budget",
-          grants,
-        );
-        return;
-      }
-    }
-    step = routed;
+    step = routeAfterStep(context, step, stepDef, result);
   }
 }
 

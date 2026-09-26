@@ -22,13 +22,13 @@ jobs:
           fetch-depth: 0
 
       - name: Check Shell syntax
-        run: bash -n .github/scripts/*.sh tests/*.sh pilot/*.sh
+        run: bash -n .github/scripts/*.sh tests/*.sh templates/v2/envelope/*.sh
 
       - name: Run ShellCheck
         run: |
           sudo apt-get update
           sudo apt-get install --yes shellcheck
-          shellcheck -x .github/scripts/*.sh tests/*.sh pilot/*.sh
+          shellcheck -x .github/scripts/*.sh tests/*.sh templates/v2/envelope/*.sh
 
       - name: Check documentation
         run: bash tests/check-docs.sh
@@ -60,8 +60,13 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: Run M-1 pilot driver regression suite
-        run: bash tests/pilot-loop.test.sh
+      # The job name is a required check on main; its content is the shell
+      # contract of the envelope wrapper shipped to users. macOS runs it with
+      # /bin/bash, the bash 3.2 users get by default.
+      - name: Envelope worker.sh contract
+        env:
+          BASH_UNDER_TEST: ${{ matrix.os == 'macos-latest' && '/bin/bash' || 'bash' }}
+        run: bash tests/envelope-worker.test.sh
 
   cli:
     name: CLI (${{ matrix.os }}, Node ${{ matrix.node }})

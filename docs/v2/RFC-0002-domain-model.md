@@ -3,7 +3,7 @@
 > 状态：`FINAL`（2026-08-28 项目所有者定稿，`V2-D3`）
 > 日期：2026-08-28
 > 上游：[`V2-PLAN.md`](../history/V2-PLAN.md) §3–4；报告 B §6 / §13 / §14（经基线裁决修订）
-> 需求来源：[`pilot/metrics.md`](../../pilot/metrics.md) 卡点 1–5；[`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../../pilot/evidence/2026-08-28-m1-runtime-gap.md)
+> 需求来源：[`history/pilot/metrics.md`](../history/pilot/metrics.md) 卡点 1–5；[`history/pilot/evidence/2026-08-28-m1-runtime-gap.md`](../history/pilot/evidence/2026-08-28-m1-runtime-gap.md)
 
 ---
 

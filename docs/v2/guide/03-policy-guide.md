@@ -1,5 +1,7 @@
 # Policy 指南
 
+**简体中文** | [English](03-policy-guide.en.md)
+
 权威：[`RFC-0003 §4`](../RFC-0003-workflow-policy.md)；实现：`src/v2/policy/policy.js`。范本：risk 预设内嵌策略（`src/v2/presets/risk/*.yaml`）与 [`ui-render-gate.yaml`](../../../src/v2/presets/policies/ui-render-gate.yaml)。
 
 ## 一条 Policy 的形状

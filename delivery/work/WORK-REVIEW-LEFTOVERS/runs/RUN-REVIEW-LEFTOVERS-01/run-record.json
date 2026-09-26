@@ -1,0 +1,167 @@
+{
+  "run": "RUN-REVIEW-LEFTOVERS-01",
+  "work": "WORK-REVIEW-LEFTOVERS",
+  "workflow": "software-delivery",
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 44,
+    "lastDigest": "sha256:2cb9f83f4f2bb064a3e7911735bd1fc2ea5f7269030d71525a73e04b38a2bc36"
+  },
+  "startedAt": "2026-09-26T10:44:06.452Z",
+  "finishedAt": "2026-09-26T11:07:49.561Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 0
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "infraFailures": 0,
+    "workerMs": 261730
+  },
+  "workspaces": {
+    "RUN-REVIEW-LEFTOVERS-01": {
+      "repo": ".",
+      "branch": "run/RUN-REVIEW-LEFTOVERS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-REVIEW-LEFTOVERS-01",
+      "base": "9130c22b7b24150543d1552ce9e788de63f97143",
+      "candidate": "045142aa62be8b280fbaedeb3afdd4ac05bd36d0"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-LEFTOVERS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "29f7df4c418c8035f98aafdc39a00cd466b82bab",
+      "digest": "sha256:8e71683333c8ad54587e1301b045a76e052fc9e5ad6dbc255a30e99882f89516",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:ca231cb820866a63388027422b578a8de733b70216ebaf3d0c1702e76fe627a0"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-LEFTOVERS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "29f7df4c418c8035f98aafdc39a00cd466b82bab",
+      "digest": "sha256:6782cc19a60fa1aca344db9e2f51a7a2db08ed549a7544c306d5465a52bcdc9c",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-LEFTOVERS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "29f7df4c418c8035f98aafdc39a00cd466b82bab",
+      "digest": "sha256:6514353f32a1f958912c57dab680170eb722ede08c4617ba679d5d09ed9f6147",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "tests/v2-cli-flags.test.js:29–35 的 gc --apply 测试仅检查空仓库的退出码，commandGc 在没有 Run 台账时会提前返回，未覆盖 plan A.3 要求的实际清理行为；应创建可回收的 Run，并断言单写 --apply 后对应工作树或锁确实被删除。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-LEFTOVERS-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "045142aa62be8b280fbaedeb3afdd4ac05bd36d0",
+      "digest": "sha256:c2c8992387f4f34aa6306cbe1901a63e85f667b37563da05e87353753859cd20",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:056c3bef17e064f57b71f725f353b98540417f2e502a310e1ec253d06bffd3d6"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-LEFTOVERS-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "045142aa62be8b280fbaedeb3afdd4ac05bd36d0",
+      "digest": "sha256:398a34805d2b75606a6b47676bb88fcac0bb2cb9a6808e16c1d9046fba317bac",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-LEFTOVERS-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "045142aa62be8b280fbaedeb3afdd4ac05bd36d0",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "29f7df4c418c8035f98aafdc39a00cd466b82bab",
+        "planDigest": "sha256:f451b1fc18773749457cf676697e7d7dc33ae6fa5c8b12b5300b029f4a2ee499",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-REVIEW-LEFTOVERS-01-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "045142aa62be8b280fbaedeb3afdd4ac05bd36d0",
+        "planDigest": "sha256:f451b1fc18773749457cf676697e7d7dc33ae6fa5c8b12b5300b029f4a2ee499",
+        "evidenceDigest": "sha256:6514353f32a1f958912c57dab680170eb722ede08c4617ba679d5d09ed9f6147"
+      },
+      "decisionRef": "D-RUN-REVIEW-LEFTOVERS-01-2"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "045142aa62be8b280fbaedeb3afdd4ac05bd36d0",
+        "planDigest": "sha256:f451b1fc18773749457cf676697e7d7dc33ae6fa5c8b12b5300b029f4a2ee499",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-REVIEW-LEFTOVERS-01-3"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-REVIEW-LEFTOVERS-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "29f7df4c418c8035f98aafdc39a00cd466b82bab",
+        "planDigest": "sha256:f451b1fc18773749457cf676697e7d7dc33ae6fa5c8b12b5300b029f4a2ee499",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-REVIEW-LEFTOVERS-01-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "045142aa62be8b280fbaedeb3afdd4ac05bd36d0",
+        "planDigest": "sha256:f451b1fc18773749457cf676697e7d7dc33ae6fa5c8b12b5300b029f4a2ee499",
+        "evidenceDigest": "sha256:6514353f32a1f958912c57dab680170eb722ede08c4617ba679d5d09ed9f6147"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-REVIEW-LEFTOVERS-01-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "045142aa62be8b280fbaedeb3afdd4ac05bd36d0",
+        "planDigest": "sha256:f451b1fc18773749457cf676697e7d7dc33ae6fa5c8b12b5300b029f4a2ee499",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
