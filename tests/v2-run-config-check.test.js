@@ -51,12 +51,13 @@ test("worker fields are checked", () => {
   const workers = (spec) => shape({ workers: { verifier: { command: "bash", ...spec } } });
   one(workers({ inheritEnv: "yes" }), /^workers\.verifier\.inheritEnv: must be true or false, got "yes"/);
   assert.deepEqual(workers({ inheritEnv: true }), []);
-  one(workers({ timeoutMs: -5 }), /^workers\.verifier\.timeoutMs: must be a positive integer/);
+  one(workers({ timeoutMs: -5 }), /^workers\.verifier\.timeoutMs: must be a positive number/);
+  assert.deepEqual(workers({ timeoutMs: 0.5 }), []);
   one(workers({ comand: "x" }), /^workers\.verifier\.comand: unknown key \(did you mean command\?\)/);
   one(workers({ args: "npm test" }), /^workers\.verifier\.args: must be a list/);
   one(workers({ env: ["A=1"] }), /^workers\.verifier\.env: must be a map/);
   one(shape({ workers: { verifier: { args: ["x"] } } }), /^workers\.verifier\.command: required/);
-  one(shape({ envelope: { prompts: "p", pinned: "x" } }), /^envelope\.pinned: unknown key \(did you mean pin\?\)/);
+  one(shape({ envelope: { prompts: "p", pins: "x" } }), /^envelope\.pins: unknown key \(did you mean pin\?\)/);
 });
 
 test("numbers, lists and ids are checked", () => {
@@ -89,6 +90,14 @@ test("suggestions only fire for plausible typos", () => {
   assert.equal(suggest("STOPAT", ["stopAt", "entry"]), "stopAt");
   assert.equal(suggest("reviwer", ["reviewer", "verifier"]), "reviewer");
   assert.equal(suggest("completely-different", ["reviewer"]), null);
+  // Case-insensitive equality or edit distance <= 2 only; no prefix guesses.
+  assert.equal(suggest("runUnexpected", ["run", "repo"]), null);
+});
+
+test("an explicit null is reported, not treated as the default", () => {
+  one(shape({ base: null }), /^base: has no value; remove the line to use the default/);
+  one(shape({ entry: null }), /^entry: has no value/);
+  one(shape({ riskPreset: null }), /^riskPreset: has no value/);
 });
 
 test("the CLI reports the problem list instead of an internal error", (t) => {
@@ -125,14 +134,18 @@ function shippedConfigs() {
   return found;
 }
 
-test("every run config in this repository passes", () => {
+// The template names workflow.yaml because users copy the preset next to
+// it (as its header says); it is the only config checked against a stand-in.
+const TEMPLATE_WORKFLOW = { [join(ROOT, "templates", "v2", "run-config.example.yaml")]: PRESET };
+
+test("every run config in this repository passes against the workflow it names", () => {
   const configs = shippedConfigs();
   assert.ok(configs.length >= 3);
   for (const path of configs) {
     const config = parseYamlSubset(readFileSync(path, "utf8"));
     assert.deepEqual(checkRunConfigShape(config), [], path);
-    const workflowPath = resolve(dirname(path), config.workflow);
-    const flow = loadWorkflow(existsSync(workflowPath) ? workflowPath : PRESET);
-    assert.deepEqual(checkRunConfigAgainstWorkflow(config, flow), [], path);
+    const workflowPath = TEMPLATE_WORKFLOW[path] ?? resolve(dirname(path), config.workflow);
+    assert.ok(existsSync(workflowPath), `${path} names a workflow that does not exist: ${config.workflow}`);
+    assert.deepEqual(checkRunConfigAgainstWorkflow(config, loadWorkflow(workflowPath)), [], path);
   }
 });

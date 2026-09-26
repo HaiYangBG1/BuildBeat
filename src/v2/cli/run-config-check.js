@@ -67,14 +67,6 @@ export function suggest(name, known) {
   if (exact) {
     return exact;
   }
-  // Truncated or over-long names: "timeout" for timeoutMs, "pinned" for pin.
-  const prefixed = known.find((candidate) => {
-    const other = candidate.toLowerCase();
-    return Math.min(lower.length, other.length) >= 3 && (other.startsWith(lower) || lower.startsWith(other));
-  });
-  if (prefixed) {
-    return prefixed;
-  }
   let best = null;
   let bestDistance = 3;
   for (const candidate of known) {
@@ -116,6 +108,13 @@ export function checkRunConfigShape(config) {
   for (const key of REQUIRED) {
     if (config[key] === undefined || config[key] === null) {
       problems.push(`${key}: required and missing`);
+    }
+  }
+  // An explicit null (key: null, key: ~) is never "use the default": say so
+  // instead of silently falling back.
+  for (const [key, value] of Object.entries(config)) {
+    if (value === null && TOP_KEYS.includes(key) && !REQUIRED.includes(key)) {
+      problems.push(`${key}: has no value; remove the line to use the default, or give it a value`);
     }
   }
   for (const key of ["repo", "workflow", "riskPreset", "base", "entry"]) {
@@ -185,8 +184,8 @@ export function checkRunConfigShape(config) {
       if (spec.args !== undefined && !Array.isArray(spec.args)) {
         problems.push(`${where}.args: must be a list (one "- arg" per line)`);
       }
-      if (spec.timeoutMs !== undefined && !positiveInteger(spec.timeoutMs)) {
-        problems.push(`${where}.timeoutMs: must be a positive integer, got ${JSON.stringify(spec.timeoutMs)}`);
+      if (spec.timeoutMs !== undefined && !(typeof spec.timeoutMs === "number" && spec.timeoutMs > 0)) {
+        problems.push(`${where}.timeoutMs: must be a positive number, got ${JSON.stringify(spec.timeoutMs)}`);
       }
       if (spec.inheritEnv !== undefined && typeof spec.inheritEnv !== "boolean") {
         problems.push(`${where}.inheritEnv: must be true or false, got ${JSON.stringify(spec.inheritEnv)} (anything else used to mean false silently)`);
