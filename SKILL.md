@@ -31,7 +31,7 @@ description: BuildBeat —— 面向人和 AI 会话的工程交付工作流,上
 | 「开个 Work:〔目标〕」 | 写 `delivery/work/<ID>/intent.md`(为什么做 + **止损线**:最多几个 Run / 几轮 review / 几小时,越线先问人)+ `plan.md`(怎么做)+ `run-config.yaml`(`budgets.reviewRoundsPerWork` 对应止损线);给用户看摘要 | 「看完说接受」;用户说「接受」→ `accept --artifact intent` / `--artifact plan`(digest 绑定) |
 | 「开工」「再来一轮」 | 先 `buildbeat doctor --config <run-config.yaml>`(会报本仓 intent/plan 是否存在且已接受、哪条 policy 会把 start 挡在哪步、每步预算),再 `start --config <run-config.yaml> --attempt new`(自动编号 RUN-X-01/02…,自动作废同 Work 的旧等待;**用 nohup/setsid 脱离启动**) | 「已起 RUN-X-02,停在合并决定时会通知/我会告诉你」 |
 | 「怎么样了」「卡住了吗」「正常吗」 | `buildbeat status --repo . --run <RUN>` | 一句:在跑第几步、跑了多久、历史通常多久、最后一次输出几分钟前;`STALLED` 就说「疑似卡住,建议停/等」;停在 kind `infra` 就说「worker 环境/后端故障,不是代码问题,恢复后我重跑,预算不扣」 |
-| 「批准 RUN-X」「拒绝,原因…」 | 先看 `inbox` 该 Run 等的是哪条 transition,再 `approve --transition <t> --by <用户名>` / `reject --reason`;非终态转换(`enter-fix` / `resume-<step>` / `enter-review`)批准后再 `resume --config <cfg>` 续跑 | 说清批的是哪一步:「放行 fixer,续跑中」/「再跑一次,续跑中」/「合并决定已落,候选 <sha> 具备合并条件;合并/push/部署要你另说」。`SUCCEEDED` 不等于已合并 |
+| 「批准 RUN-X」「拒绝,原因…」 | 先看 `inbox` 该 Run 等的是哪条 transition,再 `approve --transition <t> --by <用户名>` / `reject --reason`;非终态转换(`enter-fix` / `resume-<step>` / `enter-review`)批准后再 `resume --config <cfg>` 续跑;用 `--attempt new` 自动编号时会选择该家族唯一未终态 Run，也可 `--run <RUN-ID>` 指定;多个候选或没有未终态 Run 时按报错处理 | 说清批的是哪一步:「放行 fixer,续跑中」/「再跑一次,续跑中」/「合并决定已落,候选 <sha> 具备合并条件;合并/push/部署要你另说」。`SUCCEEDED` 不等于已合并 |
 | 会话自己在 Run 的 worktree 里把 finding 修完并提交了(Run 停在 enter-fix / resume-fix) | `resume --config <cfg> --adopt <sha> --by <会话名>`(跳过 fixer,从 verify 续跑;树必须干净、HEAD 必须是该 sha) | 「我已手修并提交 <sha>,验证重跑中」;**不要**为了让 fixer 空跑而 approve enter-fix |
 | 「这条 finding 不算,那条接受」 | `findings list` / `findings adjudicate --action dismiss|accept` → `approve --transition enter-fix` | 裁决结果一句 |
 | 「上线」「做生产动作」 | 用 `release-readback` 预设 + `riskPreset: release` 开 Run:preflight 回读 → 停 `enter-apply-readback` | 「回读全绿,现在轮到你做〔动作〕;做完说一声」→ 用户说「做完了」→ `approve enter-apply-readback` → 回读+观察 → 停关窗 |
@@ -65,7 +65,8 @@ allowedPaths:
   - tests
 # P0/P1 先过人分诊再派 fixer
 reviewTriage: required
-# 可省;run 配置 > 预设 > 默认。预算耗尽停人时,批准 resume-<step> 即多给一次;
+# 可省;run 配置 > 预设 > 默认。非只读步成功不扣次数;review 仍按轮计费。
+# review 到顶时在 enter-fix 一次批准修复、重验、再审;Run/Work 上限同时放行;
 # reviewRoundsPerWork 跨本 Work 所有 Run 累计 review 轮数,超了新 Run 起跑前先问人
 budgets:
   maxAttempts:
@@ -126,7 +127,7 @@ workers:
       - workspace-write
 ```
 
-(严格 YAML 子集:只有块列表与块映射,没有行内 `[]` / `{}`,**注释必须独占一行**;上面这份可原样解析,机器验证在 `tests/v2-templates-firstrun.test.js`。**`fixer` 不能省**:没配它,verify 失败或 review 阻断时 Run 停 `WAITING_HUMAN` 等人手修,不会自动修。完整样板 [templates/v2/run-config.example.yaml](templates/v2/run-config.example.yaml),信封 [templates/v2/envelope/](templates/v2/envelope/worker.sh)。)通知通道另放 `.buildbeat/notify.yaml`(URL 只能来自环境变量),见 [docs/v2/guide/07-approval-guide.md](docs/v2/guide/07-approval-guide.md);指南索引 [docs/v2/guide/README.md](docs/v2/guide/README.md)。
+(严格 YAML 子集:只有块列表与块映射,行内只允许空的 `[]` / `{}`,列表项可与键同缩进,**注释必须独占一行**;上面这份可原样解析,机器验证在 `tests/v2-templates-firstrun.test.js`。**`fixer` 不能省**:没配它,verify 失败或 review 阻断时 Run 停 `WAITING_HUMAN` 等人手修,不会自动修。完整样板 [templates/v2/run-config.example.yaml](templates/v2/run-config.example.yaml),信封 [templates/v2/envelope/](templates/v2/envelope/worker.sh)。)通知通道另放 `.buildbeat/notify.yaml`(URL 只能来自环境变量),见 [docs/v2/guide/07-approval-guide.md](docs/v2/guide/07-approval-guide.md);指南索引 [docs/v2/guide/README.md](docs/v2/guide/README.md)。
 
 **第一次为一个项目写 run-config 时,会话要多问用户一句**:「Run 停下来等你批、跑完、或疑似卡住时,要不要推到钉钉/webhook?给我一个只放在环境变量里的 URL 就行」——试点一直没启用通知,一张合并卡就绪后隔夜等了 9.5 小时。用户说不要就记一句「通知未启用,等待只在 inbox 里」。
 
@@ -239,7 +240,9 @@ worker prompt 里要写清三条环境事实(模板 AGENTS 第 ⑨ 条):沙箱�
 | `controlled` | intent + plan 接受 + 合并决定 + 上线 | 契约变更、大改、不可逆副作用 |
 | `release` | 配 `release-readback` 预设:preflight 回读 → 人做 → apply 回读 → 关窗 | 生产动作 |
 
-机器闸(gitleaks pre-commit)、证据制与合并候选一次核查任何预设都不跳;高风险 delta 不得借 `fast` 绕过独立核查。预算(每步 `maxAttempts`、Work 级 `reviewRoundsPerWork`)耗尽是停人不是失败,人批 `resume-<step>` 即多给一次;基础设施故障(超时 / 崩溃 / 非 JSON / exit 75)判 `infra` 停人、不派 fixer、不扣预算。
+机器闸(gitleaks pre-commit)、证据制与合并候选一次核查任何预设都不跳;高风险 delta 不得借 `fast` 绕过独立核查。预算耗尽是停人不是失败。非只读步(build / verify / fix)成功不扣 `maxAttempts`,只读步仍按尝试次数计费,review 按轮计费;基础设施故障(超时 / 崩溃 / 非 JSON / exit 75)判 `infra` 停人、不派 fixer、不扣预算。真失败到顶仍停 `resume-<step>`,批准多给一次。同一步总 attempt 达到有效预算上限(配置值 + 人批扩额)的 3 倍后,下一次执行前以 kind `budget` 兜底停人,防止成功循环失控;退款不抬高该兜底上限。
+
+**一轮一问**:review 发现阻断问题且下一轮会超 Run 或 Work 上限时,提前停 `enter-fix`;有分诊用 `finding-triage`,无分诊用 `budget`。批准覆盖「修复 + 重新验证 + 再审一轮」,所需扩额随请求的可选 `grants` 落账,Run/Work 同时到顶只问一次;拒绝结束本 Run,由人按现有证据决定是否合并。批准旧的 `enter-review` / `resume-review` 预算停车时也同时放行已到顶的另一层上限。新候选或过期批准不能沿用旧请求的 grants。默认上限不变。
 
 ## 6. 三个仪式(防腐烂的关键,缺了机制必朽)
 

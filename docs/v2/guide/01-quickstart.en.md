@@ -35,7 +35,7 @@ The envelope must be committed: workers run in an isolated worktree and only see
 
 ## 2. Write the run config
 
-`delivery/work/WORK-DEMO-1/run-config.yaml`. Paths resolve relative to **this file**; the YAML is a strict subset: block lists and block maps only, no inline `[]` / `{}`, no anchors, comments on their own line. The config below parses as-is (machine-checked by `tests/v2-templates-firstrun.test.js`); the full sample and the envelope templates are in [`templates/v2/`](../../../templates/v2/run-config.example.yaml).
+`delivery/work/WORK-DEMO-1/run-config.yaml`. Paths resolve relative to **this file**; the YAML is a strict subset: block lists and block maps only (list items may sit at their key's indentation), inline only for the empty `[]` / `{}`, no anchors, comments on their own line; quote a list item that contains `": "`. The config below parses as-is (machine-checked by `tests/v2-templates-firstrun.test.js`); the full sample and the envelope templates are in [`templates/v2/`](../../../templates/v2/run-config.example.yaml).
 
 ```yaml
 repo: ../../..
@@ -138,6 +138,8 @@ buildbeat approve --repo . --run RUN-DEMO-01 --transition enter-wait-merge --by 
 ```
 
 **Be clear about which step you are approving** ([Approval guide](07-approval-guide.en.md)): `enter-wait-merge` is the merge decision; the Run reaches the terminal state `SUCCEEDED`, meaning the candidate is fit to merge. The actual merge, push and release are always your actions outside the Runner. `enter-fix` / `resume-<step>` are non-terminal transitions: after approving them, `resume --config …` lets the Run continue. When findings block, the Run routes fix → verify → review on its own; when the budget is exhausted or a failure fingerprint repeats, it stops and hands back to you ([Recovery](10-recovery.en.md)).
+
+After `start --attempt new` numbers a Run, `resume --config <run-config.yaml>` resumes the family’s only non-terminal Run and prints its ID. Use `--run <RUN-ID>` to select the configured Run itself or `<family>-NN` explicitly (at least two digits). An existing ledger for the exact configured ID takes precedence. Multiple non-terminal Runs are listed with a request to select one using `--run`; if none remain, the error reports the latest ID and terminal status, or states that no ledgers were found.
 
 ## 7. Walk the failure branch once
 

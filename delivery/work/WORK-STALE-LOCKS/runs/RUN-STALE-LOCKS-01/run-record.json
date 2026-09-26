@@ -1,0 +1,39 @@
+{
+  "run": "RUN-STALE-LOCKS-01",
+  "work": "WORK-STALE-LOCKS",
+  "workflow": "software-delivery",
+  "terminal": {
+    "status": "CANCELLED",
+    "reason": "driver killed on purpose: builder role moves to the driving session (owner instruction); stale locks reproduced and cleared by hand"
+  },
+  "events": {
+    "from": 1,
+    "to": 6,
+    "lastDigest": "sha256:0459271b2610a8fb582f180b7a9db73593fbdd780cb6d42add6b39e3b1d0e062"
+  },
+  "startedAt": "2026-09-25T15:04:29.623Z",
+  "finishedAt": "2026-09-25T15:06:53.340Z",
+  "attempts": {
+    "build": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 0,
+    "humanWaits": 0,
+    "infraFailures": 0,
+    "workerMs": 0
+  },
+  "workspaces": {
+    "RUN-STALE-LOCKS-01": {
+      "repo": ".",
+      "branch": "run/RUN-STALE-LOCKS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-STALE-LOCKS-01",
+      "base": "6dd3aa80b758cdaa3e2b865ba37e9a56d363164c",
+      "candidate": null
+    }
+  },
+  "evidence": [],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

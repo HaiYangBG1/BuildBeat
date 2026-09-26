@@ -11,7 +11,7 @@
 
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -52,6 +52,7 @@ import { resumeRun, startRun } from "../runtime/orchestrator.js";
 import { toRepoRef } from "../runtime/repo-ref.js";
 import { EventLedger } from "../storage/event-ledger.js";
 import { acquireLock, listHeldRunLocks, releaseLock } from "../workspace/workspace-manager.js";
+import { checkRunConfigAgainstWorkflow, checkRunConfigShape, RunConfigError } from "./run-config-check.js";
 
 const KERNEL = { kind: "kernel", id: "cli" };
 
@@ -60,7 +61,7 @@ const USAGE = `BuildBeat runtime
 Usage:
   buildbeat --version
   buildbeat start --config <run-config.yaml> [--attempt new]
-  buildbeat resume --config <run-config.yaml> [--adopt <sha> --by <name>]   # --adopt: hand fix committed in the worktree; skip fix, resume at verify
+  buildbeat resume --config <run-config.yaml> [--run <RUN-ID>] [--adopt <sha> --by <name>]   # --adopt: hand fix committed in the worktree; skip fix, resume at verify
   buildbeat status --repo <path> --run <RUN-ID> [--stall-after <minutes>]
   buildbeat inbox --repo <path>
   buildbeat overview --repo <path> [--work <WORK-ID>] [--json true]
@@ -256,11 +257,29 @@ function loadRunConfig(flags, command) {
   }
   const configPath = resolve(flags.config);
   const config = parseYamlSubset(readFileSync(configPath, "utf8"));
+  // Validate before anything runs and list every problem at once: the
+  // workflow does not depend on repo, so its checks run whenever it loads.
+  const problems = checkRunConfigShape(config);
   const configDir = dirname(configPath);
+  let workflow = null;
+  let workflowPath = null;
+  let workflowText = null;
+  if (typeof config?.workflow === "string" && config.workflow.trim() !== "") {
+    workflowPath = resolve(configDir, config.workflow);
+    try {
+      workflowText = readFileSync(workflowPath, "utf8");
+      workflow = loadWorkflow(workflowPath);
+    } catch (error) {
+      problems.push(`workflow: cannot load ${config.workflow}: ${error.message}`);
+    }
+  }
+  if (workflow) {
+    problems.push(...checkRunConfigAgainstWorkflow(config, workflow));
+  }
+  if (problems.length > 0) {
+    throw new RunConfigError(flags.config, problems);
+  }
   const repoRoot = resolve(configDir, config.repo);
-  const workflowPath = resolve(configDir, config.workflow);
-  const workflowText = readFileSync(workflowPath, "utf8");
-  const workflow = loadWorkflow(workflowPath);
   const workflowDigest = `sha256:${createHash("sha256").update(workflowText, "utf8").digest("hex")}`;
 
   const adapters = {};
@@ -495,7 +514,9 @@ async function commandStart(flags) {
       const label = repoLabelFor(options.repoRoot);
       const holders = listHeldRunLocks(options.repoRoot);
       if (holders.length === 0) {
-        console.error("blocked by: a stale active-run lock with no run holding it (a killed process?); `gc` clears locks of terminal runs, or remove .buildbeat/runtime/locks/active-run.lock after checking no driver process is alive");
+        // A dead owner would already have been reclaimed; the error below
+        // names who holds the lock and what to do.
+        console.error("blocked by: the active-run lock alone (no run lock beside it); its owner is named below");
       }
       for (const holder of holders) {
         const ledgerPath = join(options.repoRoot, ".buildbeat", "runtime", "runs", holder, "events.jsonl");
@@ -531,8 +552,42 @@ async function commandStart(flags) {
   await notifyForState(options.repoRoot, repoLabel, ledger.state);
 }
 
+// Resolve only from runtime ledgers. Reading candidates does not acquire
+// their locks; resumeRun still owns the lock and freshness checks.
+function resolveResumeRun(repoRoot, family, explicitRun) {
+  const pattern = new RegExp(`^${family.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-\\d{2,}$`);
+  if (explicitRun !== undefined) {
+    if (explicitRun !== family && !pattern.test(explicitRun)) {
+      throw new Error(`--run ${explicitRun} is not in run family ${family} of this config`);
+    }
+    if (!existsSync(ledgerPathFor(repoRoot, explicitRun))) {
+      throw new Error(`no ledger for run ${explicitRun}`);
+    }
+    return explicitRun;
+  }
+  if (existsSync(ledgerPathFor(repoRoot, family))) {
+    return family;
+  }
+  const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
+  const runs = (existsSync(runsDir) ? readdirSync(runsDir) : [])
+    .filter((id) => pattern.test(id) && existsSync(ledgerPathFor(repoRoot, id)))
+    .sort((a, b) => a.localeCompare(b, "en", { numeric: true }))
+    .map((id) => ({ id, state: EventLedger.open(ledgerPathFor(repoRoot, id)).state }));
+  const open = runs.filter(({ state }) => !state.terminal);
+  if (open.length === 1) {
+    console.log(`resuming ${open[0].id} (the open run of family ${family})`);
+    return open[0].id;
+  }
+  if (open.length === 0) {
+    const latest = runs.at(-1);
+    throw new Error(`no open run in family ${family}; ${latest ? `latest run ${latest.id}: ${latest.state.terminal.status}` : "no ledgers found"}; use --run <RUN-ID> to select an existing run explicitly`);
+  }
+  throw new Error(`multiple open runs in family ${family}: ${open.map(({ id }) => id).join(", ")}; use --run <RUN-ID> to select one`);
+}
+
 async function commandResume(flags) {
   const options = loadRunConfig(flags, "resume");
+  options.runId = resolveResumeRun(options.repoRoot, options.runId, flags.run);
   if (flags.adopt !== undefined) {
     const resumeAt = nextStep(options.workflow, "fix", "succeeded") ?? "verify";
     const adopted = adoptCandidate(options.repoRoot, options.runId, {
@@ -624,7 +679,7 @@ function commandApprove(flags) {
   if (result.terminal) {
     console.log("run is terminal: SUCCEEDED (merge itself stays a manual external action)");
   } else {
-    console.log("decision recorded; continue with: run.js resume --config <run-config.yaml>");
+    console.log(`decision recorded; continue with: buildbeat resume --config <run-config.yaml> --run ${flags.run}`);
   }
 }
 
@@ -954,16 +1009,21 @@ function commandStop(flags) {
     throw new Error("stop requires --repo and --run");
   }
   const repoRoot = resolve(flags.repo);
-  const ledger = EventLedger.open(ledgerPathFor(repoRoot, flags.run));
-  if (!ledger.state.run) {
+  if (!existsSync(ledgerPathFor(repoRoot, flags.run))) {
     throw new Error(`no ledger for run ${flags.run}`);
   }
-  if (ledger.state.terminal) {
-    console.log(`run already terminal: ${ledger.state.terminal.status}`);
-    return;
-  }
+  // Read and decide under the run lock: a ledger read before it may be
+  // stale by the time RUN_TERMINAL is written.
   acquireLock(repoRoot, flags.run);
   try {
+    const ledger = EventLedger.open(ledgerPathFor(repoRoot, flags.run));
+    if (!ledger.state.run) {
+      throw new Error(`no ledger for run ${flags.run}`);
+    }
+    if (ledger.state.terminal) {
+      console.log(`run already terminal: ${ledger.state.terminal.status}`);
+      return;
+    }
     ledger.append({
       type: "RUN_TERMINAL",
       actor: KERNEL,
@@ -1008,7 +1068,7 @@ function commandGc(flags) {
       if (action.kind === "delete-branch") {
         return `delete branch ${action.branch} (${action.reason})`;
       }
-      return "remove stale lock";
+      return action.owner ? "remove active-run lock (owner process is gone)" : "remove stale lock";
     });
     actionable += row.actions.length;
     const keep = row.keep.map((reason) => `keep: ${reason}`);

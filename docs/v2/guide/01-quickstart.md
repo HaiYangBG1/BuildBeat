@@ -35,7 +35,7 @@ git add delivery && git commit -qm "buildbeat: work WORK-DEMO-1 + envelope"
 
 ## 2. 写 run 配置
 
-`delivery/work/WORK-DEMO-1/run-config.yaml`。路径相对**本文件**解析；YAML 是严格子集：只有块列表与块映射，没有行内 `[]` / `{}`、没有锚点、注释必须独占一行。下面这份可以原样解析（机器验证在 `tests/v2-templates-firstrun.test.js`）；完整样板与信封模板在 [`templates/v2/`](../../../templates/v2/run-config.example.yaml)。
+`delivery/work/WORK-DEMO-1/run-config.yaml`。路径相对**本文件**解析；YAML 是严格子集：只有块列表与块映射（列表项可与键同缩进），行内只允许空的 `[]` / `{}`，没有锚点，注释必须独占一行；含 `": "` 的列表项要加引号。下面这份可以原样解析（机器验证在 `tests/v2-templates-firstrun.test.js`）；完整样板与信封模板在 [`templates/v2/`](../../../templates/v2/run-config.example.yaml)。
 
 ```yaml
 repo: ../../..
@@ -138,6 +138,8 @@ buildbeat approve --repo . --run RUN-DEMO-01 --transition enter-wait-merge --by 
 ```
 
 **批的是哪一步要分清**（[Approval 指南](07-approval-guide.md)）：`enter-wait-merge` 是合并决定，Run 进终态 `SUCCEEDED`，表示候选具备合并条件——真正的合并、push、发布永远是你在 Runner 之外的动作；`enter-fix` / `resume-<step>` 是非终态转换，批准后要 `resume --config …` 让它续跑。被 findings 阻断时会自动路由 fix→verify→review 重走，超预算或失败指纹重复则停下交还给你（[Recovery](10-recovery.md)）。
+
+使用 `start --attempt new` 自动编号时，`resume --config <run-config.yaml>` 会续跑该家族唯一未终态的 Run，并打印选中的 ID；也可用 `--run <RUN-ID>` 显式指定配置中的 Run 本身或 `<家族>-NN`（数字至少两位）。配置本身已有台账时优先使用该精确 ID。多个未终态 Run 会列出候选并要求用 `--run` 选择；没有未终态 Run 会报告最新一次的 ID 和终态，没有台账则明确说明。
 
 ## 7. 走一次失败分支
 

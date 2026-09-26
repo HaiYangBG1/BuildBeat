@@ -74,7 +74,7 @@ for (const [label, behavior] of [
     assert.equal(state.steps.review.infraAttempts, 1);
     assert.equal(state.steps.fix, undefined, "no fixer dispatched");
     assert.equal(state.fingerprints.length, 0, "no failure fingerprint recorded");
-    assert.equal(state.budgets.attempts.consumed, 2, "build and verify charged, review refunded");
+    assert.equal(state.budgets.attempts.consumed, 0, "successful build and verify are free, infra review refunded");
 
     approveRun(root, runId, { by: "owner", transition: "resume-review" });
     const resumed = resumeRun(options(root, runId, adapters));

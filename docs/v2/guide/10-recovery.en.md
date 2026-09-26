@@ -6,6 +6,10 @@ Design premise (invariant 23 in [`V2-PLAN.md`](../../V2-PLAN.md), Chinese): **th
 
 ## Symptom → action
 
+### "run config … has N problem(s)"
+
+The run config has mistakes; no Run started and nothing changed. Fix the list item by item (each names the key, what is wrong and the closest valid spelling), then rerun the same command; `buildbeat doctor --config …` checks it on its own first.
+
 ### The ledger reports corrupted
 
 `status`/`inbox` shows `LEDGER CORRUPTED after seq=N (<reason>)`: the ledger truncates its view at the last valid event and **refuses to append**; recovery is a human decision, nothing is repaired silently.
@@ -20,19 +24,31 @@ Design premise (invariant 23 in [`V2-PLAN.md`](../../V2-PLAN.md), Chinese): **th
 buildbeat resume --config <run-config.yaml>
 ```
 
+After `start --attempt new` numbers a Run, `resume --config <run-config.yaml>` resumes the family’s only non-terminal Run and prints its ID. Use `--run <RUN-ID>` to select the configured Run itself or `<family>-NN` explicitly (at least two digits). An existing ledger for the exact configured ID takes precedence. Multiple non-terminal Runs are listed with a request to select one using `--run`; if none remain, the error reports the latest ID and terminal status, or states that no ledgers were found.
+
 The in-flight step is closed as `crashed` (the fact is recorded), then **the step itself is rerun** (changed in beta.3): a dead process says nothing about the candidate; the lost attempt still counts against the step's budget, and an exhausted budget stops for a human. The earlier semantics treated a crash as a step failure and followed the failure edge; real incident (deploy-18): the host tool's timeout killed the verify worker, the crash was routed to fix, and the fixer burned a round facing zero verifier evidence. A dirty worktree still stops for a human first. Resuming with approvals re-checks candidate/plan freshness and turns `APPROVAL_STALE` over to a human if anything changed. If it cannot be recovered, delete the runtime and rerun: the candidate branch and the Git-plane records are not lost.
 
 **Launch discipline** (the other half of the same incident): a Run longer than minutes must be launched in a way that escapes the host tool's timeout (`nohup`/`setsid`); `start` prints this reminder in an interactive shell.
 
 ### A stuck lock ("another run is active")
 
-A Run that exited abnormally may leave the repository lock behind. Once you have confirmed that no Run is really active:
+Every lock records its owner (pid, host name, time acquired, command). When a driver is killed, ended by a host-tool timeout or lost to a reboot, its locks stay behind; the next `resume` / `stop` / `start` that needs the lock reclaims it automatically when the owner is **on this host and its process no longer exists**, printing `reclaimed stale lock <id> (owner pid … is gone)`. No file needs deleting by hand. After a killed driver, simply run:
 
 ```bash
-buildbeat stop --repo . --run RUN-X --reason "crashed; releasing lock"
+buildbeat resume --config <run-config.yaml>
 ```
 
-`stop` records the terminal state and the reason; for a mere leftover lock you may also delete `.buildbeat/runtime/` and start over.
+The kernel takes the crash-recovery path above (`RUN_INTERRUPTED`, then the interrupted step reruns); if you would rather not continue, `buildbeat stop --repo . --run RUN-X --reason "…"`.
+
+Only three cases still answer `another run is active` / `already locked`, and the error names the owner:
+
+- **The owner is alive**: another Run really is driving; wait for it, or end that process once you are sure it is stuck;
+- **The owner is on another host** (a repository on a shared disk): deal with it on that machine; this host never reclaims it;
+- **No owner record**: a lock left by an older buildbeat, or a crash in the instant of taking it; once no buildbeat process is running, delete the lock directory the error names.
+
+### Ledger "changed on disk since it was read"
+
+`ledger for RUN-X changed on disk since it was read (another writer); re-read it and retry`: another session or process wrote the same Run's ledger just before you (two approvals at once, a `stop` racing a `resume`). The kernel refused this write; **the ledger was not changed and is not corrupted**. Run the same command again: it decides afresh on the current state (and may simply tell you it is already approved or terminal). Approve, reject, `--adopt`, `stop`, `resume` and supersede all read the ledger only after taking the Run lock, so ordinary use never meets this error; seeing it means there really was a concurrent operation.
 
 ### Abnormal worker behaviour
 
@@ -78,6 +94,6 @@ Terminal Runs leave worktrees, `run/*` branches and the occasional lock. `buildb
 - It touches only Runs that are **terminal and already compacted into a run-record** (the Git plane must have the record before the runtime plane is touched);
 - Worktrees may be deleted (the commits are on the branch); a dirty worktree is left alone without `--force true`;
 - A branch is deleted only when the candidate **is reachable from another ref** (merged / tagged / on the remote) or the Run produced no candidate; otherwise it reports "reachable only from this branch, kept": that branch is the last thread to the evidence;
-- Leftover `locks/<RUN>.lock` of terminal Runs are cleaned; the `active-run` lock is still handled by hand as above.
+- Leftover `locks/<RUN>.lock` of terminal Runs are cleaned; the `active-run` lock is reclaimed too when its owner process is gone (the plan names the owner), and kept with the reason when the owner is alive, on another host, or unrecorded.
 
 gc never writes to the ledger (after the terminal state only `RUN_COMPACTED` is allowed), so it can run at any time and repeatedly.

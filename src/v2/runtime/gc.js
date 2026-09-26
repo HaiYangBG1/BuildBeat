@@ -1,5 +1,6 @@
 // Runtime garbage collection (iteration 08, C3): terminal runs leave a
-// worktree, a run/* branch and sometimes a lock behind. Sixteen of them had
+// worktree, a run/* branch and sometimes a lock behind (and a killed driver
+// an active-run lock whose owner is gone). Sixteen of them had
 // piled up in the deploy campaign before the owner asked for "打扫卫生".
 //
 // Rules (fail-closed toward keeping things):
@@ -18,7 +19,7 @@ import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 
 import { EventLedger } from "../storage/event-ledger.js";
-import { readback } from "../workspace/workspace-manager.js";
+import { describeLockOwner, inspectLock, readback, reclaimStaleLock } from "../workspace/workspace-manager.js";
 import { resolveRepoRef } from "./repo-ref.js";
 
 function git(cwd, args) {
@@ -64,6 +65,21 @@ export function planGc(repoRoot) {
   const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
   const locksDir = join(repoRoot, ".buildbeat", "runtime", "locks");
   const rows = [];
+  // The repository-wide lock belongs to no run: reclaimable only when its
+  // owner process is provably gone (same host, pid no longer exists).
+  const activeLock = join(locksDir, "active-run.lock");
+  if (existsSync(activeLock)) {
+    const seen = inspectLock(activeLock);
+    const row = { run: "(repository)", status: "active-run lock", actions: [], keep: [] };
+    if (seen.state === "dead") {
+      row.actions.push({ kind: "remove-lock", path: activeLock, owner: seen.owner });
+    } else if (seen.state === "unknown") {
+      row.keep.push("active-run lock has no owner record (older buildbeat?); remove it by hand once no buildbeat process is running");
+    } else {
+      row.keep.push(`active-run lock held by ${describeLockOwner(seen.owner)}${seen.state === "foreign-host" ? " (another host)" : " (still running)"}`);
+    }
+    rows.push(row);
+  }
   if (!existsSync(runsDir)) {
     return rows;
   }
@@ -145,7 +161,16 @@ export function applyGc(repoRoot, rows, { force = false } = {}) {
       const result = { run: row.run, ...action, done: false, error: null };
       results.push(result);
       try {
-        if (action.kind === "remove-lock") {
+        if (action.kind === "remove-lock" && action.owner) {
+          // Winning the takeover makes this process the only one entitled
+          // to the lock; only then is it removed.
+          if (reclaimStaleLock(action.path, action.owner)) {
+            rmSync(action.path, { recursive: true, force: true });
+            result.done = true;
+          } else {
+            result.error = "lock changed hands since the plan (or is being taken over); left in place";
+          }
+        } else if (action.kind === "remove-lock") {
           rmSync(action.path, { recursive: true, force: true });
           result.done = true;
         } else if (action.kind === "remove-worktree") {

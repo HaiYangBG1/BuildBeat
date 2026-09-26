@@ -1,0 +1,248 @@
+{
+  "run": "RUN-STALE-LOCKS-02",
+  "work": "WORK-STALE-LOCKS",
+  "workflow": "software-delivery",
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 67,
+    "lastDigest": "sha256:fadbeec145944ba36a3ab27ff88d17e8780a27e7df268fb0ca83cfd9446dddaf"
+  },
+  "startedAt": "2026-09-25T15:07:25.181Z",
+  "finishedAt": "2026-09-25T15:22:41.176Z",
+  "attempts": {
+    "verify": 3,
+    "review": 3
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 3,
+      "remaining": 0
+    }
+  },
+  "cost": {
+    "reviewRounds": 3,
+    "humanWaits": 5,
+    "infraFailures": 0,
+    "workerMs": 303800
+  },
+  "workspaces": {
+    "RUN-STALE-LOCKS-02": {
+      "repo": ".",
+      "branch": "run/RUN-STALE-LOCKS-02",
+      "worktreePath": ".buildbeat/worktrees/RUN-STALE-LOCKS-02",
+      "base": "d127681b86119b67631afbdf1f2243f21ddc4dcd",
+      "candidate": "512d11665b41d82599e89920daae419dd3e5a057"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-STALE-LOCKS-02/logs/verify-1.log",
+      "kind": "command",
+      "subject": "1bbe26ee4019805a14ebccac7d1e2de6ad49f896",
+      "digest": "sha256:48c776dfd2ab1b4f177f7ad886db311d6e96570422fc5442f6064deba864265c",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:660e301062ca74f3148dc4dc48c1ae687e0ca698fda032fd8f5b8f6724542d72"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-STALE-LOCKS-02/logs/review-1.log",
+      "kind": "command",
+      "subject": "1bbe26ee4019805a14ebccac7d1e2de6ad49f896",
+      "digest": "sha256:41928aab0ecea6474410f05ce9a7e9a1136ba828527d80ca5ab29234990112bb",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-STALE-LOCKS-02/outputs/review-1.json",
+      "kind": "review",
+      "subject": "1bbe26ee4019805a14ebccac7d1e2de6ad49f896",
+      "digest": "sha256:040d0dd8a315af7386540dc9e5c6e429a84cb7868a1010f759a5cca0123747c5",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/workspace/workspace-manager.js:115–128 的回收流程会先移走已换主的存活锁，第三个进程可在还原前成功拿锁，导致还原失败、两个持有者同时运行，且原持有者 releaseLock 会删除第三个进程的锁；现有测试未覆盖此并发交错，需要保证回收与拿锁之间的互斥。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-STALE-LOCKS-02/logs/verify-2.log",
+      "kind": "command",
+      "subject": "55868a4055db1e8875393dd5e8c3df2ed0c679ed",
+      "digest": "sha256:651358a0a9a32570f1b2af2c5abe9418caec0fc74d0989ffb52d54deba9fe2fc",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:228a54d6c996b27932de17298654da6383653456ce8578c61677ad9ce9e89048"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-STALE-LOCKS-02/logs/review-2.log",
+      "kind": "command",
+      "subject": "55868a4055db1e8875393dd5e8c3df2ed0c679ed",
+      "digest": "sha256:e9f2cfeb5ca94bd797b34c891f13ce74733848b5fd32d57430150d474869f312",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-STALE-LOCKS-02/outputs/review-2.json",
+      "kind": "review",
+      "subject": "55868a4055db1e8875393dd5e8c3df2ed0c679ed",
+      "digest": "sha256:b00a65bcf7e96df2a8ff6d9569aafcde7335927c038c6441d4c0c1674b7e0b8d",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/workspace/workspace-manager.js:126–168 将超过 10 秒的不可读 claim 直接判为废弃，但创建空文件后被暂停的进程可能仍存活；另一进程可占用下一槽位，双方随后都在 owner 更新前通过核对并取得锁，需要避免仅凭超时跳过接管者并补充该交错测试。"
+        },
+        {
+          "severity": "P2",
+          "summary": "tests/v2-stale-locks.test.js:150–170 的胜出子进程拿锁后立即退出，较晚调度的竞争者可以合法回收其死锁并再次胜出，使 winners.length === 1 随调度偶发失败；应让胜出者保持存活直到所有竞争者完成尝试。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-STALE-LOCKS-02/logs/verify-3.log",
+      "kind": "command",
+      "subject": "512d11665b41d82599e89920daae419dd3e5a057",
+      "digest": "sha256:3ba650d2ca590ad26be31e5adc15f49cf4ea19bf6d91fc48fd25528e835f4dfa",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:7fa9fbf3a098a2e4068e4c21d61f1cf2baa9b8e5c4b318da16d7aa9500b1ee41"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-STALE-LOCKS-02/logs/review-3.log",
+      "kind": "command",
+      "subject": "512d11665b41d82599e89920daae419dd3e5a057",
+      "digest": "sha256:c53247205b5807a443a970967802592c2da7249a7352b3a47097ab030fb79972",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-STALE-LOCKS-02/outputs/review-3.json",
+      "kind": "review",
+      "subject": "512d11665b41d82599e89920daae419dd3e5a057",
+      "digest": "sha256:059d384c88bf45945e09a210203f1e71e686886a59dff48f13c07d783412eb17",
+      "status": "passed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P2",
+          "summary": "tests/v2-stale-locks.test.js:162–181 的并发测试仅在断言通过后写入 done；任一断言失败都会让六个子进程永久等待，导致测试无法退出。应在 finally 或 t.after 中保证终止并回收子进程，并为 reported 等待处理子进程提前退出。"
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "1bbe26ee4019805a14ebccac7d1e2de6ad49f896",
+        "planDigest": "sha256:e5d60219febf3bcf6dbbb9eaa892e3ca373da812e36a3a4408cb53aedde3497e",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-STALE-LOCKS-02-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "55868a4055db1e8875393dd5e8c3df2ed0c679ed",
+        "planDigest": "sha256:e5d60219febf3bcf6dbbb9eaa892e3ca373da812e36a3a4408cb53aedde3497e",
+        "evidenceDigest": "sha256:040d0dd8a315af7386540dc9e5c6e429a84cb7868a1010f759a5cca0123747c5"
+      },
+      "decisionRef": "D-RUN-STALE-LOCKS-02-2"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "512d11665b41d82599e89920daae419dd3e5a057",
+        "planDigest": "sha256:e5d60219febf3bcf6dbbb9eaa892e3ca373da812e36a3a4408cb53aedde3497e",
+        "evidenceDigest": "sha256:b00a65bcf7e96df2a8ff6d9569aafcde7335927c038c6441d4c0c1674b7e0b8d"
+      },
+      "decisionRef": "D-RUN-STALE-LOCKS-02-3"
+    },
+    {
+      "decision": "approved",
+      "transition": "resume-review",
+      "subject": {
+        "candidate": "512d11665b41d82599e89920daae419dd3e5a057",
+        "planDigest": "sha256:e5d60219febf3bcf6dbbb9eaa892e3ca373da812e36a3a4408cb53aedde3497e",
+        "evidenceDigest": "sha256:3ba650d2ca590ad26be31e5adc15f49cf4ea19bf6d91fc48fd25528e835f4dfa"
+      },
+      "decisionRef": "D-RUN-STALE-LOCKS-02-4"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "512d11665b41d82599e89920daae419dd3e5a057",
+        "planDigest": "sha256:e5d60219febf3bcf6dbbb9eaa892e3ca373da812e36a3a4408cb53aedde3497e",
+        "evidenceDigest": "sha256:059d384c88bf45945e09a210203f1e71e686886a59dff48f13c07d783412eb17"
+      },
+      "decisionRef": "D-RUN-STALE-LOCKS-02-5"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-STALE-LOCKS-02-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "1bbe26ee4019805a14ebccac7d1e2de6ad49f896",
+        "planDigest": "sha256:e5d60219febf3bcf6dbbb9eaa892e3ca373da812e36a3a4408cb53aedde3497e",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-STALE-LOCKS-02-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "55868a4055db1e8875393dd5e8c3df2ed0c679ed",
+        "planDigest": "sha256:e5d60219febf3bcf6dbbb9eaa892e3ca373da812e36a3a4408cb53aedde3497e",
+        "evidenceDigest": "sha256:040d0dd8a315af7386540dc9e5c6e429a84cb7868a1010f759a5cca0123747c5"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-STALE-LOCKS-02-3",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "512d11665b41d82599e89920daae419dd3e5a057",
+        "planDigest": "sha256:e5d60219febf3bcf6dbbb9eaa892e3ca373da812e36a3a4408cb53aedde3497e",
+        "evidenceDigest": "sha256:b00a65bcf7e96df2a8ff6d9569aafcde7335927c038c6441d4c0c1674b7e0b8d"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-STALE-LOCKS-02-4",
+      "transition": "resume-review",
+      "subject": {
+        "candidate": "512d11665b41d82599e89920daae419dd3e5a057",
+        "planDigest": "sha256:e5d60219febf3bcf6dbbb9eaa892e3ca373da812e36a3a4408cb53aedde3497e",
+        "evidenceDigest": "sha256:3ba650d2ca590ad26be31e5adc15f49cf4ea19bf6d91fc48fd25528e835f4dfa"
+      },
+      "stale": false
+    },
+    {
+      "decisionRef": "D-RUN-STALE-LOCKS-02-5",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "512d11665b41d82599e89920daae419dd3e5a057",
+        "planDigest": "sha256:e5d60219febf3bcf6dbbb9eaa892e3ca373da812e36a3a4408cb53aedde3497e",
+        "evidenceDigest": "sha256:059d384c88bf45945e09a210203f1e71e686886a59dff48f13c07d783412eb17"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

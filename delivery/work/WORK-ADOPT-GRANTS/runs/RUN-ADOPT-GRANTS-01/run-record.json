@@ -1,0 +1,115 @@
+{
+  "run": "RUN-ADOPT-GRANTS-01",
+  "work": "WORK-ADOPT-GRANTS",
+  "workflow": "software-delivery",
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 25,
+    "lastDigest": "sha256:3f49f431f9e122aad79071520abd1b24aa1ed790c0e43bca7f1c1946bd1deec4"
+  },
+  "startedAt": "2026-09-26T07:41:28.216Z",
+  "finishedAt": "2026-09-26T07:49:46.277Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 1,
+      "remaining": 1
+    }
+  },
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 2,
+    "infraFailures": 0,
+    "workerMs": 113423
+  },
+  "workspaces": {
+    "RUN-ADOPT-GRANTS-01": {
+      "repo": ".",
+      "branch": "run/RUN-ADOPT-GRANTS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-ADOPT-GRANTS-01",
+      "base": "29f480992649532267158a402a4900c7f455530e",
+      "candidate": "d03775efe5d893d66cb50cf33bb905ad90fe2ff2"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-ADOPT-GRANTS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "d03775efe5d893d66cb50cf33bb905ad90fe2ff2",
+      "digest": "sha256:ef839adf93bf65520f8278a941dd085b25838774e9d1a98ad945eb4864f355e7",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:e6c57b54655e52cd0c748f8a1c4fad1a7f57826ee3558647cd45ee135c90ce27"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-ADOPT-GRANTS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "d03775efe5d893d66cb50cf33bb905ad90fe2ff2",
+      "digest": "sha256:8f38977aba38912d4a48b6609026a6fd7314eed2f9a176bce550e89b78d81c24",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-ADOPT-GRANTS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "d03775efe5d893d66cb50cf33bb905ad90fe2ff2",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "d03775efe5d893d66cb50cf33bb905ad90fe2ff2",
+        "planDigest": "sha256:5a6bcd92931ae71c2de1e0f11f0eb1d039a2142bd5e7155ade191bc2f97203df",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-ADOPT-GRANTS-01-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d03775efe5d893d66cb50cf33bb905ad90fe2ff2",
+        "planDigest": "sha256:5a6bcd92931ae71c2de1e0f11f0eb1d039a2142bd5e7155ade191bc2f97203df",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-ADOPT-GRANTS-01-2"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-ADOPT-GRANTS-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "d03775efe5d893d66cb50cf33bb905ad90fe2ff2",
+        "planDigest": "sha256:5a6bcd92931ae71c2de1e0f11f0eb1d039a2142bd5e7155ade191bc2f97203df",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-ADOPT-GRANTS-01-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d03775efe5d893d66cb50cf33bb905ad90fe2ff2",
+        "planDigest": "sha256:5a6bcd92931ae71c2de1e0f11f0eb1d039a2142bd5e7155ade191bc2f97203df",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

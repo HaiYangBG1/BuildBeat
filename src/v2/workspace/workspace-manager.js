@@ -1,16 +1,21 @@
 // Workspace manager per docs/v2/RFC-0002-domain-model.md: every Run works in
 // an isolated git worktree; the candidate is whatever git reads back, never
-// what a worker claims. Locks are mkdir-atomic. Run branches are never
-// deleted here — the pinned candidate must stay reachable for evidence.
+// what a worker claims. Locks are mkdir-atomic and record their owner, so a
+// lock whose owner process is provably gone can be reclaimed. Run branches
+// are never deleted here — the pinned candidate must stay reachable for
+// evidence.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
+import { existsSync, linkSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join } from "node:path";
 
 export class WorkspaceError extends Error {
-  constructor(message) {
+  constructor(message, details = {}) {
     super(message);
     this.name = "WorkspaceError";
+    Object.assign(this, details);
   }
 }
 
@@ -29,18 +34,183 @@ function git(cwd, args) {
   }
 }
 
-export function acquireLock(repoRoot, runId) {
-  const lockDir = join(repoRoot, ".buildbeat", "runtime", "locks");
-  mkdirSync(lockDir, { recursive: true });
-  const lockPath = join(lockDir, `${runId}.lock`);
+// Lock ownership. A driver killed by SIGKILL, a host-tool timeout or a
+// reboot never reaches its finally block, so its locks outlive it. Real
+// incident: a killed driver left active-run.lock and <RUN>.lock behind;
+// resume answered "another run is active" and stop "already locked", and the
+// only way out was deleting runtime directories by hand.
+const OWNER_FILE = "owner.json";
+const CLAIM_SLOTS = 16;
+
+function lockPathFor(repoRoot, id) {
+  return join(repoRoot, ".buildbeat", "runtime", "locks", `${id}.lock`);
+}
+
+function pidAlive(pid) {
   try {
-    mkdirSync(lockPath);
+    process.kill(pid, 0);
+    return true;
   } catch (error) {
-    if (error.code === "EEXIST") {
-      throw new WorkspaceError(`run ${runId} is already locked (${lockPath})`);
+    // EPERM: the process exists but belongs to someone else.
+    return error.code === "EPERM";
+  }
+}
+
+function readOwner(lockPath) {
+  try {
+    const owner = JSON.parse(readFileSync(join(lockPath, OWNER_FILE), "utf8"));
+    if (owner && Number.isInteger(owner.pid) && owner.pid > 0 && typeof owner.host === "string") {
+      return owner;
     }
+  } catch {
+    // missing or unreadable: no owner record
+  }
+  return null;
+}
+
+function sameOwner(a, b) {
+  return a.pid === b.pid && a.host === b.host && a.acquiredAt === b.acquiredAt;
+}
+
+export function describeLockOwner(owner) {
+  return `pid ${owner.pid} on ${owner.host}, acquired ${owner.acquiredAt}${owner.command ? `, command ${owner.command}` : ""}`;
+}
+
+// alive | dead | foreign-host | unknown. Only "dead" is ever reclaimed: a
+// foreign host cannot be probed, and a lock with no owner record may belong
+// to an older buildbeat that is still running.
+export function inspectLock(lockPath, { host = hostname(), isAlive = pidAlive } = {}) {
+  const owner = readOwner(lockPath);
+  if (!owner) {
+    return { state: "unknown", owner: null };
+  }
+  if (owner.host !== host) {
+    return { state: "foreign-host", owner };
+  }
+  return { state: isAlive(owner.pid) ? "alive" : "dead", owner };
+}
+
+function ownerRecord() {
+  return {
+    pid: process.pid,
+    host: hostname(),
+    acquiredAt: new Date().toISOString(),
+    command: process.argv[2] ?? null,
+  };
+}
+
+// Readers never see a half-written owner: write aside, then rename over.
+function writeOwner(lockPath) {
+  const temp = join(lockPath, `.${OWNER_FILE}.${process.pid}-${randomBytes(4).toString("hex")}`);
+  writeFileSync(temp, `${JSON.stringify(ownerRecord())}\n`);
+  renameSync(temp, join(lockPath, OWNER_FILE));
+}
+
+function takeLock(lockPath) {
+  mkdirSync(lockPath);
+  try {
+    writeOwner(lockPath);
+  } catch (error) {
+    rmSync(lockPath, { recursive: true, force: true });
     throw error;
   }
+}
+
+function ownerGeneration(owner) {
+  return createHash("sha256").update(`${owner.pid}|${owner.host}|${owner.acquiredAt}`).digest("hex").slice(0, 16);
+}
+
+// A claim is abandoned only when its claimer is provably gone (this host,
+// pid no longer exists). Never by age: a claimer paused by the scheduler or
+// SIGSTOP is still alive and may still finish (review of the second version).
+function claimAbandoned(claimPath, isAlive) {
+  try {
+    const claimer = JSON.parse(readFileSync(claimPath, "utf8"));
+    return claimer.host === hostname() && !isAlive(claimer.pid);
+  } catch {
+    return false;
+  }
+}
+
+// Creates the claim with its content already in place: the claimer is
+// written aside and hard-linked to the claim name, and link() fails if the
+// name exists. There is no instant in which a claim exists but is empty.
+function createClaim(lockPath, claimPath) {
+  const temp = join(lockPath, `.claim.${process.pid}-${randomBytes(4).toString("hex")}`);
+  writeFileSync(temp, JSON.stringify({ pid: process.pid, host: hostname() }));
+  try {
+    linkSync(temp, claimPath);
+  } finally {
+    unlinkSync(temp);
+  }
+}
+
+// Wins the right to take over a lock whose owner was judged dead, or
+// returns false. The lock directory never disappears during a takeover, so
+// a plain acquire always sees it held and cannot slip in between (the
+// review of the first version found exactly that window: renaming the lock
+// aside let a third process take a fresh one). Reclaimers race on a claim
+// file created by link() and named after the dead owner's generation:
+// exactly one wins per generation. A winner that died before finishing
+// leaves its claim behind; the next slot is tried once that claimer is
+// provably gone. After winning, the owner record is re-read: if it is no
+// longer the dead owner, nothing is taken over.
+export function reclaimStaleLock(lockPath, expectedOwner, { isAlive = pidAlive } = {}) {
+  const generation = ownerGeneration(expectedOwner);
+  for (let slot = 1; slot <= CLAIM_SLOTS; slot += 1) {
+    const claimPath = join(lockPath, `claim-${generation}-${slot}`);
+    try {
+      createClaim(lockPath, claimPath);
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        return false;
+      }
+      if (error.code !== "EEXIST") {
+        throw error;
+      }
+      if (claimAbandoned(claimPath, isAlive)) {
+        continue;
+      }
+      return false;
+    }
+    const current = readOwner(lockPath);
+    return Boolean(current && sameOwner(current, expectedOwner));
+  }
+  return false;
+}
+
+function heldError(id, seen) {
+  const where = `.buildbeat/runtime/locks/${id}.lock`;
+  let detail;
+  if (seen.state === "alive") {
+    detail = `held by ${describeLockOwner(seen.owner)}; that process is still running: wait for it, or end it once you are sure it is stuck`;
+  } else if (seen.state === "dead") {
+    detail = `held by ${describeLockOwner(seen.owner)}, whose process is gone; another process is taking it over right now: retry in a moment`;
+  } else if (seen.state === "foreign-host") {
+    detail = `held by ${describeLockOwner(seen.owner)}, another host; release it there`;
+  } else {
+    detail = `no owner record in ${where} (a lock from an older buildbeat, or a crash while taking it); check that no buildbeat process is still running, then remove that directory`;
+  }
+  return new WorkspaceError(`run ${id} is already locked: ${detail}`, { lock: { id, ...seen, detail } });
+}
+
+export function acquireLock(repoRoot, runId) {
+  mkdirSync(join(repoRoot, ".buildbeat", "runtime", "locks"), { recursive: true });
+  const lockPath = lockPathFor(repoRoot, runId);
+  try {
+    takeLock(lockPath);
+    return lockPath;
+  } catch (error) {
+    if (error.code !== "EEXIST") {
+      throw error;
+    }
+  }
+  const seen = inspectLock(lockPath);
+  if (seen.state !== "dead" || !reclaimStaleLock(lockPath, seen.owner)) {
+    throw heldError(runId, seen.state === "dead" ? inspectLock(lockPath) : seen);
+  }
+  writeOwner(lockPath);
+  process.stderr.write(`reclaimed stale lock ${runId} (owner ${describeLockOwner(seen.owner)} is gone)\n`);
   return lockPath;
 }
 
@@ -58,8 +228,7 @@ export function listHeldRunLocks(repoRoot) {
 }
 
 export function releaseLock(repoRoot, runId) {
-  const lockPath = join(repoRoot, ".buildbeat", "runtime", "locks", `${runId}.lock`);
-  rmSync(lockPath, { recursive: true, force: true });
+  rmSync(lockPathFor(repoRoot, runId), { recursive: true, force: true });
 }
 
 export function createWorkspace({ repoRoot, runId, base, branch, protectPush = true }) {

@@ -57,10 +57,10 @@ function options(root, runId, adapters, extra = {}) {
   };
 }
 
-test("approving resume-review after the budget ran out grants one more round instead of re-asking", () => {
+test("approving the exhausted review round before fix grants one more round instead of re-asking", () => {
   // Real incident: the preset's two review rounds ran out, the human
   // approved resume-review, and the kernel immediately filed the same
-  // request again. The run was cancelled while its candidate shipped.
+  // request again. Now ask at enter-fix and fund the whole next round.
   const { root } = fixtureRepo();
   const mock = createMockAdapter({
     verify: ["succeed", "succeed", "succeed"],
@@ -70,11 +70,11 @@ test("approving resume-review after the budget ran out grants one more round ins
   const adapters = { builder: committingBuilder(), verifier: mock, fixer: mock, reviewer: mock };
   const started = startRun(options(root, "RUN-B1", adapters));
   assert.equal(started.state.run.status, "WAITING_HUMAN");
-  assert.equal(started.state.pendingHuman.transition, "resume-review");
-  assert.match(started.state.pendingHuman.reasons[0], /budget exhausted: review would exceed maxAttempts=2/);
-  assert.match(started.state.pendingHuman.reasons[1], /approving resume-review grants one more attempt/);
+  assert.equal(started.state.pendingHuman.transition, "enter-fix");
+  assert.match(started.state.pendingHuman.reasons[0], /review budget exhausted: 2\/2 review round\(s\) used in this run/);
+  assert.match(started.state.pendingHuman.reasons[0], /approve enter-fix = fix \+ re-verify \+ one more review round/);
 
-  const approval = approveRun(root, "RUN-B1", { by: "owner", transition: "resume-review" });
+  const approval = approveRun(root, "RUN-B1", { by: "owner", transition: "enter-fix" });
   assert.equal(approval.approved, true);
   const resumed = resumeRun(options(root, "RUN-B1", adapters));
   assert.equal(resumed.resumed, true);
@@ -111,7 +111,7 @@ test("a final-attempt failure also becomes one more attempt on approval, not a f
   const adapters = { builder: mock, verifier: mock, reviewer: mock };
   const started = startRun(options(root, "RUN-B3", adapters, { maxAttemptsPerStep: 1 }));
   assert.equal(started.state.pendingHuman.transition, "resume-build");
-  assert.match(started.state.pendingHuman.reasons[0], /budget exhausted: build failed its final attempt/);
+  assert.match(started.state.pendingHuman.reasons[0], /build budget exhausted: 1\/1 charged attempt\(s\) used, 1 real failure\(s\)/);
   approveRun(root, "RUN-B3", { by: "owner", transition: "resume-build" });
   const resumed = resumeRun(options(root, "RUN-B3", adapters, { maxAttemptsPerStep: 1 }));
   assert.equal(resumed.state.budgetExtensions.build, 1);

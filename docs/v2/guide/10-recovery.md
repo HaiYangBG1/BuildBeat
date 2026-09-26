@@ -6,6 +6,10 @@
 
 ## 症状 → 处置
 
+### 「run config … has N problem(s)」
+
+run 配置写错了，Run 没有起跑、什么都没改。按清单逐条改（每条写明是哪个键、错在哪、最接近的正确拼写），改完再跑同一条命令；`buildbeat doctor --config …` 可以先单独核对。
+
 ### 台账报 corrupted
 
 `status`/`inbox` 出现 `LEDGER CORRUPTED after seq=N (<原因>)`：台账在最后一条合法事件处截断视图并**拒绝追加**——恢复是人的决定，不静默修复。
@@ -20,19 +24,31 @@
 buildbeat resume --config <run-config.yaml>
 ```
 
+使用 `start --attempt new` 自动编号时，`resume --config <run-config.yaml>` 会续跑该家族唯一未终态的 Run，并打印选中的 ID；也可用 `--run <RUN-ID>` 显式指定配置中的 Run 本身或 `<家族>-NN`（数字至少两位）。配置本身已有台账时优先使用该精确 ID。多个未终态 Run 会列出候选并要求用 `--run` 选择；没有未终态 Run 会报告最新一次的 ID 和终态，没有台账则明确说明。
+
 在途步会以 `crashed` 关闭（事实落账），然后**重跑该步本身**（beta.3 改）：进程死掉不说明候选有问题，丢失的那次尝试照常计入该步预算，预算耗尽即停人工。此前的语义是把 crash 当步骤失败走 failure 边——真实事故（deploy-18）：宿主工具超时杀掉 verify worker，crash 被路由去 fix，fixer 面对零 verifier 证据白烧一轮。工作树脏了仍然先停人工。带批准恢复时会做 candidate/plan 新鲜度检查，变了即 `APPROVAL_STALE` 转人工。恢复不了就删 runtime 重跑——候选分支与 Git 面记录不丢。
 
 **启动纪律**（同一事故的另一半）：长于分钟级的 Run 必须以脱离宿主工具超时的方式启动（`nohup`/`setsid`），交互式 shell 里 `start` 会打印这条提醒。
 
 ### 锁卡住（"another run is active"）
 
-上一个 Run 异常退出可能留下仓库锁：确认真的没有活动 Run 后
+每把锁记录持有者（进程号、主机名、获取时间、命令）。驱动进程被杀、被宿主超时结束或机器重启后，锁会残留；下一次 `resume` / `stop` / `start` 拿锁时，若持有者**在本机且进程已不存在**，自动回收并打印 `reclaimed stale lock <id> (owner pid … is gone)`，无需手删任何文件。所以驱动被杀后直接：
 
 ```bash
-buildbeat stop --repo . --run RUN-X --reason "crashed; releasing lock"
+buildbeat resume --config <run-config.yaml>
 ```
 
-`stop` 落终态与理由；单纯锁残留也可删 `.buildbeat/runtime/` 后重来。
+内核走上文的崩溃恢复（`RUN_INTERRUPTED` → 重跑中断步）；不想续跑就 `buildbeat stop --repo . --run RUN-X --reason "…"`。
+
+只有三种情况仍会报 `another run is active` / `already locked`，报错里写明持有者：
+
+- **持有者还活着**：另一个 Run 真的在跑，等它结束；确认它卡死再结束该进程；
+- **持有者在别的主机**（共享盘上的仓库）：到那台机器处理，本机不会替它回收；
+- **没有持有者信息**：旧版本 buildbeat 留下的锁，或拿锁瞬间崩溃；确认没有 buildbeat 进程在跑后，删除报错里给出的那个锁目录。
+
+### 台账「changed on disk since it was read」
+
+`ledger for RUN-X changed on disk since it was read (another writer); re-read it and retry`：另一个会话或进程刚好在你之前写了同一个 Run 的台账（例如两边同时批准、一边 `stop` 一边 `resume`）。内核拒绝了这次写入，**台账没有被改动、也没有损坏**；重新执行同一条命令即可，它会基于最新状态重新判断（可能直接告诉你「已经批过了 / 已终态」）。批准、拒绝、`--adopt`、`stop`、`resume` 与自动取代都在拿到 Run 锁之后才读台账，正常使用不会遇到这条报错；看到它说明确实有并发操作。
 
 ### Worker 行为异常
 
@@ -78,6 +94,6 @@ rm -rf .buildbeat/runtime/
 - 只动**终态且已压成 run-record** 的 Run（Git 面有账才动运行时面）；
 - 工作树可删（提交都在分支上）；脏工作树不带 `--force true` 不动；
 - 分支只在候选**已可从其他 ref 到达**（已合并 / 打 tag / 在远端）或 Run 未产出候选时删；否则明示"仅此分支可达，保留"——它是证据的最后一根线；
-- 终态 Run 的残留 `locks/<RUN>.lock` 一并清；`active-run` 锁仍按上文人工处置。
+- 终态 Run 的残留 `locks/<RUN>.lock` 一并清；`active-run` 锁在持有者进程已不存在时一并回收（计划里写明持有者），持有者还活着 / 在别的主机 / 没有持有者信息时保留并说明原因。
 
 gc 永不写台账（终态后只允许 `RUN_COMPACTED`），所以随时可跑、可重复。

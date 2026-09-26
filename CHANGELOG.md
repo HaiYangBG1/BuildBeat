@@ -2,6 +2,24 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- YAML 子集解析器不再绊倒常见写法：空的 `[]` / `{}` 可用（非空行内集合仍拒绝，报错提示改成每项一行）；列表项可与所属键同缩进；不带引号的 `- http://x` 按字符串解析，含 `": "` 且前半截不是合法键的项（如 `- echo a: b`）不猜、报错要求加引号；开头的 BOM 被忽略；`007` 这类前导零保留为字符串；「has no value」报错给出改法。修改前的解析器冻结在 `tests/support/yaml-subset-v1.js`，测试断言仓库内它能解析的每个 YAML 新旧结果完全一致；SKILL.md、快速上手（中英）与 run-config 样板同步。
+
+- run-config 在做任何事之前整体校验并一次列出全部问题：必填键、未知顶层键与 worker / envelope 未知字段（给最接近的拼写）、类型与取值（`inheritEnv: yes` 不再静默当 false）、worker 名须被工作流用到、`stopAt` / `entry` 须是工作流步骤、`work` / `run` 的字符与类型（`run: 007` 要求加引号）。缺 `repo` 不再报 Node 内部错误 `paths[1]`。`start` / `resume` / `doctor` / `preflight` / `approve --config` 统一经由它；仓库内全部 run-config 有测试兜底兼容。Workflow 指南与恢复手册（中英）同步。
+
+- 修复会话手修交回时丢额度：`resume --adopt <sha>` 回答一次带 `grants` 的预算停车时，候选虽换成新提交，仍继承请求上的 grants（计划未变的前提下），重验后直接进入下一轮 review，不再在同一轮第二次停 `resume-review`。普通批准仍要求 subject 一致，刷新过的请求仍不继承。抢锁测试在断言失败时也会结束子进程、不再挂住测试进程。
+
+- 修复并发写台账把台账写坏：批准 / 拒绝 / `--adopt` / `stop` / `resume` / 自动取代改为拿到 Run 锁之后才读台账，并在锁内基于新读到的状态判断与写入（此前先读后锁，两个会话几乎同时操作同一 Run 时，后写者会写出重复 seq、断开哈希链，台账从此判定损坏）。台账写入另加兜底：文件在读取后被别人写过就拒绝写入（`changed on disk since it was read`），不写任何字节，重试即可。确定性交错测试在旧代码上复现「hash chain broken」，修复后通过；另有真实多进程并发测试；恢复手册（中英）同步。
+
+- 修复驱动进程被杀后锁残留把 Run 卡死：锁记录持有者（pid、主机、获取时间、命令），`resume` / `stop` / `start` 拿锁时若持有者在本机且进程已不存在即自动回收（锁目录在接管期间始终存在，接管者以「死者世代」命名的独占 claim 竞争、只有一个能赢，赢家再原子替换持有者记录；接管中途死掉的接管者不会把锁卡死；普通拿锁方在此期间一律看到「已被持有」，不会出现两个持有者）；持有者存活、在别的主机或没有记录时不回收，报错写明持有者与下一步。`gc` 同样回收持有者已死的 `active-run` 锁。被 SIGKILL 的真实驱动可直接 `resume` 走崩溃恢复（有集成测试）；恢复手册（中英）同步。
+
+- 修复 `resume --config` 找不到自动编号 Run：精确台账优先，否则选择家族唯一未终态 Run；新增 `--run <RUN-ID>` 显式选择，无候选或多候选时提供诊断。非终态批准提示使用 `buildbeat resume` 并带真实 Run ID，帮助与中英文指南同步；只读步预算提示改为每轮计费。
+
+- 修复预算误停车：非只读步成功不扣次数，真失败与只读 review 轮次继续消耗预算；增加总 attempt 的 3 倍兜底，防止成功循环失控。
+- review 到顶且发现阻断问题时提前在 `enter-fix` 一次批准修复、重验、再审；Run/Work review 上限同时放行，过期请求不继承扩额。预算提示显示实际用量、真失败次数及批准/拒绝的含义。
+- 事件仅增加可选 `free` / `grants` 字段，旧台账回放保持兼容；默认预算数值不变。放行计划钉在第一条 `BUDGET_EXTENDED` 上，放行中途进程被杀后 `resume` 按原计划补齐。停车提示为英文、带「已用/上限/真失败次数」与批准、拒绝的含义。
+
 ## v3.0.1 — 2026-09-09（补丁：示例项目、英文指南）
 
 > **发布状态**：`@haiyangbg/buildbeat@3.0.1` 已于 2026-09-09 从 `main`（PR #41，merge commit `c322ce9`，tag `v3.0.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34370800960，双 job 一次 success；所有者授权「发 3.0.1」）。独立回读（直连 npmjs.org）：`latest` = 3.0.1、integrity 与本地 dry-run 一致、attestation、隔离安装、包内 `example/` 与四篇英文指南在位全过，GitHub Release v3.0.1 标 Latest，证据见 [`docs/V3.0.1-RELEASE-EVIDENCE-2026-09-09.md`](docs/V3.0.1-RELEASE-EVIDENCE-2026-09-09.md)。

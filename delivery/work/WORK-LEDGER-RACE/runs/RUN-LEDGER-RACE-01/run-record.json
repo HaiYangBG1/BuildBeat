@@ -1,0 +1,171 @@
+{
+  "run": "RUN-LEDGER-RACE-01",
+  "work": "WORK-LEDGER-RACE",
+  "workflow": "software-delivery",
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 44,
+    "lastDigest": "sha256:a838b5b256d265295f2dc47c05156daf6200a2d87d8b2e8cb614165de25cac80"
+  },
+  "startedAt": "2026-09-25T15:22:46.789Z",
+  "finishedAt": "2026-09-25T15:34:28.392Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 0
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "infraFailures": 0,
+    "workerMs": 176019
+  },
+  "workspaces": {
+    "RUN-LEDGER-RACE-01": {
+      "repo": ".",
+      "branch": "run/RUN-LEDGER-RACE-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-LEDGER-RACE-01",
+      "base": "41abd03829a62c3765ac564ef035f5c984eba061",
+      "candidate": "11e8ee08dde54339f3f439cb2aa0f000624c00e3"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-LEDGER-RACE-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "80909876dda700036686b27c42012ab2cff1b470",
+      "digest": "sha256:a1e534d2100ec5e39753105887bf747311efe0ade289553aaf9ef36678b36101",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:c73fe6b8cec8a32a7cfd87467a694e23687740cd8e57fec5d5672f44ef074942"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-LEDGER-RACE-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "80909876dda700036686b27c42012ab2cff1b470",
+      "digest": "sha256:4fa1eeab17b4ca2aaa496478fff29d9c4b59892cc18a1b07f9973745f31566e2",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-LEDGER-RACE-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "80909876dda700036686b27c42012ab2cff1b470",
+      "digest": "sha256:ce0cc86673e1f1257e6cdf20d1a3c8704f809204cc475cf7e539492fff27de67",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "tests/v2-ledger-race.test.js:121–135 的 stop/approve 并发测试仅在 stop 成功时检查终态，所有命令失败也能通过，未保证覆盖计划要求的终态与决定顺序一致性。"
+        },
+        {
+          "severity": "P2",
+          "summary": "src/v2/runtime/orchestrator.js:923–933 修改了 startRun 的读取及检查逻辑，超出 plan.md 明确限定的 resumeRun 与 supersede 修改范围，需补充计划并获得接受。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-LEDGER-RACE-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "11e8ee08dde54339f3f439cb2aa0f000624c00e3",
+      "digest": "sha256:81cb4a80d671603a1d7541c8a9511154cfe47febf88007975a17d5ff34077348",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:e09833cc6b4f078d0abb864982ac669f402ff9f47d8bb4bc879acbb3757826bd"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-LEDGER-RACE-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "11e8ee08dde54339f3f439cb2aa0f000624c00e3",
+      "digest": "sha256:91e18610c5bcaf83e2f4b04c9b75e941da417331e691e77d754778b2231c3eb4",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-LEDGER-RACE-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "11e8ee08dde54339f3f439cb2aa0f000624c00e3",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "80909876dda700036686b27c42012ab2cff1b470",
+        "planDigest": "sha256:9fe89080ae08f80af6722a8fcbcfabecc40a7b11fcc96b5fd216853d86af0974",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-LEDGER-RACE-01-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "11e8ee08dde54339f3f439cb2aa0f000624c00e3",
+        "planDigest": "sha256:9fe89080ae08f80af6722a8fcbcfabecc40a7b11fcc96b5fd216853d86af0974",
+        "evidenceDigest": "sha256:ce0cc86673e1f1257e6cdf20d1a3c8704f809204cc475cf7e539492fff27de67"
+      },
+      "decisionRef": "D-RUN-LEDGER-RACE-01-2"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "11e8ee08dde54339f3f439cb2aa0f000624c00e3",
+        "planDigest": "sha256:9fe89080ae08f80af6722a8fcbcfabecc40a7b11fcc96b5fd216853d86af0974",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-LEDGER-RACE-01-3"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-LEDGER-RACE-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "80909876dda700036686b27c42012ab2cff1b470",
+        "planDigest": "sha256:9fe89080ae08f80af6722a8fcbcfabecc40a7b11fcc96b5fd216853d86af0974",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-LEDGER-RACE-01-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "11e8ee08dde54339f3f439cb2aa0f000624c00e3",
+        "planDigest": "sha256:9fe89080ae08f80af6722a8fcbcfabecc40a7b11fcc96b5fd216853d86af0974",
+        "evidenceDigest": "sha256:ce0cc86673e1f1257e6cdf20d1a3c8704f809204cc475cf7e539492fff27de67"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-LEDGER-RACE-01-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "11e8ee08dde54339f3f439cb2aa0f000624c00e3",
+        "planDigest": "sha256:9fe89080ae08f80af6722a8fcbcfabecc40a7b11fcc96b5fd216853d86af0974",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
