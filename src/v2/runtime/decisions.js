@@ -2,7 +2,7 @@
 // An approval is recorded only after re-reading the workspace and confirming
 // the subject is still exactly what the request showed — if the candidate
 // moved or the tree is dirty, the request is refreshed instead of stamped
-// (lessons #18: no rubber-stamping a moved target). Every decision lands both
+// (lessons.md「读过期 race」: no rubber-stamping a moved target). Every decision lands both
 // as a DECISION_RECORDED event and as a line in the Git plane
 // (delivery/work/<work>/decisions.jsonl).
 

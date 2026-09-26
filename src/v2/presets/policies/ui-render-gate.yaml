@@ -1,4 +1,4 @@
-# Invariant 22 (v1 lessons #3, machine form): a UI delivery's spec approval
+# Invariant 22 (lessons.md「静态稿拍板 → 返工螺旋」, machine form): a UI delivery's spec approval
 # subject must include renderable proof — a screenshot with a digest —
 # before a human may stamp it. Static prose is not an approvable design.
 kind: policy

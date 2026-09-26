@@ -751,6 +751,25 @@ def check_active_docs_currency() -> list[str]:
     return errors
 
 
+NUMBERED_LESSON = re.compile(r"lessons?(?:\.md)?`?\s*(?:#\s*\d|第\s*\d+\s*条)|教训\s*\d+", re.IGNORECASE)
+
+
+def check_lesson_citations() -> list[str]:
+    """lessons.md was renumbered once (3.0.0) and stale numbers pointed at the
+    wrong entries; cite a lesson by its title, never by its number."""
+    errors: list[str] = []
+    roots = [ROOT / "src", ROOT / "templates", ROOT / "docs" / "v2" / "guide", ROOT / "docs" / "v2" / "skill"]
+    files = [ROOT / "SKILL.md"]
+    for root in roots:
+        if root.exists():
+            files.extend(path for path in root.rglob("*") if path.is_file() and path.suffix in {".md", ".js", ".yaml", ".sh"})
+    for path in files:
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if NUMBERED_LESSON.search(line):
+                errors.append(f"{path.relative_to(ROOT)}:{number}: cite lessons.md by title, not by number")
+    return errors
+
+
 def main() -> int:
     paths = markdown_files()
     errors = []
@@ -765,6 +784,7 @@ def main() -> int:
     errors.extend(check_workflow_action_pins())
     errors.extend(check_repository_governance())
     errors.extend(check_active_docs_currency())
+    errors.extend(check_lesson_citations())
 
     if errors:
         print("Documentation checks failed:", file=sys.stderr)

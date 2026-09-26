@@ -1,6 +1,7 @@
 // buildbeat metrics v0: local, read-only, derived entirely from run ledgers.
-// No collection, no upload (V2-PLAN §6 / lessons #8: without numbers you are
-// forever doing precise work on the wrong thing).
+// No collection, no upload (V2-PLAN §6; lessons.md「流程只管"怎么做对",不管
+// "做的是不是对的事"」: without numbers you are forever doing precise work on
+// the wrong thing).
 
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";

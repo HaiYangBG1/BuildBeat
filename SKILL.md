@@ -180,9 +180,9 @@ worker prompt 里要写清三条环境事实(模板 AGENTS 第 ⑨ 条):沙箱�
 └── <代码子仓们>/                   # 多仓项目:各自独立 git + 该仓自己的 AGENTS.md(只写本仓局部细节)
 ```
 
-> 🔴 **装载入口走开放标准 `AGENTS.md`,不绑厂商**(教训 13)。标准语义 = 会话从被编辑文件所在目录**向上收集沿途所有 `AGENTS.md` 合并、离得最近的优先**,所以「根写全局、子仓写局部」是白捡的层叠能力,不用自己发明。只认 `CLAUDE.md` 的工具靠根上一份**一行指针**兼容(内容单点在 `AGENTS.md`,复制过去 = 自造 SSOT 腐烂;也别用符号链接,Windows 上 git 默认 `core.symlinks=false` 会静默退化成文本文件)。同理**不要**引入 gitignore 的本地覆盖文件(如 `AGENTS.override.md`):本文件装的是红线与护栏,允许不进 git 的本地覆盖 = 给绕过护栏开后门,reviewer 与 pre-commit 都看不见。
+> 🔴 **装载入口走开放标准 `AGENTS.md`,不绑厂商**(lessons.md「上下文载体绑死单一厂商」)。标准语义 = 会话从被编辑文件所在目录**向上收集沿途所有 `AGENTS.md` 合并、离得最近的优先**,所以「根写全局、子仓写局部」是白捡的层叠能力,不用自己发明。只认 `CLAUDE.md` 的工具靠根上一份**一行指针**兼容(内容单点在 `AGENTS.md`,复制过去 = 自造 SSOT 腐烂;也别用符号链接,Windows 上 git 默认 `core.symlinks=false` 会静默退化成文本文件)。同理**不要**引入 gitignore 的本地覆盖文件(如 `AGENTS.override.md`):本文件装的是红线与护栏,允许不进 git 的本地覆盖 = 给绕过护栏开后门,reviewer 与 pre-commit 都看不见。
 >
-> **不建进度文件、状态文件或看板**:进度由内核从台账与 Git 回读(`overview` / `status`),写进文档的进度从写下那一刻开始腐烂(教训 1)。`.gitignore` 排除 `.buildbeat/runtime/` 与 `.buildbeat/worktrees/`;有 vitest / jest / pytest 的仓另配 exclude `**/.buildbeat/**`,否则主干测试会把旧候选的用例一起跑。
+> **不建进度文件、状态文件或看板**:进度由内核从台账与 Git 回读(`overview` / `status`),写进文档的进度从写下那一刻开始腐烂(lessons.md「SSOT 腐烂」)。`.gitignore` 排除 `.buildbeat/runtime/` 与 `.buildbeat/worktrees/`;有 vitest / jest / pytest 的仓另配 exclude `**/.buildbeat/**`,否则主干测试会把旧候选的用例一起跑。
 
 ## 4. 协作规则(写进项目根 AGENTS.md,模板已含)
 
@@ -327,7 +327,7 @@ worker prompt 里要写清三条环境事实(模板 AGENTS 第 ⑨ 条):沙箱�
 
 ## 7. 红线(每个会话受约束,单点写进根 AGENTS.md §3)
 
-1. **凭据不入 git、不出本机**:文档只标位置不写值;本地 .env 必须 gitignore + 600 权限;Bootstrap 默认装 gitleaks pre-commit 闸,报警即拦——红线不能只靠自觉(lessons 第 9 条);Worker 默认 env 白名单,`env:` 只注入点名的变量;通知 URL 只能来自环境变量。
+1. **凭据不入 git、不出本机**:文档只标位置不写值;本地 .env 必须 gitignore + 600 权限;Bootstrap 默认装 gitleaks pre-commit 闸,报警即拦——红线不能只靠自觉(lessons.md「自动化便利与安全红线打架」);Worker 默认 env 白名单,`env:` 只注入点名的变量;通知 URL 只能来自环境变量。
 2. **不 `git add -A`**:多会话共编,只 stage 自己工作包的具体文件;同持多仓时按仓分别提交。
 3. **不未授权部署**、不 force-push、不 `--amend` 已推送历史、不 `--no-verify`。合并决定只表示候选具备合并条件,合并/push/发布是其后的人类动作、逐项授权。
 4. **每次部署完必更对应仓 CHANGELOG**(Keep a Changelog,倒序);部署后 `observe run` 一轮。
