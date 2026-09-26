@@ -1,0 +1,51 @@
+# Run config for WORK-REVIEW-CLEANUP. Paths resolve relative to this file.
+repo: ../../..
+work: WORK-REVIEW-CLEANUP
+run: RUN-REVIEW-CLEANUP
+workflow: workflow.yaml
+riskPreset: standard
+entry: build
+allowedPaths:
+  - src/v2
+  - tests
+  - docs
+  - SKILL.md
+  - templates/v2
+  - package.json
+  - CHANGELOG.md
+  - README.md
+  - README.en.md
+  - plugins/buildbeat
+  - delivery/work/WORK-REVIEW-CLEANUP
+reviewTriage: required
+budgets:
+  maxAttempts:
+    review: 2
+  reviewRoundsPerWork: 4
+cache:
+  verify: tree
+envelope:
+  prompts: ../../envelope/prompts
+  vars:
+    component: runtime
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+# builder / fixer are deliberately absent: the driving session writes the code
+# (owner instruction) and hands each commit over with resume --adopt; verify and
+# the read-only reviewer stay independent workers.
+workers:
+  verifier:
+    command: bash
+    args:
+      - -lc
+      - "npm test && npm run check:docs && npm run test:plugin && npm run test:pack-firstrun"
+  reviewer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only

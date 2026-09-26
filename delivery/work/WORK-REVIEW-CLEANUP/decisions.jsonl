@@ -1,0 +1,2 @@
+{"ts":"2026-09-26T09:07:55.346Z","decisionRef":"A-WORK-REVIEW-CLEANUP-1","decision":"approved","transition":"accept-intent","subject":{"artifact":"intent","digest":"sha256:a1b868d169fc7d682cae3f83c17bad051c0f132bea7b88dd0997d2e0e7f100cb"},"by":"haiyangbg"}
+{"ts":"2026-09-26T09:07:55.410Z","decisionRef":"A-WORK-REVIEW-CLEANUP-2","decision":"approved","transition":"accept-plan","subject":{"artifact":"plan","digest":"sha256:33af577acbf8a4c0e96ad583c21144a268de294a28ccb85ef37de59782194867"},"by":"haiyangbg"}
