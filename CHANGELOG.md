@@ -5,6 +5,8 @@
 ## v3.2.1 — 2026-09-26（补丁：开关参数单写、drive() 拆分、信封脚本测试、英文指南）
 
 > **发布状态**：`@haiyangbg/buildbeat@3.2.1` 已于 2026-09-26 从 `main`（PR #54 内容、release PR #55，merge commit `8d5f7bc`，tag `v3.2.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 36241955690，publish 与 verify 双 job 一次 success；所有者授权「推送并发 3.2.1 / 继续」）。独立回读（直连 npmjs.org）：`latest` = 3.2.1、integrity 与发布前本地候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 3.2.1、裸调用零写入、已发布 CLI 接受单写 `--apply` / `--json`、包内 12 份英文指南在位且无 pilot / 历史文档、`npm audit signatures` 通过；GitHub Release v3.2.1 标 Latest，证据见 [`docs/releases/V3.2.1-RELEASE-EVIDENCE-2026-09-26.md`](docs/releases/V3.2.1-RELEASE-EVIDENCE-2026-09-26.md)。
+>
+> 同日所有者本人经 npm 两步验证把 dist-tag `next` 从 3.0.1 挪到 3.2.1（此前 `@next` 比 `@latest` 旧）；直连 npmjs.org 回读 `next` = `latest` = 3.2.1。
 
 - CLI 开关参数可单写：`--json`、`--apply`、`--force`、`--once` 不必再跟 `true`（旧写法照旧有效）；缺值时报错点名参数（`--config needs a value`），多余的裸词报 `unexpected argument`。
 - `drive()` 从 459 行的单一循环体拆成五个有名字的阶段函数（原代码按原顺序搬移，循环本身 19 行），review 步判定收成一处 `isReviewStep()`；行为零变化——未改动任何测试，全量通过。
