@@ -99,6 +99,42 @@ test("cache: null keeps meaning no cache; lists still must be lists", () => {
   one(shape({ stopAt: null }), /^stopAt: must be a list/);
 });
 
+test("a real config with cache: null loads and runs with the cache off", async () => {
+  const { execFileSync } = await import("node:child_process");
+  const { EventLedger } = await import("../src/v2/storage/event-ledger.js");
+  const { tempDir } = await import("./support/tmp.js");
+  // Two runs on the same tree: with cache: verify: tree the second verify is
+  // reused; with cache: null it must run again.
+  const reusedOnSecondRun = (cacheLines) => {
+    const root = tempDir("bb-cache-null-");
+    const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8" });
+    git("init", "-q", "-b", "main");
+    git("config", "user.name", "Test");
+    git("config", "user.email", "test@example.com");
+    writeFileSync(join(root, "README.md"), "fixture\n");
+    git("add", "README.md");
+    git("commit", "-qm", "baseline");
+    const config = join(root, "run-config.yaml");
+    const envelope = '      - \'require("node:fs").writeFileSync(process.env.BUILDBEAT_OUTPUT, JSON.stringify({status: "succeeded", findings: []}))\'';
+    writeFileSync(config, [
+      "repo: .", "work: WORK-C", "run: RUN-C", `workflow: ${PRESET}`, "riskPreset: fast", "entry: build", ...cacheLines,
+      "stopAt:", "  - review", "workers:",
+      "  builder:", `    command: ${process.execPath}`, "    args:", "      - -e", envelope,
+      "  verifier:", `    command: ${process.execPath}`, "    args:", "      - -e", "      - '0'",
+      "  reviewer:", `    command: ${process.execPath}`, "    args:", "      - -e", envelope,
+    ].join("\n"));
+    for (let i = 0; i < 2; i += 1) {
+      execFileSync(process.execPath, [CLI, "start", "--config", config, "--attempt", "new"], { encoding: "utf8" });
+    }
+    const second = EventLedger.open(join(root, ".buildbeat", "runtime", "runs", "RUN-C-02", "events.jsonl"));
+    const verify = second.events.find((event) => event.type === "EVIDENCE_RECORDED" && event.data.evidenceRef.includes("verify"));
+    assert.ok(verify, "second run recorded verify evidence");
+    return Boolean(verify.data.reused);
+  };
+  assert.equal(reusedOnSecondRun(["cache:", "  verify: tree"]), true);
+  assert.equal(reusedOnSecondRun(["cache: null"]), false);
+});
+
 test("an explicit null is reported, not treated as the default", () => {
   one(shape({ base: null }), /^base: has no value; remove the line to use the default/);
   one(shape({ entry: null }), /^entry: has no value/);
