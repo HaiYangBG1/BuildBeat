@@ -64,17 +64,17 @@ Usage:
   buildbeat resume --config <run-config.yaml> [--run <RUN-ID>] [--adopt <sha> --by <name>]   # --adopt: hand fix committed in the worktree; skip fix, resume at verify
   buildbeat status --repo <path> --run <RUN-ID> [--stall-after <minutes>]
   buildbeat inbox --repo <path>
-  buildbeat overview --repo <path> [--work <WORK-ID>] [--json true]
+  buildbeat overview --repo <path> [--work <WORK-ID>] [--json]
   buildbeat approve --repo <path> --run <RUN-ID> --transition <t> [--by <name>] [--config <run-config.yaml>]
   buildbeat reject --repo <path> --run <RUN-ID> [--transition <t>] [--reason <text>] [--by <name>]
   buildbeat accept --repo <path> --work <WORK-ID> --artifact <plan|intent|spec> [--by <name>]
   buildbeat doctor --config <run-config.yaml>
   buildbeat events --repo <path> --run <RUN-ID>
   buildbeat replay --repo <path> --run <RUN-ID>
-  buildbeat metrics --repo <path> [--json true]
+  buildbeat metrics --repo <path> [--json]
   buildbeat stop --repo <path> --run <RUN-ID> --reason <text>
-  buildbeat gc --repo <path> [--apply true] [--force true]
-  buildbeat watch --repo <path> --run <RUN-ID> [--stall-after <minutes>] [--interval <seconds>] [--once true]
+  buildbeat gc --repo <path> [--apply] [--force]
+  buildbeat watch --repo <path> --run <RUN-ID> [--stall-after <minutes>] [--interval <seconds>] [--once]
   buildbeat observe run --config <observe.yaml>
   buildbeat observe status --repo <path>
   buildbeat observe triage --repo <path> --intent <ref> --action <fix_now|schedule|dismiss> [--by <name>] [--note <text>]
@@ -83,15 +83,33 @@ Usage:
   buildbeat findings adjudicate --repo <path> --work <WORK-ID> --fingerprint <fp> --action <accept|dismiss> [--by <name>] [--note <text>]
 `;
 
+// Switches may stand alone (`--json`) or take an explicit true/false
+// (`--json true`, the older spelling); every other flag needs a value.
+const SWITCHES = new Set(["json", "apply", "force", "once"]);
+
 function parseFlags(argv) {
   const flags = {};
-  for (let index = 0; index < argv.length; index += 2) {
+  for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
-    const value = argv[index + 1];
-    if (!key?.startsWith("--") || value === undefined) {
-      throw new Error(`bad arguments near: ${key ?? "(end)"}`);
+    if (!key.startsWith("--") || key === "--") {
+      throw new Error(`unexpected argument: ${key}`);
     }
-    flags[key.slice(2)] = value;
+    const name = key.slice(2);
+    const next = argv[index + 1];
+    if (SWITCHES.has(name)) {
+      if (next === "true" || next === "false") {
+        flags[name] = next;
+        index += 1;
+      } else {
+        flags[name] = "true";
+      }
+      continue;
+    }
+    if (next === undefined || next.startsWith("--")) {
+      throw new Error(`${key} needs a value`);
+    }
+    flags[name] = next;
+    index += 1;
   }
   return flags;
 }
@@ -1084,7 +1102,7 @@ function commandGc(flags) {
   if (flags.apply !== "true") {
     console.log(
       actionable > 0
-        ? `plan only: ${actionable} action(s); rerun with --apply true to execute (branches whose candidate lives only there are always kept)`
+        ? `plan only: ${actionable} action(s); rerun with --apply to execute (branches whose candidate lives only there are always kept)`
         : "nothing to collect",
     );
     return;
