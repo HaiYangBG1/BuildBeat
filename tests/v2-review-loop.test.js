@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -9,6 +8,7 @@ import { createMockAdapter } from "../src/v2/adapters/mock.js";
 import { createShellAdapter } from "../src/v2/adapters/shell.js";
 import { loadWorkflow } from "../src/v2/engine/workflow.js";
 import { parseEnvelope, startRun } from "../src/v2/runtime/orchestrator.js";
+import { tempDir } from "./support/tmp.js";
 
 const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 const WORKFLOW = loadWorkflow(PRESET_PATH);
@@ -19,7 +19,7 @@ function git(cwd, args) {
 }
 
 function fixtureRepo() {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-review-"));
+  const root = tempDir("bb-v2-review-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);
@@ -79,25 +79,21 @@ test("blocking review findings route to fix, a clean re-review reaches the merge
   assert.ok(state.policyLog.some((entry) => entry.result === "ROUTE"));
 });
 
-test("the preset caps review at two rounds; the third stops for a human", () => {
-  // Deploy-campaign charter, now a native budget: two review rounds per run,
-  // then a human — endless fresh-review loops burned four rounds before a
-  // person stopped them.
+test("review rounds are capped per work: the default six, then a human", () => {
+  // Deploy-campaign charter, now a native budget: endless fresh-review loops
+  // burned four rounds before a person stopped them. Rounds that keep
+  // converging run on their own up to the work cap.
   const { root } = fixtureRepo();
+  const issue = (summary) => ({
+    behavior: "succeed",
+    envelope: { status: "succeeded", findings: [{ severity: "P0", summary }] },
+  });
+  const rounds = ["one", "two", "three", "four", "five", "six"];
   const mock = createMockAdapter({
     build: ["succeed"],
-    verify: ["succeed", "succeed", "succeed"],
-    fix: ["succeed", "succeed"],
-    review: [
-      {
-        behavior: "succeed",
-        envelope: { status: "succeeded", findings: [{ severity: "P0", summary: "issue one" }] },
-      },
-      {
-        behavior: "succeed",
-        envelope: { status: "succeeded", findings: [{ severity: "P0", summary: "issue two" }] },
-      },
-    ],
+    verify: Array(6).fill("succeed"),
+    fix: Array(5).fill("succeed"),
+    review: rounds.map((name) => issue(`issue ${name}`)),
   });
   const result = run(root, "RUN-RL4", {
     builder: mock,
@@ -106,9 +102,10 @@ test("the preset caps review at two rounds; the third stops for a human", () => 
     reviewer: mock,
   });
   const state = result.state;
-  assert.equal(state.steps.review.attempts, 2);
+  assert.equal(state.steps.review.attempts, 6);
   assert.equal(state.run.status, "WAITING_HUMAN");
-  assert.match(state.pendingHuman.reasons[0], /budget exhausted: review would exceed maxAttempts=2/);
+  assert.equal(state.pendingHuman.kind, "budget");
+  assert.match(state.pendingHuman.reasons[0], /review budget exhausted: 6\/6 review round\(s\) used in this run, 6\/6 across the work/);
 });
 
 test("a reviewer that writes to the workspace is blocked, not merged", () => {

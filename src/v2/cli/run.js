@@ -11,7 +11,7 @@
 
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -21,7 +21,7 @@ import { loadWorkflow, nextStep } from "../engine/workflow.js";
 import { parseYamlSubset } from "../engine/yaml-subset.js";
 import { parsePolicyDoc } from "../policy/policy.js";
 import { observeStatus, runObserveCycle, triageIntent } from "../observe/observe.js";
-import { acceptArtifact, adoptCandidate, approveRun, listInbox, rejectRun } from "../runtime/decisions.js";
+import { acceptArtifacts, adoptCandidate, approveRun, listInbox, rejectRun } from "../runtime/decisions.js";
 import { checkRequires } from "../runtime/env-contract.js";
 import {
   adjudicateFinding,
@@ -48,10 +48,11 @@ import {
   subscribes,
 } from "../runtime/notify.js";
 import { writeRunRecord } from "../runtime/run-record.js";
-import { resumeRun, startRun } from "../runtime/orchestrator.js";
+import { DEFAULT_REVIEW_ROUNDS_PER_WORK, resumeRun, startRun } from "../runtime/orchestrator.js";
 import { toRepoRef } from "../runtime/repo-ref.js";
 import { EventLedger } from "../storage/event-ledger.js";
 import { acquireLock, listHeldRunLocks, releaseLock } from "../workspace/workspace-manager.js";
+import { checkRunConfigAgainstWorkflow, checkRunConfigShape, RunConfigError } from "./run-config-check.js";
 
 const KERNEL = { kind: "kernel", id: "cli" };
 
@@ -60,20 +61,20 @@ const USAGE = `BuildBeat runtime
 Usage:
   buildbeat --version
   buildbeat start --config <run-config.yaml> [--attempt new]
-  buildbeat resume --config <run-config.yaml> [--adopt <sha> --by <name>]   # --adopt: hand fix committed in the worktree; skip fix, resume at verify
+  buildbeat resume --config <run-config.yaml> [--run <RUN-ID>] [--adopt <sha> --by <name>]   # --adopt: hand fix committed in the worktree; skip fix, resume at verify
   buildbeat status --repo <path> --run <RUN-ID> [--stall-after <minutes>]
   buildbeat inbox --repo <path>
-  buildbeat overview --repo <path> [--work <WORK-ID>] [--json true]
+  buildbeat overview --repo <path> [--work <WORK-ID>] [--json]
   buildbeat approve --repo <path> --run <RUN-ID> --transition <t> [--by <name>] [--config <run-config.yaml>]
   buildbeat reject --repo <path> --run <RUN-ID> [--transition <t>] [--reason <text>] [--by <name>]
-  buildbeat accept --repo <path> --work <WORK-ID> --artifact <plan|intent|spec> [--by <name>]
+  buildbeat accept --repo <path> --work <WORK-ID> --artifact <plan|intent|spec>[,<more>] [--by <name>]
   buildbeat doctor --config <run-config.yaml>
   buildbeat events --repo <path> --run <RUN-ID>
   buildbeat replay --repo <path> --run <RUN-ID>
-  buildbeat metrics --repo <path> [--json true]
+  buildbeat metrics --repo <path> [--json]
   buildbeat stop --repo <path> --run <RUN-ID> --reason <text>
-  buildbeat gc --repo <path> [--apply true] [--force true]
-  buildbeat watch --repo <path> --run <RUN-ID> [--stall-after <minutes>] [--interval <seconds>] [--once true]
+  buildbeat gc --repo <path> [--apply] [--force]
+  buildbeat watch --repo <path> --run <RUN-ID> [--stall-after <minutes>] [--interval <seconds>] [--once]
   buildbeat observe run --config <observe.yaml>
   buildbeat observe status --repo <path>
   buildbeat observe triage --repo <path> --intent <ref> --action <fix_now|schedule|dismiss> [--by <name>] [--note <text>]
@@ -82,15 +83,33 @@ Usage:
   buildbeat findings adjudicate --repo <path> --work <WORK-ID> --fingerprint <fp> --action <accept|dismiss> [--by <name>] [--note <text>]
 `;
 
+// Switches may stand alone (`--json`) or take an explicit true/false
+// (`--json true`, the older spelling); every other flag needs a value.
+const SWITCHES = new Set(["json", "apply", "force", "once"]);
+
 function parseFlags(argv) {
   const flags = {};
-  for (let index = 0; index < argv.length; index += 2) {
+  for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
-    const value = argv[index + 1];
-    if (!key?.startsWith("--") || value === undefined) {
-      throw new Error(`bad arguments near: ${key ?? "(end)"}`);
+    if (!key.startsWith("--") || key === "--") {
+      throw new Error(`unexpected argument: ${key}`);
     }
-    flags[key.slice(2)] = value;
+    const name = key.slice(2);
+    const next = argv[index + 1];
+    if (SWITCHES.has(name)) {
+      if (next === "true" || next === "false") {
+        flags[name] = next;
+        index += 1;
+      } else {
+        flags[name] = "true";
+      }
+      continue;
+    }
+    if (next === undefined || next.startsWith("--")) {
+      throw new Error(`${key} needs a value`);
+    }
+    flags[name] = next;
+    index += 1;
   }
   return flags;
 }
@@ -256,11 +275,29 @@ function loadRunConfig(flags, command) {
   }
   const configPath = resolve(flags.config);
   const config = parseYamlSubset(readFileSync(configPath, "utf8"));
+  // Validate before anything runs and list every problem at once: the
+  // workflow does not depend on repo, so its checks run whenever it loads.
+  const problems = checkRunConfigShape(config);
   const configDir = dirname(configPath);
+  let workflow = null;
+  let workflowPath = null;
+  let workflowText = null;
+  if (typeof config?.workflow === "string" && config.workflow.trim() !== "") {
+    workflowPath = resolve(configDir, config.workflow);
+    try {
+      workflowText = readFileSync(workflowPath, "utf8");
+      workflow = loadWorkflow(workflowPath);
+    } catch (error) {
+      problems.push(`workflow: cannot load ${config.workflow}: ${error.message}`);
+    }
+  }
+  if (workflow) {
+    problems.push(...checkRunConfigAgainstWorkflow(config, workflow));
+  }
+  if (problems.length > 0) {
+    throw new RunConfigError(flags.config, problems);
+  }
   const repoRoot = resolve(configDir, config.repo);
-  const workflowPath = resolve(configDir, config.workflow);
-  const workflowText = readFileSync(workflowPath, "utf8");
-  const workflow = loadWorkflow(workflowPath);
   const workflowDigest = `sha256:${createHash("sha256").update(workflowText, "utf8").digest("hex")}`;
 
   const adapters = {};
@@ -387,6 +424,7 @@ function loadRunConfig(flags, command) {
     requires: config.requires ?? [],
     reviewTriage: config.reviewTriage === "required" ? "required" : null,
     supersede: config.supersede ?? "waiting",
+    parallel: config.parallel === true,
     stallAfterMs: config.stallAfterMs !== undefined ? Number(config.stallAfterMs) : DEFAULT_STALL_AFTER_MS,
     planDigest: digestOfWorkFile("plan.md"),
     intentDigest: digestOfWorkFile("intent.md"),
@@ -495,7 +533,9 @@ async function commandStart(flags) {
       const label = repoLabelFor(options.repoRoot);
       const holders = listHeldRunLocks(options.repoRoot);
       if (holders.length === 0) {
-        console.error("blocked by: a stale active-run lock with no run holding it (a killed process?); `gc` clears locks of terminal runs, or remove .buildbeat/runtime/locks/active-run.lock after checking no driver process is alive");
+        // A dead owner would already have been reclaimed; the error below
+        // names who holds the lock and what to do.
+        console.error("blocked by: the active-run lock alone (no run lock beside it); its owner is named below");
       }
       for (const holder of holders) {
         const ledgerPath = join(options.repoRoot, ".buildbeat", "runtime", "runs", holder, "events.jsonl");
@@ -510,7 +550,7 @@ async function commandStart(flags) {
         console.error(`blocked by ${holder}: ${summary}`);
         console.error(`  watch it: buildbeat status --repo ${label} --run ${holder}`);
       }
-      console.error("queue position: next after the holder(s) above stop or wait on a human (the repository allows one driving run at a time; worktrees are already isolated)");
+      console.error("queue position: next after the holder(s) above stop or wait on a human (by default one run drives a repository at a time; works whose run configs both set parallel: true can drive together)");
     }
     throw error;
   }
@@ -531,8 +571,42 @@ async function commandStart(flags) {
   await notifyForState(options.repoRoot, repoLabel, ledger.state);
 }
 
+// Resolve only from runtime ledgers. Reading candidates does not acquire
+// their locks; resumeRun still owns the lock and freshness checks.
+function resolveResumeRun(repoRoot, family, explicitRun) {
+  const pattern = new RegExp(`^${family.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-\\d{2,}$`);
+  if (explicitRun !== undefined) {
+    if (explicitRun !== family && !pattern.test(explicitRun)) {
+      throw new Error(`--run ${explicitRun} is not in run family ${family} of this config`);
+    }
+    if (!existsSync(ledgerPathFor(repoRoot, explicitRun))) {
+      throw new Error(`no ledger for run ${explicitRun}`);
+    }
+    return explicitRun;
+  }
+  if (existsSync(ledgerPathFor(repoRoot, family))) {
+    return family;
+  }
+  const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
+  const runs = (existsSync(runsDir) ? readdirSync(runsDir) : [])
+    .filter((id) => pattern.test(id) && existsSync(ledgerPathFor(repoRoot, id)))
+    .sort((a, b) => a.localeCompare(b, "en", { numeric: true }))
+    .map((id) => ({ id, state: EventLedger.open(ledgerPathFor(repoRoot, id)).state }));
+  const open = runs.filter(({ state }) => !state.terminal);
+  if (open.length === 1) {
+    console.log(`resuming ${open[0].id} (the open run of family ${family})`);
+    return open[0].id;
+  }
+  if (open.length === 0) {
+    const latest = runs.at(-1);
+    throw new Error(`no open run in family ${family}; ${latest ? `latest run ${latest.id}: ${latest.state.terminal.status}` : "no ledgers found"}; use --run <RUN-ID> to select an existing run explicitly`);
+  }
+  throw new Error(`multiple open runs in family ${family}: ${open.map(({ id }) => id).join(", ")}; use --run <RUN-ID> to select one`);
+}
+
 async function commandResume(flags) {
   const options = loadRunConfig(flags, "resume");
+  options.runId = resolveResumeRun(options.repoRoot, options.runId, flags.run);
   if (flags.adopt !== undefined) {
     const resumeAt = nextStep(options.workflow, "fix", "succeeded") ?? "verify";
     const adopted = adoptCandidate(options.repoRoot, options.runId, {
@@ -624,7 +698,7 @@ function commandApprove(flags) {
   if (result.terminal) {
     console.log("run is terminal: SUCCEEDED (merge itself stays a manual external action)");
   } else {
-    console.log("decision recorded; continue with: run.js resume --config <run-config.yaml>");
+    console.log(`decision recorded; continue with: buildbeat resume --config <run-config.yaml> --run ${flags.run}`);
   }
 }
 
@@ -644,12 +718,15 @@ function commandAccept(flags) {
   if (!flags.repo || !flags.work || !flags.artifact) {
     throw new Error("accept requires --repo, --work and --artifact");
   }
-  const result = acceptArtifact(resolve(flags.repo), flags.work, flags.artifact, {
+  const artifacts = String(flags.artifact).split(",").map((name) => name.trim()).filter(Boolean);
+  const results = acceptArtifacts(resolve(flags.repo), flags.work, artifacts, {
     by: flags.by ?? "human",
   });
-  console.log(`accepted ${flags.artifact} as ${result.decisionRef}`);
-  console.log(`  digest: ${result.digest}`);
-  console.log("  note: editing the artifact after acceptance makes this acceptance stale");
+  for (const result of results) {
+    console.log(`accepted ${result.artifact} as ${result.decisionRef}`);
+    console.log(`  digest: ${result.digest}`);
+  }
+  console.log("  note: editing an artifact after acceptance makes its acceptance stale");
 }
 
 // Artifacts a policy rule requires to be accepted (artifact.accepted leaves
@@ -717,20 +794,20 @@ function commandDoctor(flags) {
   }
   console.log("kernel capabilities: merge/deploy/publish have no call path in the runner (invariant 20)");
   const budgetLines = [];
+  const reviewRounds = options.budgets.reviewRoundsPerWork ?? DEFAULT_REVIEW_ROUNDS_PER_WORK;
   for (const step of options.workflow.steps) {
     if (!step.worker) {
       continue;
     }
     const fromRun = options.budgets.maxAttempts?.[step.id];
     const fromPreset = options.workflow.budgets?.maxAttempts?.[step.id];
-    const effective = fromRun ?? fromPreset ?? options.maxAttemptsPerStep;
-    const source = fromRun !== undefined ? "run config" : fromPreset !== undefined ? "workflow preset" : "default";
+    const review = step.id === "review" || step.worker === "reviewer";
+    const effective = fromRun ?? fromPreset ?? (review ? reviewRounds : options.maxAttemptsPerStep);
+    const source = fromRun !== undefined ? "run config" : fromPreset !== undefined ? "workflow preset" : review ? "reviewRoundsPerWork" : "default";
     budgetLines.push(`${step.id}=${effective} (${source})`);
   }
   console.log(`budgets (maxAttempts per step; approving resume-<step> after exhaustion grants +1): ${budgetLines.join(", ")}`);
-  if (options.budgets.reviewRoundsPerWork !== undefined) {
-    console.log(`budgets.reviewRoundsPerWork: ${options.budgets.reviewRoundsPerWork} (counted across every run of the work, superseded ones included)`);
-  }
+  console.log(`budgets.reviewRoundsPerWork: ${reviewRounds}${options.budgets.reviewRoundsPerWork === undefined ? " (default)" : ""} (counted across every run of the work, superseded ones included)`);
   // Same preconditions start's first gate will read (real incident, twice:
   // doctor passed, start stopped at build because plan.md was not mirrored
   // into the repository the run was started in).
@@ -774,6 +851,11 @@ function commandDoctor(flags) {
     console.log("environment contract: none declared (implicit PATH facts stay unchecked)");
   }
   console.log(`supersede: ${options.supersede} (new run for the same work ${options.supersede === "off" ? "leaves" : "supersedes"} older WAITING_HUMAN runs)`);
+  console.log(
+    options.parallel
+      ? "concurrency: parallel (runs of other works with parallel: true may drive at the same time; runs of this work stay exclusive; verifiers must not share fixed ports or databases)"
+      : "concurrency: exclusive (default: one driving run per repository; set parallel: true to drive alongside other works)",
+  );
   console.log(`stall threshold: ${formatMs(options.stallAfterMs)} without worker output`);
   const { config: notify, error: notifyError } = notifyConfigFor(options.repoRoot);
   if (notifyError) {
@@ -954,16 +1036,21 @@ function commandStop(flags) {
     throw new Error("stop requires --repo and --run");
   }
   const repoRoot = resolve(flags.repo);
-  const ledger = EventLedger.open(ledgerPathFor(repoRoot, flags.run));
-  if (!ledger.state.run) {
+  if (!existsSync(ledgerPathFor(repoRoot, flags.run))) {
     throw new Error(`no ledger for run ${flags.run}`);
   }
-  if (ledger.state.terminal) {
-    console.log(`run already terminal: ${ledger.state.terminal.status}`);
-    return;
-  }
+  // Read and decide under the run lock: a ledger read before it may be
+  // stale by the time RUN_TERMINAL is written.
   acquireLock(repoRoot, flags.run);
   try {
+    const ledger = EventLedger.open(ledgerPathFor(repoRoot, flags.run));
+    if (!ledger.state.run) {
+      throw new Error(`no ledger for run ${flags.run}`);
+    }
+    if (ledger.state.terminal) {
+      console.log(`run already terminal: ${ledger.state.terminal.status}`);
+      return;
+    }
     ledger.append({
       type: "RUN_TERMINAL",
       actor: KERNEL,
@@ -1008,7 +1095,7 @@ function commandGc(flags) {
       if (action.kind === "delete-branch") {
         return `delete branch ${action.branch} (${action.reason})`;
       }
-      return "remove stale lock";
+      return action.owner ? "remove active-run lock (owner process is gone)" : "remove stale lock";
     });
     actionable += row.actions.length;
     const keep = row.keep.map((reason) => `keep: ${reason}`);
@@ -1018,7 +1105,7 @@ function commandGc(flags) {
   if (flags.apply !== "true") {
     console.log(
       actionable > 0
-        ? `plan only: ${actionable} action(s); rerun with --apply true to execute (branches whose candidate lives only there are always kept)`
+        ? `plan only: ${actionable} action(s); rerun with --apply to execute (branches whose candidate lives only there are always kept)`
         : "nothing to collect",
     );
     return;

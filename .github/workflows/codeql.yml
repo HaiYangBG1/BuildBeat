@@ -7,6 +7,9 @@ on:
   push:
     branches:
       - main
+      # day-to-day work lands on v2 and reaches main by pull request;
+      # analyse it when it is pushed, not only when a PR is opened
+      - v2
   schedule:
     - cron: "31 16 * * 6"
 

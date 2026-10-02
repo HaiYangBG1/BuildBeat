@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -14,6 +13,7 @@ import {
   nextReply,
   subscribes,
 } from "../src/v2/runtime/notify.js";
+import { tempDir } from "./support/tmp.js";
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
@@ -57,7 +57,7 @@ function capturingServer() {
 }
 
 test("notify config is optional, fail-closed on shape, and never allows a URL in Git", () => {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-notify-"));
+  const root = tempDir("bb-v2-notify-");
   assert.equal(loadNotifyConfig(root), null);
   writeNotify(root, ["kind: notify", "version: 1", "channels:", "  - id: owner", "    type: dingtalk", "    urlEnv: BB_HOOK"].join("\n"));
   const config = loadNotifyConfig(root);
@@ -88,7 +88,7 @@ test("nextReply spells out the copyable commands for every kind of wait", () => 
 });
 
 test("dispatch is fail-open: sends to subscribed channels, skips without env, survives HTTP errors, logs every outcome", async () => {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-notify-"));
+  const root = tempDir("bb-v2-notify-");
   const { server, received, port } = await capturingServer();
   try {
     const config = {
@@ -146,7 +146,7 @@ test("dispatch is fail-open: sends to subscribed channels, skips without env, su
 });
 
 test("a run that stops for a human reaches the configured channel through the CLI", async () => {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-notify-cli-"));
+  const root = tempDir("bb-v2-notify-cli-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);

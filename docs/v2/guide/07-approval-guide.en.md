@@ -33,13 +33,15 @@ Sessions and documents used to mix "accept / approve / resume / succeeded / merg
 
 | Word | Command | Meaning | Is not |
 |---|---|---|---|
-| **Accept** | `accept --artifact intent\|plan` | A human endorses one artifact's digest; editing it makes the acceptance `stale` | Starting work; it creates no Run |
-| **Approve a transition** | `approve --transition <t>` | Lets the Run take **this one** transition: `enter-fix` (release the fixer after triage), `resume-<step>` (run the step once more after a budget or infra stop; records `BUDGET_EXTENDED`), `enter-review` (one more review round after the Work-level cap), `enter-apply-readback` ("I have done it" on the release lane) | Approving any other transition; after a non-terminal transition is approved the Run **does not move by itself**: `resume --config <run-config>` continues it (the `next:` line printed by `approve` says so) |
+| **Accept** | `accept --artifact intent\|plan`, or `--artifact intent,plan` for both at once | A human endorses each artifact's digest, one record per artifact; editing an artifact makes only its acceptance `stale` | Starting work; it creates no Run |
+| **Approve a transition** | `approve --transition <t>` | Lets the Run take **this one** transition: `enter-fix` (release the fixer after triage or after a review that is not converging, kind `review-not-converging`; when the review budget is spent, this one approval also grants the next review round, and so does answering it with a hand fix via `resume --adopt <sha>`), `resume-<step>` (run the step once more after a budget or infra stop; records `BUDGET_EXTENDED`; successful build / verify / fix attempts are not charged, and a budget stop that hits both the run and the work review cap is lifted by one approval), `enter-review` (one more review round after the Work-level cap), `enter-apply-readback` ("I have done it" on the release lane) | Approving any other transition; after a non-terminal transition is approved the Run **does not move by itself**: `resume --config <run-config>` continues it (the `next:` line printed by `approve` says so) |
 | **Merge decision** (final approval) | `approve --transition enter-wait-merge` | The candidate is fit to merge: candidate + planDigest + evidenceDigest all hold at this instant; the Run reaches the terminal state `SUCCEEDED` and the run-record is compacted into the Git plane | Code merged, pushed or deployed: those three remain your actions outside the Runner, always |
 | **Run SUCCEEDED** | — | The Run stopped where it should and the evidence is complete | The Work is finished. `overview` shows `MERGED` only after reading back that the candidate is on the current branch |
 | **Reject** | `reject --reason` | The Run ends (`FAILED`, reason recorded) | The artifacts are invalidated; the acceptance state of intent/plan does not change |
 
 Likewise, `fix_now` on an observe draft is only acceptance; a human starts the Run. Protected actions are listed under [Security boundaries](09-security-boundaries.md) (Chinese).
+
+After `start --attempt new` numbers a Run, `resume --config <run-config.yaml>` resumes the family’s only non-terminal Run and prints its ID. Use `--run <RUN-ID>` to select the configured Run itself or `<family>-NN` explicitly (at least two digits). An existing ledger for the exact configured ID takes precedence. Multiple non-terminal Runs are listed with a request to select one using `--run`; if none remain, the error reports the latest ID and terminal status, or states that no ledgers were found.
 
 ## Risk presets decide where humans approve
 
@@ -102,7 +104,7 @@ Notification is not an approval channel: decisions are still made only through t
 When a Run stops at `enter-fix` / `resume-fix`, the driving session or a person has often already fixed the problem in the Run's worktree and committed it. Approving at that point dispatches a fixer with nothing to do and runs verify once more (a pilot frontend Run reached its 5th verify and 3rd fix this way). Use instead:
 
 ```bash
-buildbeat resume --config <run-config.yaml> --adopt <sha> --by <name>
+buildbeat resume --config <run-config.yaml> --run <RUN-ID> --adopt <sha> --by <name>
 ```
 
 The kernel reads the worktree back: the tree must be clean and HEAD must be exactly `<sha>` (7-character prefix or longer), otherwise it refuses; then it records `CANDIDATE_PINNED` with a human actor (`adopted: true`), records `DECISION_RECORDED` with that commit as subject (`adopted`, `resumeAt`), and continues from verify (the step after a successful fix in the preset). The ledger shows who supplied this candidate. Adoption is not accepted at the merge decision.

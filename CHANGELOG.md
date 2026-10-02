@@ -2,16 +2,66 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- **review 按收敛止损，不再按 2 轮封顶**：review 发现阻断问题、派 fixer 之前，内核把本轮 P0/P1 与本 Run 之前各轮比较。修过的 finding 又出现（同指纹，已 dismiss 的不算），或本轮阻断数多于上一轮，就停 `enter-fix`（新 kind `review-not-converging`，理由列出又出现的指纹或前后数量，请求不带 grants，批准不动预算）；阻断 finding 都是新的、数量不多于上一轮时自动继续。官方预设不再自带每 Run 2 轮的 `budgets.maxAttempts.review`，轮数上限改由下一条的 `reviewRoundsPerWork` 统一负责；run 配置里显式写的值照旧优先。开了 `reviewTriage: required` 时仍停分诊，不收敛理由并入同一请求；`nextReply` 对新 kind 给出 `findings list` / `findings adjudicate` 命令。原因：每 Run 2 轮封顶让正常修两三轮的 Run 反复停下批准扩额；本仓最近 10 个 Run 里中途 9 次批准都由驾驶会话自己批，人只出现在合并决定，审批点没起到人把关的作用。
+- **review 轮数只剩一个上限**：`budgets.reviewRoundsPerWork` 不写时默认 6（此前不写即没有 Work 级上限）；review 步没有显式 `maxAttempts` 时，每 Run 上限取同一个值，不会先于 Work 上限触发，官方预设不再自带 `maxAttempts.review`。`doctor` 显示 review 上限来源为 `reviewRoundsPerWork` 并标出默认值；run 配置样板删去 `maxAttempts.review`。显式写的 `maxAttempts.review` 照旧生效。原因：每 Run 与每 Work 两套计数让同一轮 review 要按两层上限解释和放行，止损线本来就按 Work 定。
+- **模板默认不再开发现分诊门**：`templates/v2/run-config.example.yaml`、示例项目、`SKILL.md` 与快速开始里的 run 配置样板从 `reviewTriage: required` 改为 `reviewTriage: off`，P0/P1 finding 直接派 fixer；高风险项目仍可改回 `required`。内核默认值本来就是不分诊，未改动；已有项目的 run 配置不受影响。原因：本仓最近 10 个 Run 中途 9 次停人里 7 次是分诊门的 `enter-fix`，且全部由驾驶会话自己批准，没有起到人把关的作用。
+- **intent 与 plan 一次接受**：`accept --artifact intent,plan` 一条命令接受多份工件，每份仍各记一行 `accept-<artifact>`、各自绑定 digest，policy 与台账格式不变；任一文件缺失则一份都不接受。`overview` 在 intent 未接受且 plan 待接受时提示 `--artifact intent,plan`；`SKILL.md` 改为给用户看完摘要后只问一次「接受」。原因：本仓每个 Work 的 intent 与 plan 都在约 60 毫秒内先后被接受，两次接受实际是一个决定。
+
+## v3.2.1 — 2026-09-26（补丁：开关参数单写、drive() 拆分、信封脚本测试、英文指南）
+
+> **发布状态**：`@haiyangbg/buildbeat@3.2.1` 已于 2026-09-26 从 `main`（PR #54 内容、release PR #55，merge commit `8d5f7bc`，tag `v3.2.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 36241955690，publish 与 verify 双 job 一次 success；所有者授权「推送并发 3.2.1 / 继续」）。独立回读（直连 npmjs.org）：`latest` = 3.2.1、integrity 与发布前本地候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 3.2.1、裸调用零写入、已发布 CLI 接受单写 `--apply` / `--json`、包内 12 份英文指南在位且无 pilot / 历史文档、`npm audit signatures` 通过；GitHub Release v3.2.1 标 Latest，证据见 [`docs/releases/V3.2.1-RELEASE-EVIDENCE-2026-09-26.md`](docs/releases/V3.2.1-RELEASE-EVIDENCE-2026-09-26.md)。
+>
+> 同日所有者本人经 npm 两步验证把 dist-tag `next` 从 3.0.1 挪到 3.2.1（此前 `@next` 比 `@latest` 旧）；直连 npmjs.org 回读 `next` = `latest` = 3.2.1。
+
+- CLI 开关参数可单写：`--json`、`--apply`、`--force`、`--once` 不必再跟 `true`（旧写法照旧有效）；缺值时报错点名参数（`--config needs a value`），多余的裸词报 `unexpected argument`。
+- `drive()` 从 459 行的单一循环体拆成五个有名字的阶段函数（原代码按原顺序搬移，循环本身 19 行），review 步判定收成一处 `isReviewStep()`；行为零变化——未改动任何测试，全量通过。
+- CodeQL 也分析推到 `v2` 的提交。
+- M-1 脚本驱动试点 `pilot/` 归档到 `docs/history/pilot/`，不再进 CI 与发布前检查；CI 必需检查「Script behavior」改测随包发给用户的信封 `worker.sh`（`tests/envelope-worker.test.sh`，18 项，macOS 上用 `/bin/bash` 3.2 跑），`test:envelope` 取代 `test:pilot`。
+- 7 份只有中文的指南补齐英文版（怎么和会话说话、Workflow、Policy、Adapter、Worker 合同、安全边界、指南索引），中英互相切换；英文 README 改指英文指南；顺带更正两处 3.2.0 后过时的「每仓只有一个活动 Run」表述。
+
+## v3.2.0 — 2026-09-26（并行 Run 开关、docs 归档、SKILL.md 瘦身、测试卫生）
+
+> **发布状态**：`@haiyangbg/buildbeat@3.2.0` 已于 2026-09-26 从 `main`（PR #50 内容、release PR #51，merge commit `cda4bd6`，tag `v3.2.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 36233928546，publish 与 verify 双 job 一次 success；所有者授权「推送并发 3.2.0 / 继续」）。独立回读（直连 npmjs.org）：`latest` = 3.2.0、integrity 与发布前本地候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 3.2.0、裸调用零写入、包内 7 份 `docs/v2/skill` 参考在位且无 `docs/history|releases`、已发布包的 `doctor` 正确报告 `parallel` 模式、`npm audit signatures` 通过；GitHub Release v3.2.0 标 Latest，证据见 [`docs/releases/V3.2.0-RELEASE-EVIDENCE-2026-09-26.md`](docs/releases/V3.2.0-RELEASE-EVIDENCE-2026-09-26.md)。
+
+- 修正 3.1.0 延后的两个 P2：run-config「显式 null 报错」只作用于会静默回落默认值的标量键（`cache: null` 重新表示不开缓存）；YAML 多行列表项恢复修改前的判定与报错原文。
+- 并行 Run（开关，默认关）：run 配置 `parallel: true` 的 Work 可与其他同样打开开关的 Work 同时驱动，同一 Work 的 Run 仍互斥；未打开的 Run 照旧独占仓库，两种模式互不越界（独占 Run 持有 `active-run` 全程，并行 Run 只在建立自己的标记时短暂经过它）。共享仓库的 git 写操作（建/删 worktree、分支、`.git/config`）改在短时 `@repo-git` 锁内执行；`gc` 同样回收持有者已死的 `@work` / `@parallel` / `@repo-git` 锁。`doctor` 打印当前模式。
+- 测试不再泄漏临时目录：所有测试经 `tests/support/tmp.js` 的 `tempDir()` 建临时目录并在文件结束时删除；一次全量测试从留下 147 个目录（24 MB）降到 0，`tests/v2-test-hygiene.test.js` 禁止测试文件直接调用 `mkdtempSync`。
+- lessons 按标题引用：3.0.0 重新编号后指错的数字引用全部改成条目标题，docs 检查拒绝按编号引用。
+- `docs/` 归档：历史规划、迭代与试点记录移入 `docs/history/`，各版发布证据移入 `docs/releases/`，相对链接全部重算；npm 包对 `docs/` 改用白名单（docs 检查守住）。
+- `SKILL.md` 瘦身：438 行 → 158 行，保留触发条件、驾驶手册、红线摘要与「按需再读」索引；方法论正文（原 §1–§10）原文、原节号不变地移到 `docs/v2/skill/`，随包分发。
+
+## v3.1.0 — 2026-09-26（运行时修复：预算误报、锁残留、台账并发、配置与 YAML 校验）
+
+> **发布状态**：`@haiyangbg/buildbeat@3.1.0` 已于 2026-09-26 从 `main`（PR #47 内容、release PR #48，merge commit `ace9ff5`，tag `v3.1.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 36231006557，publish 与 verify 双 job 一次 success；所有者授权「推送并发 3.1.0 / 继续，CI 过了就发」）。独立回读（直连 npmjs.org）：`latest` = 3.1.0、integrity 与发布前本地候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 3.1.0、裸调用零写入、`doctor` 只读、`npm audit signatures` 通过；GitHub Release v3.1.0 标 Latest，证据见 [`docs/releases/V3.1.0-RELEASE-EVIDENCE-2026-09-26.md`](docs/releases/V3.1.0-RELEASE-EVIDENCE-2026-09-26.md)。
+
+- YAML 子集解析器不再绊倒常见写法：空的 `[]` / `{}` 可用（非空行内集合仍拒绝，报错提示改成每项一行）；列表项可与所属键同缩进；不带引号的 `- http://x` 按字符串解析，含 `": "` 且前半截不是合法键的项（如 `- echo a: b`）不猜、报错要求加引号；开头的 BOM 被忽略；`007` 这类前导零保留为字符串；「has no value」报错给出改法。修改前的解析器冻结在 `tests/support/yaml-subset-v1.js`，测试断言仓库内它能解析的每个 YAML 新旧结果完全一致；SKILL.md、快速上手（中英）与 run-config 样板同步。
+
+- run-config 在做任何事之前整体校验并一次列出全部问题：必填键、未知顶层键与 worker / envelope 未知字段（给最接近的拼写）、类型与取值（`inheritEnv: yes` 不再静默当 false）、worker 名须被工作流用到、`stopAt` / `entry` 须是工作流步骤、`work` / `run` 的字符与类型（`run: 007` 要求加引号）。缺 `repo` 不再报 Node 内部错误 `paths[1]`。`start` / `resume` / `doctor` / `preflight` / `approve --config` 统一经由它；仓库内全部 run-config 有测试兜底兼容。Workflow 指南与恢复手册（中英）同步。
+
+- 修复会话手修交回时丢额度：`resume --adopt <sha>` 回答一次带 `grants` 的预算停车时，候选虽换成新提交，仍继承请求上的 grants（计划未变的前提下），重验后直接进入下一轮 review，不再在同一轮第二次停 `resume-review`。普通批准仍要求 subject 一致，刷新过的请求仍不继承。抢锁测试在断言失败时也会结束子进程、不再挂住测试进程。
+
+- 修复并发写台账把台账写坏：批准 / 拒绝 / `--adopt` / `stop` / `resume` / 自动取代改为拿到 Run 锁之后才读台账，并在锁内基于新读到的状态判断与写入（此前先读后锁，两个会话几乎同时操作同一 Run 时，后写者会写出重复 seq、断开哈希链，台账从此判定损坏）。台账写入另加兜底：文件在读取后被别人写过就拒绝写入（`changed on disk since it was read`），不写任何字节，重试即可。确定性交错测试在旧代码上复现「hash chain broken」，修复后通过；另有真实多进程并发测试；恢复手册（中英）同步。
+
+- 修复驱动进程被杀后锁残留把 Run 卡死：锁记录持有者（pid、主机、获取时间、命令），`resume` / `stop` / `start` 拿锁时若持有者在本机且进程已不存在即自动回收（锁目录在接管期间始终存在，接管者以「死者世代」命名的独占 claim 竞争、只有一个能赢，赢家再原子替换持有者记录；接管中途死掉的接管者不会把锁卡死；普通拿锁方在此期间一律看到「已被持有」，不会出现两个持有者）；持有者存活、在别的主机或没有记录时不回收，报错写明持有者与下一步。`gc` 同样回收持有者已死的 `active-run` 锁。被 SIGKILL 的真实驱动可直接 `resume` 走崩溃恢复（有集成测试）；恢复手册（中英）同步。
+
+- 修复 `resume --config` 找不到自动编号 Run：精确台账优先，否则选择家族唯一未终态 Run；新增 `--run <RUN-ID>` 显式选择，无候选或多候选时提供诊断。非终态批准提示使用 `buildbeat resume` 并带真实 Run ID，帮助与中英文指南同步；只读步预算提示改为每轮计费。
+
+- 修复预算误停车：非只读步成功不扣次数，真失败与只读 review 轮次继续消耗预算；增加总 attempt 的 3 倍兜底，防止成功循环失控。
+- review 到顶且发现阻断问题时提前在 `enter-fix` 一次批准修复、重验、再审；Run/Work review 上限同时放行，过期请求不继承扩额。预算提示显示实际用量、真失败次数及批准/拒绝的含义。
+- 事件仅增加可选 `free` / `grants` 字段，旧台账回放保持兼容；默认预算数值不变。放行计划钉在第一条 `BUDGET_EXTENDED` 上，放行中途进程被杀后 `resume` 按原计划补齐。停车提示为英文、带「已用/上限/真失败次数」与批准、拒绝的含义。
+
 ## v3.0.1 — 2026-09-09（补丁：示例项目、英文指南）
 
-> **发布状态**：`@haiyangbg/buildbeat@3.0.1` 已于 2026-09-09 从 `main`（PR #41，merge commit `c322ce9`，tag `v3.0.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34370800960，双 job 一次 success；所有者授权「发 3.0.1」）。独立回读（直连 npmjs.org）：`latest` = 3.0.1、integrity 与本地 dry-run 一致、attestation、隔离安装、包内 `example/` 与四篇英文指南在位全过，GitHub Release v3.0.1 标 Latest，证据见 [`docs/V3.0.1-RELEASE-EVIDENCE-2026-09-09.md`](docs/V3.0.1-RELEASE-EVIDENCE-2026-09-09.md)。
+> **发布状态**：`@haiyangbg/buildbeat@3.0.1` 已于 2026-09-09 从 `main`（PR #41，merge commit `c322ce9`，tag `v3.0.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34370800960，双 job 一次 success；所有者授权「发 3.0.1」）。独立回读（直连 npmjs.org）：`latest` = 3.0.1、integrity 与本地 dry-run 一致、attestation、隔离安装、包内 `example/` 与四篇英文指南在位全过，GitHub Release v3.0.1 标 Latest，证据见 [`docs/releases/V3.0.1-RELEASE-EVIDENCE-2026-09-09.md`](docs/releases/V3.0.1-RELEASE-EVIDENCE-2026-09-09.md)。
 
 - **英文指南补齐四篇**：快速开始、Human Approval、Evidence、故障恢复各加 `.en.md`（与中文逐节对应，互相加语言切换行）；指南索引、docs 总入口、英文 README 指向英文版。快速开始安装注释里的 `BuildBeat v2 runtime` 改为 3.0.0 实际打印的 `BuildBeat runtime`，信封存在性说明去掉版本号。
 - **示例项目回来了**：`example/` 现在是虚构单仓项目「简账」跑完一个 Work 的快照——填好的 `AGENTS.md` / `指挥台.md` / `BUILDBEAT.md` / `pm/decisions.md`、通知与 observe 配置样例、带项目环境事实的信封、完整的 `delivery/work/WORK-EXPORT-DATE-FILTER/`（intent / plan / run-config / workflow 副本）以及运行时真跑一遍得到的 `decisions.jsonl` 与 `run-record.json`，外加应用本体与真实 `npm test`。随 npm 包与 Claude 插件分发；`tests/example-firstrun.test.js` 锁住工件一致性并把原样拷贝再跑到合并决定。README、docs 索引、SKILL §8.3 指向它。
 
 ## v3.0.0 — 2026-09-09（大版本：只剩一个产品，v1 移除）
 
-> **发布状态**：`@haiyangbg/buildbeat@3.0.0` 已于 2026-09-09 从 `main`（PR #37，merge commit `0289415`，tag `v3.0.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34362068004；publish 一次成功，verify 因 npm 异步处理约 6 分钟才可见而首次超时、版本可见后重跑成功；所有者授权「合并，然后发 3.0.0」）。独立回读（直连 npmjs.org）：`latest` = 3.0.0、integrity 与本地 dry-run 一致、attestation、隔离安装只有 `buildbeat` 一个可执行文件、裸调用零写入、包内无 v1 面全过，GitHub Release v3.0.0 标 Latest，证据见 [`docs/V3.0.0-RELEASE-EVIDENCE-2026-09-09.md`](docs/V3.0.0-RELEASE-EVIDENCE-2026-09-09.md)。
+> **发布状态**：`@haiyangbg/buildbeat@3.0.0` 已于 2026-09-09 从 `main`（PR #37，merge commit `0289415`，tag `v3.0.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34362068004；publish 一次成功，verify 因 npm 异步处理约 6 分钟才可见而首次超时、版本可见后重跑成功；所有者授权「合并，然后发 3.0.0」）。独立回读（直连 npmjs.org）：`latest` = 3.0.0、integrity 与本地 dry-run 一致、attestation、隔离安装只有 `buildbeat` 一个可执行文件、裸调用零写入、包内无 v1 面全过，GitHub Release v3.0.0 标 Latest，证据见 [`docs/releases/V3.0.0-RELEASE-EVIDENCE-2026-09-09.md`](docs/releases/V3.0.0-RELEASE-EVIDENCE-2026-09-09.md)。
 
 > **3.0.0（破坏性变更）**：v1 已移除。需要 v1 文件总线或 `buildbeat doctor/init/adopt/upgrade` 的项目请停留在 2.0.2；3.0.0 起仓库与包只描述一个产品。
 
@@ -26,13 +76,13 @@
 
 ## v2.0.2 — 2026-09-09（补丁：npm 包不再携带历史文档）
 
-> **发布状态**：`@haiyangbg/buildbeat@2.0.2` 已于 2026-09-09 从 `main`（PR #33，merge commit `a077367`，tag `v2.0.2`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34351668694，双 job success；所有者授权「发 2.0.2」）。独立回读（直连 npmjs.org）：`latest` = 2.0.2、integrity 与本地 dry-run 一致、attestation、隔离安装、`doctor` 有界 JSON、包内 `docs/` 24 个文件且无历史文档全过，GitHub Release v2.0.2 标 Latest，证据见 [`docs/V2.0.2-RELEASE-EVIDENCE-2026-09-09.md`](docs/V2.0.2-RELEASE-EVIDENCE-2026-09-09.md)。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.2` 已于 2026-09-09 从 `main`（PR #33，merge commit `a077367`，tag `v2.0.2`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34351668694，双 job success；所有者授权「发 2.0.2」）。独立回读（直连 npmjs.org）：`latest` = 2.0.2、integrity 与本地 dry-run 一致、attestation、隔离安装、`doctor` 有界 JSON、包内 `docs/` 24 个文件且无历史文档全过，GitHub Release v2.0.2 标 Latest，证据见 [`docs/releases/V2.0.2-RELEASE-EVIDENCE-2026-09-09.md`](docs/releases/V2.0.2-RELEASE-EVIDENCE-2026-09-09.md)。
 
 - **npm 包不再携带历史文档**：`package.json` 的 `files` 显式排除发布证据、迭代记录、阶段试点、路线与规划类文件（`docs/*-RELEASE-EVIDENCE-*.md`、`V2-ITERATION-*`、`PHASE*`、`V2-PLAN/PROPOSAL/DECISIONS`、`ROADMAP`、`EXECUTION-PLAN`、`CLI-STRATEGY/PILOT`、`docs/v2/M1/M2/M4-*` 与 v2 长文），它们只留在仓库；现行文档（总入口、v1 CLI 合同与检查、能力矩阵、迁移、发布手册、RFC/SPEC、十件套指南）照常分发。包内 `docs/` 从 61 个文件降到 24 个，压缩包约 497 kB → 362 kB，解压约 1.3 MB → 1.0 MB。安装目录里现行文档指向历史文件的链接会落空，`docs/README.md` 已说明去 GitHub 看。回归：`tests/pack-firstrun.test.sh` 新增两条断言——每份现行文档都在包内、历史文件一个都不在。运行时行为不变。
 
 ## v2.0.1 — 2026-09-06（补丁：合同与文档同步、`env:` 透传修复、v2 模板与首跑回归、首页重写）
 
-> **发布状态**：`@haiyangbg/buildbeat@2.0.1` 已于 2026-09-06 从 `main`（PR #29，merge commit `4b2362f`，tag `v2.0.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34032278315，双 job success；所有者授权「发」）。独立回读（直连 npmjs.org）：`latest` = 2.0.1、integrity 与本地 dry-run 一致、attestation、隔离安装、`doctor` 有界 JSON、包内 `templates/v2/envelope/` 全过，GitHub Release v2.0.1 标 Latest，证据见 [`docs/V2.0.1-RELEASE-EVIDENCE-2026-09-06.md`](docs/V2.0.1-RELEASE-EVIDENCE-2026-09-06.md)。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.1` 已于 2026-09-06 从 `main`（PR #29，merge commit `4b2362f`，tag `v2.0.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 34032278315，双 job success；所有者授权「发」）。独立回读（直连 npmjs.org）：`latest` = 2.0.1、integrity 与本地 dry-run 一致、attestation、隔离安装、`doctor` 有界 JSON、包内 `templates/v2/envelope/` 全过，GitHub Release v2.0.1 标 Latest，证据见 [`docs/releases/V2.0.1-RELEASE-EVIDENCE-2026-09-06.md`](docs/releases/V2.0.1-RELEASE-EVIDENCE-2026-09-06.md)。
 
 - **首页与简介（C 批次）**：中英文 README 围绕项目上下文与持续交付重写,暂用“会话随时换,项目接着干”标语;突出 Git 与文件上下文、跨模型/工具/会话/人员接续、多角色协作和交付 Loop,个人使用与团队接力均为适用场景;包与插件简介同步(插件版本 0.2.1 → 0.2.2)。新增中英文跨会话与团队接续指南,区分聊天删除、跨成员交接、运行恢复和跨机器同步;场景示意不冒充实测。README 与快速开始说明新模板随下一个补丁版发布(不再教源码全局安装);角色表收回 SKILL 的产品/全栈/测试三视角,审查归入 Run 内置只读 reviewer;首段补"进度与证据由内核回读";标语改为 H1 下的加粗行。README 检查改为必要入口和中英结构一致性,不再固定旧标题。
 
@@ -55,7 +105,7 @@
 
 ## v2.0.0 — 2026-09-05（正式版：v2 成为 `latest`）
 
-> **发布状态**：`@haiyangbg/buildbeat@2.0.0` 已于 2026-09-05 从 `main`（PR #22，tip `95e780e`，tag `v2.0.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 33974396871，双 job success；所有者授权「正式发布」）。独立回读（直连 npmjs.org）：`latest` = 2.0.0、integrity、attestation、隔离安装、`doctor` 有界 JSON 全过，GitHub Release v2.0.0 标 Latest，证据见 [`docs/V2.0.0-RELEASE-EVIDENCE-2026-09-05.md`](docs/V2.0.0-RELEASE-EVIDENCE-2026-09-05.md)。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.0` 已于 2026-09-05 从 `main`（PR #22，tip `95e780e`，tag `v2.0.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 33974396871，双 job success；所有者授权「正式发布」）。独立回读（直连 npmjs.org）：`latest` = 2.0.0、integrity、attestation、隔离安装、`doctor` 有界 JSON 全过，GitHub Release v2.0.0 标 Latest，证据见 [`docs/releases/V2.0.0-RELEASE-EVIDENCE-2026-09-05.md`](docs/releases/V2.0.0-RELEASE-EVIDENCE-2026-09-05.md)。
 
 - **内容与 `2.0.0-beta.5` 同源**（迭代 01～09 的全部 v2 运行时、Skill §0.5 驾驶手册、`templates/v2/`、十件套指南、lessons #1–#25），外加 README 中英文的「当前主线是 v2」段与 `docs/CLI.md` 的 2.0.0 状态行。
 - **对拷出项目意味着什么**：v1 文件总线、`buildbeat` 生命周期命令（`doctor` / `init` / `adopt` / `upgrade` / `version`）与安全边界**不变**，schema 仍是 2；`npm install --global @haiyangbg/buildbeat@latest` 现在同时给出 `buildbeat` 与 `buildbeat-v2`。骨架版本仍是 `v1.21`（模板未变，`buildbeat upgrade` 对 1.21 骨架报 up-to-date，不需要 `--major`）；manifest 里的 `cliVersion` 只是记录，不触发升级。v2 运行时是可选叠加：按 `docs/v2/guide/08-migration-v1.md`（已于 3.0.0 移除）建 `delivery/work/` 与 run 配置即可，不动现有 `pm/` 与 `contracts/`。
@@ -63,7 +113,7 @@
 
 ## v2.0.0-beta.5 — 2026-09-05（迭代 09：预算是刹车、故障分开算、成本看得见）
 
-> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.5` 已于 2026-09-05 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33972774150，双 job success；所有者授权「发，并且迭代5轮可以直接切换到线上版本了」）；`latest` 保持 v1.21.0。独立回读（直连 npmjs.org）：dist-tag 路由、integrity、attestation、隔离安装、`doctor` 有界 JSON 全过，证据见 [`docs/V2.0.0-BETA.5-RELEASE-EVIDENCE-2026-09-05.md`](docs/V2.0.0-BETA.5-RELEASE-EVIDENCE-2026-09-05.md)。所有者本机 CLI 已从源码链接切回正式包。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.5` 已于 2026-09-05 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33972774150，双 job success；所有者授权「发，并且迭代5轮可以直接切换到线上版本了」）；`latest` 保持 v1.21.0。独立回读（直连 npmjs.org）：dist-tag 路由、integrity、attestation、隔离安装、`doctor` 有界 JSON 全过，证据见 [`docs/releases/V2.0.0-BETA.5-RELEASE-EVIDENCE-2026-09-05.md`](docs/releases/V2.0.0-BETA.5-RELEASE-EVIDENCE-2026-09-05.md)。所有者本机 CLI 已从源码链接切回正式包。
 > 来源：试点工作区 2026-09-03～09-05（beta.4 之后）全部驾驶会话、约 60 个 worker 会话与两个子仓 50 个 Run 台账的复盘回灌（迭代 09，lessons #23–#25），以及 2026-09-05 收尾清理回灌。台账数字：50 个 Run 成功 12、作废 16、取消 17、失败 5，支撑 7 次生产发布；所有者问"多久了正常吗"从十余次降到 1 次。
 
 - **预算续批不再死循环，run 配置可覆盖预算（迭代 09 A1）**：预算耗尽停人后批准 `resume-<step>`，内核落 `BUDGET_EXTENDED`（台账事实，可重放）给该步 +1 再跑，不再立刻重问；run 配置 `budgets.maxAttempts.<step>` 覆盖预设（run config > preset > `maxAttemptsPerStep`）；`doctor` 打印每步生效上限与来源。真实事故：两条应用登录 Run 因预设 2 轮改不动且批了没用而以 CANCELLED 收场，候选却已在生产
@@ -82,7 +132,7 @@
 ## v2.0.0-beta.4 — 2026-09-03（迭代 08：等待要能找到人）
 
 > 主题：试点工作区 2026-08-28～09-02 全部驾驶会话与 58 个 Run 台账的复盘回灌（复盘文档见迭代 08 记录）。台账数字：58 个 Run 成功 7、失败 17、取消 32，其中多数取消是在 WAITING_HUMAN 挂满一天后批量清掉；人批平均等 7～12 小时。beta.3 治的是"审查循环烧钱"，本版治的是**人看不见 Run 在干什么、等的人不知道有东西等他、每次都要手工打扫**。
-> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.4` 已于 2026-09-03 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33728863042，双 job success；所有者授权「发布 beta.4 吧，授权也一起」）；`latest` 保持 v1.21.0。独立回读（直连 npmjs.org）：dist-tag 路由、integrity、attestation、隔离安装、`doctor` 有界 JSON 全过，证据见 [`docs/V2.0.0-BETA.4-RELEASE-EVIDENCE-2026-09-03.md`](docs/V2.0.0-BETA.4-RELEASE-EVIDENCE-2026-09-03.md)。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.4` 已于 2026-09-03 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33728863042，双 job success；所有者授权「发布 beta.4 吧，授权也一起」）；`latest` 保持 v1.21.0。独立回读（直连 npmjs.org）：dist-tag 路由、integrity、attestation、隔离安装、`doctor` 有界 JSON 全过，证据见 [`docs/releases/V2.0.0-BETA.4-RELEASE-EVIDENCE-2026-09-03.md`](docs/releases/V2.0.0-BETA.4-RELEASE-EVIDENCE-2026-09-03.md)。
 
 - **运行中可见性（C1）**：Shell Adapter 把 worker 的 stdout/stderr **实时**流到 `.buildbeat/runtime/runs/<RUN>/<step>-<n>.{stdout,stderr}.live`，并留 `live.json` 标记（命令、开始时间）；步结束即收回，证据日志仍由回读生成。`status` 现在显示每步耗时（本次 / 累计 / 同仓同步骤历史中位数 `typical … n=`）、在飞步骤的已用时间、worker 命令、最后一次输出距今多久与末三行输出；无输出超过阈值（默认 15 分钟，run 配置 `stallAfterMs` 或 `status --stall-after <分钟>`）标 **STALLED**（只标不杀）。`metrics` 增加每步中位耗时。真实事故：所有者一场会话里问了十余次"半小时了正常吗 / 十分钟了是卡住了吗"，而 status 只有步骤和次数
 - **同 Work 新 Run 自动取代旧的等待（C2）**：`start` 时同一 Work 下仍在 `WAITING_HUMAN` 的旧 Run 记 `RUN_TERMINAL SUPERSEDED` 并压成 run-record（Git 面），新 Run 的 `RUN_CREATED.data.supersedes` 记血统；inbox 只剩活的等待。run 配置 `supersede: off` 关闭。真实事故：试点子仓两个旧 Run 在 inbox 挂了一天，而后继者早已上线
@@ -104,7 +154,7 @@
 ## v2.0.0-beta.3 — 2026-09-01
 
 > 主题：三十轮部署战役（试点 WORK-PILOT-DEPLOY-01，DEPLOY-01~30 + L4 之夜）的机制回灌。战役复盘：`试点工作区的部署战役复盘文档`。
-> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.3` 已于 2026-09-01 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33460544343，双 job success）；`latest` 保持 v1.21.0。独立回读（直连 npmjs.org）：dist-tag 路由、integrity、签名+attestation、隔离安装全过，证据见 [`docs/V2.0.0-BETA.3-RELEASE-EVIDENCE-2026-09-01.md`](docs/V2.0.0-BETA.3-RELEASE-EVIDENCE-2026-09-01.md)。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.3` 已于 2026-09-01 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33460544343，双 job success）；`latest` 保持 v1.21.0。独立回读（直连 npmjs.org）：dist-tag 路由、integrity、签名+attestation、隔离安装全过，证据见 [`docs/releases/V2.0.0-BETA.3-RELEASE-EVIDENCE-2026-09-01.md`](docs/releases/V2.0.0-BETA.3-RELEASE-EVIDENCE-2026-09-01.md)。
 
 - **发现分诊门**（复盘改革条 4）：run 配置 `reviewTriage: required` 后，review 的 P0/P1 finding 不再自动派 fixer——停 `WAITING_HUMAN`（kind `finding-triage`）待人逐指纹裁决，approve `enter-fix` 才放行。finding 是处方不是事实；自动路由处方在战役振荡期连烧四轮
 - **锚定审查与裁决台账**（改革条 3）：finding 全部落 Git 面 `delivery/work/<id>/review-findings.jsonl`（指纹=严重度+正文规范化 hash）；`findings list` / `findings adjudicate --action accept|dismiss` 人裁决；`dismiss` 后同指纹不再阻断（重提记 `RE-RAISED` 可见）、严重度升级自动重开；Reviewer input 注入历史裁决锚（`anchor`）、fixer input 注入带裁决状态的工单（`findings`）。裁决记忆在 Git 面，删 runtime 不丢
@@ -118,14 +168,14 @@
 ## v2.0.0-beta.2 — 2026-08-28
 
 > 主题：meta 试点仓v2 迁移试点抓出的内核修复。
-> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.2` 已于 2026-08-28 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33175013599，双 job success）；`latest` 保持 v1.21.0。独立回读：dist-tag 路由、integrity、SLSA provenance、隔离安装全过，证据见 [`docs/V2.0.0-BETA.2-RELEASE-EVIDENCE-2026-08-28.md`](docs/V2.0.0-BETA.2-RELEASE-EVIDENCE-2026-08-28.md)。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.2` 已于 2026-08-28 经 OIDC Trusted Publishing 发布到 dist-tag `next`（run 33175013599，双 job success）；`latest` 保持 v1.21.0。独立回读：dist-tag 路由、integrity、SLSA provenance、隔离安装全过，证据见 [`docs/releases/V2.0.0-BETA.2-RELEASE-EVIDENCE-2026-08-28.md`](docs/releases/V2.0.0-BETA.2-RELEASE-EVIDENCE-2026-08-28.md)。
 
 - **fix(v2) 范围门中文路径误拦**：git `core.quotepath` 默认把非 ASCII 路径转义为带引号的八进制串，`listChangedPaths` 直接喂给 allowedPaths 前缀检查导致范围内中文文件被判越界（真实事故：试点工作区 `RUN-META-V2-01` 被 `pm/登录二期看板.md` 阻断）。读回改用 `core.quotepath=off`，中文路径永久回归进 `tests/v2-invariants.test.js`
 
 ## v2.0.0-beta.1 — 2026-08-28
 
 > 主题：BuildBeat v2 首个 Beta——确定性内核 + Agent Loop Runtime。事件溯源台账（hash 链、损坏截断、终态压实进 Git 面）、Policy 门（8 算子三值逻辑、`UNVERIFIED` 永不当 PASS）、隔离 Workspace（push 物理封禁、`allowedPaths` 越界即停、Reviewer 只读快照强制）、Shell Adapter 厂商中立接任意 CLI Agent（codex 实证）、digest 绑定人批与 `APPROVAL_STALE`。MVP 承诺兑现：Build–Verify–Fix–Review 自动闭环，停在合并决定，带证据交人。
-> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.1` 已于 2026-08-28 经 GitHub Actions OIDC / Trusted Publishing 发布到 dist-tag `next`；`latest` 保持 v1.21.0，v1 CLI 与文件冻结随包分发（脚手架束钉 `v1.21`）。v2 入口为独立 bin `buildbeat-v2`。registry exact artifact、SLSA provenance、dist-tag 路由、隔离安装、签名审计均已独立回读，证据见 [`docs/V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md`](docs/V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md)。
+> **发布状态**：`@haiyangbg/buildbeat@2.0.0-beta.1` 已于 2026-08-28 经 GitHub Actions OIDC / Trusted Publishing 发布到 dist-tag `next`；`latest` 保持 v1.21.0，v1 CLI 与文件冻结随包分发（脚手架束钉 `v1.21`）。v2 入口为独立 bin `buildbeat-v2`。registry exact artifact、SLSA provenance、dist-tag 路由、隔离安装、签名审计均已独立回读，证据见 [`docs/releases/V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md`](docs/releases/V2.0.0-BETA.1-RELEASE-EVIDENCE-2026-08-28.md)。
 > **试点证据**：self-host（RUN-SELF-001）+ 两个外部真实项目（pilot-backend RUN-PILOT-EXT-01 全自动 5.2 分钟到合并决定；pilot-app 看板积压含完整 reviewer 阻断→fixer 修复闭环），六退出指标全达标；见 `docs/v2/M4-*.md`。
 
 - **observe v0**（RFC-0003 §8 冻结契约的实现）：drift-check/live-status 类探针接为 Evidence Provider（采不到即 `unverified`，同一 Evidence Contract 与链校验台账）；bands log→只读诊断→Intent 草稿三层分层响应；草稿只入队 Git 面绝不自动执行；`observe triage` 人分诊，`dismiss` 回调阈值防告警疲劳；分诊记忆活在 Git 面，runtime 可删（不变量 23 有测试）

@@ -2,7 +2,7 @@
 
 > 日期：2026-08-28
 > 项目：`<试点工作区>/pilot-backend`（真实业务单仓：Java 多模块 + Node portal 测试 + 真实远端）
-> 任务：项目所有者点名的真实需求 `LXJ-AUTH-PILOT-EXT-01`——数仓 CLI 公有客户端标识 `client-b-old` 精确重命名为 `client-b`（meta 仓 `pm/decisions.md` 当日拍板行）
+> 任务：项目所有者点名的真实需求 `PILOT-EXT-01`——数仓 CLI 公有客户端标识 `client-b-old` 精确重命名为 `client-b`（meta 仓 `pm/decisions.md` 当日拍板行）
 > 结论上限：本地候选 + 本地真实测试；不含生产切换（提案 §4 硬门未授权）。**Run 停在合并决定，等待项目所有者。**
 
 ## 1. 为什么这个试点有分量
@@ -37,7 +37,7 @@
 
 ## 4.1 生产切换（2026-08-28 当日晚，所有者逐步授权后完成）
 
-candidate `f97f122` 经 cherry-pick 到生产血统（`origin/master`，规避了本地分支上未批准的 registry 在途工作与已部署内网文档的双向分叉）→ 全量验证（Surefire 全套 + Portal 29/29 + 零残留）→ 按提案 §4 硬门完成生产切换：只读盘点（唯一 `client-b-old` 行 / 零 Nacos 覆盖 / 零真实消费方登录记录）→ **有界双行窗口**破解新旧健康门顺序死锁（先 INSERT `client-b` 镜像行 → 云效 Run #31 双批发布 SUCCESS → 软删旧行收口）→ L4 全绿（`client-b` 200 ×2、`client-b-old` 400 ×2、`/index` 200 全程无扰动）。证据：meta 仓 `pm/archive/登录二期/evidence/2026-08-28-LXJ-AUTH-PILOT-EXT-01-生产切换.md`。
+candidate `f97f122` 经 cherry-pick 到生产血统（`origin/master`，规避了本地分支上未批准的 registry 在途工作与已部署内网文档的双向分叉）→ 全量验证（Surefire 全套 + Portal 29/29 + 零残留）→ 按提案 §4 硬门完成生产切换：只读盘点（唯一 `client-b-old` 行 / 零 Nacos 覆盖 / 零真实消费方登录记录）→ **有界双行窗口**破解新旧健康门顺序死锁（先 INSERT `client-b` 镜像行 → 云效 Run #31 双批发布 SUCCESS → 软删旧行收口）→ L4 全绿（`client-b` 200 ×2、`client-b-old` 400 ×2、`/index` 200 全程无扰动）。证据：meta 仓 所有者工作区内的生产切换证据文件（路径不入库）。
 
 ## 5. 对 M4 退出指标的回填
 

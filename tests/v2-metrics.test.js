@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -10,6 +9,7 @@ import { loadWorkflow } from "../src/v2/engine/workflow.js";
 import { rejectRun } from "../src/v2/runtime/decisions.js";
 import { computeMetrics, renderMetrics } from "../src/v2/runtime/metrics.js";
 import { startRun } from "../src/v2/runtime/orchestrator.js";
+import { tempDir } from "./support/tmp.js";
 
 const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 const WORKFLOW = loadWorkflow(PRESET_PATH);
@@ -20,7 +20,7 @@ function git(cwd, args) {
 }
 
 test("metrics derive run counts, rates and waits from ledgers alone", () => {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-met-"));
+  const root = tempDir("bb-v2-met-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);

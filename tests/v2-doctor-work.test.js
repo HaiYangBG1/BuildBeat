@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
 import { acceptArtifact } from "../src/v2/runtime/decisions.js";
+import { tempDir } from "./support/tmp.js";
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
@@ -21,7 +21,7 @@ function cli(args) {
 test("doctor reads the same work-artifact preconditions start's first gate will read", () => {
   // Real incident, twice: doctor passed, start stopped at build because
   // plan.md had not been mirrored into the repository the run was started in.
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-doctor-"));
+  const root = tempDir("bb-v2-doctor-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);

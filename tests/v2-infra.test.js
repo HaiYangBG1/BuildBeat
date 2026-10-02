@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -10,6 +9,7 @@ import { createShellAdapter } from "../src/v2/adapters/shell.js";
 import { loadWorkflow } from "../src/v2/engine/workflow.js";
 import { approveRun } from "../src/v2/runtime/decisions.js";
 import { resumeRun, startRun } from "../src/v2/runtime/orchestrator.js";
+import { tempDir } from "./support/tmp.js";
 
 const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 const WORKFLOW = loadWorkflow(PRESET_PATH);
@@ -20,7 +20,7 @@ function git(cwd, args) {
 }
 
 function fixtureRepo() {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-infra-"));
+  const root = tempDir("bb-v2-infra-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);
@@ -74,7 +74,7 @@ for (const [label, behavior] of [
     assert.equal(state.steps.review.infraAttempts, 1);
     assert.equal(state.steps.fix, undefined, "no fixer dispatched");
     assert.equal(state.fingerprints.length, 0, "no failure fingerprint recorded");
-    assert.equal(state.budgets.attempts.consumed, 2, "build and verify charged, review refunded");
+    assert.equal(state.budgets.attempts.consumed, 0, "successful build and verify are free, infra review refunded");
 
     approveRun(root, runId, { by: "owner", transition: "resume-review" });
     const resumed = resumeRun(options(root, runId, adapters));

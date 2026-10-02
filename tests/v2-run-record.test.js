@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
 import { writeRunRecord } from "../src/v2/runtime/run-record.js";
+import { tempDir } from "./support/tmp.js";
 
 test("compaction normalizes legacy absolute runtime references", () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), "bb-v2-record-"));
+  const repoRoot = tempDir("bb-v2-record-");
   const runId = "RUN-LEGACY";
   const workId = "WORK-LEGACY";
   const ledger = {

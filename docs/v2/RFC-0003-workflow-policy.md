@@ -2,8 +2,8 @@
 
 > 状态：`FINAL`（2026-08-28 项目所有者定稿，`V2-D3`；§8 observe/bands schema 已随定稿冻结）
 > 日期：2026-08-28
-> 上游：[`V2-PLAN.md`](../V2-PLAN.md) §3.2–3.7；报告 B §8–11 / WP1.4–1.5 / WP4.3–4.5
-> 需求来源：[`pilot/metrics.md`](../../pilot/metrics.md) 卡点 3/5、故障矩阵 F1–F6；[`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../../pilot/evidence/2026-08-28-m1-runtime-gap.md)
+> 上游：[`V2-PLAN.md`](../history/V2-PLAN.md) §3.2–3.7；报告 B §8–11 / WP1.4–1.5 / WP4.3–4.5
+> 需求来源：[`history/pilot/metrics.md`](../history/pilot/metrics.md) 卡点 3/5、故障矩阵 F1–F6；[`history/pilot/evidence/2026-08-28-m1-runtime-gap.md`](../history/pilot/evidence/2026-08-28-m1-runtime-gap.md)
 
 ---
 
@@ -57,7 +57,7 @@ budgets:
 Intent → [Spec] → Plan → Build → Verify ⇄ Fix → Independent Review ⇄ Fix → WAIT_HUMAN(merge)
 ```
 
-- **Spec 步默认可选；识别到 UI/视觉/交互交付时强制**，且其 Approval subject 必须包含可渲染入口 + 截图 digest（不变量 22；v1 lessons #3 的 v2 化，经 [`V2-PLAN.md`](../V2-PLAN.md) 裁决 #3）。
+- **Spec 步默认可选；识别到 UI/视觉/交互交付时强制**，且其 Approval subject 必须包含可渲染入口 + 截图 digest（不变量 22；v1 lessons #3 的 v2 化，经 [`V2-PLAN.md`](../history/V2-PLAN.md) 裁决 #3）。
 - 各步执行规则照报告 B §8.1：Builder 只写授权 Workspace；Fixer 输入必须含失败命令/退出码/日志摘要/candidate/允许范围，不接受泛化的"再检查一下"；Reviewer fresh-context、默认只读、不改代码、产出结构化 findings（不变量 9）。
 - MVP 到 merge 决定即暂停，不自动合并（不变量 20）。
 

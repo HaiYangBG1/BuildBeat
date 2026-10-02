@@ -1,10 +1,10 @@
 # SPEC-0001：Event Ledger 格式 v1（冻结）
 
-> 状态：**FROZEN**（2026-08-28 项目所有者定稿，`V2-D3`；[`V2-PLAN.md`](../V2-PLAN.md) 裁决 #8：格式 day-1 冻结，此后 additive-only）
+> 状态：**FROZEN**（2026-08-28 项目所有者定稿，`V2-D3`；[`V2-PLAN.md`](../history/V2-PLAN.md) 裁决 #8：格式 day-1 冻结，此后 additive-only）
 > 日期：2026-08-28
 > 冻结范围：**信封字段、通用规则、损坏处理、reducer 合同、初始事件类型注册表的语义**。文件摆放位置、快照格式、CLI 展示均为非规范内容，可变。
 > 演进规则：一切修改 **additive-only**（新增可选字段、新增事件类型）；破坏性变更必须升 `v` 并提供旧版读取器。
-> 需求来源：[`pilot/metrics.md`](../../pilot/metrics.md) 卡点 1（无统一 ledger）、卡点 5（无 Run 登记）；F5/F6 见 [`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../../pilot/evidence/2026-08-28-m1-runtime-gap.md)
+> 需求来源：[`history/pilot/metrics.md`](../history/pilot/metrics.md) 卡点 1（无统一 ledger）、卡点 5（无 Run 登记）；F5/F6 见 [`history/pilot/evidence/2026-08-28-m1-runtime-gap.md`](../history/pilot/evidence/2026-08-28-m1-runtime-gap.md)
 
 ---
 
@@ -71,7 +71,7 @@
 | `FAILURE_FINGERPRINT` | kernel | `step, command, exitCode, errorDigest, diffDigest` | 无进展/相同失败检测的输入 |
 | `BUDGET_CONSUMED` | kernel | `kind ∈ {attempts,tokens,cost,time}, amount, remaining` | 预算台账（卡点 1：token/费用不再 `UNVERIFIED`） |
 | `BUDGET_EXTENDED` | kernel | `step, amount, maxAttempts, approvalRef, scope?` | additive（迭代 09）：人批准了预算耗尽的 `resume-<step>`，该步上限 +`amount`；状态 `budgetExtensions[step]` 累加，`maxAttemptsFor(step)` 据此重放。`scope: work` 时是 Work 级 review 轮数上限（`budgets.reviewRoundsPerWork`）被人放行一轮，累加到 `workReviewGrants` |
-| `HUMAN_REQUESTED` | kernel | `transition, subject{candidate,planDigest,evidenceDigest}, reasons`；additive：`kind ∈ {boundary,final-decision,finding-triage,stale,infra}` | 进入 WAITING_HUMAN |
+| `HUMAN_REQUESTED` | kernel | `transition, subject{candidate,planDigest,evidenceDigest}, reasons`；additive：`kind ∈ {boundary,final-decision,finding-triage,stale,infra,budget,work-review-cap,review-not-converging}`（`review-not-converging`：review 修过的 finding 又出现或阻断数多于上一轮，停 `enter-fix`） | 进入 WAITING_HUMAN |
 | `DECISION_RECORDED` | human | `decision ∈ {approved,rejected}, transition, subject, decisionRef`；additive（迭代 09）：`adopted?: <sha>`、`resumeAt?: <step>`（adopt 时 subject 即该提交，恢复从 `resumeAt` 起而非 transition 所指的步） | 同步落 Git 决策记录 |
 | `APPROVAL_STALE` | kernel | `approvalRef, changed ⊆ {candidate,plan,evidence}` | F6 的机器化 |
 | `CHECKPOINT` | kernel | `resumePoint{step,attempt}, workspaceStates[]` | F5 的机器化：恢复只允许从最近 CHECKPOINT 或安全推导点继续 |

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -11,6 +10,7 @@ import { applyEvent, initialState } from "../src/v2/engine/reducer.js";
 import { loadWorkflow } from "../src/v2/engine/workflow.js";
 import { approveRun } from "../src/v2/runtime/decisions.js";
 import { resumeRun, startRun } from "../src/v2/runtime/orchestrator.js";
+import { tempDir } from "./support/tmp.js";
 
 const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 const WORKFLOW = loadWorkflow(PRESET_PATH);
@@ -21,7 +21,7 @@ function git(cwd, args) {
 }
 
 function fixtureRepo() {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-budget-"));
+  const root = tempDir("bb-v2-budget-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);
@@ -57,10 +57,10 @@ function options(root, runId, adapters, extra = {}) {
   };
 }
 
-test("approving resume-review after the budget ran out grants one more round instead of re-asking", () => {
+test("approving the exhausted review round before fix grants one more round instead of re-asking", () => {
   // Real incident: the preset's two review rounds ran out, the human
   // approved resume-review, and the kernel immediately filed the same
-  // request again. The run was cancelled while its candidate shipped.
+  // request again. Now ask at enter-fix and fund the whole next round.
   const { root } = fixtureRepo();
   const mock = createMockAdapter({
     verify: ["succeed", "succeed", "succeed"],
@@ -68,15 +68,16 @@ test("approving resume-review after the budget ran out grants one more round ins
     review: [blocking("issue one"), blocking("issue two"), clean()],
   });
   const adapters = { builder: committingBuilder(), verifier: mock, fixer: mock, reviewer: mock };
-  const started = startRun(options(root, "RUN-B1", adapters));
+  const twoRounds = { budgets: { maxAttempts: { review: 2 } } };
+  const started = startRun(options(root, "RUN-B1", adapters, twoRounds));
   assert.equal(started.state.run.status, "WAITING_HUMAN");
-  assert.equal(started.state.pendingHuman.transition, "resume-review");
-  assert.match(started.state.pendingHuman.reasons[0], /budget exhausted: review would exceed maxAttempts=2/);
-  assert.match(started.state.pendingHuman.reasons[1], /approving resume-review grants one more attempt/);
+  assert.equal(started.state.pendingHuman.transition, "enter-fix");
+  assert.match(started.state.pendingHuman.reasons[0], /review budget exhausted: 2\/2 review round\(s\) used in this run/);
+  assert.match(started.state.pendingHuman.reasons[0], /approve enter-fix = fix \+ re-verify \+ one more review round/);
 
-  const approval = approveRun(root, "RUN-B1", { by: "owner", transition: "resume-review" });
+  const approval = approveRun(root, "RUN-B1", { by: "owner", transition: "enter-fix" });
   assert.equal(approval.approved, true);
-  const resumed = resumeRun(options(root, "RUN-B1", adapters));
+  const resumed = resumeRun(options(root, "RUN-B1", adapters, twoRounds));
   assert.equal(resumed.resumed, true);
   const state = resumed.state;
   assert.equal(state.budgetExtensions.review, 1);
@@ -111,7 +112,7 @@ test("a final-attempt failure also becomes one more attempt on approval, not a f
   const adapters = { builder: mock, verifier: mock, reviewer: mock };
   const started = startRun(options(root, "RUN-B3", adapters, { maxAttemptsPerStep: 1 }));
   assert.equal(started.state.pendingHuman.transition, "resume-build");
-  assert.match(started.state.pendingHuman.reasons[0], /budget exhausted: build failed its final attempt/);
+  assert.match(started.state.pendingHuman.reasons[0], /build budget exhausted: 1\/1 charged attempt\(s\) used, 1 real failure\(s\)/);
   approveRun(root, "RUN-B3", { by: "owner", transition: "resume-build" });
   const resumed = resumeRun(options(root, "RUN-B3", adapters, { maxAttemptsPerStep: 1 }));
   assert.equal(resumed.state.budgetExtensions.build, 1);

@@ -1,5 +1,6 @@
 // Runtime garbage collection (iteration 08, C3): terminal runs leave a
-// worktree, a run/* branch and sometimes a lock behind. Sixteen of them had
+// worktree, a run/* branch and sometimes a lock behind (and a killed driver
+// an active-run lock whose owner is gone). Sixteen of them had
 // piled up in the deploy campaign before the owner asked for "打扫卫生".
 //
 // Rules (fail-closed toward keeping things):
@@ -18,7 +19,14 @@ import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 
 import { EventLedger } from "../storage/event-ledger.js";
-import { readback } from "../workspace/workspace-manager.js";
+import {
+  describeLockOwner,
+  inspectLock,
+  isRunLockName,
+  readback,
+  reclaimStaleLock,
+  withRepoGitLock,
+} from "../workspace/workspace-manager.js";
 import { resolveRepoRef } from "./repo-ref.js";
 
 function git(cwd, args) {
@@ -64,6 +72,28 @@ export function planGc(repoRoot) {
   const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
   const locksDir = join(repoRoot, ".buildbeat", "runtime", "locks");
   const rows = [];
+  // Locks that belong to no single run (active-run, and the @work /
+  // @parallel / @repo-git locks): reclaimable only when their owner process
+  // is provably gone (same host, pid no longer exists).
+  const sharedLocks = existsSync(locksDir)
+    ? readdirSync(locksDir)
+        .filter((entry) => entry.endsWith(".lock") && !isRunLockName(entry.slice(0, -".lock".length)))
+        .sort()
+    : [];
+  for (const entry of sharedLocks) {
+    const name = entry.slice(0, -".lock".length);
+    const lockPath = join(locksDir, entry);
+    const seen = inspectLock(lockPath);
+    const row = { run: "(repository)", status: `${name} lock`, actions: [], keep: [] };
+    if (seen.state === "dead") {
+      row.actions.push({ kind: "remove-lock", path: lockPath, owner: seen.owner });
+    } else if (seen.state === "unknown") {
+      row.keep.push(`${name} lock has no owner record (older buildbeat?); remove it by hand once no buildbeat process is running`);
+    } else {
+      row.keep.push(`${name} lock held by ${describeLockOwner(seen.owner)}${seen.state === "foreign-host" ? " (another host)" : " (still running)"}`);
+    }
+    rows.push(row);
+  }
   if (!existsSync(runsDir)) {
     return rows;
   }
@@ -145,7 +175,16 @@ export function applyGc(repoRoot, rows, { force = false } = {}) {
       const result = { run: row.run, ...action, done: false, error: null };
       results.push(result);
       try {
-        if (action.kind === "remove-lock") {
+        if (action.kind === "remove-lock" && action.owner) {
+          // Winning the takeover makes this process the only one entitled
+          // to the lock; only then is it removed.
+          if (reclaimStaleLock(action.path, action.owner)) {
+            rmSync(action.path, { recursive: true, force: true });
+            result.done = true;
+          } else {
+            result.error = "lock changed hands since the plan (or is being taken over); left in place";
+          }
+        } else if (action.kind === "remove-lock") {
           rmSync(action.path, { recursive: true, force: true });
           result.done = true;
         } else if (action.kind === "remove-worktree") {
@@ -153,24 +192,26 @@ export function applyGc(repoRoot, rows, { force = false } = {}) {
             result.error = "worktree dirty; rerun with --force true to discard";
             continue;
           }
-          if (action.registered) {
-            const args = ["worktree", "remove"];
-            if (force || action.dirty) {
-              args.push("--force");
+          withRepoGitLock(repoRoot, () => {
+            if (action.registered) {
+              const args = ["worktree", "remove"];
+              if (force || action.dirty) {
+                args.push("--force");
+              }
+              args.push(action.path);
+              git(repoRoot, args);
+            } else if (action.present) {
+              rmSync(action.path, { recursive: true, force: true });
             }
-            args.push(action.path);
-            git(repoRoot, args);
-          } else if (action.present) {
-            rmSync(action.path, { recursive: true, force: true });
-          }
-          try {
-            git(repoRoot, ["worktree", "prune"]);
-          } catch {
-            // prune is best-effort
-          }
+            try {
+              git(repoRoot, ["worktree", "prune"]);
+            } catch {
+              // prune is best-effort
+            }
+          });
           result.done = true;
         } else if (action.kind === "delete-branch") {
-          git(repoRoot, ["branch", "-D", action.branch]);
+          withRepoGitLock(repoRoot, () => git(repoRoot, ["branch", "-D", action.branch]));
           result.done = true;
         }
       } catch (error) {

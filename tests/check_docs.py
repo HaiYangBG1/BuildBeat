@@ -26,18 +26,25 @@ ACTIVE_DOCS = (
     "docs/CAPABILITY-MATRIX.md",
     "docs/RELEASING.md",
     "docs/v2/guide/README.md",
+    "docs/v2/guide/README.en.md",
     "docs/v2/guide/00-how-to-talk.md",
+    "docs/v2/guide/00-how-to-talk.en.md",
     "docs/v2/guide/01-quickstart.md",
     "docs/v2/guide/01-quickstart.en.md",
     "docs/v2/guide/02-workflow-guide.md",
+    "docs/v2/guide/02-workflow-guide.en.md",
     "docs/v2/guide/03-policy-guide.md",
+    "docs/v2/guide/03-policy-guide.en.md",
     "docs/v2/guide/04-adapter-guide.md",
+    "docs/v2/guide/04-adapter-guide.en.md",
     "docs/v2/guide/05-worker-contract.md",
+    "docs/v2/guide/05-worker-contract.en.md",
     "docs/v2/guide/06-evidence-guide.md",
     "docs/v2/guide/06-evidence-guide.en.md",
     "docs/v2/guide/07-approval-guide.md",
     "docs/v2/guide/07-approval-guide.en.md",
     "docs/v2/guide/09-security-boundaries.md",
+    "docs/v2/guide/09-security-boundaries.en.md",
     "docs/v2/guide/10-recovery.md",
     "docs/v2/guide/10-recovery.en.md",
     "docs/v2/guide/11-session-handoff.md",
@@ -281,7 +288,7 @@ def check_readme_shape() -> list[str]:
         for target in (
             "SKILL.md", f"docs/v2/guide/01-quickstart{suffix}", f"docs/v2/guide/11-session-handoff{suffix}",
             "docs/CAPABILITY-MATRIX.md", f"docs/v2/guide/10-recovery{suffix}",
-            "docs/v2/guide/09-security-boundaries.md", "CONTRIBUTING.md", "LICENSE",
+            f"docs/v2/guide/09-security-boundaries{suffix}", "CONTRIBUTING.md", "LICENSE",
         ):
             if target not in targets:
                 errors.append(f"{filename}: missing user entry point {target}")
@@ -561,9 +568,16 @@ def check_cli_package() -> list[str]:
     if package.get("bin") != {"buildbeat": "bin/buildbeat.js"}:
         errors.append("package.json: the only executable is buildbeat -> bin/buildbeat.js")
     package_files = package.get("files", [])
-    for required in ("bin/", "src/", "docs/", "example/", "templates/", "SKILL.md", "lessons.md", "CHANGELOG.md"):
+    for required in (
+        "bin/", "src/", "docs/README.md", "docs/CAPABILITY-MATRIX.md", "docs/RELEASING.md", "docs/v2/",
+        "example/", "templates/", "SKILL.md", "lessons.md", "CHANGELOG.md",
+    ):
         if required not in package_files:
             errors.append(f"package.json: published files must include {required}")
+    # docs/ ships by whitelist: history and release evidence live in
+    # docs/history/ and docs/releases/ and must never be packed by default.
+    if "docs/" in package_files or any(entry.startswith(("docs/history", "docs/releases")) for entry in package_files):
+        errors.append("package.json: docs/ ships by whitelist; do not publish docs/ wholesale or docs/history|releases")
     if package.get("engines", {}).get("node") != ">=20":
         errors.append("package.json: supported Node floor must stay explicit at >=20")
     if package.get("dependencies") not in (None, {}):
@@ -588,7 +602,7 @@ def check_cli_package() -> list[str]:
     prepublish = package.get("scripts", {}).get("prepublishOnly", "")
     for required in (
         "npm test",
-        "npm run test:pilot",
+        "npm run test:envelope",
         "npm run test:plugin",
         "npm run test:pack-firstrun",
         "npm run check:docs",
@@ -751,6 +765,25 @@ def check_active_docs_currency() -> list[str]:
     return errors
 
 
+NUMBERED_LESSON = re.compile(r"lessons?(?:\.md)?`?\s*(?:#\s*\d|第\s*\d+\s*条)|教训\s*\d+", re.IGNORECASE)
+
+
+def check_lesson_citations() -> list[str]:
+    """lessons.md was renumbered once (3.0.0) and stale numbers pointed at the
+    wrong entries; cite a lesson by its title, never by its number."""
+    errors: list[str] = []
+    roots = [ROOT / "src", ROOT / "templates", ROOT / "docs" / "v2" / "guide", ROOT / "docs" / "v2" / "skill"]
+    files = [ROOT / "SKILL.md"]
+    for root in roots:
+        if root.exists():
+            files.extend(path for path in root.rglob("*") if path.is_file() and path.suffix in {".md", ".js", ".yaml", ".sh"})
+    for path in files:
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if NUMBERED_LESSON.search(line):
+                errors.append(f"{path.relative_to(ROOT)}:{number}: cite lessons.md by title, not by number")
+    return errors
+
+
 def main() -> int:
     paths = markdown_files()
     errors = []
@@ -765,6 +798,7 @@ def main() -> int:
     errors.extend(check_workflow_action_pins())
     errors.extend(check_repository_governance())
     errors.extend(check_active_docs_currency())
+    errors.extend(check_lesson_citations())
 
     if errors:
         print("Documentation checks failed:", file=sys.stderr)

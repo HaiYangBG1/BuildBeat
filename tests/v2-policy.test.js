@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -11,11 +10,12 @@ import {
   sha256Text,
 } from "../src/v2/policy/policy.js";
 import { acceptArtifact } from "../src/v2/runtime/decisions.js";
+import { tempDir } from "./support/tmp.js";
 
 function ctx(overrides = {}) {
   return {
     state: { evidence: [], steps: {}, budgets: {}, approvals: [] },
-    workDir: mkdtempSync(join(tmpdir(), "bb-v2-pol-")),
+    workDir: tempDir("bb-v2-pol-"),
     worktreePath: null,
     readWorktree: () => null,
     ...overrides,
@@ -109,7 +109,7 @@ test("candidate-scoped gates ignore findings and evidence of superseded candidat
 });
 
 test("artifact.accepted binds to the digest and goes stale on edits", () => {
-  const repo = mkdtempSync(join(tmpdir(), "bb-v2-acc-"));
+  const repo = tempDir("bb-v2-acc-");
   const workDir = join(repo, "delivery", "work", "W");
   mkdirSync(workDir, { recursive: true });
   const c = ctx({ workDir });

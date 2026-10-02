@@ -1,5 +1,7 @@
 # Workflow 编写指南
 
+**简体中文** | [English](02-workflow-guide.en.md)
+
 权威：[`RFC-0003 §2`](../RFC-0003-workflow-policy.md)；实现：`src/v2/engine/workflow.js`。官方预设 [`software-delivery.yaml`](../../../src/v2/presets/software-delivery.yaml) 是最好的范本。
 
 ## 形状
@@ -37,6 +39,21 @@ terminal:
 
 run 配置里 `entry` 可覆盖 workflow 的 `entry`（例如从 `build` 起步、跳过 intent/plan 步——digest 仍会绑进批准对象）；`stopAt` 指定停点。workflow 文件整体做 sha256 → `RUN_CREATED.workflowDigest`，事后可证明当时跑的是哪份流程。
 
+**写错时的报错形态**：`start` / `resume` / `doctor` / `preflight` / `approve --config` 读 run 配置时先整体校验，做任何事之前**一次列出全部问题**：
+
+```text
+error: run config delivery/work/WORK-X/run-config.yaml has 3 problem(s):
+  - stopat: unknown key (did you mean stopAt?)
+  - repo: required and missing
+  - workers.reviwer: no step of the workflow uses this worker (did you mean reviewer?); workers in this workflow: planner, builder, verifier, reviewer, fixer
+```
+
+校验范围：必填键（`repo` `work` `run` `workflow` `workers`）；未知顶层键与 worker / envelope 的未知字段（给最接近的拼写）；类型与取值（正整数、列表、`inheritEnv` 只能是 `true` / `false`）；worker 名必须被工作流步骤用到；`stopAt` / `entry` 必须是工作流步骤；`work` / `run` 只允许字母、数字、`.` `_` `-`，写成数字要加引号。
+
+**并行 Run（`parallel: true`，默认关）**：默认一个仓库同时只驱动一个 Run，其他 Work 的 `start` 会被挡并提示在谁后面排队（真实事故：一个会话在另一个 Work 的 Run 后面等了 3 小时 23 分钟）。
+run 配置写 `parallel: true` 的 Work，可以与其他同样打开开关的 Work 同时驱动；同一 Work 的 Run 永远互斥；没打开的 Run 照旧独占整个仓库——它在跑时并行 Run 起不来，并行 Run 在跑时它也起不来。
+打开前先确认：verify 不抢固定端口、不共用同一个数据库或其他外部状态，否则并行会互相打架。`doctor` 会打印当前模式；被杀进程留下的并行标记与锁一样按持有者自动回收。
+
 run 配置还可声明（beta.3，皆来自三十轮部署战役的真实事故）：
 
 - **`requires:` 环境契约**——信封隐式依赖的二进制与最低版本，Run 启动前 fail-closed 全量核验，一次报清所有问题（真实事故：`rg` 只在某会话 vendored PATH、`/bin/bash` 3.2、新 shell 解析到 Node 14，各烧掉整轮 Run 才见真因）：
@@ -52,7 +69,9 @@ run 配置还可声明（beta.3，皆来自三十轮部署战役的真实事故�
 
 ## review 轮数预算
 
-官方预设自带 `budgets.maxAttempts.review: 2`（战役章程"每 Run 2 轮 review 封顶"的原生化）：第三轮 review 在启动前即停 `WAITING_HUMAN`，理由写明预算耗尽。机制就是每步 `maxAttempts`，无需新概念。
+review 轮数只有一个上限：`budgets.reviewRoundsPerWork`（默认 6），跨本 Work 所有 Run 累计（见下文"按 Work 累计的 review 轮数"）。review 步没有显式 `maxAttempts` 时，它在单个 Run 内的上限就取这个值，所以不会先于 Work 上限触发；到顶时停 `WAITING_HUMAN`，理由写明预算耗尽。仍可在 run 配置里写 `budgets.maxAttempts.review` 另设每 Run 上限。（官方预设曾自带战役章程的"每 Run 2 轮封顶"，正常修两三轮的 Run 也要一次次批准扩额，两层上限还要合并放行。）
+
+**按收敛止损**：上限之内，review 每次发现阻断问题、派 fixer 之前，内核把本轮 P0/P1 与本 Run 之前各轮比较。只要有 finding 在修过之后又出现（指纹相同；已 dismiss 的不算），或者本轮阻断数多于上一轮，就停 `enter-fix`（kind `review-not-converging`），理由列出又出现的指纹或前后两轮的数量。批准 = 修复 + 重验 + 再审一轮，不动预算；也可以先 `findings adjudicate --action dismiss`，让不该阻断的 finding 不再阻断。阻断 finding 都是新的、数量也不多于上一轮时，自动继续，不问人。开了 `reviewTriage: required` 时照常停分诊，不收敛的理由并入同一条请求；到顶时仍是 `budget` 停车，同样附上不收敛的理由。
 
 预算耗尽后停的那次 `resume-<step>`，**人批准即多给一次**：内核落一条 `BUDGET_EXTENDED`（台账事实，可重放），该步上限 +1 再跑；拒绝即终止 Run。此前批准只会让同一请求立刻回来（试点两条应用登录 Run 因此以 CANCELLED 收场，候选却已在生产）。
 
@@ -68,7 +87,7 @@ budgets:
 
 `doctor` 打印每步生效的上限与来源（run config / workflow preset / default）。
 
-**按 Work 累计的 review 轮数（迭代 09）**：每 Run 的预算挡不住"每轮一个新 Run"——试点一个 Work 跑了 21 个 Run、9 轮 review，2 轮封顶从未触发。`budgets.reviewRoundsPerWork: N` 让内核在 review 步起跑前统计本 Work **所有** Run（含已作废、含已压成 run-record 的）的 review 轮数，达到 N 即停 `WAITING_HUMAN`（kind `work-review-cap`，transition `enter-review`）：批准即再审一轮（台账 `BUDGET_EXTENDED scope=work`），拒绝则按手头证据合并或关闭。`overview` 每个 Work 多一行 `cost: review rounds · findings · human waits · worker 时长`，run-record 也带 `cost` 块——"继续还是砍"之前先看这一行；intent 里的止损线（最多几个 Run / 几轮 review / 几小时）就对着它核。
+**按 Work 累计的 review 轮数（迭代 09）**：每 Run 的预算挡不住"每轮一个新 Run"——试点一个 Work 跑了 21 个 Run、9 轮 review，2 轮封顶从未触发。`budgets.reviewRoundsPerWork: N`（不写时 N = 6）让内核在 review 步起跑前统计本 Work **所有** Run（含已作废、含已压成 run-record 的）的 review 轮数，达到 N 即停 `WAITING_HUMAN`（kind `work-review-cap`，transition `enter-review`）：批准即再审一轮（台账 `BUDGET_EXTENDED scope=work`），拒绝则按手头证据合并或关闭。`overview` 每个 Work 多一行 `cost: review rounds · findings · human waits · worker 时长`，run-record 也带 `cost` 块——"继续还是砍"之前先看这一行；intent 里的止损线（最多几个 Run / 几轮 review / 几小时）就对着它核。
 
 ## 工作树在仓内：把 `.buildbeat/` 排除出测试收集
 
@@ -80,7 +99,7 @@ Run 的隔离工作树在 `<repo>/.buildbeat/worktrees/<RUN>/`，运行时台账
 - pytest：`norecursedirs = .buildbeat`
 - Maven / Gradle 只收集 `src/**`，不受影响；Playwright 的 `testDir` 指到具体目录即可。
 
-`start` 被「another run is active」挡住时，CLI 现在打印持锁的 Run、它在哪一步、最后一次事件多久前，以及可复制的 `status` 命令；仓级单活动 Run 锁本身没放开——工作树已隔离，锁只剩台账与合并安全的意义，等真出现第二次多小时排队再动。
+`start` 被「another run is active」挡住时，CLI 现在打印持锁的 Run、它在哪一步、最后一次事件多久前，以及可复制的 `status` 命令。默认仍是一个仓库同时驱动一个 Run；自 3.2.0 起，测试互不抢端口/数据库的 Work 可在 run 配置里打开 `parallel: true` 并行驱动（见上文「并行 Run」）。
 
 ## 基础设施故障与候选缺陷分开算
 

@@ -1,0 +1,45 @@
+# Run config for WORK-ADOPT-GRANTS. Paths resolve relative to this file.
+repo: ../../..
+work: WORK-ADOPT-GRANTS
+run: RUN-ADOPT-GRANTS
+workflow: workflow.yaml
+riskPreset: standard
+entry: build
+allowedPaths:
+  - src/v2/runtime
+  - tests
+  - docs/v2/guide
+  - CHANGELOG.md
+  - delivery/work/WORK-ADOPT-GRANTS
+reviewTriage: required
+budgets:
+  maxAttempts:
+    review: 2
+  reviewRoundsPerWork: 2
+cache:
+  verify: tree
+envelope:
+  prompts: ../../envelope/prompts
+  vars:
+    component: runtime
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+# builder / fixer are deliberately absent: the driving session writes the code
+# (owner instruction) and hands each commit over with resume --adopt; verify and
+# the read-only reviewer stay independent workers.
+workers:
+  verifier:
+    command: bash
+    args:
+      - -lc
+      - "npm test && npm run check:docs"
+  reviewer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only

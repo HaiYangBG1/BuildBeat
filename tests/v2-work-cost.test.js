@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -12,6 +11,7 @@ import { approveRun, rejectRun } from "../src/v2/runtime/decisions.js";
 import { resumeRun, startRun } from "../src/v2/runtime/orchestrator.js";
 import { computeOverview, renderOverview } from "../src/v2/runtime/overview.js";
 import { computeWorkCost, formatWorkerMs, renderWorkCost } from "../src/v2/runtime/work-cost.js";
+import { tempDir } from "./support/tmp.js";
 
 const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 const WORKFLOW = loadWorkflow(PRESET_PATH);
@@ -22,7 +22,7 @@ function git(cwd, args) {
 }
 
 function fixtureRepo() {
-  const root = mkdtempSync(join(tmpdir(), "bb-v2-cost-"));
+  const root = tempDir("bb-v2-cost-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);
@@ -104,7 +104,7 @@ test("budgets.reviewRoundsPerWork stops a new run before its review once the wor
   assert.equal(capped.state.run.status, "WAITING_HUMAN");
   assert.equal(capped.state.pendingHuman.kind, "work-review-cap");
   assert.equal(capped.state.pendingHuman.transition, "enter-review");
-  assert.match(capped.state.pendingHuman.reasons[0], /work review cap reached: 2 review round\(s\) across 2 run\(s\)/);
+  assert.match(capped.state.pendingHuman.reasons[0], /review work review budget exhausted: 2\/2 review round\(s\) across the work/);
   assert.equal(capped.state.steps.review, undefined, "review did not run");
 
   approveRun(root, "RUN-CAP-02", { by: "owner", transition: "enter-review" });
@@ -114,15 +114,19 @@ test("budgets.reviewRoundsPerWork stops a new run before its review once the wor
   assert.equal(resumed.state.pendingHuman.kind, "final-decision");
 });
 
-test("no cap configured means no work-level stop", () => {
+test("without a configured cap the work stops at the default six review rounds", () => {
   const { root } = fixtureRepo();
   const work = "WORK-NOCAP";
-  for (const id of ["RUN-NC-01", "RUN-NC-02", "RUN-NC-03"]) {
+  for (let index = 1; index <= 6; index += 1) {
     const mock = createMockAdapter({ verify: ["succeed"], review: [clean()] });
-    const result = startRun(options(root, id, work, { builder: committingBuilder(), verifier: mock, reviewer: mock }));
+    const result = startRun(options(root, `RUN-NC-0${index}`, work, { builder: committingBuilder(), verifier: mock, reviewer: mock }));
     assert.equal(result.state.pendingHuman.kind, "final-decision");
   }
-  assert.equal(computeWorkCost(root, work).reviewRounds, 3);
+  assert.equal(computeWorkCost(root, work).reviewRounds, 6);
+  const mock = createMockAdapter({ verify: ["succeed"], review: [clean()] });
+  const capped = startRun(options(root, "RUN-NC-07", work, { builder: committingBuilder(), verifier: mock, reviewer: mock }));
+  assert.equal(capped.state.pendingHuman.kind, "work-review-cap");
+  assert.match(capped.state.pendingHuman.reasons[0], /6\/6 review round\(s\) across the work/);
 });
 
 test("worker time renders in human units", () => {

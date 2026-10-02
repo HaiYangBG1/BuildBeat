@@ -2,8 +2,8 @@
 
 > 状态：`FINAL`（2026-08-28 项目所有者定稿，`V2-D3`；M0 随三份 RFC 与 [`SPEC-0001-events-v1.md`](SPEC-0001-events-v1.md) 定稿退出）
 > 日期：2026-08-28
-> 上游：[`V2-PLAN.md`](../V2-PLAN.md)（执行基线，`V2-D0=B`）；内核范围：完整内核（`V2-D2=A`，[`V2-DECISIONS.md`](../V2-DECISIONS.md)）
-> 需求来源：M-1 试点记录——[`pilot/metrics.md`](../../pilot/metrics.md)（能力矩阵 + 卡点 1–5）、[`pilot/evidence/2026-08-28-m1-runtime-gap.md`](../../pilot/evidence/2026-08-28-m1-runtime-gap.md)（F5/F6）、[`V2-ITERATION-01.md`](../V2-ITERATION-01.md)
+> 上游：[`V2-PLAN.md`](../history/V2-PLAN.md)（执行基线，`V2-D0=B`）；内核范围：完整内核（`V2-D2=A`，[`V2-DECISIONS.md`](../history/V2-DECISIONS.md)）
+> 需求来源：M-1 试点记录——[`history/pilot/metrics.md`](../history/pilot/metrics.md)（能力矩阵 + 卡点 1–5）、[`history/pilot/evidence/2026-08-28-m1-runtime-gap.md`](../history/pilot/evidence/2026-08-28-m1-runtime-gap.md)（F5/F6）、[`V2-ITERATION-01.md`](../history/V2-ITERATION-01.md)
 
 ---
 
@@ -11,7 +11,7 @@
 
 > **BuildBeat v2 是一个工件驱动的 AI 交付闭环。确定性内核按 Workflow 与 Policy 推进状态，外部 Agent 作为 Worker 执行计划、构建、验证、修复与审查；一切完成以 Runner 回读的真实证据为准；人只在不可委托的判断点被请求最小决策。协议（工件 + 证据 + 决策）永远人机可读、落在 Git——Runner 是引擎，不是协议存在的前提。**
 
-对外定位词可用"AI 原生交付控制面 / 交付闭环"（[`V2-PLAN.md`](../V2-PLAN.md) 裁决 #9、D1）；**产品之魂是协议**：厂商 runtime 正在被商品化，协议 + 参考实现才是可防守的位置。
+对外定位词可用"AI 原生交付控制面 / 交付闭环"（[`V2-PLAN.md`](../history/V2-PLAN.md) 裁决 #9、D1）；**产品之魂是协议**：厂商 runtime 正在被商品化，协议 + 参考实现才是可防守的位置。
 
 MVP 核心承诺：
 
@@ -41,7 +41,7 @@ M-1 的核心教训（卡点 1、卡点 5）：协议工件齐备但没有 Runne
 
 ## 5. 手工模式的地位
 
-v1 的"Skill-only 完整等价"拆成两个承诺（[`V2-PLAN.md`](../V2-PLAN.md) §5）：
+v1 的"Skill-only 完整等价"拆成两个承诺（[`V2-PLAN.md`](../history/V2-PLAN.md) §5）：
 
 | 承诺 | v2 处置 |
 |---|---|
@@ -52,7 +52,7 @@ v1 的"Skill-only 完整等价"拆成两个承诺（[`V2-PLAN.md`](../V2-PLAN.md
 
 > **生效修订（2026-09-09）**：3.0.0 起 v1 文件总线、生命周期命令（`buildbeat doctor/init/adopt/upgrade`）、`solobaton` 与 `buildbeat-v2` 可执行文件全部移除，`buildbeat` 即运行时；`v1-maintenance` 维护线结束，最后一个带 v1 的版本是 2.0.2。本节原文保留为决策记录。
 >
-> **生效修订（2026-09-05）**：下段"`latest` 留 v1"是 beta 期策略，已按计划结束——`@haiyangbg/buildbeat@2.0.0` 于 2026-09-05 发布到 `latest`（[`CHANGELOG.md`](../../CHANGELOG.md)、[发布证据](../V2.0.0-RELEASE-EVIDENCE-2026-09-05.md)）。此后 `latest` = v2 系列，`next` 仅用于后续预发布；v1 生命周期命令随同一个包分发，v1 骨架版本仍是 v1.21。原文保留为决策记录。
+> **生效修订（2026-09-05）**：下段"`latest` 留 v1"是 beta 期策略，已按计划结束——`@haiyangbg/buildbeat@2.0.0` 于 2026-09-05 发布到 `latest`（[`CHANGELOG.md`](../../CHANGELOG.md)、[发布证据](../releases/V2.0.0-RELEASE-EVIDENCE-2026-09-05.md)）。此后 `latest` = v2 系列，`next` 仅用于后续预发布；v1 生命周期命令随同一个包分发，v1 骨架版本仍是 v1.21。原文保留为决策记录。
 
 v1 进入 `v1-maintenance` 维护线，只修安全与严重缺陷；npm `latest` 留 v1，`next` 发 v2 预发布；Beta 前 `latest` 不指向 v2。v1 迁移采用半天手工 runbook（装机量 N=1），`migrate-v1` importer 已裁掉（收尾修正三）。旧概念的保留/转换/删除逐项见 [`RFC-0002`](RFC-0002-domain-model.md) §8。
 

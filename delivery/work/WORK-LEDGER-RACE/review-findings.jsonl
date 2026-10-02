@@ -1,0 +1,4 @@
+{"ts":"2026-09-25T15:31:34.393Z","kind":"finding","run":"RUN-LEDGER-RACE-01","step":"review","attempt":1,"id":"F-RUN-LEDGER-RACE-01-review-1-1","severity":"P1","summary":"tests/v2-ledger-race.test.js:121–135 的 stop/approve 并发测试仅在 stop 成功时检查终态，所有命令失败也能通过，未保证覆盖计划要求的终态与决定顺序一致性。","fingerprint":"14761a44a69d1e2a"}
+{"ts":"2026-09-25T15:31:34.393Z","kind":"finding","run":"RUN-LEDGER-RACE-01","step":"review","attempt":1,"id":"F-RUN-LEDGER-RACE-01-review-1-2","severity":"P2","summary":"src/v2/runtime/orchestrator.js:923–933 修改了 startRun 的读取及检查逻辑，超出 plan.md 明确限定的 resumeRun 与 supersede 修改范围，需补充计划并获得接受。","fingerprint":"3279a381fa4e86a3"}
+{"ts":"2026-09-25T15:32:56.087Z","kind":"adjudication","fingerprint":"14761a44a69d1e2a","action":"accept","by":"claude-session","note":"fixed in 11e8ee0"}
+{"ts":"2026-09-25T15:32:56.131Z","kind":"adjudication","fingerprint":"3279a381fa4e86a3","action":"accept","by":"claude-session","note":"fixed in 11e8ee0"}

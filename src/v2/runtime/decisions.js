@@ -2,7 +2,7 @@
 // An approval is recorded only after re-reading the workspace and confirming
 // the subject is still exactly what the request showed — if the candidate
 // moved or the tree is dirty, the request is refreshed instead of stamped
-// (lessons #18: no rubber-stamping a moved target). Every decision lands both
+// (lessons.md「读过期 race」: no rubber-stamping a moved target). Every decision lands both
 // as a DECISION_RECORDED event and as a line in the Git plane
 // (delivery/work/<work>/decisions.jsonl).
 
@@ -54,20 +54,22 @@ function recordDecisionFile(repoRoot, work, line) {
 }
 
 export function approveRun(repoRoot, runId, { by = "human", transition, ts, policies } = {}) {
-  const ledger = openWaiting(repoRoot, runId);
-  const pending = ledger.state.pendingHuman;
-  if (!transition) {
-    throw new DecisionError(
-      `an approval must name its transition explicitly (pending: ${pending.transition})`,
-    );
-  }
-  if (transition !== pending.transition) {
-    throw new DecisionError(
-      `transition mismatch: pending is ${pending.transition}, got ${transition}`,
-    );
-  }
+  // Read, check and write under the run lock: a ledger read before the
+  // lock may be stale by the time it is written to.
   acquireLock(repoRoot, runId);
   try {
+    const ledger = openWaiting(repoRoot, runId);
+    const pending = ledger.state.pendingHuman;
+    if (!transition) {
+      throw new DecisionError(
+        `an approval must name its transition explicitly (pending: ${pending.transition})`,
+      );
+    }
+    if (transition !== pending.transition) {
+      throw new DecisionError(
+        `transition mismatch: pending is ${pending.transition}, got ${transition}`,
+      );
+    }
     const bound = ledger.state.workspaces[runId];
     const worktreePath = bound ? resolveRepoRef(repoRoot, bound.worktreePath) : null;
     if (!bound || !existsSync(worktreePath)) {
@@ -194,19 +196,19 @@ export function approveRun(repoRoot, runId, { by = "human", transition, ts, poli
 // fixes). The commit must already be the worktree HEAD: git is read back,
 // the claim is not trusted.
 export function adoptCandidate(repoRoot, runId, { sha, by = "human", resumeAt, ts } = {}) {
-  if (!sha || typeof sha !== "string" || sha.length < 7) {
-    throw new DecisionError("adopt requires a commit sha (at least 7 characters)");
-  }
-  if (!resumeAt) {
-    throw new DecisionError("adopt requires the step to resume at (resumeAt)");
-  }
-  const ledger = openWaiting(repoRoot, runId);
-  const pending = ledger.state.pendingHuman;
-  if (pending.kind === "final-decision") {
-    throw new DecisionError("adopt is for a run waiting before fix/verify, not at the merge decision");
-  }
   acquireLock(repoRoot, runId);
   try {
+    if (!sha || typeof sha !== "string" || sha.length < 7) {
+      throw new DecisionError("adopt requires a commit sha (at least 7 characters)");
+    }
+    if (!resumeAt) {
+      throw new DecisionError("adopt requires the step to resume at (resumeAt)");
+    }
+    const ledger = openWaiting(repoRoot, runId);
+    const pending = ledger.state.pendingHuman;
+    if (pending.kind === "final-decision") {
+      throw new DecisionError("adopt is for a run waiting before fix/verify, not at the merge decision");
+    }
     const bound = ledger.state.workspaces[runId];
     const worktreePath = bound ? resolveRepoRef(repoRoot, bound.worktreePath) : null;
     if (!bound || !existsSync(worktreePath)) {
@@ -292,16 +294,32 @@ export function acceptArtifact(repoRoot, workId, artifact, { by = "human", ts } 
   return { decisionRef, digest };
 }
 
-export function rejectRun(repoRoot, runId, { by = "human", transition, reason, ts } = {}) {
-  const ledger = openWaiting(repoRoot, runId);
-  const pending = ledger.state.pendingHuman;
-  if (transition && transition !== pending.transition) {
-    throw new DecisionError(
-      `transition mismatch: pending is ${pending.transition}, got ${transition}`,
-    );
+// One human "accept" for several artifacts: every file must exist before any
+// acceptance is written, and each artifact keeps its own digest-bound line.
+export function acceptArtifacts(repoRoot, workId, artifacts, options = {}) {
+  const unique = [...new Set(artifacts)];
+  if (unique.length === 0) {
+    throw new DecisionError("no artifact to accept");
   }
+  const missing = unique
+    .map((artifact) => join(repoRoot, "delivery", "work", workId, `${artifact}.md`))
+    .filter((filePath) => !existsSync(filePath));
+  if (missing.length > 0) {
+    throw new DecisionError(`artifact file missing: ${missing.join(", ")}`);
+  }
+  return unique.map((artifact) => ({ artifact, ...acceptArtifact(repoRoot, workId, artifact, options) }));
+}
+
+export function rejectRun(repoRoot, runId, { by = "human", transition, reason, ts } = {}) {
   acquireLock(repoRoot, runId);
   try {
+    const ledger = openWaiting(repoRoot, runId);
+    const pending = ledger.state.pendingHuman;
+    if (transition && transition !== pending.transition) {
+      throw new DecisionError(
+        `transition mismatch: pending is ${pending.transition}, got ${transition}`,
+      );
+    }
     const when = ts ?? new Date().toISOString();
     const decisionRef = `D-${runId}-${ledger.state.decisions.length + 1}`;
     ledger.append({

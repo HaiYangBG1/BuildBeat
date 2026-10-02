@@ -114,6 +114,9 @@ export function applyEvent(state, event) {
         attempts: data.attempt,
         detail: null,
         infraAttempts: state.steps[data.step]?.infraAttempts ?? 0,
+        // Omit the new key for legacy events to preserve their exact state.
+        ...(state.steps[data.step]?.freeAttempts !== undefined
+          ? { freeAttempts: state.steps[data.step].freeAttempts } : {}),
       };
       next.currentStep = data.step;
       break;
@@ -131,6 +134,9 @@ export function applyEvent(state, event) {
         // A worker-infrastructure failure (backend outage, timeout, garbage
         // output, exit 75) is not charged to the step's budget.
         next.steps[data.step].infraAttempts = (step.infraAttempts ?? 0) + 1;
+      }
+      if (data.free === true) {
+        next.steps[data.step].freeAttempts = (step.freeAttempts ?? 0) + 1;
       }
       next.currentStep = null;
       break;

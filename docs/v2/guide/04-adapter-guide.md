@@ -1,5 +1,7 @@
 # Adapter 指南
 
+**简体中文** | [English](04-adapter-guide.en.md)
+
 权威：[`RFC-0002 §Adapter`](../RFC-0002-domain-model.md)；实现：`src/v2/adapters/shell.js`（生产用）、`src/v2/adapters/mock.js`（测试用）。裁决 #5：厂商中立——不绑定任何 Agent 供应商。
 
 ## Shell Adapter：一切 CLI 皆 Worker

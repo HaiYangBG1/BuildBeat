@@ -1,0 +1,160 @@
+{
+  "run": "RUN-BUDGET-FALSE-STOPS-01",
+  "work": "WORK-BUDGET-FALSE-STOPS",
+  "workflow": "software-delivery",
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 50,
+    "lastDigest": "sha256:ba8dca975dcaa11879a19b42798b6761fb12d1909bf3bd21db2f5509dd36f360"
+  },
+  "startedAt": "2026-09-25T13:37:59.139Z",
+  "finishedAt": "2026-09-25T14:20:23.269Z",
+  "attempts": {
+    "build": 1,
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 5,
+      "remaining": 0
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 2,
+    "infraFailures": 0,
+    "workerMs": 997135
+  },
+  "workspaces": {
+    "RUN-BUDGET-FALSE-STOPS-01": {
+      "repo": ".",
+      "branch": "run/RUN-BUDGET-FALSE-STOPS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-BUDGET-FALSE-STOPS-01",
+      "base": "cb456b14c32b28638b2c12282424ccfc83c4e04b",
+      "candidate": "dfa17e0f8d3666f72f55cf5c066e77ea2105e87f"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-BUDGET-FALSE-STOPS-01/logs/build-1.log",
+      "kind": "command",
+      "subject": "d58e76c22dac6827ea93972fe3435523b990131e",
+      "digest": "sha256:0667aeffa9728c9d6ec096308e490affec42c0d40c4011982e7f8fd45fe07f13",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-BUDGET-FALSE-STOPS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "d58e76c22dac6827ea93972fe3435523b990131e",
+      "digest": "sha256:2978decddfd390d2f5195db1249ee5c8821f881862558df5b0f4d821bd8f379d",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:761bdf51aaf1972447460c2e7c005bcf126ccfa2b729a58269a00328c63e81a4"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-BUDGET-FALSE-STOPS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "d58e76c22dac6827ea93972fe3435523b990131e",
+      "digest": "sha256:a3b226e62a9df88039c3e3243cce67bbe21cf41ccf8985ac9f003ccf6d1cad52",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-BUDGET-FALSE-STOPS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "d58e76c22dac6827ea93972fe3435523b990131e",
+      "digest": "sha256:d58621624b5aa447329f2238f7a85894f6e8a917b94b3e6bf2f04b7ea6ab9f52",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/orchestrator.js:1067–1073：批准 resume-review 后，若在 Run 级扩额落账、Work 级扩额尚未落账时中断，恢复时会因 Run 上限已提高而跳过剩余 Work 扩额，再次停在 enter-review，违反一次批准同时放行两层预算的要求。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-BUDGET-FALSE-STOPS-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "dfa17e0f8d3666f72f55cf5c066e77ea2105e87f",
+      "digest": "sha256:6f481785a71ae37b776485df70f4024ad1179c1c3dd912ef0084574c5febb0c1",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:87681fe217f15499375f7afb8546797647543f20009d3e2212871500fc40efc8"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-BUDGET-FALSE-STOPS-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "dfa17e0f8d3666f72f55cf5c066e77ea2105e87f",
+      "digest": "sha256:61987bffd96538d282f09e3d02e9a7d50b390bd733537e58f471438eaf2801e3",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-BUDGET-FALSE-STOPS-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "dfa17e0f8d3666f72f55cf5c066e77ea2105e87f",
+      "digest": "sha256:cd8ceae9d16bb1604a5c2776f060d75810e24ca7bb061b3dc9c03f1b5b4491a8",
+      "status": "passed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P2",
+          "summary": "src/v2/runtime/orchestrator.js:214：预算停车提示无条件宣称成功 attempt 不扣次数，但只读 review 和 release 步骤成功仍扣预算；应按 readonly 区分提示，避免误导用户理解实际计费边界。"
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "dfa17e0f8d3666f72f55cf5c066e77ea2105e87f",
+        "planDigest": "sha256:356dd32c5b37f5a745270f4894d885da381f1ff1ce7c407b63827887dd72e724",
+        "evidenceDigest": "sha256:d58621624b5aa447329f2238f7a85894f6e8a917b94b3e6bf2f04b7ea6ab9f52"
+      },
+      "decisionRef": "D-RUN-BUDGET-FALSE-STOPS-01-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "dfa17e0f8d3666f72f55cf5c066e77ea2105e87f",
+        "planDigest": "sha256:356dd32c5b37f5a745270f4894d885da381f1ff1ce7c407b63827887dd72e724",
+        "evidenceDigest": "sha256:cd8ceae9d16bb1604a5c2776f060d75810e24ca7bb061b3dc9c03f1b5b4491a8"
+      },
+      "decisionRef": "D-RUN-BUDGET-FALSE-STOPS-01-2"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-BUDGET-FALSE-STOPS-01-1",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "dfa17e0f8d3666f72f55cf5c066e77ea2105e87f",
+        "planDigest": "sha256:356dd32c5b37f5a745270f4894d885da381f1ff1ce7c407b63827887dd72e724",
+        "evidenceDigest": "sha256:d58621624b5aa447329f2238f7a85894f6e8a917b94b3e6bf2f04b7ea6ab9f52"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-BUDGET-FALSE-STOPS-01-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "dfa17e0f8d3666f72f55cf5c066e77ea2105e87f",
+        "planDigest": "sha256:356dd32c5b37f5a745270f4894d885da381f1ff1ce7c407b63827887dd72e724",
+        "evidenceDigest": "sha256:cd8ceae9d16bb1604a5c2776f060d75810e24ca7bb061b3dc9c03f1b5b4491a8"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
