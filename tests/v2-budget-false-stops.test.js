@@ -44,6 +44,7 @@ function fixture(extra = {}, script = {}) {
 }
 const findings = { review: [{ finding: "one" }, { finding: "two" }, { finding: "three" }] };
 const twoFindings = { review: findings.review.slice(0, 2) };
+const twoRounds = { review: 2 };
 const events = (result) => EventLedger.open(result.ledgerPath).events;
 const requests = (result) => events(result).filter((event) => event.type === "HUMAN_REQUESTED");
 function approve(options, result) {
@@ -73,7 +74,7 @@ test("A: three blocking review rounds never charge successful verify or fix atte
 
 for (const triage of ["required", undefined]) {
   test(`${triage ? "B" : "C"}: exhausted review stops before fix and grants the complete next round`, () => {
-    const options = fixture({ reviewTriage: triage, budgets: { reviewRoundsPerWork: 2 } }, twoFindings);
+    const options = fixture({ reviewTriage: triage, budgets: { maxAttempts: twoRounds, reviewRoundsPerWork: 2 } }, twoFindings);
     let result = startRun(options);
     if (triage) {
       assert.equal(requests(result)[0].data.grants, undefined);
@@ -141,7 +142,7 @@ test("successful verification between failures does not spend the remaining fail
 });
 
 test("resuming after a partially recorded combined grant does not grant twice", () => {
-  const options = fixture({ budgets: { reviewRoundsPerWork: 2 } }, twoFindings);
+  const options = fixture({ budgets: { maxAttempts: twoRounds, reviewRoundsPerWork: 2 } }, twoFindings);
   const started = startRun(options);
   const approved = approveRun(options.repoRoot, options.runId, { transition: "enter-fix" });
   const ledger = EventLedger.open(started.ledgerPath);
@@ -156,7 +157,7 @@ test("resuming after a partially recorded combined grant does not grant twice", 
 
 test("a crash between the run and work grants of one approval replays the pinned plan", () => {
   const script = { review: [{ finding: "one" }, { code: 1, error: "reviewer crashed" }] };
-  const options = fixture({ budgets: { reviewRoundsPerWork: 2 } }, script);
+  const options = fixture({ budgets: { maxAttempts: twoRounds, reviewRoundsPerWork: 2 } }, script);
   const started = startRun(options);
   assert.equal(started.state.pendingHuman.transition, "resume-review");
   assert.deepEqual(requests(started).at(-1).data.grants, [
@@ -188,7 +189,7 @@ test("a crash between the run and work grants of one approval replays the pinned
 });
 
 test("a refreshed request cannot reuse grants from the previous request", () => {
-  const options = fixture({}, twoFindings);
+  const options = fixture({ budgets: { maxAttempts: twoRounds } }, twoFindings);
   const started = startRun(options);
   const dirtyFile = join(started.workspace.worktreePath, "dirty.txt");
   writeFileSync(dirtyFile, "changed subject");
@@ -245,7 +246,7 @@ test("successful self-loop has a finite total-attempt safeguard and can be exten
 });
 
 test("stale plan approval cannot grant another review round", () => {
-  const options = fixture({}, twoFindings);
+  const options = fixture({ budgets: { maxAttempts: twoRounds } }, twoFindings);
   const started = startRun(options);
   approveRun(options.repoRoot, options.runId, { transition: "enter-fix" });
   const stale = resumeRun({ ...options, planDigest: "sha256:changed" });
@@ -261,7 +262,7 @@ test("stale plan approval cannot grant another review round", () => {
 });
 
 test("rejecting the combined request ends the run without grants or another fix", () => {
-  const options = fixture({}, twoFindings);
+  const options = fixture({ budgets: { maxAttempts: twoRounds } }, twoFindings);
   const started = startRun(options);
   const rejected = rejectRun(options.repoRoot, options.runId, { transition: "enter-fix" });
   assert.equal(rejected.state.terminal.status, "CANCELLED");
@@ -306,7 +307,7 @@ test("an adopted hand fix answering a budget request keeps the round's grants", 
   // Real incident: after the second review round the run stopped at
   // enter-fix with a grant; the session fixed by hand and adopted the
   // commit, and the run stopped again at resume-review for the same round.
-  const options = fixture({ reviewTriage: "required" }, twoFindings);
+  const options = fixture({ reviewTriage: "required", budgets: { maxAttempts: twoRounds } }, twoFindings);
   const started = startRun(options);
   assert.equal(started.state.pendingHuman.transition, "enter-fix");
   const second = approve(options, started);

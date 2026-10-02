@@ -103,6 +103,8 @@ test("run start, status, and stop work end to end through the CLI", () => {
   const doctorOut = cli(["doctor", "--config", join(root, "run-config.yaml")]);
   assert.match(doctorOut, /risk preset: fast/);
   assert.match(doctorOut, /merge-evidence-floor.*LOCAL_ENFORCED \(approve gate/);
+  assert.match(doctorOut, /review=6 \(reviewRoundsPerWork\)/);
+  assert.match(doctorOut, /budgets\.reviewRoundsPerWork: 6 \(default\)/);
   assert.match(doctorOut, /builder: env allowlist/);
   assert.match(doctorOut, /no remotes/);
 

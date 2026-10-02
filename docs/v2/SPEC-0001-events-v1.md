@@ -71,7 +71,7 @@
 | `FAILURE_FINGERPRINT` | kernel | `step, command, exitCode, errorDigest, diffDigest` | 无进展/相同失败检测的输入 |
 | `BUDGET_CONSUMED` | kernel | `kind ∈ {attempts,tokens,cost,time}, amount, remaining` | 预算台账（卡点 1：token/费用不再 `UNVERIFIED`） |
 | `BUDGET_EXTENDED` | kernel | `step, amount, maxAttempts, approvalRef, scope?` | additive（迭代 09）：人批准了预算耗尽的 `resume-<step>`，该步上限 +`amount`；状态 `budgetExtensions[step]` 累加，`maxAttemptsFor(step)` 据此重放。`scope: work` 时是 Work 级 review 轮数上限（`budgets.reviewRoundsPerWork`）被人放行一轮，累加到 `workReviewGrants` |
-| `HUMAN_REQUESTED` | kernel | `transition, subject{candidate,planDigest,evidenceDigest}, reasons`；additive：`kind ∈ {boundary,final-decision,finding-triage,stale,infra}` | 进入 WAITING_HUMAN |
+| `HUMAN_REQUESTED` | kernel | `transition, subject{candidate,planDigest,evidenceDigest}, reasons`；additive：`kind ∈ {boundary,final-decision,finding-triage,stale,infra,budget,work-review-cap,review-not-converging}`（`review-not-converging`：review 修过的 finding 又出现或阻断数多于上一轮，停 `enter-fix`） | 进入 WAITING_HUMAN |
 | `DECISION_RECORDED` | human | `decision ∈ {approved,rejected}, transition, subject, decisionRef`；additive（迭代 09）：`adopted?: <sha>`、`resumeAt?: <step>`（adopt 时 subject 即该提交，恢复从 `resumeAt` 起而非 transition 所指的步） | 同步落 Git 决策记录 |
 | `APPROVAL_STALE` | kernel | `approvalRef, changed ⊆ {candidate,plan,evidence}` | F6 的机器化 |
 | `CHECKPOINT` | kernel | `resumePoint{step,attempt}, workspaceStates[]` | F5 的机器化：恢复只允许从最近 CHECKPOINT 或安全推导点继续 |
