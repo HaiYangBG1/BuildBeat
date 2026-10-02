@@ -38,6 +38,61 @@ export function fingerprintFinding(finding) {
   return createHash("sha256").update(normalized, "utf8").digest("hex").slice(0, 16);
 }
 
+// File anchors a summary cites ("src/a.js:12", "README.md"), line numbers
+// dropped, sorted and de-duplicated.
+const ANCHOR_PATTERN = /(?:[\w.@-]+\/)*[\w@-][\w.@-]*\.[A-Za-z][A-Za-z0-9]{0,5}(?=[:：\s,，、;；)）]|$)/g;
+const SOURCE_EXTENSION = /\.(?:c|cc|cpp|cs|css|go|h|html|java|js|json|jsx|kt|md|mjs|py|rb|rs|scss|sh|sql|swift|toml|ts|tsx|vue|xml|ya?ml)$/i;
+
+function fileAnchors(summary) {
+  const found = (summary.match(ANCHOR_PATTERN) ?? [])
+    .filter((path) => path.includes("/") || SOURCE_EXTENSION.test(path));
+  return [...new Set(found)].sort().join("|");
+}
+
+function issueText(summary) {
+  return summary
+    .toLowerCase()
+    .replace(ANCHOR_PATTERN, "")
+    .replace(/[\d\s\p{P}\p{S}]+/gu, "");
+}
+
+// Dice coefficient over character bigrams; works the same for Chinese and
+// English and needs no tokenizer.
+function similarity(left, right) {
+  if (left.length < 2 || right.length < 2) return left === right ? 1 : 0;
+  const counts = new Map();
+  for (let i = 0; i < left.length - 1; i += 1) {
+    const pair = left.slice(i, i + 2);
+    counts.set(pair, (counts.get(pair) ?? 0) + 1);
+  }
+  let shared = 0;
+  for (let i = 0; i < right.length - 1; i += 1) {
+    const pair = right.slice(i, i + 2);
+    const remaining = counts.get(pair) ?? 0;
+    if (remaining > 0) {
+      shared += 1;
+      counts.set(pair, remaining - 1);
+    }
+  }
+  return (2 * shared) / (left.length - 1 + right.length - 1);
+}
+
+// Whether two findings describe the same problem, for review convergence
+// only: fingerprints stay exact so adjudications keep their meaning.
+// Reviewers restate a finding they already reported ("still contains", new
+// line numbers, a reworded tail), so equal fingerprints alone never matched
+// across 161 replayed review rounds while the same problem came back three
+// times. Thresholds from that replay: same anchors and >= 0.5, or >= 0.6
+// otherwise, caught every restatement; unrelated pairs peaked at 0.57, and at
+// 0.33 when they cited the same files.
+export function sameIssue(a, b) {
+  if (fingerprintFinding(a) === fingerprintFinding(b)) return true;
+  const score = similarity(issueText(a.summary), issueText(b.summary));
+  const anchors = fileAnchors(a.summary);
+  if (anchors && anchors === fileAnchors(b.summary) && score >= 0.5) return true;
+  return score >= 0.6;
+}
+
 export function readFindingsAccount(repoRoot, workId) {
   const filePath = accountPath(repoRoot, workId);
   if (!existsSync(filePath)) {
