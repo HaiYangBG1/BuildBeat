@@ -69,7 +69,7 @@ run 配置还可声明（beta.3，皆来自三十轮部署战役的真实事故�
 
 ## review 轮数预算
 
-官方预设自带 `budgets.maxAttempts.review: 4`，作为每 Run 的兜底上限：第五轮 review 在启动前即停 `WAITING_HUMAN`，理由写明预算耗尽。机制就是每步 `maxAttempts`，无需新概念。（此前预设是战役章程的"每 Run 2 轮封顶"，正常修两三轮的 Run 也要一次次批准扩额。）
+review 轮数只有一个上限：`budgets.reviewRoundsPerWork`（默认 6），跨本 Work 所有 Run 累计（见下文"按 Work 累计的 review 轮数"）。review 步没有显式 `maxAttempts` 时，它在单个 Run 内的上限就取这个值，所以不会先于 Work 上限触发；到顶时停 `WAITING_HUMAN`，理由写明预算耗尽。仍可在 run 配置里写 `budgets.maxAttempts.review` 另设每 Run 上限。（官方预设曾自带战役章程的"每 Run 2 轮封顶"，正常修两三轮的 Run 也要一次次批准扩额，两层上限还要合并放行。）
 
 **按收敛止损**：上限之内，review 每次发现阻断问题、派 fixer 之前，内核把本轮 P0/P1 与本 Run 之前各轮比较。只要有 finding 在修过之后又出现（指纹相同；已 dismiss 的不算），或者本轮阻断数多于上一轮，就停 `enter-fix`（kind `review-not-converging`），理由列出又出现的指纹或前后两轮的数量。批准 = 修复 + 重验 + 再审一轮，不动预算；也可以先 `findings adjudicate --action dismiss`，让不该阻断的 finding 不再阻断。阻断 finding 都是新的、数量也不多于上一轮时，自动继续，不问人。开了 `reviewTriage: required` 时照常停分诊，不收敛的理由并入同一条请求；到顶时仍是 `budget` 停车，同样附上不收敛的理由。
 
@@ -87,7 +87,7 @@ budgets:
 
 `doctor` 打印每步生效的上限与来源（run config / workflow preset / default）。
 
-**按 Work 累计的 review 轮数（迭代 09）**：每 Run 的预算挡不住"每轮一个新 Run"——试点一个 Work 跑了 21 个 Run、9 轮 review，2 轮封顶从未触发。`budgets.reviewRoundsPerWork: N` 让内核在 review 步起跑前统计本 Work **所有** Run（含已作废、含已压成 run-record 的）的 review 轮数，达到 N 即停 `WAITING_HUMAN`（kind `work-review-cap`，transition `enter-review`）：批准即再审一轮（台账 `BUDGET_EXTENDED scope=work`），拒绝则按手头证据合并或关闭。`overview` 每个 Work 多一行 `cost: review rounds · findings · human waits · worker 时长`，run-record 也带 `cost` 块——"继续还是砍"之前先看这一行；intent 里的止损线（最多几个 Run / 几轮 review / 几小时）就对着它核。
+**按 Work 累计的 review 轮数（迭代 09）**：每 Run 的预算挡不住"每轮一个新 Run"——试点一个 Work 跑了 21 个 Run、9 轮 review，2 轮封顶从未触发。`budgets.reviewRoundsPerWork: N`（不写时 N = 6）让内核在 review 步起跑前统计本 Work **所有** Run（含已作废、含已压成 run-record 的）的 review 轮数，达到 N 即停 `WAITING_HUMAN`（kind `work-review-cap`，transition `enter-review`）：批准即再审一轮（台账 `BUDGET_EXTENDED scope=work`），拒绝则按手头证据合并或关闭。`overview` 每个 Work 多一行 `cost: review rounds · findings · human waits · worker 时长`，run-record 也带 `cost` 块——"继续还是砍"之前先看这一行；intent 里的止损线（最多几个 Run / 几轮 review / 几小时）就对着它核。
 
 ## 工作树在仓内：把 `.buildbeat/` 排除出测试收集
 

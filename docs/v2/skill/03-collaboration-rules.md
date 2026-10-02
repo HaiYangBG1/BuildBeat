@@ -11,7 +11,7 @@
 3. **交接靠 candidate hash + 台账**:Run 停在合并决定时 candidate 已由 Git 回读固定,`resume --adopt <sha>` 要求树干净且 HEAD 就是该 sha;hash 不得编造。
 4. **护栏与不可逆动作**:开工 `overview`;部署/改契约/migration 等不可逆动作前再核一次并走人批;exit 0 不消除 `warning/unverified`。
 5. **风险分轨**:Risk Preset 决定人批点(§5);别用牛刀杀鸡,也别借 `fast` 绕过高风险 delta 的独立核查。
-6. **核查门**:Run 内 reviewer 只读、结构化 findings;`reviewTriage: required` 时 P0/P1 先过人分诊再派 fixer;review 不收敛(修过的 finding 又出现,或阻断数多于上一轮)即停人,每 Run 默认 4 轮兜底。**完成 = hash + 可核验证据**;证据分 L0 声称 / L1 `文件:行` / L2 编译·类型 / L3 自动化测试 / L4 线上实测,`standard` 最低 L3,上线必须 L4;`UNVERIFIED` 永不当作通过。
+6. **核查门**:Run 内 reviewer 只读、结构化 findings;`reviewTriage: required` 时 P0/P1 先过人分诊再派 fixer;review 不收敛(修过的 finding 又出现,或阻断数多于上一轮)即停人,每 Work 默认 6 轮兜底(`reviewRoundsPerWork`)。**完成 = hash + 可核验证据**;证据分 L0 声称 / L1 `文件:行` / L2 编译·类型 / L3 自动化测试 / L4 线上实测,`standard` 最低 L3,上线必须 L4;`UNVERIFIED` 永不当作通过。
 7. **状态单点**:事实进 Run 证据与 Work 记录;进度看 `overview`,度量看 `metrics`。
 8. **视觉问题带图对比**:提 UI bug 必附『实现截图 ⟷ 设计稿截图』并排 + 标注差异点。
 9. **单点事实**:线上版本只信实查(`observe status` / 部署平台),任何文档不写「当前线上 vX」;每个收敛后的真实决策包只在 `pm/decisions.md` 记一行;历史台账不回改。

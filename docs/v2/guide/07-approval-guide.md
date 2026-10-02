@@ -50,7 +50,7 @@ buildbeat accept  --repo . --work WORK-X --artifact plan --by <名字>   # 工�
 ## 预算停车：成功不扣次数，一轮一问
 
 - 非只读步（build / verify / fix）成功的 attempt 不扣 `maxAttempts`，只读步仍消耗次数，review 按轮计费。`STEP_FINISHED.free: true` 与 `BUDGET_CONSUMED.amount: 0` 记录退款；没有新字段的旧台账保持原有回放结果。
-- 真失败到顶仍停 `resume-<step>`，同指纹两次仍停，release 预设的 `maxAttempts: 1` 仍有效。infra 故障仍不扣次数。官方预设的 review 上限是每 Run 4 轮，只作兜底。
+- 真失败到顶仍停 `resume-<step>`，同指纹两次仍停，release 预设的 `maxAttempts: 1` 仍有效。infra 故障仍不扣次数。review 轮数只受 Work 级 `reviewRoundsPerWork`（默认 6）约束，只作兜底。
 - review 发现阻断问题时，若下一轮会超过 Run 或 Work 上限，立即停 `enter-fix`，在花费修复、重验之前问一次。有分诊时 kind 为 `finding-triage`，无分诊时为 `budget`。批准表示「修复 + 重新验证 + 再审一轮」；拒绝结束本 Run，由人按现有证据决定是否合并。
 - 上限之内只在 review 不收敛时停 `enter-fix`：本轮有 finding 在修过之后又出现（同指纹，已 dismiss 的不算），或本轮阻断数多于上一轮。kind 为 `review-not-converging`（有分诊时仍是 `finding-triage`，理由里多一条不收敛），请求不带 grants，批准不动预算。阻断 finding 都是新的、数量不多于上一轮时自动继续。见 [Workflow 指南](02-workflow-guide.md) 的「按收敛止损」。
 - 每一次预算停车（`enter-fix`、`resume-<step>`、Work 级 `enter-review`）都在请求上记可选 `grants`，列出下一次执行会撞到的 Run/Work 上限；批准一次即同时放行两层，不再连问两次。`resume` 校验批准仍有效后逐条落 `BUDGET_EXTENDED`，并把整份放行计划钉在第一条上：放行落到一半进程被杀，再次 `resume` 按钉住的计划补齐剩余项，不从已被抬高的状态重算。过期批准、新请求不继承旧 grants。会话在 worktree 里手修并用 `resume --adopt <sha>` 回答该请求时，候选虽换成新提交，仍继承请求上的 grants（grants 属于这一轮，不属于某个候选；计划变了则不继承），修完重验后直接进入下一轮 review，不再二次停车。

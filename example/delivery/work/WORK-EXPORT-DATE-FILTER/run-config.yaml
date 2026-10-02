@@ -13,8 +13,6 @@ allowedPaths:
 reviewTriage: required
 # 对应 intent 的止损线：3 轮 review
 budgets:
-  maxAttempts:
-    review: 4
   reviewRoundsPerWork: 3
 cache:
   verify: tree
