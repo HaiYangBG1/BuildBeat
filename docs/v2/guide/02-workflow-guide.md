@@ -71,7 +71,7 @@ run 配置还可声明（beta.3，皆来自三十轮部署战役的真实事故�
 
 review 轮数只有一个上限：`budgets.reviewRoundsPerWork`（默认 6），跨本 Work 所有 Run 累计（见下文"按 Work 累计的 review 轮数"）。review 步没有显式 `maxAttempts` 时，它在单个 Run 内的上限就取这个值，所以不会先于 Work 上限触发；到顶时停 `WAITING_HUMAN`，理由写明预算耗尽。仍可在 run 配置里写 `budgets.maxAttempts.review` 另设每 Run 上限。（官方预设曾自带战役章程的"每 Run 2 轮封顶"，正常修两三轮的 Run 也要一次次批准扩额，两层上限还要合并放行。）
 
-**按收敛止损**：上限之内，review 每次发现阻断问题、派 fixer 之前，内核把本轮 P0/P1 与本 Run 之前各轮比较。只要有 finding 在修过之后又出现（指纹相同；已 dismiss 的不算），或者本轮阻断数多于上一轮，就停 `enter-fix`（kind `review-not-converging`），理由列出又出现的指纹或前后两轮的数量。批准 = 修复 + 重验 + 再审一轮，不动预算；也可以先 `findings adjudicate --action dismiss`，让不该阻断的 finding 不再阻断。阻断 finding 都是新的、数量也不多于上一轮时，自动继续，不问人。开了 `reviewTriage: required` 时照常停分诊，不收敛的理由并入同一条请求；到顶时仍是 `budget` 停车，同样附上不收敛的理由。
+**按收敛止损**：上限之内，review 每次发现阻断问题、派 fixer 之前，内核把本轮 P0/P1 与本 Run 之前各轮比较。只要同一个问题在修过之后又出现（指纹相同，或者 reviewer 换了说法：引用同一组文件且描述相近，或描述高度相近；已 dismiss 的不算），或者本轮阻断数多于上一轮，就停 `enter-fix`（kind `review-not-converging`），理由列出又出现的指纹（换了说法时写成「本轮指纹 restates round N 原指纹」）或前后两轮的数量。「描述相近」只用于这里的收敛判断，finding 指纹和裁决照旧按原文精确匹配；描述去掉文件与数字后不足 16 个字符时只认相同指纹。批准 = 修复 + 重验 + 再审一轮，不动预算；也可以先 `findings adjudicate --action dismiss`，让不该阻断的 finding 不再阻断。阻断 finding 都是新的、数量也不多于上一轮时，自动继续，不问人。开了 `reviewTriage: required` 时照常停分诊，不收敛的理由并入同一条请求；到顶时仍是 `budget` 停车，同样附上不收敛的理由。
 
 预算耗尽后停的那次 `resume-<step>`，**人批准即多给一次**：内核落一条 `BUDGET_EXTENDED`（台账事实，可重放），该步上限 +1 再跑；拒绝即终止 Run。此前批准只会让同一请求立刻回来（试点两条应用登录 Run 因此以 CANCELLED 收场，候选却已在生产）。
 
