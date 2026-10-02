@@ -18,7 +18,9 @@
 
 机器闸(gitleaks pre-commit)、证据制与合并候选一次核查任何预设都不跳;高风险 delta 不得借 `fast` 绕过独立核查。预算耗尽是停人不是失败。非只读步(build / verify / fix)成功不扣 `maxAttempts`,只读步仍按尝试次数计费,review 按轮计费;基础设施故障(超时 / 崩溃 / 非 JSON / exit 75)判 `infra` 停人、不派 fixer、不扣预算。真失败到顶仍停 `resume-<step>`,批准多给一次。同一步总 attempt 达到有效预算上限(配置值 + 人批扩额)的 3 倍后,下一次执行前以 kind `budget` 兜底停人,防止成功循环失控;退款不抬高该兜底上限。
 
-**一轮一问**:review 发现阻断问题且下一轮会超 Run 或 Work 上限时,提前停 `enter-fix`;有分诊用 `finding-triage`,无分诊用 `budget`。批准覆盖「修复 + 重新验证 + 再审一轮」,所需扩额随请求的可选 `grants` 落账,Run/Work 同时到顶只问一次;拒绝结束本 Run,由人按现有证据决定是否合并。批准旧的 `enter-review` / `resume-review` 预算停车时也同时放行已到顶的另一层上限。新候选或过期批准不能沿用旧请求的 grants。默认上限不变。
+**一轮一问**:review 发现阻断问题且下一轮会超 Run 或 Work 上限时,提前停 `enter-fix`;有分诊用 `finding-triage`,无分诊用 `budget`。批准覆盖「修复 + 重新验证 + 再审一轮」,所需扩额随请求的可选 `grants` 落账,Run/Work 同时到顶只问一次;拒绝结束本 Run,由人按现有证据决定是否合并。批准旧的 `enter-review` / `resume-review` 预算停车时也同时放行已到顶的另一层上限。新候选或过期批准不能沿用旧请求的 grants。
+
+**按收敛止损**:上限(`reviewRoundsPerWork`,默认 6,跨本 Work 所有 Run 累计)之内,review 只在不收敛时停 `enter-fix`(kind `review-not-converging`):修过的 finding 又出现(同指纹,已 dismiss 的不算),或本轮阻断数多于上一轮。批准即修复 + 重验 + 再审一轮,不动预算;阻断 finding 都是新的、数量不多于上一轮时自动继续。停在这里时先给用户看又出现的指纹,问是继续修、dismiss,还是按现有证据结束本 Run。
 
 ## 6. 三个仪式(防腐烂的关键,缺了机制必朽)
 

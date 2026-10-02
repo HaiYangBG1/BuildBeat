@@ -82,7 +82,7 @@ export function nextReply({ repoLabel, state }) {
   }
   const runId = state.run.id;
   const lines = [];
-  if (pending.kind === "finding-triage") {
+  if (pending.kind === "finding-triage" || pending.kind === "review-not-converging") {
     lines.push(`buildbeat findings list --repo ${repoLabel} --work ${state.run.work}`);
     lines.push(
       `buildbeat findings adjudicate --repo ${repoLabel} --work ${state.run.work} --fingerprint <fp> --action accept|dismiss --by <you>`,

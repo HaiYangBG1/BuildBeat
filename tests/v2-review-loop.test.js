@@ -79,25 +79,21 @@ test("blocking review findings route to fix, a clean re-review reaches the merge
   assert.ok(state.policyLog.some((entry) => entry.result === "ROUTE"));
 });
 
-test("the preset caps review at two rounds; the third stops for a human", () => {
-  // Deploy-campaign charter, now a native budget: two review rounds per run,
-  // then a human — endless fresh-review loops burned four rounds before a
-  // person stopped them.
+test("review rounds are capped per work: the default six, then a human", () => {
+  // Deploy-campaign charter, now a native budget: endless fresh-review loops
+  // burned four rounds before a person stopped them. Rounds that keep
+  // converging run on their own up to the work cap.
   const { root } = fixtureRepo();
+  const issue = (summary) => ({
+    behavior: "succeed",
+    envelope: { status: "succeeded", findings: [{ severity: "P0", summary }] },
+  });
+  const rounds = ["one", "two", "three", "four", "five", "six"];
   const mock = createMockAdapter({
     build: ["succeed"],
-    verify: ["succeed", "succeed", "succeed"],
-    fix: ["succeed", "succeed"],
-    review: [
-      {
-        behavior: "succeed",
-        envelope: { status: "succeeded", findings: [{ severity: "P0", summary: "issue one" }] },
-      },
-      {
-        behavior: "succeed",
-        envelope: { status: "succeeded", findings: [{ severity: "P0", summary: "issue two" }] },
-      },
-    ],
+    verify: Array(6).fill("succeed"),
+    fix: Array(5).fill("succeed"),
+    review: rounds.map((name) => issue(`issue ${name}`)),
   });
   const result = run(root, "RUN-RL4", {
     builder: mock,
@@ -106,9 +102,10 @@ test("the preset caps review at two rounds; the third stops for a human", () => 
     reviewer: mock,
   });
   const state = result.state;
-  assert.equal(state.steps.review.attempts, 2);
+  assert.equal(state.steps.review.attempts, 6);
   assert.equal(state.run.status, "WAITING_HUMAN");
-  assert.match(state.pendingHuman.reasons[0], /review budget exhausted: 2\/2 review round\(s\) used in this run/);
+  assert.equal(state.pendingHuman.kind, "budget");
+  assert.match(state.pendingHuman.reasons[0], /review budget exhausted: 6\/6 review round\(s\) used in this run, 6\/6 across the work/);
 });
 
 test("a reviewer that writes to the workspace is blocked, not merged", () => {

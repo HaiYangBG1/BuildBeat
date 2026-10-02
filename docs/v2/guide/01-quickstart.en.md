@@ -47,7 +47,7 @@ entry: build
 allowedPaths:
   - src
   - tests
-reviewTriage: required
+reviewTriage: off
 envelope:
   prompts: ../../envelope/prompts
 workers:
@@ -91,7 +91,7 @@ workers:
 - `workers.<role>` is any CLI: to switch tools, change only what follows `--` (`claude -p`, any script), see the [Adapter guide](04-adapter-guide.md) (Chinese); the reviewer's output format is in the [Worker contract](05-worker-contract.md) (Chinese) and already spelled out in the prompt template.
 - **`fixer` is not optional**: without it, a failed verify or a blocking review stops the Run at `WAITING_HUMAN` (reason `no adapter configured for worker fixer`) waiting for you to fix by hand; nothing gets fixed automatically.
 - Worker subprocesses receive only `PATH HOME LANG LC_ALL TMPDIR TERM USER SHELL` by default; inject anything else by name with `env:` ([Adapter guide](04-adapter-guide.md), Chinese).
-- `reviewTriage: required` routes P0/P1 findings through you before a fixer is dispatched; delete the line if you do not want that.
+- `reviewTriage: off` (the default) sends P0/P1 findings straight to the fixer, and review rounds stay bounded by `budgets`. Set it to `required` to see every round before a fixer runs, which suits high-risk projects.
 
 ## 3. Accept the plan
 

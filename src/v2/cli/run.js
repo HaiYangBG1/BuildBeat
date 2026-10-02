@@ -48,7 +48,7 @@ import {
   subscribes,
 } from "../runtime/notify.js";
 import { writeRunRecord } from "../runtime/run-record.js";
-import { resumeRun, startRun } from "../runtime/orchestrator.js";
+import { DEFAULT_REVIEW_ROUNDS_PER_WORK, resumeRun, startRun } from "../runtime/orchestrator.js";
 import { toRepoRef } from "../runtime/repo-ref.js";
 import { EventLedger } from "../storage/event-ledger.js";
 import { acquireLock, listHeldRunLocks, releaseLock } from "../workspace/workspace-manager.js";
@@ -794,20 +794,20 @@ function commandDoctor(flags) {
   }
   console.log("kernel capabilities: merge/deploy/publish have no call path in the runner (invariant 20)");
   const budgetLines = [];
+  const reviewRounds = options.budgets.reviewRoundsPerWork ?? DEFAULT_REVIEW_ROUNDS_PER_WORK;
   for (const step of options.workflow.steps) {
     if (!step.worker) {
       continue;
     }
     const fromRun = options.budgets.maxAttempts?.[step.id];
     const fromPreset = options.workflow.budgets?.maxAttempts?.[step.id];
-    const effective = fromRun ?? fromPreset ?? options.maxAttemptsPerStep;
-    const source = fromRun !== undefined ? "run config" : fromPreset !== undefined ? "workflow preset" : "default";
+    const review = step.id === "review" || step.worker === "reviewer";
+    const effective = fromRun ?? fromPreset ?? (review ? reviewRounds : options.maxAttemptsPerStep);
+    const source = fromRun !== undefined ? "run config" : fromPreset !== undefined ? "workflow preset" : review ? "reviewRoundsPerWork" : "default";
     budgetLines.push(`${step.id}=${effective} (${source})`);
   }
   console.log(`budgets (maxAttempts per step; approving resume-<step> after exhaustion grants +1): ${budgetLines.join(", ")}`);
-  if (options.budgets.reviewRoundsPerWork !== undefined) {
-    console.log(`budgets.reviewRoundsPerWork: ${options.budgets.reviewRoundsPerWork} (counted across every run of the work, superseded ones included)`);
-  }
+  console.log(`budgets.reviewRoundsPerWork: ${reviewRounds}${options.budgets.reviewRoundsPerWork === undefined ? " (default)" : ""} (counted across every run of the work, superseded ones included)`);
   // Same preconditions start's first gate will read (real incident, twice:
   // doctor passed, start stopped at build because plan.md was not mirrored
   // into the repository the run was started in).

@@ -10,11 +10,9 @@ entry: build
 allowedPaths:
   - src
   - tests
-reviewTriage: required
+reviewTriage: off
 # 对应 intent 的止损线：3 轮 review
 budgets:
-  maxAttempts:
-    review: 2
   reviewRoundsPerWork: 3
 cache:
   verify: tree

@@ -37,8 +37,6 @@ transitions:
     to: fix
 terminal:
   - wait-merge
-# Review rounds are capped by default (deploy-campaign charter: two review
-# rounds per run, then a human). Override per project via budgets.maxAttempts.
-budgets:
-  maxAttempts:
-    review: 2
+# Review rounds are capped per work (run config budgets.reviewRoundsPerWork,
+# default 6); a round whose blocking findings come back after fix, or
+# outnumber the last round's, stops for a human before the cap.

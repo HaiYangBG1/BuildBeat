@@ -68,7 +68,8 @@ test("approving the exhausted review round before fix grants one more round inst
     review: [blocking("issue one"), blocking("issue two"), clean()],
   });
   const adapters = { builder: committingBuilder(), verifier: mock, fixer: mock, reviewer: mock };
-  const started = startRun(options(root, "RUN-B1", adapters));
+  const twoRounds = { budgets: { maxAttempts: { review: 2 } } };
+  const started = startRun(options(root, "RUN-B1", adapters, twoRounds));
   assert.equal(started.state.run.status, "WAITING_HUMAN");
   assert.equal(started.state.pendingHuman.transition, "enter-fix");
   assert.match(started.state.pendingHuman.reasons[0], /review budget exhausted: 2\/2 review round\(s\) used in this run/);
@@ -76,7 +77,7 @@ test("approving the exhausted review round before fix grants one more round inst
 
   const approval = approveRun(root, "RUN-B1", { by: "owner", transition: "enter-fix" });
   assert.equal(approval.approved, true);
-  const resumed = resumeRun(options(root, "RUN-B1", adapters));
+  const resumed = resumeRun(options(root, "RUN-B1", adapters, twoRounds));
   assert.equal(resumed.resumed, true);
   const state = resumed.state;
   assert.equal(state.budgetExtensions.review, 1);

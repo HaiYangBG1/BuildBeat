@@ -14,14 +14,12 @@ entry: build
 allowedPaths:
   - src
   - tests
-# P0/P1 finding 先过人分诊再派 fixer；不需要就删掉这行
-reviewTriage: required
-# 非只读步成功不扣次数；review 按轮计费。到顶的阻断 review 在 enter-fix 一次批准修复、重验、再审。
-# Run/Work 上限同时到顶只问一次；总 attempt 超过（配置值 + 人批扩额）的 3 倍前仍兜底停人。
-# 可省；run 配置 > 预设 > 默认。reviewRoundsPerWork 是跨本 Work 所有 Run 累计的 review 轮数上限（对应 intent 的止损线）
+# off = P0/P1 finding 直接派 fixer；高风险项目改成 required，每轮先停人分诊再派 fixer
+reviewTriage: off
+# 非只读步成功不扣次数；review 按轮计费。review 不收敛（修过的 finding 又出现，或阻断数多于上一轮）才在 enter-fix 停人。
+# reviewRoundsPerWork 是 review 轮数唯一的上限（默认 6），跨本 Work 所有 Run 累计，对应 intent 的止损线；
+# 到顶的阻断 review 在 enter-fix 一次批准修复、重验、再审。总 attempt 超过（配置值 + 人批扩额）的 3 倍前仍兜底停人。
 budgets:
-  maxAttempts:
-    review: 2
   reviewRoundsPerWork: 6
 # 默认一个仓库同时只驱动一个 Run。确认本项目的测试不抢固定端口、不共用数据库后，
 # 可加 parallel: true，让本 Work 的 Run 与其他同样打开开关的 Work 并行（同一 Work 仍互斥）

@@ -43,6 +43,7 @@ import {
 import { resolveRepoRef, toRepoRef } from "./repo-ref.js";
 
 const KERNEL = { kind: "kernel", id: "orchestrator" };
+export const DEFAULT_REVIEW_ROUNDS_PER_WORK = 6;
 
 export class OrchestratorError extends Error {
   constructor(message) {
@@ -225,11 +226,16 @@ function makeContext(options, ledger, workspace) {
   // granted on this ledger adds to it. Real incident: the preset's two
   // review rounds could not be raised from the run config, and approving
   // resume-review re-asked the same question forever.
+  // A review step without an explicit cap takes the work-level cap as its run
+  // cap, so review rounds are counted in one unit: the work.
   context.runBudgets = options.budgets ?? {};
+  context.reviewRoundsPerWork = context.runBudgets.reviewRoundsPerWork ?? DEFAULT_REVIEW_ROUNDS_PER_WORK;
   context.budgetLimitFor = (step) =>
     (context.runBudgets.maxAttempts?.[step] ??
       workflow.budgets?.maxAttempts?.[step] ??
-      maxAttemptsPerStep) +
+      (isReviewStep(step, workflow.steps.find((item) => item.id === step))
+        ? context.reviewRoundsPerWork
+        : maxAttemptsPerStep)) +
     (ledger.state.budgetExtensions?.[step] ?? 0);
   context.maxAttemptsFor = (step) => context.budgetLimitFor(step) +
     (ledger.state.steps[step]?.infraAttempts ?? 0) +
@@ -297,8 +303,8 @@ function budgetReasons(context, step, safeguard = false) {
 
 function workReviewBudget(context, step) {
   const stepDef = context.workflow.steps.find((item) => item.id === step);
-  const cap = context.runBudgets.reviewRoundsPerWork;
-  if (cap === undefined || !isReviewStep(step, stepDef)) return null;
+  const cap = context.reviewRoundsPerWork;
+  if (!isReviewStep(step, stepDef)) return null;
   const prior = computeWorkCost(context.repoRoot, context.ledger.state.run.work, {
     excludeRun: context.ledger.state.run.id,
   });
@@ -317,6 +323,42 @@ function budgetGrants(context, step) {
   }
   if (workReviewBudget(context, step)?.exhausted) grants.push({ step, scope: "work" });
   return grants;
+}
+
+function reviewRoundAttempt(ref, step) {
+  const name = ref.split(/[\\/]/).pop();
+  if (!name.startsWith(`${step}-`)) return null;
+  const match = /^(\d+)\.json$/.exec(name.slice(step.length + 1));
+  return match ? Number(match[1]) : null;
+}
+
+// Compares this round's blocking findings with the earlier review rounds of
+// the same step in this run. A finding a fixer was already sent after that
+// comes back, or more blocking findings than last round, means another
+// automatic round would not converge; a shrinking set of new findings keeps
+// going without asking anyone. Returns the stop reason, or null.
+function reviewNotConverging(context, step, blockingFindings) {
+  const rounds = context.ledger.state.evidence.filter((item) =>
+    item.kind === "review" && reviewRoundAttempt(item.ref ?? "", step) !== null);
+  if (rounds.length < 2) return null;
+  const adjudicated = latestAdjudications(
+    readFindingsAccount(context.repoRoot, context.ledger.state.run.work),
+  );
+  const blocking = (round) => (round.findings ?? [])
+    .filter((finding) => finding.severity === "P0" || finding.severity === "P1")
+    .map(fingerprintFinding)
+    .filter((fingerprint) => adjudicated.get(fingerprint)?.action !== "dismiss");
+  const earlier = new Set(rounds.slice(0, -1).flatMap(blocking));
+  const lastCount = new Set(blocking(rounds.at(-2))).size;
+  const current = [...new Set(blockingFindings.map(fingerprintFinding))];
+  const repeated = current.filter((fingerprint) => earlier.has(fingerprint));
+  if (repeated.length > 0) {
+    return `${step} is not converging: ${repeated.length} blocking finding(s) came back after fix (${repeated.join(", ")}); approving runs fix + re-verify + one more review round, dismissing a finding stops it blocking`;
+  }
+  if (current.length > lastCount) {
+    return `${step} is not converging: ${current.length} blocking finding(s) this round, ${lastCount} last round; approving runs fix + re-verify + one more review round`;
+  }
+  return null;
 }
 
 // Evaluates configured policies of `type` for `appliesTo`, records every
@@ -886,8 +928,8 @@ function recordStepResult(context, step, stepDef, attempt, { before, outputPath 
 }
 
 // Settles the outcome and picks the next step; blocking findings stop once
-// for triage or for the review budget before any fixer runs. Returns the
-// next step, or null when the run stopped.
+// for triage, the review budget or a review that is not converging before
+// any fixer runs. Returns the next step, or null when the run stopped.
 function routeAfterStep(context, step, stepDef, { stepStatus, blockingFindings, tree, exec }) {
   let outcome;
   if (stepStatus !== "succeeded") {
@@ -901,9 +943,11 @@ function routeAfterStep(context, step, stepDef, { stepStatus, blockingFindings, 
   // Ask before spending fix/verify workers: one approval covers the next
   // round and both review caps, with the grant bound to this request.
   if (routed && outcome === "findings-blocking") {
-    const grants = isReviewStep(step, stepDef) ? budgetGrants(context, step) : [];
+    const review = isReviewStep(step, stepDef);
+    const grants = review ? budgetGrants(context, step) : [];
+    const stalled = review ? reviewNotConverging(context, step, blockingFindings) : null;
     const triage = context.reviewTriage === "required";
-    if (triage || grants.length) {
+    if (triage || grants.length || stalled) {
       const { used, limit, failures } = budgetUsage(context, step);
       const workBudget = workReviewBudget(context, step);
       context.waitHuman(
@@ -912,12 +956,13 @@ function routeAfterStep(context, step, stepDef, { stepStatus, blockingFindings, 
           ...(grants.length ? [
             `${step} budget exhausted: ${used}/${limit} review round(s) used in this run${workBudget ? `, ${workBudget.rounds}/${workBudget.allowed} across the work` : ""}, ${failures} real failure(s); approve enter-${routed} = fix + re-verify + one more review round; reject = end this run and decide the merge on the evidence you have`,
           ] : []),
+          ...(stalled ? [stalled] : []),
           `review found ${blockingFindings.length} blocking finding(s); ${triage ? "triage" : "approve another round"} before ${routed} runs`,
           ...blockingFindings.slice(0, 5).map((finding) =>
             `[${finding.severity} ${fingerprintFinding(finding)}] ${finding.summary.slice(0, 200)}`),
           `adjudicate fingerprints (findings adjudicate), then approve enter-${routed} or reject the run`,
         ],
-        triage ? "finding-triage" : "budget",
+        triage ? "finding-triage" : grants.length ? "budget" : "review-not-converging",
         grants,
       );
       return null;
@@ -1287,7 +1332,7 @@ export function resumeRun(options) {
             amount: 1,
             ...(grant.scope === "work" ? { scope: "work" } : {}),
             maxAttempts: grant.scope === "work"
-              ? (context.runBudgets.reviewRoundsPerWork ?? 0) + (ledger.state.workReviewGrants ?? 0) + 1
+              ? context.reviewRoundsPerWork + (ledger.state.workReviewGrants ?? 0) + 1
               : context.maxAttemptsFor(grant.step) + 1,
             approvalRef: approval.decisionRef,
             grants: plan,

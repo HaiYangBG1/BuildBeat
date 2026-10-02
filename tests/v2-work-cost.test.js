@@ -114,15 +114,19 @@ test("budgets.reviewRoundsPerWork stops a new run before its review once the wor
   assert.equal(resumed.state.pendingHuman.kind, "final-decision");
 });
 
-test("no cap configured means no work-level stop", () => {
+test("without a configured cap the work stops at the default six review rounds", () => {
   const { root } = fixtureRepo();
   const work = "WORK-NOCAP";
-  for (const id of ["RUN-NC-01", "RUN-NC-02", "RUN-NC-03"]) {
+  for (let index = 1; index <= 6; index += 1) {
     const mock = createMockAdapter({ verify: ["succeed"], review: [clean()] });
-    const result = startRun(options(root, id, work, { builder: committingBuilder(), verifier: mock, reviewer: mock }));
+    const result = startRun(options(root, `RUN-NC-0${index}`, work, { builder: committingBuilder(), verifier: mock, reviewer: mock }));
     assert.equal(result.state.pendingHuman.kind, "final-decision");
   }
-  assert.equal(computeWorkCost(root, work).reviewRounds, 3);
+  assert.equal(computeWorkCost(root, work).reviewRounds, 6);
+  const mock = createMockAdapter({ verify: ["succeed"], review: [clean()] });
+  const capped = startRun(options(root, "RUN-NC-07", work, { builder: committingBuilder(), verifier: mock, reviewer: mock }));
+  assert.equal(capped.state.pendingHuman.kind, "work-review-cap");
+  assert.match(capped.state.pendingHuman.reasons[0], /6\/6 review round\(s\) across the work/);
 });
 
 test("worker time renders in human units", () => {
