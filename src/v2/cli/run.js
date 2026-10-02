@@ -21,7 +21,7 @@ import { loadWorkflow, nextStep } from "../engine/workflow.js";
 import { parseYamlSubset } from "../engine/yaml-subset.js";
 import { parsePolicyDoc } from "../policy/policy.js";
 import { observeStatus, runObserveCycle, triageIntent } from "../observe/observe.js";
-import { acceptArtifact, adoptCandidate, approveRun, listInbox, rejectRun } from "../runtime/decisions.js";
+import { acceptArtifacts, adoptCandidate, approveRun, listInbox, rejectRun } from "../runtime/decisions.js";
 import { checkRequires } from "../runtime/env-contract.js";
 import {
   adjudicateFinding,
@@ -67,7 +67,7 @@ Usage:
   buildbeat overview --repo <path> [--work <WORK-ID>] [--json]
   buildbeat approve --repo <path> --run <RUN-ID> --transition <t> [--by <name>] [--config <run-config.yaml>]
   buildbeat reject --repo <path> --run <RUN-ID> [--transition <t>] [--reason <text>] [--by <name>]
-  buildbeat accept --repo <path> --work <WORK-ID> --artifact <plan|intent|spec> [--by <name>]
+  buildbeat accept --repo <path> --work <WORK-ID> --artifact <plan|intent|spec>[,<more>] [--by <name>]
   buildbeat doctor --config <run-config.yaml>
   buildbeat events --repo <path> --run <RUN-ID>
   buildbeat replay --repo <path> --run <RUN-ID>
@@ -718,12 +718,15 @@ function commandAccept(flags) {
   if (!flags.repo || !flags.work || !flags.artifact) {
     throw new Error("accept requires --repo, --work and --artifact");
   }
-  const result = acceptArtifact(resolve(flags.repo), flags.work, flags.artifact, {
+  const artifacts = String(flags.artifact).split(",").map((name) => name.trim()).filter(Boolean);
+  const results = acceptArtifacts(resolve(flags.repo), flags.work, artifacts, {
     by: flags.by ?? "human",
   });
-  console.log(`accepted ${flags.artifact} as ${result.decisionRef}`);
-  console.log(`  digest: ${result.digest}`);
-  console.log("  note: editing the artifact after acceptance makes this acceptance stale");
+  for (const result of results) {
+    console.log(`accepted ${result.artifact} as ${result.decisionRef}`);
+    console.log(`  digest: ${result.digest}`);
+  }
+  console.log("  note: editing an artifact after acceptance makes its acceptance stale");
 }
 
 // Artifacts a policy rule requires to be accepted (artifact.accepted leaves

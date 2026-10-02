@@ -196,7 +196,8 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
           : `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact intent --by <you>`;
       } else if (!plan.accepted) {
         stage = plan.stale ? "PLAN_STALE" : "PLAN_DRAFT";
-        next = `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact plan --by <you>${plan.stale ? "   # plan changed since acceptance" : ""}`;
+        const artifacts = intent.accepted ? "plan" : "intent,plan";
+        next = `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact ${artifacts} --by <you>${plan.stale ? "   # plan changed since acceptance" : ""}`;
       } else {
         stage = "READY_TO_RUN";
         const configs = readdirSync(workDir).filter((name) => /^run-config.*\.ya?ml$/.test(name));
