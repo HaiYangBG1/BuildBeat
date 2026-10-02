@@ -94,7 +94,6 @@ test("templates/v2 envelope drives a run to the merge decision with a scripted a
   const sample = readFileSync(join(TEMPLATES, "run-config.example.yaml"), "utf8")
     .replace("work: WORK-X", "work: WORK-T")
     .replace("run: RUN-X", "run: RUN-T")
-    .replace("reviewTriage: required", "reviewTriage: off")
     .replace(/      - codex\n      - exec\n      - -s\n      - workspace-write\n/, "      - bash\n      - tools/fake-agent.sh\n      - build\n")
     .replace(/      - codex\n      - exec\n      - -s\n      - read-only\n/, "      - bash\n      - tools/fake-agent.sh\n      - review\n")
     .replace(/      - codex\n      - exec\n      - -s\n      - workspace-write\n/, "      - bash\n      - tools/fake-agent.sh\n      - fix\n")

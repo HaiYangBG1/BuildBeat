@@ -6,6 +6,7 @@
 
 - **review 按收敛止损，不再按 2 轮封顶**：review 发现阻断问题、派 fixer 之前，内核把本轮 P0/P1 与本 Run 之前各轮比较。修过的 finding 又出现（同指纹，已 dismiss 的不算），或本轮阻断数多于上一轮，就停 `enter-fix`（新 kind `review-not-converging`，理由列出又出现的指纹或前后数量，请求不带 grants，批准不动预算）；阻断 finding 都是新的、数量不多于上一轮时自动继续。官方预设不再自带每 Run 2 轮的 `budgets.maxAttempts.review`，轮数上限改由下一条的 `reviewRoundsPerWork` 统一负责；run 配置里显式写的值照旧优先。开了 `reviewTriage: required` 时仍停分诊，不收敛理由并入同一请求；`nextReply` 对新 kind 给出 `findings list` / `findings adjudicate` 命令。原因：每 Run 2 轮封顶让正常修两三轮的 Run 反复停下批准扩额；本仓最近 10 个 Run 里中途 9 次批准都由驾驶会话自己批，人只出现在合并决定，审批点没起到人把关的作用。
 - **review 轮数只剩一个上限**：`budgets.reviewRoundsPerWork` 不写时默认 6（此前不写即没有 Work 级上限）；review 步没有显式 `maxAttempts` 时，每 Run 上限取同一个值，不会先于 Work 上限触发，官方预设不再自带 `maxAttempts.review`。`doctor` 显示 review 上限来源为 `reviewRoundsPerWork` 并标出默认值；run 配置样板删去 `maxAttempts.review`。显式写的 `maxAttempts.review` 照旧生效。原因：每 Run 与每 Work 两套计数让同一轮 review 要按两层上限解释和放行，止损线本来就按 Work 定。
+- **模板默认不再开发现分诊门**：`templates/v2/run-config.example.yaml`、示例项目、`SKILL.md` 与快速开始里的 run 配置样板从 `reviewTriage: required` 改为 `reviewTriage: off`，P0/P1 finding 直接派 fixer；高风险项目仍可改回 `required`。内核默认值本来就是不分诊，未改动；已有项目的 run 配置不受影响。原因：本仓最近 10 个 Run 中途 9 次停人里 7 次是分诊门的 `enter-fix`，且全部由驾驶会话自己批准，没有起到人把关的作用。
 
 ## v3.2.1 — 2026-09-26（补丁：开关参数单写、drive() 拆分、信封脚本测试、英文指南）
 
