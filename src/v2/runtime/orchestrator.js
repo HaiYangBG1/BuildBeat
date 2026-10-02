@@ -344,12 +344,13 @@ function reviewNotConverging(context, step, blockingFindings) {
     .filter((fingerprint) => adjudicated.get(fingerprint)?.action !== "dismiss");
   const earlier = new Set(rounds.slice(0, -1).flatMap(blocking));
   const lastCount = new Set(blocking(rounds.at(-2))).size;
-  const repeated = blockingFindings.filter((finding) => earlier.has(fingerprintFinding(finding)));
+  const current = [...new Set(blockingFindings.map(fingerprintFinding))];
+  const repeated = current.filter((fingerprint) => earlier.has(fingerprint));
   if (repeated.length > 0) {
-    return `${step} is not converging: ${repeated.length} blocking finding(s) came back after fix (${repeated.map(fingerprintFinding).join(", ")}); approving runs fix + re-verify + one more review round, dismissing a finding stops it blocking`;
+    return `${step} is not converging: ${repeated.length} blocking finding(s) came back after fix (${repeated.join(", ")}); approving runs fix + re-verify + one more review round, dismissing a finding stops it blocking`;
   }
-  if (blockingFindings.length > lastCount) {
-    return `${step} is not converging: ${blockingFindings.length} blocking finding(s) this round, ${lastCount} last round; approving runs fix + re-verify + one more review round`;
+  if (current.length > lastCount) {
+    return `${step} is not converging: ${current.length} blocking finding(s) this round, ${lastCount} last round; approving runs fix + re-verify + one more review round`;
   }
   return null;
 }
@@ -922,8 +923,7 @@ function recordStepResult(context, step, stepDef, attempt, { before, outputPath 
 
 // Settles the outcome and picks the next step; blocking findings stop once
 // for triage, the review budget or a review that is not converging before
-// any fixer runs. Returns the
-// next step, or null when the run stopped.
+// any fixer runs. Returns the next step, or null when the run stopped.
 function routeAfterStep(context, step, stepDef, { stepStatus, blockingFindings, tree, exec }) {
   let outcome;
   if (stepStatus !== "succeeded") {

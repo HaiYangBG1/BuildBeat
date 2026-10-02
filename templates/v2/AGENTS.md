@@ -44,7 +44,7 @@
 **③ 交接靠 candidate hash + 台账** —— Run 停在合并决定时 candidate 已由 Git 回读固定；跨会话接力读 `delivery/work/<id>/` 即知全部事实，hash 不得编造。
 **④ 护栏与不可逆动作** —— 开工 `overview`；部署/改契约/migration 等不可逆动作前再核一次并走人批；exit 0 不消除 `warning/unverified`。
 **⑤ 风险分轨** —— Risk Preset：`fast`（仅 merge 人批）/ `standard`（plan+merge，默认）/ `controlled`（intent+plan+merge+release）/ `release`（上线回读车道）。
-**⑥ 核查门** —— Run 内 reviewer 只读、结构化 findings；`reviewTriage: required` 时 P0/P1 先过人分诊再派 fixer；review 每 Run 默认 2 轮封顶。**完成 = hash + 可核验证据**；标准轨最低 L3，上线必须 L4。`UNVERIFIED` 永不当作通过。
+**⑥ 核查门** —— Run 内 reviewer 只读、结构化 findings；`reviewTriage: required` 时 P0/P1 先过人分诊再派 fixer；review 不收敛（修过的 finding 又出现，或阻断数多于上一轮）即停人，每 Run 默认 4 轮兜底。**完成 = hash + 可核验证据**；标准轨最低 L3，上线必须 L4。`UNVERIFIED` 永不当作通过。
 **⑦ 状态单点** —— 事实进 Run 证据与 Work 记录；进度看 `overview`，度量看 `metrics`（本地只读）。
 **⑧ 视觉问题带图对比** —— 提 UI bug 必附『实现截图 ⟷ 设计稿截图』并排 + 标注差异点。
 **⑨ 单点事实** —— 线上版本只信实查（`observe status` / 部署平台）；任何文档不写「当前线上 vX」；每个收敛后的真实决策包只在 `pm/decisions.md` 记一行；历史台账不回改。
