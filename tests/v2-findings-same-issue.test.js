@@ -43,3 +43,8 @@ test("severity does not split an issue that escalated", () => {
     { severity: "P0", summary: "完整 diff 包含两个允许范围外的文件: docs/guide.md:73、tests/e2e.test.mjs:293" },
   ), true);
 });
+
+test("short summaries match on the fingerprint only", () => {
+  assert.equal(sameIssue(p1("issue two"), p1("issue three")), false);
+  assert.equal(sameIssue(p1("issue two"), p1("issue two")), true);
+});

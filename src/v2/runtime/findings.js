@@ -84,10 +84,17 @@ function similarity(left, right) {
 // across 161 replayed review rounds while the same problem came back three
 // times. Thresholds from that replay: same anchors and >= 0.5, or >= 0.6
 // otherwise, caught every restatement; unrelated pairs peaked at 0.57, and at
-// 0.33 when they cited the same files.
+// 0.33 when they cited the same files. Under 16 characters of description
+// bigrams say little ("issue two" / "issue three" share most of them), so
+// short summaries match on the fingerprint only.
+const MIN_ISSUE_TEXT = 16;
+
 export function sameIssue(a, b) {
   if (fingerprintFinding(a) === fingerprintFinding(b)) return true;
-  const score = similarity(issueText(a.summary), issueText(b.summary));
+  const left = issueText(a.summary);
+  const right = issueText(b.summary);
+  if (Math.min(left.length, right.length) < MIN_ISSUE_TEXT) return false;
+  const score = similarity(left, right);
   const anchors = fileAnchors(a.summary);
   if (anchors && anchors === fileAnchors(b.summary) && score >= 0.5) return true;
   return score >= 0.6;
