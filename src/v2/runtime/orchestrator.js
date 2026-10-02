@@ -43,6 +43,7 @@ import {
 import { resolveRepoRef, toRepoRef } from "./repo-ref.js";
 
 const KERNEL = { kind: "kernel", id: "orchestrator" };
+export const DEFAULT_REVIEW_ROUNDS_PER_WORK = 6;
 
 export class OrchestratorError extends Error {
   constructor(message) {
@@ -225,11 +226,16 @@ function makeContext(options, ledger, workspace) {
   // granted on this ledger adds to it. Real incident: the preset's two
   // review rounds could not be raised from the run config, and approving
   // resume-review re-asked the same question forever.
+  // A review step without an explicit cap takes the work-level cap as its run
+  // cap, so review rounds are counted in one unit: the work.
   context.runBudgets = options.budgets ?? {};
+  context.reviewRoundsPerWork = context.runBudgets.reviewRoundsPerWork ?? DEFAULT_REVIEW_ROUNDS_PER_WORK;
   context.budgetLimitFor = (step) =>
     (context.runBudgets.maxAttempts?.[step] ??
       workflow.budgets?.maxAttempts?.[step] ??
-      maxAttemptsPerStep) +
+      (isReviewStep(step, workflow.steps.find((item) => item.id === step))
+        ? context.reviewRoundsPerWork
+        : maxAttemptsPerStep)) +
     (ledger.state.budgetExtensions?.[step] ?? 0);
   context.maxAttemptsFor = (step) => context.budgetLimitFor(step) +
     (ledger.state.steps[step]?.infraAttempts ?? 0) +
@@ -297,8 +303,8 @@ function budgetReasons(context, step, safeguard = false) {
 
 function workReviewBudget(context, step) {
   const stepDef = context.workflow.steps.find((item) => item.id === step);
-  const cap = context.runBudgets.reviewRoundsPerWork;
-  if (cap === undefined || !isReviewStep(step, stepDef)) return null;
+  const cap = context.reviewRoundsPerWork;
+  if (!isReviewStep(step, stepDef)) return null;
   const prior = computeWorkCost(context.repoRoot, context.ledger.state.run.work, {
     excludeRun: context.ledger.state.run.id,
   });
@@ -1326,7 +1332,7 @@ export function resumeRun(options) {
             amount: 1,
             ...(grant.scope === "work" ? { scope: "work" } : {}),
             maxAttempts: grant.scope === "work"
-              ? (context.runBudgets.reviewRoundsPerWork ?? 0) + (ledger.state.workReviewGrants ?? 0) + 1
+              ? context.reviewRoundsPerWork + (ledger.state.workReviewGrants ?? 0) + 1
               : context.maxAttemptsFor(grant.step) + 1,
             approvalRef: approval.decisionRef,
             grants: plan,
