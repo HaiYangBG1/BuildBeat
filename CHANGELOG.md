@@ -2,6 +2,11 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- **review 收敛判断认得出换了说法的同一问题**：3.3.0 判断「修过的 finding 又出现」只认相同指纹（严重度 + 描述原文），而 reviewer 每轮会换行号、改措辞——回放 4 个仓 161 轮 review，按指纹一次都没对上，同一个问题却在一个 Run 里被连审三轮。新增 `sameIssue`：同指纹，或引用同一组文件且描述相近（字符二元组 Dice ≥ 0.5），或描述高度相近（≥ 0.6）；描述去掉文件与数字后不足 16 字时只认指纹。只用于收敛判断，finding 指纹、裁决台账与 dismiss 抑制不变。停人理由里换了说法的一条写成「本轮指纹 restates round N 原指纹」。阈值依据：回放中真实改写全部命中，无关 finding 最高 0.57、同文件无关 finding 最高 0.33。
+- **文档补齐**：`lessons.md` 教训 14 的解药改为现行机制（原文仍写每 Run 2 轮封顶、分诊后才派 fixer），新增教训 23（中途审批点被驾驶会话自批、同一问题换说法认不出）；发布 runbook 要求候选用与发布 workflow 相同的 Node / npm 打包（否则 gzip 层不同、integrity 对不上，改比解压后的 tar），发布后检查 `which -a buildbeat` 列出的每一份全局安装；3.3.0 发布证据更正本机只更新了一份全局安装的事实。
+
 ## v3.3.0 — 2026-10-02（review 少停人：收敛止损、单一轮数上限、模板关分诊、intent+plan 一次接受）
 
 > **发布状态**：`@haiyangbg/buildbeat@3.3.0` 已于 2026-10-02 从 `main`（PR #59、#62、#60、#61、#45 内容，release PR #63，merge commit `1ce1a7e`，tag `v3.3.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 36973733935，publish 与 verify 双 job 一次 success；所有者授权「发 3.3.0」）。独立回读（直连 npmjs.org）：`latest` = 3.3.0、发布包解压后的 tar 与发布前本地候选逐字节相同（只有 gzip 压缩层不同：本地 Node 22、CI Node 24，故 integrity 不同）、SLSA v1 provenance、隔离安装 `--version` = 3.3.0、裸调用零写入、已发布包的 `doctor` 显示 review 上限来源 `reviewRoundsPerWork`、`npm audit signatures` 通过；GitHub Release v3.3.0 标 Latest，证据见 [`docs/releases/V3.3.0-RELEASE-EVIDENCE-2026-10-02.md`](docs/releases/V3.3.0-RELEASE-EVIDENCE-2026-10-02.md)。同日所有者本人经 npm 两步验证把 dist-tag `next` 从 3.2.1 挪到 3.3.0；直连 npmjs.org 回读 `next` = `latest` = 3.3.0。
