@@ -1,0 +1,2 @@
+{"ts":"2026-10-02T07:43:53.549Z","decisionRef":"A-WORK-REVIEW-CONVERGENCE-1","decision":"approved","transition":"accept-intent","subject":{"artifact":"intent","digest":"sha256:d3e01957f72c3079df2f9cdf3bf3a327771dfbbd87dfccbaee42088f188674f2"},"by":"haiyang"}
+{"ts":"2026-10-02T07:43:53.554Z","decisionRef":"A-WORK-REVIEW-CONVERGENCE-2","decision":"approved","transition":"accept-plan","subject":{"artifact":"plan","digest":"sha256:04d36ae5997008f9b1d2edfdf9f5478a60bfbd75a04eff18d962b787abfa7ca8"},"by":"haiyang"}
