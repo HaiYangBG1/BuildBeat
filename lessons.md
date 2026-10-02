@@ -88,7 +88,7 @@
 
 **根因**:把三种本应分开的东西揉成一个开关:① 每次提交都该跑的机器检查;② 实现中突发的高风险语义 delta;③ 里程碑候选的完整一致性核查。再用「任务结束」「文件数」而不是**风险状态是否变化 / 候选 hash 是否变化**做触发条件,任务拆得越细,审查次数反而越多;P2 也被当成重新跑全流程的理由。流程于是优化了审查产量,没有优化风险发现率。
 
-**解药**:review 只在 verify 通过后对固定 candidate 跑一次,每 Run 默认 2 轮封顶(`budgets.maxAttempts.review`),Work 级 `reviewRoundsPerWork` 跨 Run 累计;`cache.verify: tree` 让同树同命令的证据直接复用(标 `REUSED`);reviewer 输入带 `lastReviewed` 与历史裁决 `anchor`,只核 delta;P0/P1 阻断且经 `reviewTriage` 人分诊后才派 fixer,P2 默认挂账。通用原则:**核查强度跟风险变化走,不跟任务数和文档行数走;写者≠审者保留,重复全审不是独立性。**
+**解药**:review 只在 verify 通过后对固定 candidate 跑一次,轮数只有一个上限 `reviewRoundsPerWork`(默认 6,跨本 Work 所有 Run 累计),上限之内只在不收敛时停人(见第 23 条);`cache.verify: tree` 让同树同命令的证据直接复用(标 `REUSED`);reviewer 输入带 `lastReviewed` 与历史裁决 `anchor`,只核 delta;P0/P1 阻断即派 fixer,高风险项目可开 `reviewTriage: required` 先人分诊,P2 默认挂账。通用原则:**核查强度跟风险变化走,不跟任务数和文档行数走;写者≠审者保留,重复全审不是独立性。**
 
 ## 15. 追踪项被当成任务边界,人不断说“继续”和“批准”
 
@@ -143,3 +143,9 @@
 **症状**:候选已合入生产的 Work 因最后一个 Run 是 CANCELLED 而显示 `STOPPED_CANCELLED`,`next:` 催重试;四个已关窗的 release 车道 Work 显示 `MERGE_READY`、"nothing to merge";已合并的 Work 仍报 14 条未裁决 finding;`doctor` 通过两次,`start` 都被"plan 未镜像到子仓"的 policy 挡在 build;驾驶会话在 worktree 里手修并提交后,只能批准 enter-fix 让 fixer 空跑再多一次 verify(前端 Run 因此 verify 5 次、fix 3 次)。
 **根因**:阶段判定只看最后一个 Run 的终态,不看候选是否已在主干;overview 不认识 release 车道;doctor 检查的是配置合法性,不是 start 第一道门会读的事实;内核只认 worker 产出的候选,没有"人供候选"的入口。
 **解药**:候选合入主干即 `MERGED`(哪怕最新 Run 取消),release 车道成功关窗即 `RELEASED`,已合并/已发布/已关闭不再提示未裁决数;`doctor` 打印本仓 intent/plan 存在与接受状态,并按 policy 预告 start 会停在哪一步;`resume --adopt <sha>` 以人为 actor 钉候选、从 verify 续跑。**同批发现**:仓内 `.buildbeat/worktrees/` 会被 vitest 等按文件系统收集的框架当成测试目录(模板 gitignore 与指南补排除);`start` 被仓锁挡住时只说"another run is active",现在打印持锁 Run 与 `status` 命令,锁本身未放开。通用原则:**任何"到哪了"的读数都必须从事实(主干、车道、门)推导,而不是从最后一条记录的状态字段抄。**
+
+## 23. 中途审批点被驾驶会话自己批,同一个问题换个说法就认不出
+
+**症状**:每个 Run 默认 2 轮 review 封顶,加上样板默认开分诊门,正常要修两三轮的 Run 一次次停在 `enter-fix` / `resume-review` 等人。一个仓最近 10 个 Run 中途停人 9 次,7 次是分诊门,9 次全部由驾驶会话自己批准,人只在合并决定时出现过一次。改成「按收敛止损」后,判断「修过的问题又出现」靠 finding 指纹(严重度 + 描述原文),但 reviewer 的描述带 `文件:行号`、措辞每轮微调:回放 4 个仓 161 轮 review,按指纹一次重复都没有,而同一个「diff 含允许范围外的文件」在一个 Run 里被连审三轮,只是第二轮写成「仍包含」、第三轮写成「包含本次允许范围之外的改动」。
+**根因**:审批点按「步数」设,而不是按「需要人判断的事」设——会话能自己批的门,停下来只是延迟;另一边,用来做裁决台账的精确指纹被拿去做「是不是同一个问题」的模糊判断,两个用途要求相反(裁决要精确、收敛判断要容忍改写)。
+**解药**:review 轮数只留一个按 Work 计的上限(默认 6),样板默认不开分诊门,上限之内只在不收敛时停人(`review-not-converging`);收敛判断用独立的 `sameIssue`:同指纹,或引用同一组文件且描述相近,或描述高度相近(字符二元组 Dice ≥ 0.5 / 0.6;严重度不参与、只差行号也算,描述去掉文件与数字后不足 16 字只认这两种精确情况),指纹与裁决不变。阈值来自那 161 轮回放:真实改写全部命中,无关 finding 最高 0.57、同文件无关 finding 最高 0.33。通用原则:**审批点要么真的要人判断,要么不设;同一份标识不要同时承担「精确去重」和「模糊归并」两种职责。**

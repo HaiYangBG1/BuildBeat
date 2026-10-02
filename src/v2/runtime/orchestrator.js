@@ -39,6 +39,7 @@ import {
   latestAdjudications,
   readFindingsAccount,
   recordReviewFindings,
+  sameIssue,
 } from "./findings.js";
 import { resolveRepoRef, toRepoRef } from "./repo-ref.js";
 
@@ -333,10 +334,11 @@ function reviewRoundAttempt(ref, step) {
 }
 
 // Compares this round's blocking findings with the earlier review rounds of
-// the same step in this run. A finding a fixer was already sent after that
-// comes back, or more blocking findings than last round, means another
-// automatic round would not converge; a shrinking set of new findings keeps
-// going without asking anyone. Returns the stop reason, or null.
+// the same step in this run. The same problem coming back after a fixer was
+// sent (same fingerprint, or a restatement: sameIssue), or more blocking
+// findings than last round, means another automatic round would not
+// converge; a shrinking set of new findings keeps going without asking
+// anyone. Returns the stop reason, or null.
 function reviewNotConverging(context, step, blockingFindings) {
   const rounds = context.ledger.state.evidence.filter((item) =>
     item.kind === "review" && reviewRoundAttempt(item.ref ?? "", step) !== null);
@@ -346,12 +348,18 @@ function reviewNotConverging(context, step, blockingFindings) {
   );
   const blocking = (round) => (round.findings ?? [])
     .filter((finding) => finding.severity === "P0" || finding.severity === "P1")
-    .map(fingerprintFinding)
-    .filter((fingerprint) => adjudicated.get(fingerprint)?.action !== "dismiss");
-  const earlier = new Set(rounds.slice(0, -1).flatMap(blocking));
-  const lastCount = new Set(blocking(rounds.at(-2))).size;
-  const current = [...new Set(blockingFindings.map(fingerprintFinding))];
-  const repeated = current.filter((fingerprint) => earlier.has(fingerprint));
+    .filter((finding) => adjudicated.get(fingerprintFinding(finding))?.action !== "dismiss");
+  const earlier = rounds.slice(0, -1).flatMap((round, index) =>
+    blocking(round).map((finding) => ({ finding, round: index + 1 })));
+  const lastCount = new Set(blocking(rounds.at(-2)).map(fingerprintFinding)).size;
+  const current = [...new Map(blockingFindings.map((finding) => [fingerprintFinding(finding), finding])).values()];
+  const repeated = current.flatMap((finding) => {
+    const match = earlier.find((item) => sameIssue(finding, item.finding));
+    if (!match) return [];
+    const now = fingerprintFinding(finding);
+    const before = fingerprintFinding(match.finding);
+    return [now === before ? now : `${now} restates round ${match.round} ${before}`];
+  });
   if (repeated.length > 0) {
     return `${step} is not converging: ${repeated.length} blocking finding(s) came back after fix (${repeated.join(", ")}); approving runs fix + re-verify + one more review round, dismissing a finding stops it blocking`;
   }

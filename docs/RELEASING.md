@@ -44,6 +44,8 @@ gitleaks git --no-banner --redact --no-color
 git diff --check
 ```
 
+Record the candidate's integrity from a pack made with the same toolchain as `publish.yml` (Node 24, npm 11.19.0), for example `npx --yes npm@11.19.0 pack --json` under Node 24. A pack from another Node major compresses differently, so its `integrity` will not equal the registry's even when the contents are identical (3.3.0: candidate packed under Node 22). When the toolchains differ, compare the SHA-256 of the decompressed tarballs (`gunzip -c <tgz> | shasum -a 256`) and the file listings instead, and say so in the evidence.
+
 Before pushing a tag, confirm that the package name/version is absent from the official registry and that the candidate commit's `main` CI is green. An `E404` only proves point-in-time absence; it does not reserve the name.
 
 Also read back the server-side tag rule instead of assuming that repository documentation represents current GitHub configuration:
@@ -138,5 +140,6 @@ Publishing the artifact is one surface. These are the others; each has drifted a
 - [ ] Active RFC / plan documents whose channel policy the release changed get a dated "生效修订" note; history keeps its original text.
 - [ ] GitHub repository About (description, topics, homepage) still describes the product that was just released — cannot be checked from the repository, do it by hand.
 - [ ] GitHub Release marked Latest for a stable release, not for a pre-release.
+- [ ] Every global install on the release operator's machine moved to the new version: `which -a buildbeat` can list more than one (a Node version manager and Homebrew keep separate global prefixes; 3.3.0 updated only one of two, and sessions kept running 3.2.1).
 - [ ] Claude Code plugin: if `plugins/buildbeat/.claude-plugin/plugin.json` changed, its version bumped and `tests/plugin-marketplace.test.sh` updated; the plugin version is independent of the npm version.
 - [ ] `npm run check:docs` green on the release commit (it enforces the active-document claims above).

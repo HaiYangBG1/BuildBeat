@@ -76,6 +76,16 @@ test("a blocking finding that comes back after fix stops before the cap, without
   assert.equal(extensions(resumed).length, 0);
 });
 
+test("the same problem restated after fix stops before the cap and names both findings", () => {
+  const before = p1("完整 diff 包含两个允许范围外的文件: docs/guide.md:73、tests/e2e.test.mjs:293");
+  const after = p1("完整 diff 仍包含两个允许范围外的文件: docs/guide.md:75、tests/e2e.test.mjs:296");
+  const started = startRun(fixture("RUN-C2B", [[before], [after]]));
+  assert.equal(started.state.steps.review.attempts, 2);
+  assert.equal(started.state.pendingHuman.kind, "review-not-converging");
+  assert.ok(started.state.pendingHuman.reasons[0].includes(
+    `${fingerprintFinding(after)} restates round 1 ${fingerprintFinding(before)}`));
+});
+
 test("more blocking findings than the last round stops before the cap", () => {
   const started = startRun(fixture("RUN-C3", [[p1("one")], [p1("two"), p1("three")]]));
   assert.equal(started.state.steps.review.attempts, 2);

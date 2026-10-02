@@ -1,0 +1,194 @@
+{
+  "run": "RUN-REVIEW-CONVERGENCE-01",
+  "work": "WORK-REVIEW-CONVERGENCE",
+  "workflow": "software-delivery",
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 46,
+    "lastDigest": "sha256:351b0bc26fca9a78a89c54c2de6c73d5f81127eefbf81117e285fd8a488201cc"
+  },
+  "startedAt": "2026-10-02T07:43:57.890Z",
+  "finishedAt": "2026-10-02T08:01:37.809Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 2
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "infraFailures": 0,
+    "workerMs": 281673
+  },
+  "workspaces": {
+    "RUN-REVIEW-CONVERGENCE-01": {
+      "repo": ".",
+      "branch": "run/RUN-REVIEW-CONVERGENCE-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-REVIEW-CONVERGENCE-01",
+      "base": "20292d722c41dc225b8f406bca2b17aa96cc3642",
+      "candidate": "e8b3cb591d594ae5a91e3d31ac9d0dde5c0ce456"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CONVERGENCE-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "ba3ff5579e62b14b01671f51f1c5d3611b72affa",
+      "digest": "sha256:1dd192e6e66d7cfba0d615636c98ef6ba8ccc047065a63965420345606c968d9",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:80b6cca2f4a967662916df077109b0d8ea1191c1620b6cd3065f0766a7532c8a"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CONVERGENCE-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "ba3ff5579e62b14b01671f51f1c5d3611b72affa",
+      "digest": "sha256:4415935b36c5c644a382950bca43a4a8421c35ce6b9b183d4cfc0cd37aa055f0",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CONVERGENCE-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "ba3ff5579e62b14b01671f51f1c5d3611b72affa",
+      "digest": "sha256:aac9fb47f91208900692834ba33b8d9a742d5253afec24f77ada27c450c476a0",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/findings.js:96 的长度门槛使短描述仅改变行号或从 P1 升为 P0 就返回 false，例如“异常分支未释放锁”，违反计划中忽略行号和严重度的要求，导致同一问题再次出现时漏停 review-not-converging，现有测试未覆盖这些情况。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/findings.js:43 的文件锚点正则不识别以反引号结尾的路径，导致 Markdown 代码格式中的路径残留在描述相似度计算中，同一长路径下两个不同问题可被误判为同一问题并触发 review-not-converging，现有测试未覆盖该格式。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CONVERGENCE-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "e8b3cb591d594ae5a91e3d31ac9d0dde5c0ce456",
+      "digest": "sha256:f9faae24d2a6113b6585d5a19cb62392b2cd17d28e40870763f1132cf10cf648",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:23fb3536bf2b9ce55d74c3564d94c79151fe83b44b64a5dd1845123576147727"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CONVERGENCE-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "e8b3cb591d594ae5a91e3d31ac9d0dde5c0ce456",
+      "digest": "sha256:82c06dd006b25a0c4bf2aeb03de5536f2399eb2571e59d7fcc18218e405fa527",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CONVERGENCE-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "e8b3cb591d594ae5a91e3d31ac9d0dde5c0ce456",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "20292d722c41dc225b8f406bca2b17aa96cc3642",
+        "planDigest": "sha256:04d36ae5997008f9b1d2edfdf9f5478a60bfbd75a04eff18d962b787abfa7ca8",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-REVIEW-CONVERGENCE-01-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "ba3ff5579e62b14b01671f51f1c5d3611b72affa",
+        "planDigest": "sha256:04d36ae5997008f9b1d2edfdf9f5478a60bfbd75a04eff18d962b787abfa7ca8",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-REVIEW-CONVERGENCE-01-2"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "e8b3cb591d594ae5a91e3d31ac9d0dde5c0ce456",
+        "planDigest": "sha256:04d36ae5997008f9b1d2edfdf9f5478a60bfbd75a04eff18d962b787abfa7ca8",
+        "evidenceDigest": "sha256:aac9fb47f91208900692834ba33b8d9a742d5253afec24f77ada27c450c476a0"
+      },
+      "decisionRef": "D-RUN-REVIEW-CONVERGENCE-01-3"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "e8b3cb591d594ae5a91e3d31ac9d0dde5c0ce456",
+        "planDigest": "sha256:04d36ae5997008f9b1d2edfdf9f5478a60bfbd75a04eff18d962b787abfa7ca8",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-REVIEW-CONVERGENCE-01-4"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-REVIEW-CONVERGENCE-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "20292d722c41dc225b8f406bca2b17aa96cc3642",
+        "planDigest": "sha256:04d36ae5997008f9b1d2edfdf9f5478a60bfbd75a04eff18d962b787abfa7ca8",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": true,
+      "changed": [
+        "candidate"
+      ]
+    },
+    {
+      "decisionRef": "D-RUN-REVIEW-CONVERGENCE-01-2",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "ba3ff5579e62b14b01671f51f1c5d3611b72affa",
+        "planDigest": "sha256:04d36ae5997008f9b1d2edfdf9f5478a60bfbd75a04eff18d962b787abfa7ca8",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-REVIEW-CONVERGENCE-01-3",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "e8b3cb591d594ae5a91e3d31ac9d0dde5c0ce456",
+        "planDigest": "sha256:04d36ae5997008f9b1d2edfdf9f5478a60bfbd75a04eff18d962b787abfa7ca8",
+        "evidenceDigest": "sha256:aac9fb47f91208900692834ba33b8d9a742d5253afec24f77ada27c450c476a0"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-REVIEW-CONVERGENCE-01-4",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "e8b3cb591d594ae5a91e3d31ac9d0dde5c0ce456",
+        "planDigest": "sha256:04d36ae5997008f9b1d2edfdf9f5478a60bfbd75a04eff18d962b787abfa7ca8",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

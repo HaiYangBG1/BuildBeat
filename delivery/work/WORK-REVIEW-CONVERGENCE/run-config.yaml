@@ -1,0 +1,46 @@
+# Run config for WORK-REVIEW-CONVERGENCE. Paths resolve relative to this file.
+repo: ../../..
+work: WORK-REVIEW-CONVERGENCE
+run: RUN-REVIEW-CONVERGENCE
+workflow: workflow.yaml
+riskPreset: standard
+entry: build
+allowedPaths:
+  - src/v2
+  - tests
+  - docs
+  - templates/v2/AGENTS.md
+  - example/AGENTS.md
+  - lessons.md
+  - CHANGELOG.md
+  - delivery/work/WORK-REVIEW-CONVERGENCE
+reviewTriage: off
+budgets:
+  reviewRoundsPerWork: 4
+cache:
+  verify: tree
+envelope:
+  prompts: ../../envelope/prompts
+  vars:
+    component: runtime
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+# builder / fixer are deliberately absent: the driving session writes the code
+# (owner instruction) and hands each commit over with resume --adopt; verify and
+# the read-only reviewer stay independent workers.
+workers:
+  verifier:
+    command: bash
+    args:
+      - -lc
+      - "npm test && npm run check:docs && npm run test:plugin && npm run test:pack-firstrun && npm run test:envelope"
+  reviewer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only

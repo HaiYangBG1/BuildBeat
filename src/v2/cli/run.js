@@ -345,9 +345,9 @@ function loadRunConfig(flags, command) {
   if (config.stallAfterMs !== undefined && !(Number(config.stallAfterMs) > 0)) {
     throw new Error(`stallAfterMs must be a positive number, got: ${config.stallAfterMs}`);
   }
-  // budgets: run config beats the preset (the preset's two review rounds
-  // could not be raised per run before; a pilot's shipped candidates ended
-  // as CANCELLED runs because of it).
+  // budgets: run config beats the preset (a preset cap that could not be
+  // raised per run once ended a pilot's shipped candidates as CANCELLED
+  // runs).
   const budgets = {};
   if (config.budgets !== undefined) {
     if (!config.budgets || typeof config.budgets !== "object" || Array.isArray(config.budgets)) {
