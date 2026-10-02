@@ -56,7 +56,7 @@
 - [ ] 4. 第一个 Work:`delivery/work/<WORK-ID>/` 写 `intent.md`(为什么 + 止损线)、`plan.md`;`templates/v2/run-config.example.yaml` → `run-config.yaml`(改 work / run / allowedPaths / verifier / 把 `--` 后的工具命令换成用户实际用的);`$(npm root -g)/@haiyangbg/buildbeat/src/v2/presets/software-delivery.yaml` → `workflow.yaml`
 - [ ] 5. 通知(问题 E):要就写 `.buildbeat/notify.yaml`,URL 只能来自环境变量;不要就在收尾说明"等待只在 inbox 里"。有生产环境就再放一份 `.buildbeat/observe.yaml`(只读探针)
 - [ ] 6. 机器闸:各代码仓装 gitleaks pre-commit(`command -v gitleaks` 查无则提醒安装,并记入收尾报告);meta 仓 git init + 远端,代码子仓各自独立 git
-- [ ] 7. 首跑验收:用户说「接受」→ `accept --artifact intent` / `plan`;`buildbeat doctor --config …` 全段读一遍(intent/plan 接受状态、env 姿态、预算、start 会停在哪);`start --config … --attempt new`(脱离启动)→ 停 `WAITING_HUMAN`;`overview` / `status` 把候选、verify 退出码、findings 读给用户。**这一次 Run 停在合并决定之前,不宣布"接入完成"**
+- [ ] 7. 首跑验收:用户说「接受」→ `accept --artifact intent,plan`(一次接受两份);`buildbeat doctor --config …` 全段读一遍(intent/plan 接受状态、env 姿态、预算、start 会停在哪);`start --config … --attempt new`(脱离启动)→ 停 `WAITING_HUMAN`;`overview` / `status` 把候选、verify 退出码、findings 读给用户。**这一次 Run 停在合并决定之前,不宣布"接入完成"**
 - [ ] 8. 收尾一屏:生成了什么 / 默认拿主意的项 / 首跑停在哪、证据在哪 / 下一步由谁做(合并是人的动作)
 ```
 

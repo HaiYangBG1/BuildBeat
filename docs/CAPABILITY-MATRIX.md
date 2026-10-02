@@ -16,7 +16,7 @@
 
 | 能力 | Skill-only / 手工路径 | 运行时 `buildbeat` | 权威与边界 |
 |---|---|---|---|
-| 工件接受 | 会话记一行到 `decisions.jsonl` | `accept --artifact intent\|plan\|spec`：digest 绑定；改过即 `stale`，`doctor` / `overview` 报出 | 接受不是开工；policy 按 riskPreset 决定 build 前要求哪些工件已接受 |
+| 工件接受 | 会话记一行到 `decisions.jsonl` | `accept --artifact intent\|plan\|spec`（逗号分隔可一次接受多份，如 `intent,plan`）：每份各自 digest 绑定；改过即 `stale`，`doctor` / `overview` 报出 | 接受不是开工；policy 按 riskPreset 决定 build 前要求哪些工件已接受 |
 | 自动闭环 | 无 | `start --config <run-config> [--attempt new]`：隔离 worktree、builder→verify→review→fix 自动路由、停 `WAITING_HUMAN` | 一仓同时只有一个活动 Run；worker 是配置的任意命令，内核不内置模型 |
 | 进度与等待 | 会话读目录 | `overview`（每 Work 阶段 / 下一步 / 成本）、`inbox`（等人的 Run + 下一句命令）、`status`（步、耗时、STALLED、证据、findings）、`metrics` | 全部只读；本机绝对路径不进输出 |
 | 人批 | 会话记一行 | `approve --transition <t>` / `reject`：绑定 transition + candidate + planDigest + evidenceDigest，盖章前重读实况；非终态转换后 `resume` | 合并决定 = 候选具备合并条件；合并 / push / 部署无调用路径（不变量 20） |

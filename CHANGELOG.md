@@ -2,6 +2,10 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- **intent 与 plan 一次接受**：`accept --artifact intent,plan` 一条命令接受多份工件，每份仍各记一行 `accept-<artifact>`、各自绑定 digest，policy 与台账格式不变；任一文件缺失则一份都不接受。`overview` 在 intent 未接受且 plan 待接受时提示 `--artifact intent,plan`；`SKILL.md` 改为给用户看完摘要后只问一次「接受」。原因：本仓每个 Work 的 intent 与 plan 都在约 60 毫秒内先后被接受，两次接受实际是一个决定。
+
 ## v3.2.1 — 2026-09-26（补丁：开关参数单写、drive() 拆分、信封脚本测试、英文指南）
 
 > **发布状态**：`@haiyangbg/buildbeat@3.2.1` 已于 2026-09-26 从 `main`（PR #54 内容、release PR #55，merge commit `8d5f7bc`，tag `v3.2.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 36241955690，publish 与 verify 双 job 一次 success；所有者授权「推送并发 3.2.1 / 继续」）。独立回读（直连 npmjs.org）：`latest` = 3.2.1、integrity 与发布前本地候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 3.2.1、裸调用零写入、已发布 CLI 接受单写 `--apply` / `--json`、包内 12 份英文指南在位且无 pilot / 历史文档、`npm audit signatures` 通过；GitHub Release v3.2.1 标 Latest，证据见 [`docs/releases/V3.2.1-RELEASE-EVIDENCE-2026-09-26.md`](docs/releases/V3.2.1-RELEASE-EVIDENCE-2026-09-26.md)。

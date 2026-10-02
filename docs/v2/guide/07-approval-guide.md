@@ -33,7 +33,7 @@ buildbeat accept  --repo . --work WORK-X --artifact plan --by <名字>   # 工�
 
 | 词 | 命令 | 含义 | 不等于 |
 |---|---|---|---|
-| **接受**（accept） | `accept --artifact intent\|plan` | 一份工件的 digest 被人认可；改过即 `stale` | 开工；不产生任何 Run |
+| **接受**（accept） | `accept --artifact intent\|plan`，或 `--artifact intent,plan` 一次接受两份 | 每份工件的 digest 各自被人认可、各记一行；改过哪份哪份 `stale` | 开工；不产生任何 Run |
 | **批准某转换**（approve） | `approve --transition <t>` | 允许 Run 走**这一条** transition：`enter-fix`（放行 fixer；附带 grants 时还放行重验后的下一轮 review）、`resume-<step>`（预算耗尽后扩额，或 infra 退款后重试）、`enter-review`（Work 级 review 上限后再审一轮）、`enter-apply-readback`（上线车道"我做完了"） | 批准了别的转换；非终态转换批准后 Run **不会自己动**，要 `resume --config <run-config>` 续跑（`approve` 输出的 `next:` 行会写明） |
 | **合并决定**（最终批准） | `approve --transition enter-wait-merge` | 候选已具备合并条件：candidate + planDigest + evidenceDigest 此刻全部成立；Run 进终态 `SUCCEEDED`，run-record 压进 Git 面 | 代码已合并、已 push、已部署——这三件永远是你在 Runner 之外的动作 |
 | **Run SUCCEEDED** | — | Run 停在了它该停的地方，证据齐 | Work 完成。`overview` 只有回读到候选在当前分支上才显示 `MERGED` |

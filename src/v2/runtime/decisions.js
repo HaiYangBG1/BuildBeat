@@ -294,6 +294,22 @@ export function acceptArtifact(repoRoot, workId, artifact, { by = "human", ts } 
   return { decisionRef, digest };
 }
 
+// One human "accept" for several artifacts: every file must exist before any
+// acceptance is written, and each artifact keeps its own digest-bound line.
+export function acceptArtifacts(repoRoot, workId, artifacts, options = {}) {
+  const unique = [...new Set(artifacts)];
+  if (unique.length === 0) {
+    throw new DecisionError("no artifact to accept");
+  }
+  const missing = unique
+    .map((artifact) => join(repoRoot, "delivery", "work", workId, `${artifact}.md`))
+    .filter((filePath) => !existsSync(filePath));
+  if (missing.length > 0) {
+    throw new DecisionError(`artifact file missing: ${missing.join(", ")}`);
+  }
+  return unique.map((artifact) => ({ artifact, ...acceptArtifact(repoRoot, workId, artifact, options) }));
+}
+
 export function rejectRun(repoRoot, runId, { by = "human", transition, reason, ts } = {}) {
   acquireLock(repoRoot, runId);
   try {
