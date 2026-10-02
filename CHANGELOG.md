@@ -2,6 +2,10 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- **review 按收敛止损，不再按 2 轮封顶**：review 发现阻断问题、派 fixer 之前，内核把本轮 P0/P1 与本 Run 之前各轮比较。修过的 finding 又出现（同指纹，已 dismiss 的不算），或本轮阻断数多于上一轮，就停 `enter-fix`（新 kind `review-not-converging`，理由列出又出现的指纹或前后数量，请求不带 grants，批准不动预算）；阻断 finding 都是新的、数量不多于上一轮时自动继续。官方预设的 `budgets.maxAttempts.review` 从 2 改为 4，只作兜底；run 配置里显式写的值照旧优先，`reviewRoundsPerWork` 语义不变。开了 `reviewTriage: required` 时仍停分诊，不收敛理由并入同一请求；`nextReply` 对新 kind 给出 `findings list` / `findings adjudicate` 命令。原因：每 Run 2 轮封顶让正常修两三轮的 Run 反复停下批准扩额；本仓最近 10 个 Run 里中途 9 次批准都由驾驶会话自己批，人只出现在合并决定，审批点没起到人把关的作用。
+
 ## v3.2.1 — 2026-09-26（补丁：开关参数单写、drive() 拆分、信封脚本测试、英文指南）
 
 > **发布状态**：`@haiyangbg/buildbeat@3.2.1` 已于 2026-09-26 从 `main`（PR #54 内容、release PR #55，merge commit `8d5f7bc`，tag `v3.2.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 36241955690，publish 与 verify 双 job 一次 success；所有者授权「推送并发 3.2.1 / 继续」）。独立回读（直连 npmjs.org）：`latest` = 3.2.1、integrity 与发布前本地候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 3.2.1、裸调用零写入、已发布 CLI 接受单写 `--apply` / `--json`、包内 12 份英文指南在位且无 pilot / 历史文档、`npm audit signatures` 通过；GitHub Release v3.2.1 标 Latest，证据见 [`docs/releases/V3.2.1-RELEASE-EVIDENCE-2026-09-26.md`](docs/releases/V3.2.1-RELEASE-EVIDENCE-2026-09-26.md)。
