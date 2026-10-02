@@ -48,3 +48,15 @@ test("short summaries match on the fingerprint only", () => {
   assert.equal(sameIssue(p1("issue two"), p1("issue three")), false);
   assert.equal(sameIssue(p1("issue two"), p1("issue two")), true);
 });
+
+test("a short summary at moved line numbers or a higher severity is the same issue", () => {
+  assert.equal(sameIssue(p1("src/a.js:12 异常分支未释放锁"), p1("src/a.js:20 异常分支未释放锁")), true);
+  assert.equal(sameIssue(p1("异常分支未释放锁"), { severity: "P0", summary: "异常分支未释放锁" }), true);
+  assert.equal(sameIssue(p1("src/a.js:12 异常分支未释放锁"), p1("src/b.js:12 异常分支未释放锁")), false);
+});
+
+test("backquoted paths are anchors, so two problems in one long path stay apart", () => {
+  const path = "packages/server/src/credentials/refresh-token-store.ts";
+  assert.equal(sameIssue(p1(`\`${path}\` 未处理超时`), p1(`\`${path}\` 日志泄露令牌`)), false);
+  assert.equal(sameIssue(p1(`\`${path}\` 刷新令牌与登出请求并发执行时会丢失令牌的过期时间`), p1(`\`${path}\` 刷新令牌与登出请求并发执行时仍会丢失令牌的过期时间`)), true);
+});

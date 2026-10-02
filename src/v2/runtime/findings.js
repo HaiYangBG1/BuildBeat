@@ -40,7 +40,7 @@ export function fingerprintFinding(finding) {
 
 // File anchors a summary cites ("src/a.js:12", "README.md"), line numbers
 // dropped, sorted and de-duplicated.
-const ANCHOR_PATTERN = /(?:[\w.@-]+\/)*[\w@-][\w.@-]*\.[A-Za-z][A-Za-z0-9]{0,5}(?=[:：\s,，、;；)）]|$)/g;
+const ANCHOR_PATTERN = /(?:[\w.@-]+\/)*[\w@-][\w.@-]*\.[A-Za-z][A-Za-z0-9]{0,5}(?=[:：\s,，、;；.。)）\]】`'"“”‘’>]|$)/g;
 const SOURCE_EXTENSION = /\.(?:c|cc|cpp|cs|css|go|h|html|java|js|json|jsx|kt|md|mjs|py|rb|rs|scss|sh|sql|swift|toml|ts|tsx|vue|xml|ya?ml)$/i;
 
 function fileAnchors(summary) {
@@ -84,19 +84,27 @@ function similarity(left, right) {
 // across 161 replayed review rounds while the same problem came back three
 // times. Thresholds from that replay: same anchors and >= 0.5, or >= 0.6
 // otherwise, caught every restatement; unrelated pairs peaked at 0.57, and at
-// 0.33 when they cited the same files. Under 16 characters of description
-// bigrams say little ("issue two" / "issue three" share most of them), so
-// short summaries match on the fingerprint only.
+// 0.33 when they cited the same files. Severity never splits an issue, and
+// the same description at moved line numbers is the same issue at any
+// length. Below 16 characters of description bigrams say little
+// ("issue two" / "issue three" share most of them), so a short summary
+// matches only in those two exact ways.
 const MIN_ISSUE_TEXT = 16;
 
+function plainSummary(summary) {
+  return summary.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
 export function sameIssue(a, b) {
-  if (fingerprintFinding(a) === fingerprintFinding(b)) return true;
+  if (plainSummary(a.summary) === plainSummary(b.summary)) return true;
   const left = issueText(a.summary);
   const right = issueText(b.summary);
+  const anchors = fileAnchors(a.summary);
+  const sameAnchors = anchors !== "" && anchors === fileAnchors(b.summary);
+  if (sameAnchors && left === right) return true;
   if (Math.min(left.length, right.length) < MIN_ISSUE_TEXT) return false;
   const score = similarity(left, right);
-  const anchors = fileAnchors(a.summary);
-  if (anchors && anchors === fileAnchors(b.summary) && score >= 0.5) return true;
+  if (sameAnchors && score >= 0.5) return true;
   return score >= 0.6;
 }
 
