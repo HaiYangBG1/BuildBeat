@@ -47,7 +47,7 @@ entry: build
 allowedPaths:
   - src
   - tests
-reviewTriage: required
+reviewTriage: off
 envelope:
   prompts: ../../envelope/prompts
 workers:
@@ -91,7 +91,7 @@ workers:
 - `workers.<角色>` 是任意 CLI：换工具只改 `--` 后面的命令（`claude -p`、任意脚本都行），见 [Adapter 指南](04-adapter-guide.md)；reviewer 的输出格式见 [Worker 合同](05-worker-contract.md)，prompt 模板已写明。
 - **`fixer` 不是可选项**：没配它，verify 失败或 review 阻断时 Run 会停 `WAITING_HUMAN`（理由 `no adapter configured for worker fixer`）等你手修，不会自动修。
 - worker 子进程默认只拿到 `PATH HOME LANG LC_ALL TMPDIR TERM USER SHELL`；需要别的变量用 `env:` 点名注入（[Adapter 指南](04-adapter-guide.md)）。
-- `reviewTriage: required` 让 P0/P1 finding 先过你的手再派 fixer；不想要就删掉这行。
+- `reviewTriage: off`（默认）时 P0/P1 finding 直接派 fixer，review 轮数仍受 `budgets` 上限约束。想每轮都先过你的手，改成 `required`，适合高风险项目。
 
 ## 3. 接受计划
 

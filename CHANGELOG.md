@@ -2,6 +2,10 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- **模板默认不再开发现分诊门**：`templates/v2/run-config.example.yaml`、示例项目、`SKILL.md` 与快速开始里的 run 配置样板从 `reviewTriage: required` 改为 `reviewTriage: off`，P0/P1 finding 直接派 fixer；高风险项目仍可改回 `required`。内核默认值本来就是不分诊，未改动；已有项目的 run 配置不受影响。原因：本仓最近 10 个 Run 中途 9 次停人里 7 次是分诊门的 `enter-fix`，且全部由驾驶会话自己批准，没有起到人把关的作用。
+
 ## v3.2.1 — 2026-09-26（补丁：开关参数单写、drive() 拆分、信封脚本测试、英文指南）
 
 > **发布状态**：`@haiyangbg/buildbeat@3.2.1` 已于 2026-09-26 从 `main`（PR #54 内容、release PR #55，merge commit `8d5f7bc`，tag `v3.2.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 36241955690，publish 与 verify 双 job 一次 success；所有者授权「推送并发 3.2.1 / 继续」）。独立回读（直连 npmjs.org）：`latest` = 3.2.1、integrity 与发布前本地候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 3.2.1、裸调用零写入、已发布 CLI 接受单写 `--apply` / `--json`、包内 12 份英文指南在位且无 pilot / 历史文档、`npm audit signatures` 通过；GitHub Release v3.2.1 标 Latest，证据见 [`docs/releases/V3.2.1-RELEASE-EVIDENCE-2026-09-26.md`](docs/releases/V3.2.1-RELEASE-EVIDENCE-2026-09-26.md)。

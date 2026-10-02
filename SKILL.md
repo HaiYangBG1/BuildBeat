@@ -63,8 +63,8 @@ entry: build
 allowedPaths:
   - src
   - tests
-# P0/P1 先过人分诊再派 fixer
-reviewTriage: required
+# off = P0/P1 直接派 fixer;高风险项目改 required,每轮先停人分诊
+reviewTriage: off
 # 可省;run 配置 > 预设 > 默认。非只读步成功不扣次数;review 仍按轮计费。
 # review 到顶时在 enter-fix 一次批准修复、重验、再审;Run/Work 上限同时放行;
 # reviewRoundsPerWork 跨本 Work 所有 Run 累计 review 轮数,超了新 Run 起跑前先问人

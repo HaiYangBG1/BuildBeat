@@ -14,8 +14,8 @@ entry: build
 allowedPaths:
   - src
   - tests
-# P0/P1 finding 先过人分诊再派 fixer；不需要就删掉这行
-reviewTriage: required
+# off = P0/P1 finding 直接派 fixer；高风险项目改成 required，每轮先停人分诊再派 fixer
+reviewTriage: off
 # 非只读步成功不扣次数；review 按轮计费。到顶的阻断 review 在 enter-fix 一次批准修复、重验、再审。
 # Run/Work 上限同时到顶只问一次；总 attempt 超过（配置值 + 人批扩额）的 3 倍前仍兜底停人。
 # 可省；run 配置 > 预设 > 默认。reviewRoundsPerWork 是跨本 Work 所有 Run 累计的 review 轮数上限（对应 intent 的止损线）
