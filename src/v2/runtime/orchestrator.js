@@ -319,6 +319,41 @@ function budgetGrants(context, step) {
   return grants;
 }
 
+function reviewRoundAttempt(ref, step) {
+  const name = ref.split(/[\\/]/).pop();
+  if (!name.startsWith(`${step}-`)) return null;
+  const match = /^(\d+)\.json$/.exec(name.slice(step.length + 1));
+  return match ? Number(match[1]) : null;
+}
+
+// Compares this round's blocking findings with the earlier review rounds of
+// the same step in this run. A finding a fixer was already sent after that
+// comes back, or more blocking findings than last round, means another
+// automatic round would not converge; a shrinking set of new findings keeps
+// going without asking anyone. Returns the stop reason, or null.
+function reviewNotConverging(context, step, blockingFindings) {
+  const rounds = context.ledger.state.evidence.filter((item) =>
+    item.kind === "review" && reviewRoundAttempt(item.ref ?? "", step) !== null);
+  if (rounds.length < 2) return null;
+  const adjudicated = latestAdjudications(
+    readFindingsAccount(context.repoRoot, context.ledger.state.run.work),
+  );
+  const blocking = (round) => (round.findings ?? [])
+    .filter((finding) => finding.severity === "P0" || finding.severity === "P1")
+    .map(fingerprintFinding)
+    .filter((fingerprint) => adjudicated.get(fingerprint)?.action !== "dismiss");
+  const earlier = new Set(rounds.slice(0, -1).flatMap(blocking));
+  const lastCount = new Set(blocking(rounds.at(-2))).size;
+  const repeated = blockingFindings.filter((finding) => earlier.has(fingerprintFinding(finding)));
+  if (repeated.length > 0) {
+    return `${step} is not converging: ${repeated.length} blocking finding(s) came back after fix (${repeated.map(fingerprintFinding).join(", ")}); approving runs fix + re-verify + one more review round, dismissing a finding stops it blocking`;
+  }
+  if (blockingFindings.length > lastCount) {
+    return `${step} is not converging: ${blockingFindings.length} blocking finding(s) this round, ${lastCount} last round; approving runs fix + re-verify + one more review round`;
+  }
+  return null;
+}
+
 // Evaluates configured policies of `type` for `appliesTo`, records every
 // verdict as a POLICY_EVALUATED event, and reports what the kernel must do.
 // ADVISORY failures are recorded but never gate (doctor reports the gap).
@@ -886,7 +921,8 @@ function recordStepResult(context, step, stepDef, attempt, { before, outputPath 
 }
 
 // Settles the outcome and picks the next step; blocking findings stop once
-// for triage or for the review budget before any fixer runs. Returns the
+// for triage, the review budget or a review that is not converging before
+// any fixer runs. Returns the
 // next step, or null when the run stopped.
 function routeAfterStep(context, step, stepDef, { stepStatus, blockingFindings, tree, exec }) {
   let outcome;
@@ -901,9 +937,11 @@ function routeAfterStep(context, step, stepDef, { stepStatus, blockingFindings, 
   // Ask before spending fix/verify workers: one approval covers the next
   // round and both review caps, with the grant bound to this request.
   if (routed && outcome === "findings-blocking") {
-    const grants = isReviewStep(step, stepDef) ? budgetGrants(context, step) : [];
+    const review = isReviewStep(step, stepDef);
+    const grants = review ? budgetGrants(context, step) : [];
+    const stalled = review ? reviewNotConverging(context, step, blockingFindings) : null;
     const triage = context.reviewTriage === "required";
-    if (triage || grants.length) {
+    if (triage || grants.length || stalled) {
       const { used, limit, failures } = budgetUsage(context, step);
       const workBudget = workReviewBudget(context, step);
       context.waitHuman(
@@ -912,12 +950,13 @@ function routeAfterStep(context, step, stepDef, { stepStatus, blockingFindings, 
           ...(grants.length ? [
             `${step} budget exhausted: ${used}/${limit} review round(s) used in this run${workBudget ? `, ${workBudget.rounds}/${workBudget.allowed} across the work` : ""}, ${failures} real failure(s); approve enter-${routed} = fix + re-verify + one more review round; reject = end this run and decide the merge on the evidence you have`,
           ] : []),
+          ...(stalled ? [stalled] : []),
           `review found ${blockingFindings.length} blocking finding(s); ${triage ? "triage" : "approve another round"} before ${routed} runs`,
           ...blockingFindings.slice(0, 5).map((finding) =>
             `[${finding.severity} ${fingerprintFinding(finding)}] ${finding.summary.slice(0, 200)}`),
           `adjudicate fingerprints (findings adjudicate), then approve enter-${routed} or reject the run`,
         ],
-        triage ? "finding-triage" : "budget",
+        triage ? "finding-triage" : grants.length ? "budget" : "review-not-converging",
         grants,
       );
       return null;
