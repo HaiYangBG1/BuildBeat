@@ -1,0 +1,50 @@
+# Run config for WORK-PR70-REVIEW. Paths resolve relative to this file.
+# The installed 3.3.1 runtime drives this run, so the review does not depend
+# on the 4.0 candidate it reviews.
+repo: ../../..
+work: WORK-PR70-REVIEW
+run: RUN-PR70-REVIEW
+workflow: workflow.yaml
+riskPreset: standard
+entry: build
+allowedPaths:
+  - src
+  - bin
+  - tests
+  - docs
+  - templates
+  - example
+  - plugins
+  - .claude-plugin
+  - README.md
+  - README.en.md
+  - SKILL.md
+  - CONTRIBUTING.md
+  - CHANGELOG.md
+  - package.json
+  - package-lock.json
+  - delivery/work/WORK-PR70-REVIEW
+reviewTriage: off
+budgets:
+  reviewRoundsPerWork: 4
+cache:
+  verify: tree
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+requires:
+  - command: node
+    min: "20"
+  - command: codex
+# builder / fixer are deliberately absent: the driving session adopts the
+# candidate and writes any fix itself; verify and review stay independent.
+workers:
+  verifier:
+    command: bash
+    timeoutMs: 1800000
+    args:
+      - delivery/work/WORK-PR70-REVIEW/verify.sh
+  reviewer:
+    command: bash
+    timeoutMs: 5400000
+    args:
+      - delivery/work/WORK-PR70-REVIEW/review.sh

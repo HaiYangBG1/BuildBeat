@@ -1,0 +1,27 @@
+kind: workflow
+version: 1
+name: software-delivery
+entry: build
+steps:
+  - id: build
+    worker: builder
+  - id: verify
+    worker: verifier
+  - id: review
+    worker: reviewer
+    readonly: true
+  - id: wait-merge
+  - id: fix
+    worker: fixer
+transitions:
+  - from: verify
+    on: failed
+    to: fix
+  - from: fix
+    on: succeeded
+    to: verify
+  - from: review
+    on: findings-blocking
+    to: fix
+terminal:
+  - wait-merge
