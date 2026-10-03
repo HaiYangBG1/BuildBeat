@@ -14,7 +14,6 @@ import { computeOverview, renderOverview } from "../src/v2/runtime/overview.js";
 import { tempDir } from "./support/tmp.js";
 
 const DELIVERY = loadWorkflow(join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml"));
-const RELEASE = loadWorkflow(join(import.meta.dirname, "..", "src", "v2", "presets", "release-readback.yaml"));
 
 function git(cwd, args) {
   return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
@@ -80,24 +79,9 @@ test("a merged candidate behind a CANCELLED run reads as MERGED, not STOPPED_CAN
 test("a closed release-readback lane reads as RELEASED, not 'nothing to merge'", () => {
   const root = fixtureRepo();
   work(root, "WORK-R");
-  const preset = loadRiskPreset("release");
-  const readback = createMockAdapter({ preflight: ["succeed"], "apply-readback": ["succeed"] });
-  const observe = createMockAdapter({ observe: ["succeed"] });
-  const base = {
-    repoRoot: root,
-    workflow: RELEASE,
-    workflowDigest: "sha256:release",
-    workId: "WORK-R",
-    runId: "RUN-R-RELEASE-01",
-    riskPreset: preset.name,
-    policies: preset.policies,
-    stopAt: preset.stopAt,
-    adapters: { readback, observe },
-  };
-  startRun(base);
-  approveRun(root, "RUN-R-RELEASE-01", { by: "owner", transition: "enter-apply-readback" });
-  resumeRun(base);
-  approveRun(root, "RUN-R-RELEASE-01", { by: "owner", transition: "enter-wait-close", policies: preset.policies });
+  const dir = join(root, "delivery", "work", "WORK-R", "runs", "RUN-R-RELEASE-01");
+  mkdirSync(dir, {recursive:true});
+  writeFileSync(join(dir,"run-record.json"), JSON.stringify({run:"RUN-R-RELEASE-01",work:"WORK-R",terminal:{status:"SUCCEEDED",reason:"historical release closed"},startedAt:"2026-08-28T00:00:00Z",finishedAt:"2026-08-28T00:01:00Z",attempts:{preflight:1,"apply-readback":1,observe:1},evidence:[],decisions:[],workspaces:{}}));
 
   const [row] = computeOverview(root, { work: "WORK-R" });
   assert.equal(row.stage, "RELEASED");

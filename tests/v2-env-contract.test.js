@@ -60,3 +60,21 @@ test("a run refuses to start when the environment contract is not satisfied", ()
     /environment contract not satisfied/,
   );
 });
+
+test("requires probes check environment facts, not just binary versions", () => {
+  const ok = checkRequires([
+    { probe: "echo redis 7.2.4", expect: "redis 7\\.[0-9]+", name: "redis-version" },
+    { probe: "true", name: "reachable" },
+  ]);
+  assert.equal(ok.ok, true);
+  assert.deepEqual(ok.checked.map((row) => row.command), ["redis-version", "reachable"]);
+  const bad = checkRequires([
+    { probe: "echo redis 6.2.0", expect: "redis 7\\.", name: "redis-version" },
+    { probe: "exit 3", name: "port" },
+    { probe: "echo x", expect: "(", name: "regex" },
+  ]);
+  assert.equal(bad.ok, false);
+  assert.match(bad.problems[0], /redis-version: probe output does not match/);
+  assert.match(bad.problems[1], /port: probe exited 3/);
+  assert.match(bad.problems[2], /regex: expect .* not a valid regular expression/);
+});

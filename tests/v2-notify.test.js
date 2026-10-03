@@ -29,7 +29,7 @@ function writeNotify(root, body) {
 
 function waitingState(kind = "boundary") {
   return {
-    run: { id: "RUN-N", work: "WORK-N", status: "WAITING_HUMAN" },
+    run: { id: "RUN-N", work: "WORK-N", status: "WAITING_HUMAN", deliveryChecks: { artifact: "work" } },
     pendingHuman: { transition: kind === "final-decision" ? "enter-wait-merge" : "enter-fix", reasons: ["budget exhausted"], kind, subject: { candidate: "abc1234" } },
     workspaces: { "RUN-N": { candidate: "abc1234" } },
     terminal: null,
@@ -75,16 +75,27 @@ test("notify config is optional, fail-closed on shape, and never allows a URL in
 test("nextReply spells out the copyable commands for every kind of wait", () => {
   const boundary = nextReply({ repoLabel: ".", state: waitingState("boundary") });
   assert.equal(boundary.length, 2);
-  assert.match(boundary[0], /^buildbeat approve --repo \. --run RUN-N --transition enter-fix --by <you>/);
-  assert.match(boundary[0], /then: resume/);
-  assert.match(boundary[1], /^buildbeat reject --repo \. --run RUN-N/);
+  assert.match(boundary[0], /^buildbeat decide --action approve --repo \. --run RUN-N --transition enter-fix --by <you>/);
+  assert.match(boundary[0], /then: run/);
+  assert.match(boundary[1], /^buildbeat decide --action reject --repo \. --run RUN-N/);
   const final = nextReply({ repoLabel: "sub", state: waitingState("final-decision") });
   assert.match(final[0], /enter-wait-merge --by <you>   # merge-ready; merge\/push stay yours/);
   const triage = nextReply({ repoLabel: ".", state: waitingState("finding-triage") });
   assert.equal(triage.length, 4);
-  assert.match(triage[0], /findings list --repo \. --work WORK-N/);
-  assert.match(triage[1], /findings adjudicate .* --fingerprint <fp> --action accept\|dismiss/);
+  assert.match(triage[0], /status --repo \. --work WORK-N/);
+  assert.match(triage[1], /decide .* --fingerprint <fp> --action accept\|dismiss/);
   assert.deepEqual(nextReply({ repoLabel: ".", state: { run: null, pendingHuman: null } }), []);
+});
+
+test("nextReply sends a legacy 3.x run back to its original runtime instead of offering decide", () => {
+  const state = waitingState("finding-triage");
+  delete state.run.deliveryChecks;
+  const legacy = nextReply({ repoLabel: ".", state });
+  assert.equal(legacy.length, 3);
+  assert.match(legacy[0], /^buildbeat findings adjudicate --repo \. --work WORK-N .*3\.3\.1 runtime/);
+  assert.match(legacy[1], /^buildbeat approve --repo \. --run RUN-N --transition enter-fix .*3\.3\.1 runtime/);
+  assert.match(legacy[2], /^buildbeat reject --repo \. --run RUN-N/);
+  assert.ok(legacy.every((line) => !line.includes("decide")));
 });
 
 test("dispatch is fail-open: sends to subscribed channels, skips without env, survives HTTP errors, logs every outcome", async () => {
@@ -203,7 +214,7 @@ test("a run that stops for a human reaches the configured channel through the CL
     const inbox = execFileSync("node", [CLI, "inbox", "--repo", root], { encoding: "utf8" });
     assert.match(inbox, /work WORK-NC:/);
     assert.match(inbox, /RUN-NC \[boundary\] enter-review — waiting \d+s \(since /);
-    assert.match(inbox, /next: buildbeat approve --repo .* --run RUN-NC --transition enter-review/);
+    assert.match(inbox, /next: buildbeat decide --action approve --repo .* --run RUN-NC --transition enter-review/);
   } finally {
     server.close();
   }

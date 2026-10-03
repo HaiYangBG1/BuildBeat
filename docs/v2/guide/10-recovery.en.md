@@ -1,99 +1,15 @@
-# Recovery handbook
+# Recovery and diagnostics
 
-[简体中文](10-recovery.md) | **English**
+[简体中文](10-recovery.md)
 
-Design premise (invariant 23 in [`V2-PLAN.md`](../../history/V2-PLAN.md), Chinese): **the whole `.buildbeat/runtime/` directory can be deleted at any time**. Accepted artifacts, decisions, Intent drafts with their triage, and the compacted records of finished Runs all live in the Git plane. "Delete and rebuild" is the default troubleshooting move, not the last resort.
+- run resumes the unique nonterminal run in its family; choose --run when ambiguous. Archived work needs explicit --new to start another attempt.
+- An interrupted step reruns itself from the ledger. Handle a dirty worktree first. After committing a manual fix, --adopt checks the actual HEAD and continues at verify.
+- Reclaim a lock only when its owner is on this host and provably dead. Keep live, foreign-host and unidentified locks. stop is not a process-kill command.
+- Timeouts, crashes, malformed envelopes and exit 75 are infra: no fixer and no failure-budget charge. Decide and continue once the environment recovers.
+- A corrupt ledger exposes only its valid prefix and refuses appends. history --verify replays and validates without silently repairing it. Preserve the scene and candidate.
+- Changed workflow digests or frozen safeguards prevent resume. Unsupported old custom/release flows must finish on the old runtime.
+- Terminal records survive runtime cleanup; active process/worktree state does not migrate through Git. Do not routinely delete runtime files.
+- gc plans first and only collects compacted terminal runs. Dirty trees and unique candidates are retained by default; stale lock owners must be proven dead.
+- STALLED defaults to 15 minutes without output. Status shows elapsed/typical duration and recent output; it does not kill processes.
 
-## Symptom → action
-
-### "run config … has N problem(s)"
-
-The run config has mistakes; no Run started and nothing changed. Fix the list item by item (each names the key, what is wrong and the closest valid spelling), then rerun the same command; `buildbeat doctor --config …` checks it on its own first.
-
-### The ledger reports corrupted
-
-`status`/`inbox` shows `LEDGER CORRUPTED after seq=N (<reason>)`: the ledger truncates its view at the last valid event and **refuses to append**; recovery is a human decision, nothing is repaired silently.
-
-1. `buildbeat events --repo . --run RUN-X` shows the valid prefix; `replay` verifies the reduction;
-2. If the broken Run is in flight: usually abandon it (the candidate in the worktree is still readable on its branch) and start a new Run;
-3. If someone edited the ledger file by hand: rebuild the judgement from Git-plane facts; do not patch event lines by hand.
-
-### The Run process was killed / the machine rebooted
-
-```bash
-buildbeat resume --config <run-config.yaml>
-```
-
-After `start --attempt new` numbers a Run, `resume --config <run-config.yaml>` resumes the family’s only non-terminal Run and prints its ID. Use `--run <RUN-ID>` to select the configured Run itself or `<family>-NN` explicitly (at least two digits). An existing ledger for the exact configured ID takes precedence. Multiple non-terminal Runs are listed with a request to select one using `--run`; if none remain, the error reports the latest ID and terminal status, or states that no ledgers were found.
-
-The in-flight step is closed as `crashed` (the fact is recorded), then **the step itself is rerun** (changed in beta.3): a dead process says nothing about the candidate; the lost attempt still counts against the step's budget, and an exhausted budget stops for a human. The earlier semantics treated a crash as a step failure and followed the failure edge; real incident (deploy-18): the host tool's timeout killed the verify worker, the crash was routed to fix, and the fixer burned a round facing zero verifier evidence. A dirty worktree still stops for a human first. Resuming with approvals re-checks candidate/plan freshness and turns `APPROVAL_STALE` over to a human if anything changed. If it cannot be recovered, delete the runtime and rerun: the candidate branch and the Git-plane records are not lost.
-
-**Launch discipline** (the other half of the same incident): a Run longer than minutes must be launched in a way that escapes the host tool's timeout (`nohup`/`setsid`); `start` prints this reminder in an interactive shell.
-
-### A stuck lock ("another run is active")
-
-Every lock records its owner (pid, host name, time acquired, command). When a driver is killed, ended by a host-tool timeout or lost to a reboot, its locks stay behind; the next `resume` / `stop` / `start` that needs the lock reclaims it automatically when the owner is **on this host and its process no longer exists**, printing `reclaimed stale lock <id> (owner pid … is gone)`. No file needs deleting by hand. After a killed driver, simply run:
-
-```bash
-buildbeat resume --config <run-config.yaml>
-```
-
-The kernel takes the crash-recovery path above (`RUN_INTERRUPTED`, then the interrupted step reruns); if you would rather not continue, `buildbeat stop --repo . --run RUN-X --reason "…"`.
-
-Only three cases still answer `another run is active` / `already locked`, and the error names the owner:
-
-- **The owner is alive**: another Run really is driving; wait for it, or end that process once you are sure it is stuck;
-- **The owner is on another host** (a repository on a shared disk): deal with it on that machine; this host never reclaims it;
-- **No owner record**: a lock left by an older buildbeat, or a crash in the instant of taking it; once no buildbeat process is running, delete the lock directory the error names.
-
-### Ledger "changed on disk since it was read"
-
-`ledger for RUN-X changed on disk since it was read (another writer); re-read it and retry`: another session or process wrote the same Run's ledger just before you (two approvals at once, a `stop` racing a `resume`). The kernel refused this write; **the ledger was not changed and is not corrupted**. Run the same command again: it decides afresh on the current state (and may simply tell you it is already approved or terminal). Approve, reject, `--adopt`, `stop`, `resume` and supersede all read the ledger only after taking the Run lock, so ordinary use never meets this error; seeing it means there really was a concurrent operation.
-
-### Abnormal worker behaviour
-
-- **Worker infrastructure failure (iteration 09)**: a timeout, a crash, output that is not an envelope (`invalid-output`), or the worker ending itself with exit code **75** (`EX_TEMPFAIL`, "environment unavailable"): the kernel classifies it as `infra`: no failure fingerprint is recorded, no fixer is dispatched, **the step's budget is not consumed**, the Run stops at `WAITING_HUMAN` (kind `infra`, transition `resume-<step>`), notifications go out as usual. Once the backend is back, `approve --transition resume-<step>` reruns the step; `reject` ends the Run. Real incidents: a worker backend returning 404 and non-JSON output killed five Runs in two days while the driving session hand-wrote a probe every two minutes; a missing rg on PATH, a port collision and a host load of 280 each dispatched a fixer.
-- **A failure with no transition edge** (such as `failed` on build / review / fix in the preset) no longer ends in FAILED; it stops at `resume-<step>` as well, and a human decides whether to rerun or end.
-- Out-of-scope writes → the Run BLOCKs and no candidate is pinned: check `allowedPaths` and the scope declared in the worker prompt;
-- Timeouts → first check whether it is the environment (`infra` already stopped for you), then adjust `timeoutMs`; an exhausted budget is a brake, not a fault: approve `resume-<step>` to grant one more attempt, or narrow the scope.
-
-### The observe plane
-
-- A probe stays `unverified`: fix the probe's reachability first; unverified means "could not collect", not "no problem";
-- False alarms flooding: `observe triage --action dismiss`; the same fingerprint stays out of the queue until its severity rises;
-- Observe cycle counts reset to zero after the runtime was deleted: normal; triage memory lives in the Git-plane drafts, and suppression keeps working (tested).
-
-### Everything is a mess
-
-```bash
-rm -rf .buildbeat/runtime/
-```
-
-Then start again from the Git plane. Any phenomenon where a long-term metric or a terminal-state explanation depends on the runtime is a bug; please report it.
-
-## Diagnostic entry point
-
-`buildbeat doctor --config <run-config>`: the config parses, the workflow has no exit loop, adapter env posture, digests can be computed, supersede and stall thresholds, whether the notification channel and its environment variable are in place. `events`/`replay`/`metrics` are all read-only and can run at any time.
-
-## "Is it stuck?"
-
-> Since 2.0.0-beta.4 (iteration 08).
-Look at `buildbeat status --repo . --run <RUN>` first: the step in flight shows elapsed time, the repository's historical median, the worker command, how long ago the last output was and its last three lines. No output beyond the threshold (default 15 minutes, `--stall-after <minutes>` or `stallAfterMs` in the run config) marks `STALLED`: **marked, never killed**. How to judge:
-
-- Output keeps coming → wait (compare against `typical` to see whether it is far beyond the median);
-- STALLED and the worker is an agent CLI → most likely a long reasoning stretch or waiting for an interaction that never comes; `stop --reason`, then rerun by the crash recovery path (the interrupted step reruns itself);
-- STALLED and the worker is a script → read the last three lines; usually it waits on an external resource (port, lock, network).
-
-To avoid watching the screen, subscribe to `STALLED` notifications ([Approval guide](07-approval-guide.en.md)). `watch --repo . --run <RUN> --once true` probes once by hand.
-
-## Cleanup: gc
-
-> Since 2.0.0-beta.4 (iteration 08).
-Terminal Runs leave worktrees, `run/*` branches and the occasional lock. `buildbeat gc --repo .` prints the plan by default, `--apply true` executes it:
-
-- It touches only Runs that are **terminal and already compacted into a run-record** (the Git plane must have the record before the runtime plane is touched);
-- Worktrees may be deleted (the commits are on the branch); a dirty worktree is left alone without `--force true`;
-- A branch is deleted only when the candidate **is reachable from another ref** (merged / tagged / on the remote) or the Run produced no candidate; otherwise it reports "reachable only from this branch, kept": that branch is the last thread to the evidence;
-- Leftover `locks/<RUN>.lock` of terminal Runs are cleaned; the `active-run` lock is reclaimed too when its owner process is gone (the plan names the owner), and kept with the reason when the owner is alive, on another host, or unrecorded.
-
-gc never writes to the ledger (after the terminal state only `RUN_COMPACTED` is allowed), so it can run at any time and repeatedly.
+[Migration and rollback](../../MIGRATION.md).

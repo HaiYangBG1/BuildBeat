@@ -1,0 +1,70 @@
+{
+  "status": "ready for human merge decision; not merged or published",
+  "candidate": "9bc9632e5c00bf3ebd060b0e049dee0fa8b04d75",
+  "version": "4.0.0-dev.0",
+  "reviewHarnessRuntime": "3.3.1",
+  "run": "RUN-PRODUCT-SIMPLIFY-02",
+  "baseline": {
+    "commit": "9fc8454",
+    "testsPassed": 267,
+    "package": {
+      "files": 127,
+      "compressedBytes": 285778,
+      "unpackedBytes": 794414,
+      "integrity": "sha512-ec5CDYhuLHDcCxnLFsfnn+Bk9MIN3/O3a0/uByw30fieXBBp0bYNzUjcig/5KyfzUJfHhojfmgpHHCW7qOahMQ=="
+    }
+  },
+  "verification": {
+    "nodeTestsPassed": 269,
+    "nodeTestsFailed": 0,
+    "envelopeAssertionsPassed": 18,
+    "pluginAssertionsPassed": 7,
+    "installedPackageAssertionsPassed": 17,
+    "documentation": "passed",
+    "shellcheck": "passed"
+  },
+  "package": {
+    "files": 103,
+    "compressedBytes": 173981,
+    "unpackedBytes": 517333,
+    "integrity": "sha512-cwjfFVBnWGqFzdaqN6nnzA4S1rg3DNluckqmwfqBh/X0fYI70uqlJ7k9P/X4PdIhZghj/AHObLZ7pKiSUwVN0A=="
+  },
+  "unpackedReductionPercent": 34.87866528031983,
+  "review": {
+    "status": "succeeded",
+    "findings": []
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PRODUCT-SIMPLIFY-02/logs/verify-1.log",
+      "kind": "command",
+      "subject": "9bc9632e5c00bf3ebd060b0e049dee0fa8b04d75",
+      "digest": "sha256:402a76014e4ccbe161c27fcc534cc0162d009ee191d126baf81af22149a1f17d",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:c7e7ca581cad42c227820a03500a3af69ba79fb3ee6f784bbae694d6132f5f9d"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PRODUCT-SIMPLIFY-02/logs/review-1.log",
+      "kind": "command",
+      "subject": "9bc9632e5c00bf3ebd060b0e049dee0fa8b04d75",
+      "digest": "sha256:4bcbaf2c5ae294f44bfb829455f64ef0f888728887bb1c56425fd7f9a52fd93f",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PRODUCT-SIMPLIFY-02/outputs/review-1.json",
+      "kind": "review",
+      "subject": "9bc9632e5c00bf3ebd060b0e049dee0fa8b04d75",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "limits": [
+    "scripted-worker comparisons do not establish real-model speed",
+    "no Windows machine acceptance",
+    "no registry publication or target-project upgrade"
+  ]
+}

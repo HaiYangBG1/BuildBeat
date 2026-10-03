@@ -24,6 +24,7 @@ ACTIVE_DOCS = (
     "lessons.md",
     "docs/README.md",
     "docs/CAPABILITY-MATRIX.md",
+    "docs/MIGRATION.md",
     "docs/RELEASING.md",
     "docs/v2/guide/README.md",
     "docs/v2/guide/README.en.md",
@@ -53,15 +54,6 @@ ACTIVE_DOCS = (
     "templates/v2/指挥台.md",
     "templates/v2/BUILDBEAT.md",
     "templates/v2/CLAUDE.md",
-    "templates/ARCHITECTURE.md",
-    "templates/pm/decisions.md",
-    "templates/pm/adr/README.md",
-    "templates/pm/adr/ADR-0000-template.md",
-    "templates/contracts/PROTOCOL.md",
-    "templates/standards/STACK.md",
-    "templates/standards/CODE.md",
-    "templates/standards/REVIEW.md",
-    "templates/standards/DESIGN.md",
     "plugins/buildbeat/README.md",
     "tests/README.md",
     "example/README.md",
@@ -92,21 +84,13 @@ STALE_ACTIVE_CLAIMS = (
 )
 
 CRITICAL_TEMPLATE_FILES = (
-    "templates/ARCHITECTURE.md",
     "templates/gitignore.template",
-    "templates/contracts/PROTOCOL.md",
-    "templates/pm/decisions.md",
-    "templates/pm/adr/README.md",
-    "templates/pm/adr/ADR-0000-template.md",
-    "templates/standards/STACK.md",
-    "templates/standards/CODE.md",
-    "templates/standards/REVIEW.md",
-    "templates/standards/DESIGN.md",
     "templates/v2/AGENTS.md",
     "templates/v2/CLAUDE.md",
     "templates/v2/BUILDBEAT.md",
     "templates/v2/指挥台.md",
     "templates/v2/run-config.example.yaml",
+    "templates/v2/work.example.md",
     "templates/v2/envelope/worker.sh",
     "templates/v2/envelope/prompts/builder.md",
     "templates/v2/envelope/prompts/reviewer.md",
@@ -143,6 +127,7 @@ CRITICAL_GOVERNANCE_FILES = (
     "CONTRIBUTING.md",
     "SECURITY.md",
     "docs/CAPABILITY-MATRIX.md",
+    "docs/MIGRATION.md",
     "docs/v2/RFC-0001-product-definition.md",
     "docs/v2/RFC-0002-domain-model.md",
     "docs/v2/RFC-0003-workflow-policy.md",
@@ -165,8 +150,10 @@ REMOVED_PATHS = (
     "docs/LEGACY-V1.16-MIGRATION.md",
     "docs/v2/guide/08-migration-v1.md",
     "templates/AGENTS.md",
-    "templates/pm/NOW.md",
     "templates/scripts",
+    "src/v2/observe",
+    "src/v2/presets/release-readback.yaml",
+    "src/v2/presets/policies/ui-render-gate.yaml",
     "templates/.claude",
     "tests/cli.test.js",
     "tests/test-scripts.sh",
@@ -287,7 +274,8 @@ def check_readme_shape() -> list[str]:
         targets = set(MARKDOWN_LINK.findall(content))
         for target in (
             "SKILL.md", f"docs/v2/guide/01-quickstart{suffix}", f"docs/v2/guide/11-session-handoff{suffix}",
-            "docs/CAPABILITY-MATRIX.md", f"docs/v2/guide/10-recovery{suffix}",
+            "docs/CAPABILITY-MATRIX.md",
+    "docs/MIGRATION.md", f"docs/v2/guide/10-recovery{suffix}",
             f"docs/v2/guide/09-security-boundaries{suffix}", "CONTRIBUTING.md", "LICENSE",
         ):
             if target not in targets:
@@ -310,7 +298,6 @@ def check_readme_shape() -> list[str]:
     required_positioning_pairs = (
         ("面向人和 AI 会话", "for humans and AI sessions"),
         ("端到端工作包", "End-to-end work packages"),
-        ("不是人类岗位接力", "not mandatory human-role handoffs"),
         (
             "/plugin install buildbeat@buildbeat-plugins",
             "/plugin install buildbeat@buildbeat-plugins",
@@ -634,10 +621,12 @@ def check_cli_package() -> list[str]:
 
     for relative in ("README.md", "README.en.md"):
         content = (ROOT / relative).read_text(encoding="utf-8")
-        for command in (
-            "npm view @haiyangbg/buildbeat@latest version",
-            "npm install --global @haiyangbg/buildbeat@latest",
-        ):
+        install_commands = (
+            ("npm pack --pack-destination", "npm install --global --prefix")
+            if version_match and version_match.group(4)
+            else ("npm view @haiyangbg/buildbeat@latest version", "npm install --global @haiyangbg/buildbeat@latest")
+        )
+        for command in install_commands:
             if command not in content:
                 errors.append(f"{relative}: missing evergreen npm package command {command}")
         hard_coded_command = re.search(

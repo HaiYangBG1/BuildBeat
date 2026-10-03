@@ -70,6 +70,7 @@ export function applyEvent(state, event) {
         entry: data.entry ?? null,
         planDigest: data.planDigest ?? "UNVERIFIED",
         intentDigest: data.intentDigest ?? "UNVERIFIED",
+        ...(data.deliveryChecks ? { deliveryChecks: data.deliveryChecks } : {}),
       };
       break;
     }

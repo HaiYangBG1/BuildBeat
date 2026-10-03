@@ -13,7 +13,6 @@ import { EventLedger } from "../src/v2/storage/event-ledger.js";
 import { tempDir } from "./support/tmp.js";
 
 const workflow = loadWorkflow(new URL("../src/v2/presets/software-delivery.yaml", import.meta.url));
-const release = loadWorkflow(new URL("../src/v2/presets/release-readback.yaml", import.meta.url));
 function fixture(extra = {}, script = {}) {
   const root = tempDir("bb-false-stops-");
   const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8" }).trim();
@@ -221,15 +220,13 @@ test("E: repeated fingerprints still stop before exhausting the budget", () => {
   assert.match(result.state.pendingHuman.reasons[0], /same failure fingerprint/);
 });
 
-test("E: release readback still stops on its first real failure", () => {
-  const result = startRun(fixture({ workflow: release, entry: "preflight", riskPreset: "release" }, {
-    preflight: [{ code: 1, error: "failed readback" }],
+test("a read-only review still stops on its first real failure", () => {
+  const result = startRun(fixture({ entry: "review", budgets: { maxAttempts: { review: 1 } } }, {
+    review: [{ code: 1, error: "failed review" }],
   }));
-  assert.equal(result.state.pendingHuman.transition, "resume-preflight");
-  assert.equal(result.state.steps.preflight.attempts, 1);
-  assert.equal(result.state.steps.preflight.freeAttempts, undefined);
-  assert.match(result.state.pendingHuman.reasons[0], /\(each round is charged\)/);
-  assert.doesNotMatch(result.state.pendingHuman.reasons[0], /successful attempts are not charged/);
+  assert.equal(result.state.pendingHuman.transition, "resume-review");
+  assert.equal(result.state.steps.review.attempts, 1);
+  assert.equal(result.state.steps.review.freeAttempts, undefined);
 });
 
 test("successful self-loop has a finite total-attempt safeguard and can be extended", () => {

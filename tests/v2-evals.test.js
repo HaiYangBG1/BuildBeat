@@ -213,12 +213,8 @@ test("eval evidence-required regression: superseded-candidate findings do not po
     appliesTo: "enter-wait-merge",
     enforcement: "LOCAL_ENFORCED",
     onFail: "WAIT_HUMAN",
-    rule: {
-      all: [
-        { "evidence.exists": { kind: "command", minGrade: "L2" } },
-        { "finding.maxSeverity": { atMost: "P2" } },
-      ],
-    },
+    kind: "merge",
+    maxSeverity: "P2",
   };
   const approved = approveRun(root, "RUN-E9R", {
     by: "owner",
@@ -241,7 +237,9 @@ test("eval evidence-required: the stamp is refused until the evidence floor is m
     appliesTo: "enter-review",
     enforcement: "LOCAL_ENFORCED",
     onFail: "WAIT_HUMAN",
-    rule: { "evidence.exists": { kind: "test", minGrade: "L3" } },
+    kind: "evidence",
+    evidenceKind: "test",
+    minGrade: "L3",
   };
   assert.throws(
     () => approveRun(root, "RUN-E9", { by: "owner", transition: "enter-review", policies: [floor] }),

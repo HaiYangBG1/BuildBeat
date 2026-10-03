@@ -1,0 +1,224 @@
+{
+  "scope": "scripted workers; equal outcomes, invocation counts, candidate trees, evidence and decisions; not an AI performance benchmark",
+  "results": [
+    {
+      "scenario": "clean",
+      "outcome": {
+        "attempts": {
+          "build": 1,
+          "verify": 1,
+          "review": 1
+        },
+        "humanRequests": 1,
+        "lastTransition": "enter-wait-merge",
+        "waitingKind": "final-decision",
+        "staleApprovals": 0,
+        "changedPaths": [
+          "feature.txt"
+        ],
+        "candidateTree": "67dc3148c389e9d077eb25eb59f83a1fe154c924",
+        "evidence": [
+          {
+            "kind": "command",
+            "status": "passed",
+            "grade": "L2",
+            "step": "build",
+            "subjectTree": "67dc3148c389e9d077eb25eb59f83a1fe154c924"
+          },
+          {
+            "kind": "command",
+            "status": "passed",
+            "grade": "L2",
+            "step": "verify",
+            "subjectTree": "67dc3148c389e9d077eb25eb59f83a1fe154c924"
+          },
+          {
+            "kind": "command",
+            "status": "passed",
+            "grade": "L2",
+            "step": "review",
+            "subjectTree": "67dc3148c389e9d077eb25eb59f83a1fe154c924"
+          },
+          {
+            "kind": "review",
+            "status": "passed",
+            "grade": "L2",
+            "step": "review",
+            "subjectTree": "67dc3148c389e9d077eb25eb59f83a1fe154c924"
+          }
+        ],
+        "decisions": [],
+        "terminal": null
+      },
+      "baselineMs": 473,
+      "candidateMs": 500
+    },
+    {
+      "scenario": "repair",
+      "outcome": {
+        "attempts": {
+          "build": 1,
+          "verify": 2,
+          "fix": 1,
+          "review": 1
+        },
+        "humanRequests": 1,
+        "lastTransition": "enter-wait-merge",
+        "waitingKind": "final-decision",
+        "staleApprovals": 0,
+        "changedPaths": [
+          "feature.txt",
+          "fixed.txt"
+        ],
+        "candidateTree": "5b61216a80f7bff5a30abd3d3ecbf837412dbb59",
+        "evidence": [
+          {
+            "kind": "command",
+            "status": "passed",
+            "grade": "L2",
+            "step": "build",
+            "subjectTree": "2c688e9f8694442b4b493fcc3546f38e1367793c"
+          },
+          {
+            "kind": "command",
+            "status": "failed",
+            "grade": "L2",
+            "step": "verify",
+            "subjectTree": "2c688e9f8694442b4b493fcc3546f38e1367793c"
+          },
+          {
+            "kind": "command",
+            "status": "passed",
+            "grade": "L2",
+            "step": "fix",
+            "subjectTree": "5b61216a80f7bff5a30abd3d3ecbf837412dbb59"
+          },
+          {
+            "kind": "command",
+            "status": "passed",
+            "grade": "L2",
+            "step": "verify",
+            "subjectTree": "5b61216a80f7bff5a30abd3d3ecbf837412dbb59"
+          },
+          {
+            "kind": "command",
+            "status": "passed",
+            "grade": "L2",
+            "step": "review",
+            "subjectTree": "5b61216a80f7bff5a30abd3d3ecbf837412dbb59"
+          },
+          {
+            "kind": "review",
+            "status": "passed",
+            "grade": "L2",
+            "step": "review",
+            "subjectTree": "5b61216a80f7bff5a30abd3d3ecbf837412dbb59"
+          }
+        ],
+        "decisions": [],
+        "terminal": null
+      },
+      "baselineMs": 631,
+      "candidateMs": 647
+    },
+    {
+      "scenario": "resume",
+      "outcome": {
+        "attempts": {
+          "build": 1,
+          "verify": 1,
+          "review": 1
+        },
+        "humanRequests": 2,
+        "lastTransition": "enter-wait-merge",
+        "waitingKind": "final-decision",
+        "staleApprovals": 0,
+        "changedPaths": [
+          "feature.txt"
+        ],
+        "candidateTree": "925b1e89faaa21c5026ec93b9be3ef95eaa0df61",
+        "evidence": [
+          {
+            "kind": "command",
+            "status": "passed",
+            "grade": "L2",
+            "step": "build",
+            "subjectTree": "925b1e89faaa21c5026ec93b9be3ef95eaa0df61"
+          },
+          {
+            "kind": "command",
+            "status": "passed",
+            "grade": "L2",
+            "step": "verify",
+            "subjectTree": "925b1e89faaa21c5026ec93b9be3ef95eaa0df61"
+          },
+          {
+            "kind": "command",
+            "status": "passed",
+            "grade": "L2",
+            "step": "review",
+            "subjectTree": "925b1e89faaa21c5026ec93b9be3ef95eaa0df61"
+          },
+          {
+            "kind": "review",
+            "status": "passed",
+            "grade": "L2",
+            "step": "review",
+            "subjectTree": "925b1e89faaa21c5026ec93b9be3ef95eaa0df61"
+          }
+        ],
+        "decisions": [
+          {
+            "transition": "enter-review",
+            "decision": "approved"
+          }
+        ],
+        "terminal": null
+      },
+      "baselineMs": 625,
+      "candidateMs": 687
+    },
+    {
+      "scenario": "stale",
+      "outcome": {
+        "attempts": {
+          "build": 1,
+          "verify": 1
+        },
+        "humanRequests": 1,
+        "lastTransition": "enter-review",
+        "waitingKind": "boundary",
+        "staleApprovals": 1,
+        "changedPaths": [
+          "feature.txt"
+        ],
+        "candidateTree": "56462207858f748693a381077d9e73c2e64f2212",
+        "evidence": [
+          {
+            "kind": "command",
+            "status": "passed",
+            "grade": "L2",
+            "step": "build",
+            "subjectTree": "925b1e89faaa21c5026ec93b9be3ef95eaa0df61"
+          },
+          {
+            "kind": "command",
+            "status": "passed",
+            "grade": "L2",
+            "step": "verify",
+            "subjectTree": "925b1e89faaa21c5026ec93b9be3ef95eaa0df61"
+          }
+        ],
+        "decisions": [
+          {
+            "transition": "enter-review",
+            "decision": "approved"
+          }
+        ],
+        "terminal": null
+      },
+      "baselineMs": 584,
+      "candidateMs": 585
+    }
+  ]
+}

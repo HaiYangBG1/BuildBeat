@@ -2,10 +2,26 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { WorkflowError, loadWorkflow, nextStep, parseWorkflow } from "../src/v2/engine/workflow.js";
-import { YamlSubsetError, parseYamlSubset } from "../src/v2/engine/yaml-subset.js";
+import {
+  DELIVERY_TEXT,
+  WorkflowError,
+  loadWorkflow,
+  nextStep,
+  parseWorkflow,
+} from "../src/v2/engine/workflow.js";
+import {
+  YamlSubsetError,
+  parseYamlSubset,
+} from "../src/v2/engine/yaml-subset.js";
 
-const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
+const PRESET_PATH = join(
+  import.meta.dirname,
+  "..",
+  "src",
+  "v2",
+  "presets",
+  "software-delivery.yaml",
+);
 
 test("yaml subset parses maps, lists, and scalar types", () => {
   const doc = parseYamlSubset(
@@ -55,7 +71,7 @@ test("yaml subset fails closed on unsupported syntax", () => {
 test("the official software-delivery preset loads with the expected graph", () => {
   const workflow = loadWorkflow(PRESET_PATH);
   assert.equal(workflow.name, "software-delivery");
-  assert.equal(workflow.entry, "intent");
+  assert.equal(workflow.entry, "build");
   assert.ok(workflow.terminal.has("wait-merge"));
 
   assert.equal(nextStep(workflow, "build", "succeeded"), "verify");
@@ -66,93 +82,67 @@ test("the official software-delivery preset loads with the expected graph", () =
   assert.equal(nextStep(workflow, "review", "succeeded"), "wait-merge");
   assert.equal(nextStep(workflow, "wait-merge", "succeeded"), null);
 
-  const spec = workflow.steps.find((step) => step.id === "spec");
-  assert.equal(spec.optional, true);
-  assert.equal(spec.requiredWhen, "ui-delivery");
+  assert.deepEqual(
+    workflow.steps.map((step) => step.id),
+    ["build", "verify", "review", "wait-merge", "fix"],
+  );
 });
 
-function minimalDoc(overrides = "") {
-  return [
-    "kind: workflow",
-    "version: 1",
-    "name: t",
-    "entry: a",
-    "steps:",
-    "  - id: a",
-    "    worker: w",
-    "  - id: b",
-    "terminal:",
-    "  - b",
-    overrides,
-  ]
-    .filter(Boolean)
-    .join("\n");
+// Each case changes exactly one thing in the accepted fixed workflow, so a
+// rejection proves the check it names (a fixture the parser rejects for an
+// unrelated reason would pass every case without exercising any of them).
+function mutated(from, to) {
+  assert.equal(
+    DELIVERY_TEXT.split(from).length,
+    2,
+    `fixture fragment must occur once: ${from}`,
+  );
+  return DELIVERY_TEXT.replace(from, to);
 }
 
-test("workflow validation rejects malformed documents", () => {
-  assert.throws(() => parseWorkflow(minimalDoc("extra: field")), WorkflowError, "unknown field");
-  assert.throws(
-    () => parseWorkflow(minimalDoc().replace("version: 1", "version: 2")),
-    WorkflowError,
-    "unsupported version",
-  );
-  assert.throws(
-    () => parseWorkflow(minimalDoc().replace("entry: a", "entry: nope")),
-    WorkflowError,
-    "unknown entry",
-  );
-  assert.throws(
-    () => parseWorkflow(minimalDoc().replace("  - id: b", "  - id: a")),
-    WorkflowError,
-    "duplicate step id",
-  );
-  assert.throws(
-    () =>
-      parseWorkflow(
-        minimalDoc(["transitions:", "  - from: a", "    on: failed", "    to: nope"].join("\n")),
-      ),
-    WorkflowError,
-    "unknown transition target",
-  );
-  assert.throws(
-    () =>
-      parseWorkflow(
-        minimalDoc(
-          [
-            "transitions:",
-            "  - from: a",
-            "    on: failed",
-            "    to: b",
-            "  - from: a",
-            "    on: failed",
-            "    to: b",
-          ].join("\n"),
-        ),
-      ),
-    WorkflowError,
-    "duplicate (from, on)",
-  );
+test("workflow validation rejects each change to the fixed delivery workflow for its own reason", () => {
+  assert.equal(parseWorkflow(DELIVERY_TEXT).name, "software-delivery");
+  const cases = [
+    [DELIVERY_TEXT + "extra: field\n", /unknown workflow field extra/],
+    [mutated("version: 1", "version: 2"), /expected the fixed software-delivery workflow/],
+    [mutated("name: software-delivery", "name: t"), /expected the fixed software-delivery workflow/],
+    [mutated("entry: build", "entry: verify"), /workflow entry changed/],
+    [mutated("  - id: review\n", "  - id: verify\n"), /delivery step order changed/],
+    [mutated("    worker: reviewer\n", "    worker: builder\n"), /delivery role or safeguard changed at review/],
+    [mutated("    readonly: true\n", ""), /delivery role or safeguard changed at review/],
+    [mutated("    worker: builder\n", "    worker: builder\n    extra: x\n"), /unknown step field extra/],
+    [mutated("    worker: verifier\n", "    worker: verifier\n    grade: L9\n"), /grade must be one of L0-L4/],
+    [mutated("terminal:\n  - wait-merge\n", "terminal:\n  - review\n"), /delivery terminal changed/],
+    [mutated("    on: failed\n    to: fix\n", "    on: failed\n    to: nope\n"), /delivery transitions changed/],
+    [mutated("    on: succeeded\n    to: verify\n", "    on: succeeded\n    to: build\n"), /delivery transitions changed/],
+    [
+      mutated("terminal:\n", "  - from: verify\n    on: failed\n    to: fix\nterminal:\n"),
+      /delivery transitions changed/,
+    ],
+  ];
+  for (const [text, reason] of cases) {
+    assert.throws(() => parseWorkflow(text), (error) => {
+      assert.ok(error instanceof WorkflowError, String(error));
+      assert.match(error.message, reason);
+      return true;
+    });
+  }
 });
 
-test("a cycle with no path to terminal is rejected", () => {
-  const doc = [
-    "kind: workflow",
-    "version: 1",
-    "name: t",
-    "entry: a",
-    "steps:",
-    "  - id: a",
-    "  - id: b",
-    "  - id: c",
-    "transitions:",
-    "  - from: a",
-    "    on: succeeded",
-    "    to: b",
-    "  - from: b",
-    "    on: succeeded",
-    "    to: a",
-    "terminal:",
-    "  - c",
-  ].join("\n");
-  assert.throws(() => parseWorkflow(doc), WorkflowError);
+test("fixed workflows reject hidden policies and malformed budgets instead of dropping them", () => {
+  assert.throws(
+    () => parseWorkflow(DELIVERY_TEXT + "policies:\n  hidden: true\n"),
+    /policies are unsupported/,
+  );
+  assert.throws(
+    () =>
+      parseWorkflow(
+        DELIVERY_TEXT + "budgets:\n  maxAttempts:\n    review: never\n",
+      ),
+    /invalid workflow attempt budget/,
+  );
+  const strict = parseWorkflow(
+    DELIVERY_TEXT + "budgets:\n  maxAttempts:\n    review: 2\n",
+  );
+  assert.equal(strict.budgets.maxAttempts.review, 2);
 });

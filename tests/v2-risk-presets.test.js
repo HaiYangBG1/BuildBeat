@@ -4,7 +4,7 @@ import test from "node:test";
 import { loadRiskPreset } from "../src/v2/engine/risk-preset.js";
 import { PolicyError } from "../src/v2/policy/policy.js";
 
-test("all four official risk presets load and parse fail-closed", () => {
+test("legacy delivery profiles preserve their safeguards", () => {
   const fast = loadRiskPreset("fast");
   assert.deepEqual(fast.stopAt, []);
   assert.deepEqual(
@@ -20,13 +20,14 @@ test("all four official risk presets load and parse fail-closed", () => {
   assert.ok(controlled.policies.some((policy) => policy.name === "intent-accepted"));
   assert.ok(controlled.policies.some((policy) => policy.name === "plan-accepted"));
   const floor = controlled.policies.find((policy) => policy.name === "merge-evidence-floor");
-  assert.equal(floor.rule.all[1]["finding.maxSeverity"].atMost, "P3");
+  assert.equal(floor.maxSeverity, "P3");
 });
 
 test("unknown presets and bad names are rejected", () => {
   assert.throws(() => loadRiskPreset("../escape"), PolicyError);
   assert.throws(() => loadRiskPreset("no-such-preset"), Error);
   assert.throws(() => loadRiskPreset("legacy-four-gates"), Error);
+  assert.throws(() => loadRiskPreset("release"), /retired/);
 });
 
 test("every preset policy keeps the merge decision human with an evidence floor", () => {

@@ -1,92 +1,88 @@
 ---
 name: buildbeat
-description: BuildBeat —— 面向人和 AI 会话的工程交付工作流,上下文落在项目文件、Git 管理长期事实,支持跨模型、跨工具、跨会话和跨人接续;帮助一个或多个端到端 Builder 用可验证证据闭环需求/功能工作包。运行时 `buildbeat`(由会话调用而非用户手敲):Work 目录 intent/plan digest 绑定接受;隔离 worktree 内 Build→Verify→Review→Fix 自动闭环,停在人的合并决定;overview/inbox/status 回答"到哪了/谁批/卡没卡";发现分诊、预算与成本、infra 故障停人、release-readback 上线回读、observe 生产体检、通知出站、gc 打扫。产品/全栈/测试是可调用的 AI 专业视角,不是人类岗位流水线。当用户说"换会话/删旧会话/继续项目/跨工具接手/同事接手/团队接力",或在 AI 会话里说"当前进度/开工/怎么样了/批准/上线/打扫卫生",或要为新项目搭多会话协作架构、给存量老项目套上协作流程(接管),提到"BuildBeat/Builder/人在回路/多 session 协作/AI 团队流程",或抱怨"多个 AI 会话信息不同步、任务过早结束、审批打断过多、review 过于频繁、验收漏验、返工螺旋"时使用。
+description: BuildBeat 用项目文件接续上下文，在隔离工作树内自动实现、验证、审查和修复，带证据停在人的合并决定。用于持续迭代、换会话或工具接手、查看进度、执行工作、处理决定和恢复中断。运行时 `buildbeat` 负责推进，Skill 负责使用路由。
 ---
 
-# BuildBeat —— 面向人和 AI 会话的工程交付协议
+# BuildBeat
 
-> 蒸馏自一个真实跑了多期迭代的实践:一个人协调多个并行 AI 会话,把一个含前端/BFF/多个后端服务/网关/审计的内部产品持续交付。这个案例说明来源,不限定人数;一个 Builder 可用,多个 Builder 也可共享 Git 后按工作包分别闭环。方法论与项目解耦,模板可直接拷贝。
+承诺：换会话能接着干，AI 自动推进工作，交付有证据。入口是 Skill，执行需要本地 `buildbeat` 运行时；文件始终可读，手工接管时必须如实说明哪些自动机制没有执行。
 
-> **会话随时换,项目接着干。** 继续工作所需的上下文落在项目文件中;会话按入口读取同一份目标、决定与证据,由 Loop 推进执行。关闭聊天前补齐未落盘事实;保留活动 Run 的台账与工作树。团队成员按已有权限同步项目文件与候选后可接手,有效的既有决定继续保留;新机器无活动项不代表原机器无 Run。跨成员、跨会话、跨工具和跨机器的具体边界见 [接续指南](docs/v2/guide/11-session-handoff.md)。
+## 运行时版本
 
-## 0. 何时用 / 不用
+先跑 `buildbeat --version`，按结果选命令：
 
-- **用**:项目要跑多期迭代,或存在多个仓/部署单元/AI 上下文;一个或多个 Builder 需要让需求、契约、决定与证据长期同步。
-- **不用**:单仓小任务、一次性脚本、预计一周内收尾的事——直接开一个会话干完,套流程纯属 ceremony(要快就用 `fast` 风险预设,见 §5)。
+- 4.x：按下文操作。
+- 3.x：下文的 `run`、`status --work`、`decide`、`check`、`history` 和 `work.md` 在 3.x 不存在，沿用项目现有的 3.x 写法：`intent.md` + `plan.md`，分别 `accept --artifact intent` 与 `accept --artifact plan`；`start --config <config> --attempt new` 开工，`resume --config <config> [--run <RUN>] [--adopt <sha> --by <name>]` 续跑；`overview`、`inbox`、`status --run <RUN>` 看进度；`approve --transition <t>` / `reject --reason <why>` 决定；`findings adjudicate` 裁决问题；`doctor` 检查配置；run-config 保留 `workflow:` 与 `riskPreset:`。
+- 3.x 的活动 Run 只能用 3.x 运行时完成或取消。升级到 4.x 前先问用户，并按[迁移说明](docs/MIGRATION.md)处理。
 
-## 0.5 驾驶手册 —— Skill 是入口,CLI 是它调用的引擎
+## 会话操作
 
-> 绝大多数人在 Claude Code / Codex / Cursor 这类 AI 会话里使用 BuildBeat,而不是亲手敲 `buildbeat`。所以**这一节是给会话读的**:用户说一句人话,会话按下表调命令、读输出、按格式收口。用户不需要知道任何命令;会话不得把命令名当成对用户的要求。方法论正文(§1–§10)按需读,见文末「按需再读」。
-> 装载方式:项目根 `AGENTS.md`(模板 [templates/v2/AGENTS.md](templates/v2/AGENTS.md))按所用工具的方式装载——多数 AI 编程工具自动读根目录 `AGENTS.md` 或 `CLAUDE.md`(后者只是一行指针);不自动读的工具由用户开场贴给会话。运行时 `npm install --global @haiyangbg/buildbeat@latest`(预发布才用 `@next`),Node ≥ 20。**没装 CLI 时**本节的"会话背后调什么"一列退化为会话手工维护同名文件(`delivery/work/<ID>/` 与 `decisions.jsonl`):工件协议照用,但自动闭环、隔离 worktree、digest 绑定批准校验、预算与恢复都不存在,会话不得把手工维护表述成等价能力。
+| 用户意图 | 操作 |
+|---|---|
+| 接手、查看进度、有什么待批 | `buildbeat status --repo .`；指定 `--work` 或 `--run` 查看细节 |
+| 准备一项工作 | 写 `delivery/work/<ID>/work.md`，包含目标、范围、验收、实施计划；复制 run-config 样板并填真实命令 |
+| 接受工作说明 | `buildbeat accept --repo . --work <ID> --by <owner>`；用户已有明确授权时直接记录，不重复问同一个决定 |
+| 开工、继续 | `buildbeat run --config <config>`；首次编号，已有运行则恢复；明确新一轮时加 `--new` |
+| 批准、拒绝 | 读取状态卡，再 `buildbeat decide --repo . --run <RUN> --action approve|reject --transition <t> --by <owner>`；非终态决定后续跑 |
+| 问题接受、驳回 | `buildbeat decide --repo . --work <ID> --action accept|dismiss --fingerprint <fp> --by <owner> --note <reason>` |
+| 已手修并提交 | `buildbeat run --config <config> --run <RUN> --adopt <sha> --by <name>`；检查干净工作树与实际 HEAD 后从 verify 继续 |
+| 配置或环境有问题 | `buildbeat check --config <config>`；显式 `--step <step>` 会在主检出执行 worker，只有用户任务需要才调用，结果不是正式证据 |
+| 结束一轮 | `buildbeat stop --repo . --run <RUN> --reason <reason>`；活动驱动持锁时先处理进程，不能把 stop 当作进程杀手 |
+| 清理 | `buildbeat gc --repo .` 查看计划，授权范围内再加 `--apply`；不得丢唯一候选或脏工作树 |
 
-> 给用户看的完整版(按项目阶段:未开始 → 立项定方案 → 准备执行 → 执行推进 → 验收合并 → 上线 → 完结换期复盘)在 [docs/v2/guide/00-how-to-talk.md](docs/v2/guide/00-how-to-talk.md);用户问"我该怎么说"时把它给用户,不要复述命令。
+## 执行规则
 
-### 0.5.1 用户一句话 → 会话做什么
+- 用户只需理解工作、进度和决定；命令与 Run 编号由会话处理。
+- 一个端到端 Work 对一个可验收结果负责。范围内继续推进，不能因单个文件或步骤完成就结束任务。
+- 默认固定 build → verify → review → wait-merge，失败经 fix → verify。配置全部检查后才启动；不要生成 workflow.yaml 或 Policy 文件。
+- Reviewer 独立、只读；任何自述不能代替 Git 和真实命令的证据。提供 builder/verifier/reviewer/fixer，缺 worker 时明确停下接管。
+- 只在目标确认、真正例外和最终决定处请求用户。review 默认不分诊；不收敛、环境故障、预算耗尽照常停人，不能由驾驶会话冒充人批准。
+- Work review 预算默认 6 轮，跨所有 Run 累计；保留缓存、增量审查、人工修复接管和环境故障分类。
+- 长运行脱离宿主短超时启动。状态、最近输出、耗时和通知用于发现停顿；STALLED 不等于进程已终止。
+- 新会话先读项目入口、work.md、Git 与状态。旧的 intent/plan 和历史记录继续读取；活动运行不能随意删除或重复启动。
+- 既有项目规范由项目所有者维护，不覆盖、不生成整套组织治理模板。生产监控、部署与 UI 验证放在项目工具和验收命令中。
+- merge、push、发布、部署需要对应授权；最终批准只表示候选具备合并条件。不要用 `git add -A`，只提交本次具体文件。
+- 保留范围检查、环境变量白名单、批准绑定、台账校验。它们不替代宿主沙箱和服务端保护。
+- 新项目配置通知时确认用户希望使用的通道；已有决定直接沿用，URL 只来自环境变量。无通知时如实说明。
 
-| 用户说 | 会话背后调什么 | 会话回给用户什么 |
-|---|---|---|
-| 「换会话」「删旧会话」「继续这个项目」「同事接手」 | 按 [接续指南](docs/v2/guide/11-session-handoff.md) 核对项目入口、Work、Git、`overview` / `inbox` / `status`;离开前补齐未落盘事实,接手后区分活动 Run / 中断 / 待批 / 终态 | 「已保存哪些上下文、工作停在哪、下一步」;不把删聊天当删工作树,不重启仍活动的 Run,不伪造或代批决定 |
-| 「当前进度」「待办是什么」「X 上线了吗」「离上线还差多远」 | `buildbeat overview --repo .`(每个 Work 的阶段 + 下一步该谁 + `cost:` 已花的 Run/review 轮/等人次数/worker 时长)+ `observe status --repo .` | 每件事一句:走到哪、卡在谁、下一步;**不列命令**;花费超过 intent 止损线的 Work 要主动说「已 N 轮 review / N 小时,继续还是砍」 |
-| 「有什么要我拍板」 | `buildbeat inbox --repo .` | 逐项:等什么、证据在哪、推荐 A/B;用户回「批准/拒绝」后会话调 `approve`/`reject` |
-| 「开个 Work:〔目标〕」 | 写 `delivery/work/<ID>/intent.md`(为什么做 + **止损线**:最多几个 Run / 几轮 review / 几小时,越线先问人)+ `plan.md`(怎么做)+ `run-config.yaml`(`budgets.reviewRoundsPerWork` 对应止损线);给用户看摘要 | 「看完说接受」;用户说一次「接受」→ `accept --artifact intent,plan`(一条命令,两份各自 digest 绑定;不要分两次问) |
-| 「开工」「再来一轮」 | 先 `buildbeat doctor --config <run-config.yaml>`(会报本仓 intent/plan 是否存在且已接受、哪条 policy 会把 start 挡在哪步、每步预算),再 `start --config <run-config.yaml> --attempt new`(自动编号 RUN-X-01/02…,自动作废同 Work 的旧等待;**用 nohup/setsid 脱离启动**) | 「已起 RUN-X-02,停在合并决定时会通知/我会告诉你」 |
-| 「怎么样了」「卡住了吗」「正常吗」 | `buildbeat status --repo . --run <RUN>` | 一句:在跑第几步、跑了多久、历史通常多久、最后一次输出几分钟前;`STALLED` 就说「疑似卡住,建议停/等」;停在 kind `infra` 就说「worker 环境/后端故障,不是代码问题,恢复后我重跑,预算不扣」 |
-| 「批准 RUN-X」「拒绝,原因…」 | 先看 `inbox` 该 Run 等的是哪条 transition,再 `approve --transition <t> --by <用户名>` / `reject --reason`;非终态转换(`enter-fix` / `resume-<step>` / `enter-review`)批准后再 `resume --config <cfg>` 续跑;用 `--attempt new` 自动编号时会选择该家族唯一未终态 Run，也可 `--run <RUN-ID>` 指定;多个候选或没有未终态 Run 时按报错处理 | 说清批的是哪一步:「放行 fixer,续跑中」/「再跑一次,续跑中」/「合并决定已落,候选 <sha> 具备合并条件;合并/push/部署要你另说」。`SUCCEEDED` 不等于已合并 |
-| 会话自己在 Run 的 worktree 里把 finding 修完并提交了(Run 停在 enter-fix / resume-fix) | `resume --config <cfg> --adopt <sha> --by <会话名>`(跳过 fixer,从 verify 续跑;树必须干净、HEAD 必须是该 sha) | 「我已手修并提交 <sha>,验证重跑中」;**不要**为了让 fixer 空跑而 approve enter-fix |
-| 「这条 finding 不算,那条接受」 | `findings list` / `findings adjudicate --action dismiss|accept` → `approve --transition enter-fix` | 裁决结果一句 |
-| 「上线」「做生产动作」 | 用 `release-readback` 预设 + `riskPreset: release` 开 Run:preflight 回读 → 停 `enter-apply-readback` | 「回读全绿,现在轮到你做〔动作〕;做完说一声」→ 用户说「做完了」→ `approve enter-apply-readback` → 回读+观察 → 停关窗 |
-| 「打扫卫生」 | `buildbeat gc --repo .`(先出计划)→ 用户点头 → `--apply true` | 清了几个工作树、留了哪些分支及为什么 |
-| 「生产报警」「体检」 | `observe run --config .buildbeat/observe.yaml` → 看 `delivery/observe/intents/` | 草稿一句 + 「fix_now / schedule / dismiss 你选」 |
+## 配置样板
 
-### 0.5.2 会话必须遵守的读法
-
-- **能实查的不问人**:`overview` / `status` / `inbox` / `metrics` / `observe status` 全是只读,先跑再答;不信文档、不信上游转述。
-- **环境故障不是候选缺陷**:超时、崩溃、非 JSON 输出、退出码 75 内核判 `infra` 停人;会话只做两件事——查后端/环境(worker 后端是否 404、端口是否被占、PATH 是否缺工具),恢复后 `approve --transition resume-<step>`;**不要**为了绕过去手写探针循环或起新 Run。verify / 包装脚本发现环境不满足就 `exit 75`。
-- **数字要落地**:`status` 给了耗时和历史中位数,回答「正常吗」必须带对比("verify 已 14 分钟,历史中位 6 分钟,最后输出 2 分钟前,还在动");没数据就说没数据。
-- **输出里的 `next:` 行是给会话的**,会话据此调命令,不把命令原文丢给用户;用户只需要回「批准 / 拒绝 / 接受 / 做完了 / A / B」。
-- **人批三级**(§4.2):`STOP_NOW` 只用于跨发布门 / 扩范围 / 改冻结契约 / 不可逆外部动作 / 接受风险;可逆取舍攒到门前一次批 2～5 个;事实与派生约束自己定。**所有者以后要看见或念出来的名字与参数(域名、服务名、环境名、自停时长、窗口时长)属于门前决策项,不由 worker 顺手定**——真实事故:一个按内部术语起的服务名让所有者连问四轮才改成他听得懂的业务名。
-- **环境事实是交付物**:跑出来的"目标机 Python 3.6 / Redis 必须 ≥7 / 端口 8080 被占"写进 `delivery/work/<ID>/env-facts.md`,并尽量转成 run-config `requires:` 的 `probe:` 条目,下窗直接引用,禁止口口相传。
-- **收口格式**统一「已做 → 未做 → 下一步」,各一句,证据紧跟事项(§6.4);中间探索不套模板。
-
-### 0.5.3 写 run-config 时的最小样板(会话代写,用户不用看)
+以下为完整样板。路径相对工作目录，替换 Work 标识、变更范围和真实工具命令。worker.sh 与 prompts 复制到 delivery/envelope/。
 
 ```yaml
+# BuildBeat v2 run 配置样板。拷到 delivery/work/<WORK-ID>/run-config.yaml 后改 work / run / allowedPaths / workers。
+# 路径相对本文件解析。严格 YAML 子集：只有块列表与块映射（列表项可与键同缩进），行内只允许空的 [] / {}，无锚点，注释必须独占一行。
+# 起跑前：buildbeat doctor --config <本文件>；起跑：buildbeat start --config <本文件> --attempt new
 repo: ../../..
 work: WORK-X
-# 家族名;start --attempt new 自动编成 RUN-X-01/02…
+# 家族名；--attempt new 自动编成 RUN-X-01/02…
 run: RUN-X
-# 从 $(npm root -g)/@haiyangbg/buildbeat/src/v2/presets/software-delivery.yaml 复制到本目录
-workflow: workflow.yaml
-# fast | standard | controlled | release(配 release-readback 预设)
-riskPreset: standard
-entry: build
+# builder / fixer 只能改这些目录；越界改动不成为候选
 allowedPaths:
   - src
   - tests
-# off = P0/P1 直接派 fixer;高风险项目改 required,每轮先停人分诊
+# off = P0/P1 finding 直接派 fixer；高风险项目改成 required，每轮先停人分诊再派 fixer
 reviewTriage: off
-# 可省;run 配置 > 预设 > 默认。非只读步成功不扣次数;review 仍按轮计费。
-# review 不收敛(修过的 finding 又出现/阻断数变多)才在 enter-fix 停人;
-# reviewRoundsPerWork(默认 6)是 review 轮数唯一上限,跨本 Work 所有 Run 累计,到顶一次批准修复、重验、再审
+# 非只读步成功不扣次数；review 按轮计费。review 不收敛（修过的 finding 又出现，或阻断数多于上一轮）才在 enter-fix 停人。
+# reviewRoundsPerWork 是 review 轮数唯一的上限（默认 6），跨本 Work 所有 Run 累计，对应 intent 的止损线；
+# 到顶的阻断 review 在 enter-fix 一次批准修复、重验、再审。总 attempt 超过（配置值 + 人批扩额）的 3 倍前仍兜底停人。
 budgets:
   reviewRoundsPerWork: 6
-# 同树+同命令+同信封已通过就复用证据(标 REUSED)
+# 默认一个仓库同时只驱动一个 Run。确认本项目的测试不抢固定端口、不共用数据库后，
+# 可加 parallel: true，让本 Work 的 Run 与其他同样打开开关的 Work 并行（同一 Work 仍互斥）
+# 同树 + 同命令 + 同信封已通过就复用 verify 证据
 cache:
   verify: tree
-# prompts/<component>-<worker>.md 或 <worker>.md;内核喂给 worker($BUILDBEAT_PROMPT)。冻结信封时加 pin: <meta 提交 sha>
+# 内核把 prompts/<worker>.md 喂给 worker（$BUILDBEAT_PROMPT）；模板见 templates/v2/envelope/prompts/
 envelope:
   prompts: ../../envelope/prompts
   vars:
-    component: auth
-requires:
-  - command: node
-    min: "20"
-  - probe: "redis-cli -h $REDIS_HOST ping"
-    expect: PONG
-    name: redis-reachable
+    component: app
+# worker 输出落成证据前按这些 JS 正则脱敏（不支持 (?i) 这类内联标志）
 redact:
   - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
-# worker.sh 与三份 prompt 从 templates/v2/envelope/ 拷到仓级 delivery/envelope/;换工具只改 -- 后面的命令
+# worker 以隔离 worktree 为 cwd 运行；delivery/envelope/worker.sh 已随仓库进 worktree。
+# 换工具只改 `--` 后面的命令：codex exec … / claude -p … / 任意脚本。
 workers:
   builder:
     command: bash
@@ -98,6 +94,7 @@ workers:
       - exec
       - -s
       - workspace-write
+  # 真实测试命令；环境不满足就 exit 75（内核当基础设施故障停人）
   verifier:
     command: bash
     args:
@@ -113,6 +110,7 @@ workers:
       - exec
       - -s
       - read-only
+  # 不能省：没配它，verify 失败 / review 阻断时 Run 停人等手修
   fixer:
     command: bash
     args:
@@ -125,32 +123,13 @@ workers:
       - workspace-write
 ```
 
-(严格 YAML 子集:只有块列表与块映射,行内只允许空的 `[]` / `{}`,列表项可与键同缩进,**注释必须独占一行**;上面这份可原样解析,机器验证在 `tests/v2-templates-firstrun.test.js`。**`fixer` 不能省**:没配它,verify 失败或 review 阻断时 Run 停 `WAITING_HUMAN` 等人手修,不会自动修。完整样板 [templates/v2/run-config.example.yaml](templates/v2/run-config.example.yaml),信封 [templates/v2/envelope/](templates/v2/envelope/worker.sh)。)通知通道另放 `.buildbeat/notify.yaml`(URL 只能来自环境变量),见 [docs/v2/guide/07-approval-guide.md](docs/v2/guide/07-approval-guide.md);指南索引 [docs/v2/guide/README.md](docs/v2/guide/README.md)。
+## 按需阅读
 
-**第一次为一个项目写 run-config 时,会话要多问用户一句**:「Run 停下来等你批、跑完、或疑似卡住时,要不要推到钉钉/webhook?给我一个只放在环境变量里的 URL 就行」——试点一直没启用通知,一张合并卡就绪后隔夜等了 9.5 小时。用户说不要就记一句「通知未启用,等待只在 inbox 里」。
+- [快速开始](docs/v2/guide/01-quickstart.md)
+- [固定流程与配置](docs/v2/guide/02-workflow-guide.md)
+- [决定与证据](docs/v2/guide/07-approval-guide.md)
+- [恢复](docs/v2/guide/10-recovery.md)、[接续](docs/v2/guide/11-session-handoff.md)
+- [安全边界](docs/v2/guide/09-security-boundaries.md)
+- [迁移](docs/MIGRATION.md)
 
-worker prompt 里要写清三条环境事实(模板 AGENTS 第 ⑨ 条):沙箱不能监听端口(socket 测试交给 verify)、PATH 只认 POSIX 工具、环境不满足就 `exit 75`。
-
-## 红线摘要(全文与理由见 [05-red-lines.md](docs/v2/skill/05-red-lines.md),单点写进项目根 AGENTS.md §3)
-
-1. **凭据不入 git、不出本机**:文档只标位置不写值,默认装 gitleaks pre-commit 闸;worker 只拿点名的环境变量,通知 URL 只走环境变量。
-2. **不 `git add -A`**:只 stage 自己工作包的具体文件,多仓按仓分别提交。
-3. **不未授权部署**、不 force-push、不 `--amend` 已推送历史、不 `--no-verify`;合并/push/发布是人的动作,逐项授权。
-4. **每次部署完必更对应仓 CHANGELOG**,部署后 `observe run` 一轮。
-5. **写者≠审者**:Run 内置只读 reviewer 机器强制,写者转述不构成证据。
-6. **事实分层**:已确认 / 待核 / 拟议 / 已实现四类分开,未实查一律写「待核」。
-7. 资源选型 **稳定 > 便宜**;长连接服务部署带优雅下线。
-
-## 按需再读:方法论正文(原 §1–§10)
-
-驾驶手册里提到的 `§N` 都在下列文件里,原节号不变。遇到对应场景再读,不必每次装载。
-
-| 原节号 | 什么时候读 | 文件 |
-|---|---|---|
-| §1 四根支柱、§2 工作包与 AI 视角 | 解释 BuildBeat 为什么这样设计、决定要不要拆视角 | [01-principles.md](docs/v2/skill/01-principles.md) |
-| §3 项目文件布局 | 新建或核对项目目录、`.gitignore`、装载入口 | [02-project-layout.md](docs/v2/skill/02-project-layout.md) |
-| §4 协作规则、§4.1 任务包、§4.2 审批分层、§4.3 决策包 | 判断一件事要不要问人、怎么批量问、会话何时可以结束 | [03-collaboration-rules.md](docs/v2/skill/03-collaboration-rules.md) |
-| §5 风险预设、§6 三个仪式、§6.4 收口格式、§6.5 读数、§6.6 拍板与换期 | 开工 / 收工 / 收口 / 解读 `overview`、`status` 读数 / 换期 | [04-rhythm-and-rituals.md](docs/v2/skill/04-rhythm-and-rituals.md) |
-| §7 红线全文 | 任何涉及凭据、提交、部署、审查边界的动作之前 | [05-red-lines.md](docs/v2/skill/05-red-lines.md) |
-| §8 Bootstrap 新项目、§8.5 接管存量项目 | 用户要「搭骨架 / 给项目套上 BuildBeat / 接管老项目」 | [06-bootstrap-and-takeover.md](docs/v2/skill/06-bootstrap-and-takeover.md) |
-| §9 模板索引、§10 实战教训 | 找模板、查某条机制背后的事故([lessons.md](lessons.md)) | [07-templates-and-lessons.md](docs/v2/skill/07-templates-and-lessons.md) |
+启动前将 work.md 和 worker 脚本提交到所选 base，确保隔离工作树能读到同一份已确认范围；接受记录可以随后提交。
