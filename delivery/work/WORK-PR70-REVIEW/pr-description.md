@@ -102,5 +102,3 @@ BuildBeat 的主要价值是：**换会话能继续工作、AI 自动推进交�
 - 本 PR 不启用自动合并，不触发版本发布或安装升级。合并和后续发布需要分别决定。
 
 完整操作边界见 [迁移说明](https://github.com/HaiYangBG1/BuildBeat/blob/73ffd48/docs/MIGRATION.md)。
-
-
