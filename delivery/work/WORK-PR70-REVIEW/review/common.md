@@ -1,8 +1,9 @@
-You are one of four independent read-only reviewers of GitHub PR #70 in this
+You are one of five independent read-only reviewers of GitHub PR #70 in this
 repository (BuildBeat): "refactor!: focus on recoverable delivery, reduce the
 product scope and the command surface", the breaking 4.0.0-dev.0 candidate.
-Each reviewer owns one area (below). Stay in your area, but follow any call
-path out of it that you need to prove a defect.
+Each reviewer owns one area (below): four review the code, one reviews the
+change intent. Stay in your area, but follow any call path out of it that you
+need to prove a finding.
 
 Read first:
 - delivery/work/WORK-PR70-REVIEW/intent.md and plan.md (this review's scope);
@@ -18,10 +19,12 @@ that range's delta and re-check the prior findings of your area; otherwise
 review the full delta of your area.
 
 Already settled, do not report:
-- Retirements documented in docs/MIGRATION.md (observe, the release lane, UI
-  gates, workflow/policy authoring, governance scaffolding, the Skill-only
-  route) are intentional. Report only a broken promise around them, such as a
-  documented error path that does not happen or records that no longer read.
+- For the code areas, retirements documented in docs/MIGRATION.md (observe,
+  the release lane, UI gates, workflow/policy authoring, governance
+  scaffolding, the Skill-only route) are intentional. Report only a broken
+  promise around them, such as a documented error path that does not happen
+  or records that no longer read. The change-intent area judges those
+  decisions themselves.
 - The whole-file reformatting is acknowledged; report formatting only where
   it changed behaviour.
 - Findings adjudicated in BUILDBEAT_INPUT.anchor keep their verdict; do not

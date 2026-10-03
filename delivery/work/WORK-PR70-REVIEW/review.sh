@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Read-only reviewer for WORK-PR70-REVIEW. The delta is too large for one
-# pass, so one codex pass per area runs in parallel and the answers are
-# merged into the single envelope the kernel reads. Nothing is written inside
-# the worktree; scratch output lives in TMPDIR. A missing tool, a failed pass
-# or an unparseable answer exits 75 (infrastructure), never a clean review.
+# pass, so one codex pass per area (four code areas and the change intent)
+# runs in parallel and the answers are merged into the single envelope the
+# kernel reads. Nothing is written inside the worktree; scratch output lives
+# in TMPDIR. A missing tool, a failed pass or an unparseable answer exits 75
+# (infrastructure), never a clean review.
 set -uo pipefail
 dir="delivery/work/WORK-PR70-REVIEW/review"
 for tool in codex node; do
@@ -16,7 +17,7 @@ scratch="$(mktemp -d "${TMPDIR:-/tmp}/bb-pr70-review.XXXXXX")"
 trap 'rm -rf "$scratch"' EXIT
 input="${BUILDBEAT_INPUT:-}"
 [ -n "$input" ] || input='{}'
-areas=(runtime cli-compat docs-surface tests-package)
+areas=(runtime cli-compat docs-surface tests-package change-intent)
 pids=()
 for area in "${areas[@]}"; do
   {
