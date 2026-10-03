@@ -330,9 +330,7 @@ function loadRunConfig(flags, command) {
   if (typeof config?.workflow === "string" && config.workflow.trim() !== "") {
     workflowPath = resolve(configDir, config.workflow);
     try {
-      workflowText = workflowPath
-        ? readFileSync(workflowPath, "utf8")
-        : DELIVERY_TEXT;
+      workflowText = readFileSync(workflowPath, "utf8");
       workflow = loadWorkflow(workflowPath);
     } catch (error) {
       problems.push(
@@ -380,7 +378,12 @@ function loadRunConfig(flags, command) {
   const workDir = join(repoRoot, "delivery", "work", config.work);
   const artifact =
     existsSync(join(workDir, "work.md")) || !config.workflow ? "work" : "plan";
-  const preset = loadRiskPreset(config.riskPreset ?? "standard", { artifact });
+  // 3.3.1 ran a workflow config without riskPreset with no artifact gate;
+  // keep that (the merge evidence floor is now always on). New configs
+  // (no workflow) default to standard.
+  const riskPreset =
+    config.riskPreset ?? (config.workflow === undefined ? "standard" : "fast");
+  const preset = loadRiskPreset(riskPreset, { artifact });
   const safeguards = { ...preset.checks };
   if (config.maxReviewSeverity) {
     if (safeguards.maxSeverity === "P3" && config.maxReviewSeverity === "P2") {
@@ -392,7 +395,17 @@ function loadRunConfig(flags, command) {
   }
   const policies = deliveryChecks(safeguards);
   const presetStopAt = [];
-  const riskPreset = config.riskPreset ?? "standard";
+  const entry = config.entry ?? workflow.entry;
+  // Legacy planner steps would write the artifact inside the run, but an
+  // accepted artifact is bound (and checked in base) before the run starts.
+  if (
+    safeguards.requireAcceptance &&
+    ["intent", "spec", "plan"].includes(entry)
+  ) {
+    throw new Error(
+      `entry ${entry} starts at the retired planner steps, but risk preset ${riskPreset} binds an accepted ${artifact}.md before the run starts; write, accept and commit ${artifact}.md, then set entry: build (docs/MIGRATION.md)`,
+    );
+  }
 
   if (
     config.reviewTriage !== undefined &&
@@ -499,7 +512,7 @@ function loadRunConfig(flags, command) {
     workId: config.work,
     runId: config.run,
     base: config.base ?? "HEAD",
-    entry: config.entry ?? workflow.entry,
+    entry,
     stopAt: config.stopAt ?? presetStopAt ?? [],
     adapters,
     adapterConfigs: config.workers ?? {},
@@ -599,8 +612,7 @@ function spawnStallWatcher(repoRoot, runId, stallAfterMs) {
   return true;
 }
 
-async function commandStart(flags) {
-  const options = loadRunConfig(flags, "start");
+async function commandStart(flags, options = loadRunConfig(flags, "start")) {
   if (options.deliveryChecks.requireAcceptance) {
     const ref = `delivery/work/${options.workId}/${options.workArtifact}.md`;
     // Match the bytes Git checks out (EOL/smudge filters), not its normalized blob.
@@ -733,14 +745,19 @@ async function commandStart(flags) {
   await notifyForState(options.repoRoot, repoLabel, ledger.state);
 }
 
+// A run family is the configured run id plus its numbered attempts
+// (<run>-01, <run>-02, ...); a longer id that merely shares the prefix
+// belongs to another family.
+function inRunFamily(family, id) {
+  const escaped = family.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return id === family || new RegExp(`^${escaped}-\\d{2,}$`).test(id);
+}
+
 // Resolve only from runtime ledgers. Reading candidates does not acquire
 // their locks; resumeRun still owns the lock and freshness checks.
 function resolveResumeRun(repoRoot, family, explicitRun) {
-  const pattern = new RegExp(
-    `^${family.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-\\d{2,}$`,
-  );
   if (explicitRun !== undefined) {
-    if (explicitRun !== family && !pattern.test(explicitRun)) {
+    if (!inRunFamily(family, explicitRun)) {
       throw new Error(
         `--run ${explicitRun} is not in run family ${family} of this config`,
       );
@@ -755,7 +772,12 @@ function resolveResumeRun(repoRoot, family, explicitRun) {
   }
   const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
   const runs = (existsSync(runsDir) ? readdirSync(runsDir) : [])
-    .filter((id) => pattern.test(id) && existsSync(ledgerPathFor(repoRoot, id)))
+    .filter(
+      (id) =>
+        id !== family &&
+        inRunFamily(family, id) &&
+        existsSync(ledgerPathFor(repoRoot, id)),
+    )
     .sort((a, b) => a.localeCompare(b, "en", { numeric: true }))
     .map((id) => ({
       id,
@@ -769,7 +791,7 @@ function resolveResumeRun(repoRoot, family, explicitRun) {
   if (open.length === 0) {
     const latest = runs.at(-1);
     throw new Error(
-      `no open run in family ${family}; ${latest ? `latest run ${latest.id}: ${latest.state.terminal.status}` : "no ledgers found"}; use --run <RUN-ID> to select an existing run explicitly`,
+      `no open run in family ${family}; ${latest ? `latest run ${latest.id}: ${latest.state.terminal.status}` : "no ledgers found"}; use --run <RUN-ID> to select an existing run explicitly, or run --new to start another attempt`,
     );
   }
   throw new Error(
@@ -777,8 +799,10 @@ function resolveResumeRun(repoRoot, family, explicitRun) {
   );
 }
 
-async function commandResume(flags) {
-  const options = loadRunConfig(flags, "resume");
+async function commandResume(
+  flags,
+  options = loadRunConfig(flags, "resume"),
+) {
   options.runId = resolveResumeRun(options.repoRoot, options.runId, flags.run);
   const prior = EventLedger.open(
     ledgerPathFor(options.repoRoot, options.runId),
@@ -792,7 +816,11 @@ async function commandResume(flags) {
       "legacy active run: finish or cancel with its 3.3.1 runtime; new attempts can use this version (docs/MIGRATION.md)",
     );
   }
-  assertRunConfiguration(prior.state, options);
+  // A finished run only reports its outcome: a config migrated since it ran
+  // must not turn "already terminal" into a configuration error.
+  if (!prior.state.terminal) {
+    assertRunConfiguration(prior.state, options);
+  }
   if (
     flags.adopt !== undefined &&
     prior.state.run?.deliveryChecks &&
@@ -827,6 +855,11 @@ async function commandResume(flags) {
   const repoLabel = repoLabelFor(options.repoRoot);
   if (!result.resumed) {
     console.log(`nothing to resume: ${result.reason}`);
+    if (result.state?.terminal) {
+      console.log(
+        "start another attempt with: buildbeat run --config <run-config.yaml> --new",
+      );
+    }
   }
   console.log(`ledger: ${toRepoRef(options.repoRoot, result.ledgerPath)}`);
   const ledger = EventLedger.open(result.ledgerPath);
@@ -840,14 +873,18 @@ async function commandResume(flags) {
   }
 }
 
-function commandInbox(flags) {
+function pendingFor(repoRoot, work) {
+  return listInbox(repoRoot).filter(
+    (row) => !work || row.work === work || row.corrupted,
+  );
+}
+
+function commandInbox(flags, rows = null) {
   if (!flags.repo) {
     throw new Error("inbox requires --repo");
   }
   const repoRoot = resolve(flags.repo);
-  const rows = listInbox(repoRoot).filter(
-    (row) => !flags.work || row.work === flags.work || row.corrupted,
-  );
+  rows ??= pendingFor(repoRoot, flags.work);
   if (rows.length === 0) {
     console.log("inbox empty: no runs waiting on a human");
     return;
@@ -1336,9 +1373,7 @@ function commandStatus(flags) {
       work: flags.work ?? null,
       repoLabel: repoLabelFor(repoRoot, flags.repo),
     });
-    const pending = listInbox(repoRoot).filter(
-      (row) => !flags.work || row.work === flags.work || row.corrupted,
-    );
+    const pending = pendingFor(repoRoot, flags.work);
     if (flags.json === "true")
       console.log(
         JSON.stringify(
@@ -1353,7 +1388,7 @@ function commandStatus(flags) {
       );
     else {
       console.log(renderOverview(rows));
-      if (pending.length) commandInbox(flags);
+      if (pending.length) commandInbox(flags, pending);
       if (!flags.work) console.log(renderMetrics(computeMetrics(repoRoot)));
     }
     return;
@@ -1384,15 +1419,18 @@ async function commandRun(flags) {
   const options = loadRunConfig(flags, "run");
   if (flags.new === "true" && (flags.run || flags.adopt))
     throw new Error("--new cannot be combined with --run or --adopt");
-  if (flags.new === "true") return commandStart({ ...flags, attempt: "new" });
-  if (flags.run || flags.adopt) return commandResume(flags);
+  if (flags.new === "true")
+    return commandStart({ ...flags, attempt: "new" }, options);
+  if (flags.run || flags.adopt) return commandResume(flags, options);
   // Resume an existing family, including its exact ID. Never interpret an
   // ambiguous, corrupt, or terminal run as permission to start another one.
   const dir = join(options.repoRoot, ".buildbeat", "runtime", "runs");
   const found =
     existsSync(dir) &&
     readdirSync(dir).some(
-      (id) => id === options.runId || id.startsWith(`${options.runId}-`),
+      (id) =>
+        inRunFamily(options.runId, id) &&
+        existsSync(ledgerPathFor(options.repoRoot, id)),
     );
   const records = join(
     options.repoRoot,
@@ -1403,15 +1441,13 @@ async function commandRun(flags) {
   );
   const archived =
     existsSync(records) &&
-    readdirSync(records).some(
-      (id) => id === options.runId || id.startsWith(`${options.runId}-`),
-    );
-  if (found) return commandResume(flags);
+    readdirSync(records).some((id) => inRunFamily(options.runId, id));
+  if (found) return commandResume(flags, options);
   if (archived)
     throw new Error(
       "this work has archived runs; inspect status, then use --new explicitly for a new attempt",
     );
-  return commandStart({ ...flags, attempt: "new" });
+  return commandStart({ ...flags, attempt: "new" }, options);
 }
 
 function commandDecide(flags) {
@@ -1662,11 +1698,7 @@ async function main() {
   }
   try {
     const flags = parseFlags(rest);
-    if (command === "observe") {
-      throw new Error(
-        "observe execution is retired; existing records are preserved. See docs/MIGRATION.md",
-      );
-    } else if (command === "run") {
+    if (command === "run") {
       await commandRun(flags);
     } else if (command === "decide") {
       commandDecide(flags);

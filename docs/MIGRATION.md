@@ -17,6 +17,11 @@ installed-tool upgrade, target-project migration or production change is implied
   records remain readable.
 - fast/standard/controlled are compatibility inputs, mapped to the same required
   artifacts and severity floor. controlled cannot silently fall back to standard.
+  A legacy config that names a workflow but no riskPreset had no artifact gate
+  and keeps none (it runs as fast); the merge evidence floor now always applies.
+- The legacy planner steps (entry intent/spec/plan) cannot be combined with a
+  preset that requires acceptance: the accepted artifact is bound and checked in
+  base before the run starts. Write, accept and commit it, then use entry: build.
 - Custom workflow graphs, policy files and release/observe execution are retired.
   Their configurations fail before starting workers. Finish/cancel active work
   using its existing 3.3.1 runtime; preserve the records and configure project

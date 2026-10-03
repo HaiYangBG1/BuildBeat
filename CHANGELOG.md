@@ -12,6 +12,7 @@
 - Replace programmable gates with built-in acceptance and current-candidate evidence/review checks. Freeze safeguards with each new run so approval and resume cannot bypass or weaken them.
 - Preserve official legacy delivery configurations and their exact workflow digest; reject unsupported custom/release configurations before side effects, with a migration route to finish active work on 3.3.1.
 - Preserve cache, recovery, scope checks, parallel isolation, notifications, event schema and archived release readback. Update package contents, first-run regression coverage, and bilingual guides together.
+- Review follow-ups: `run` only treats `<run>` and `<run>-NN` ledgers as its family; a finished run reports its outcome and points to `--new` instead of a configuration error; a legacy workflow config without riskPreset keeps having no artifact gate; legacy planner entry combined with an acceptance preset fails before any run; status hints name `run` / `work.md` for unified works.
 
 
 ## v3.3.1 — 2026-10-02（补丁：review 收敛判断认得出换了说法的同一问题；lessons 与发布 runbook 补齐）

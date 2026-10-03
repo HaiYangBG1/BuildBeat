@@ -109,7 +109,10 @@ export function sameIssue(a, b) {
 }
 
 export function readFindingsAccount(repoRoot, workId) {
-  const filePath = accountPath(repoRoot, workId);
+  return readFindingsFile(accountPath(repoRoot, workId));
+}
+
+export function readFindingsFile(filePath) {
   if (!existsSync(filePath)) {
     return [];
   }

@@ -6,6 +6,7 @@ import { join } from "node:path";
 import {
   fingerprintFinding,
   latestAdjudications,
+  readFindingsFile,
 } from "../runtime/findings.js";
 export class PolicyError extends Error {}
 const GRADES = { L0: 0, L1: 1, L2: 2, L3: 3, L4: 4 };
@@ -78,16 +79,9 @@ export function reviewClear(atMost, ctx) {
   // candidate SHA, so an older unsuppressed review must not undo a later
   // dismissal. Conversely, a later accept must reopen a formerly suppressed
   // finding; historical suppression alone cannot override that decision.
-  const account = ctx.workDir
-    ? join(ctx.workDir, "review-findings.jsonl")
-    : null;
-  const rows =
-    account && existsSync(account)
-      ? readFileSync(account, "utf8")
-          .split("\n")
-          .filter(Boolean)
-          .map((line) => JSON.parse(line))
-      : [];
+  const rows = ctx.workDir
+    ? readFindingsFile(join(ctx.workDir, "review-findings.jsonl"))
+    : [];
   const adjudications = latestAdjudications(rows);
   const severe = reviews
     .flatMap((e) =>

@@ -1441,12 +1441,11 @@ export function assertRunConfiguration(state, options) {
 }
 
 function resumeTarget(options, { ledger, ledgerPath }) {
-  const { repoRoot, workflowDigest, runId } = options;
+  const { repoRoot, runId } = options;
   const state = ledger.state;
   if (!state.run) {
     throw new OrchestratorError(`no ledger for run ${runId}; use startRun`);
   }
-  assertRunConfiguration(state, options);
   if (state.terminal) {
     return {
       early: {
@@ -1458,6 +1457,7 @@ function resumeTarget(options, { ledger, ledgerPath }) {
       },
     };
   }
+  assertRunConfiguration(state, options);
   if (state.run.status === "WAITING_HUMAN" && state.pendingHuman) {
     return {
       early: {

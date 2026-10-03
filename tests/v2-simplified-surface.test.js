@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
+import { DELIVERY_TEXT } from "../src/v2/engine/workflow.js";
 import { tempDir } from "./support/tmp.js";
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 function fixture() {
@@ -410,3 +411,102 @@ for (const mode of ["autocrlf", "attributes"]) {
     assert.equal(state.pendingHuman.transition, "enter-wait-merge");
   });
 }
+
+test("run ignores another family that only shares the run id prefix", () => {
+  const f = fixture();
+  const other = new EventLedger(
+    join(f.root, ".buildbeat", "runtime", "runs", "RUN-S-OTHER-01", "events.jsonl"),
+  );
+  other.append({
+    type: "RUN_CREATED",
+    actor: { kind: "kernel", id: "fixture" },
+    run: "RUN-S-OTHER-01",
+    work: "WORK-OTHER",
+    data: {
+      workflowRef: "software-delivery",
+      workflowDigest: "sha256:x",
+      base: f.git("rev-parse", "HEAD"),
+      riskPreset: "standard",
+    },
+  });
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  const state = JSON.parse(
+    f.ok("status", "--repo", ".", "--run", "RUN-S-01", "--json"),
+  ).state;
+  assert.equal(state.run.work, "WORK-S");
+  assert.equal(state.pendingHuman.transition, "enter-wait-merge");
+});
+
+test("a finished legacy run reports its outcome and points to --new instead of a config error", () => {
+  const f = fixture();
+  const ledger = new EventLedger(
+    join(f.root, ".buildbeat", "runtime", "runs", "RUN-S", "events.jsonl"),
+  );
+  ledger.append({
+    type: "RUN_CREATED",
+    actor: { kind: "kernel", id: "legacy-fixture" },
+    run: "RUN-S",
+    work: "WORK-S",
+    data: {
+      workflowRef: "software-delivery",
+      workflowDigest: "sha256:legacy",
+      base: f.git("rev-parse", "HEAD"),
+      riskPreset: "standard",
+    },
+  });
+  ledger.append({
+    type: "RUN_TERMINAL",
+    actor: { kind: "kernel", id: "legacy-fixture" },
+    data: { status: "SUCCEEDED", reason: "merged" },
+  });
+  const out = f.ok("run", "--config", f.config);
+  assert.match(out, /run is terminal/);
+  assert.match(out, /--new/);
+});
+
+function useLegacyWorkflow(f, text, extra = "") {
+  writeFileSync(join(f.dir, "workflow.yaml"), text);
+  writeFileSync(f.config, `${f.text}workflow: workflow.yaml\n${extra}`);
+  f.git("rm", "-q", "delivery/work/WORK-S/work.md");
+  writeFileSync(join(f.dir, "plan.md"), "# Plan\nBuild feature.\n");
+  f.git("add", ".");
+  f.git("commit", "-qm", "legacy layout");
+}
+
+test("a legacy workflow config without riskPreset keeps having no artifact gate", () => {
+  const f = fixture();
+  useLegacyWorkflow(f, DELIVERY_TEXT);
+  f.ok("run", "--config", f.config);
+  const state = JSON.parse(
+    f.ok("status", "--repo", ".", "--run", "RUN-S-01", "--json"),
+  ).state;
+  assert.equal(state.run.deliveryChecks.artifact, "plan");
+  assert.equal(state.run.deliveryChecks.requireAcceptance, false);
+  assert.equal(state.pendingHuman.transition, "enter-wait-merge");
+});
+
+test("legacy planner entry with an acceptance preset fails before any run exists", () => {
+  const f = fixture();
+  const legacy = DELIVERY_TEXT.replace("entry: build", "entry: intent").replace(
+    "steps:\n",
+    "steps:\n  - id: intent\n    worker: planner\n  - id: spec\n    worker: planner\n    optional: true\n    requiredWhen: ui-delivery\n  - id: plan\n    worker: planner\n",
+  );
+  useLegacyWorkflow(f, legacy, "riskPreset: standard\n");
+  for (const args of [["check"], ["run"]]) {
+    const no = f.call(...args, "--config", f.config);
+    assert.notEqual(no.status, 0);
+    assert.match(no.stderr, /retired planner steps/);
+  }
+  assert.equal(existsSync(join(f.root, ".buildbeat", "runtime", "runs")), false);
+});
+
+test("status points a ready work at the consolidated run command", () => {
+  const f = fixture();
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  const overview = JSON.parse(
+    f.ok("status", "--repo", ".", "--work", "WORK-S", "--json"),
+  );
+  assert.equal(overview.works[0].stage, "READY_TO_RUN");
+  assert.match(overview.works[0].next, /^buildbeat run --config /);
+});

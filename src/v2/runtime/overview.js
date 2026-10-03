@@ -258,7 +258,7 @@ export function computeOverview(
           : intent.accepted
             ? "plan"
             : "intent,plan";
-        next = `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact ${artifacts} --by <you>${plan.stale ? "   # plan changed since acceptance" : ""}`;
+        next = `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact ${artifacts} --by <you>${plan.stale ? `   # ${unified ? "work.md" : "plan"} changed since acceptance` : ""}`;
       } else {
         stage = "READY_TO_RUN";
         const configs = readdirSync(workDir).filter((name) =>
@@ -266,7 +266,7 @@ export function computeOverview(
         );
         next =
           configs.length > 0
-            ? `buildbeat start --config delivery/work/${workId}/${configs[0]} --attempt new`
+            ? `buildbeat run --config delivery/work/${workId}/${configs[0]}`
             : `no run-config in delivery/work/${workId}: write one, or close it with a decisions.jsonl row {"transition":"close-work","decision":"closed","subject":{"result":"..."}} if it was doc-only`;
       }
     } else if (latest.status === "RUNNING") {
@@ -301,8 +301,8 @@ export function computeOverview(
     } else {
       stage = `STOPPED_${latest.status}`;
       next = plan.accepted
-        ? `decide: retry (buildbeat start ... --attempt new) or close the work`
-        : `plan not accepted (${plan.exists ? "draft" : "missing"}); fix that before another run`;
+        ? `decide: retry (buildbeat run --config <run-config.yaml> --new) or close the work`
+        : `${unified ? "work.md" : "plan"} not accepted (${plan.exists ? "draft" : "missing"}); fix that before another run`;
     }
     rows.push({
       work: workId,
