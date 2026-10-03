@@ -372,7 +372,14 @@ test("workers cannot start from a different committed work artifact than the acc
   const result = f.call("run", "--config", f.config);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /commit the accepted work artifact/);
-  assert.equal(existsSync(join(f.root, ".buildbeat")), false);
+  // Refused by the comparison on the isolated checkout: nothing recorded,
+  // and the checkout and its branch are gone again.
+  assert.equal(
+    existsSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/events.jsonl")),
+    false,
+  );
+  assert.equal(existsSync(join(f.root, ".buildbeat/worktrees/RUN-S-01")), false);
+  assert.equal(f.git("branch", "--list", "run/RUN-S-01"), "");
   f.git("add", "delivery/work/WORK-S/work.md");
   f.git("commit", "-qm", "accepted scope");
   f.ok("run", "--config", f.config);
@@ -722,4 +729,20 @@ test("a checkout that fails the start check is discarded before anything is reco
   );
   const started = startRun({ ...options, verifyCheckout: undefined });
   assert.equal(started.state.run.id, "RUN-S-01");
+});
+
+test("an accepted work artifact larger than a pipe buffer still starts", () => {
+  const f = fixture();
+  writeFileSync(
+    join(f.dir, "work.md"),
+    `# Goal\nBuild feature.\n${"x".repeat(2 * 1024 * 1024)}\n`,
+  );
+  f.git("add", "delivery/work/WORK-S/work.md");
+  f.git("commit", "-qm", "large work description");
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  const state = JSON.parse(
+    f.ok("status", "--repo", ".", "--run", "RUN-S-01", "--json"),
+  ).state;
+  assert.equal(state.pendingHuman.transition, "enter-wait-merge");
 });

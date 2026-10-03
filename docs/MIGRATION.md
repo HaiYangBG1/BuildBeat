@@ -44,9 +44,9 @@ Creation freezes deliveryChecks in the event ledger. Resume cannot weaken them;
 approval derives them from the ledger even without --config. Changing work.md
 invalidates its acceptance and cannot authorize an old candidate implicitly;
 the same holds for a candidate that edits its own copy, and for intent.md under
-the legacy controlled safeguards. Start pins the base to one commit, checks the
-artifacts as that commit checks them out, and checks the isolated checkout
-itself again before the run is recorded.
+the legacy controlled safeguards. Start pins the base to one commit, refuses an
+artifact missing from it, and compares the isolated checkout itself with the
+accepted bytes before the run is recorded.
 Legacy projects may keep their old files; do not add work.md in the middle of an
 active legacy run because that changes the bound artifact.
 

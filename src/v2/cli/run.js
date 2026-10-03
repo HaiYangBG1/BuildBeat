@@ -613,37 +613,6 @@ function spawnStallWatcher(repoRoot, runId, stallAfterMs) {
   return true;
 }
 
-// Text a checkout of `commit` writes at `ref`, or null when the path is
-// absent: checkout filters with the attributes of that commit's own tree
-// (archive would also apply export-ignore/export-subst, which checkout does
-// not). Git without --attr-source falls back to the current checkout's
-// attributes; startRun re-checks the real worktree either way.
-function checkoutText(repoRoot, commit, ref) {
-  const read = (attrSource) =>
-    execFileSync(
-      "git",
-      [
-        "-C",
-        repoRoot,
-        ...(attrSource ? [`--attr-source=${commit}`] : []),
-        "cat-file",
-        "--filters",
-        `${commit}:${ref}`,
-      ],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-    );
-  try {
-    return read(true);
-  } catch (error) {
-    if (!/unknown option/i.test(String(error.stderr ?? ""))) return null;
-  }
-  try {
-    return read(false);
-  } catch {
-    return null;
-  }
-}
-
 const textDigest = (text) =>
   `sha256:${createHash("sha256").update(text, "utf8").digest("hex")}`;
 
@@ -685,12 +654,21 @@ async function commandStart(flags, options = loadRunConfig(flags, "start")) {
       );
     }
   };
-  for (const { artifact, digest } of committed) {
+  // Presence is checked before anything is created. Content is compared on
+  // the isolated checkout itself: Git applies that checkout's attributes and
+  // filters there, which no pre-read reproduces on every Git version.
+  for (const { artifact } of committed) {
     const ref = `delivery/work/${options.workId}/${artifact}.md`;
-    mismatch(ref, checkoutText(options.repoRoot, options.base, ref), digest);
+    try {
+      execFileSync(
+        "git",
+        ["-C", options.repoRoot, "cat-file", "-e", `${options.base}:${ref}`],
+        { stdio: "ignore" },
+      );
+    } catch {
+      mismatch(ref, null);
+    }
   }
-  // The same check on the isolated checkout itself, before the ledger is
-  // written: it is what workers actually read.
   options.verifyCheckout = (worktreePath) => {
     for (const { artifact, digest } of committed) {
       const ref = `delivery/work/${options.workId}/${artifact}.md`;
