@@ -128,7 +128,7 @@ test("nextReply offers the findings commands for a review that is not converging
     repoLabel: ".",
     state: { run: { id: "RUN-N", work: "WORK-N" }, pendingHuman: { transition: "enter-fix", kind: "review-not-converging" } },
   });
-  assert.match(reply[0], /findings list --repo \. --work WORK-N/);
-  assert.match(reply[1], /findings adjudicate .* --action accept\|dismiss/);
+  assert.match(reply[0], /status --repo \. --work WORK-N/);
+  assert.match(reply[1], /decide .* --action accept\|dismiss/);
   assert.match(reply[2], /approve .* --transition enter-fix/);
 });

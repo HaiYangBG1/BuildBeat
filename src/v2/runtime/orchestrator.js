@@ -11,7 +11,13 @@
 // anything changed goes APPROVAL_STALE and back to WAITING_HUMAN.
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 
 import { nextStep } from "../engine/workflow.js";
@@ -32,7 +38,12 @@ import { writeRunRecord } from "./run-record.js";
 import { computeWorkCost } from "./work-cost.js";
 import { assertRequires } from "./env-contract.js";
 import { materialisePrompt } from "./envelope.js";
-import { cacheKey, findReusableEvidence, lastReviewedCandidate, treeHash } from "./cache.js";
+import {
+  cacheKey,
+  findReusableEvidence,
+  lastReviewedCandidate,
+  treeHash,
+} from "./cache.js";
 import {
   buildAnchor,
   fingerprintFinding,
@@ -106,7 +117,12 @@ function holdRunLock(repoRoot, runId, fn) {
   }
 }
 
-function withRunLocks(repoRoot, runId, fn, { workId = null, parallel = false } = {}) {
+function withRunLocks(
+  repoRoot,
+  runId,
+  fn,
+  { workId = null, parallel = false } = {},
+) {
   if (!parallel) {
     lockActive(repoRoot);
     try {
@@ -114,8 +130,14 @@ function withRunLocks(repoRoot, runId, fn, { workId = null, parallel = false } =
       if (running.length > 0) {
         throw new OrchestratorError(
           `another run is active in this repository (parallel run(s) ${running
-            .map((marker) => (marker.owner ? `${marker.run}, ${describeLockOwner(marker.owner)}` : marker.run))
-            .join("; ")}); this run is exclusive (set parallel: true in its run config to drive alongside other works)`,
+            .map((marker) =>
+              marker.owner
+                ? `${marker.run}, ${describeLockOwner(marker.owner)}`
+                : marker.run,
+            )
+            .join(
+              "; ",
+            )}); this run is exclusive (set parallel: true in its run config to drive alongside other works)`,
         );
       }
       return holdRunLock(repoRoot, runId, fn);
@@ -192,7 +214,10 @@ export function parseEnvelope(raw) {
         !/^P[0-3]$/.test(finding.severity ?? "") ||
         typeof finding.summary !== "string"
       ) {
-        return { envelope: null, error: "each finding needs severity P0-P3 and a summary" };
+        return {
+          envelope: null,
+          error: "each finding needs severity P0-P3 and a summary",
+        };
       }
     }
   }
@@ -230,15 +255,19 @@ function makeContext(options, ledger, workspace) {
   // A review step without an explicit cap takes the work-level cap as its run
   // cap, so review rounds are counted in one unit: the work.
   context.runBudgets = options.budgets ?? {};
-  context.reviewRoundsPerWork = context.runBudgets.reviewRoundsPerWork ?? DEFAULT_REVIEW_ROUNDS_PER_WORK;
+  context.reviewRoundsPerWork =
+    context.runBudgets.reviewRoundsPerWork ?? DEFAULT_REVIEW_ROUNDS_PER_WORK;
   context.budgetLimitFor = (step) =>
     (context.runBudgets.maxAttempts?.[step] ??
       workflow.budgets?.maxAttempts?.[step] ??
-      (isReviewStep(step, workflow.steps.find((item) => item.id === step))
+      (isReviewStep(
+        step,
+        workflow.steps.find((item) => item.id === step),
+      )
         ? context.reviewRoundsPerWork
-        : maxAttemptsPerStep)) +
-    (ledger.state.budgetExtensions?.[step] ?? 0);
-  context.maxAttemptsFor = (step) => context.budgetLimitFor(step) +
+        : maxAttemptsPerStep)) + (ledger.state.budgetExtensions?.[step] ?? 0);
+  context.maxAttemptsFor = (step) =>
+    context.budgetLimitFor(step) +
     (ledger.state.steps[step]?.infraAttempts ?? 0) +
     (ledger.state.steps[step]?.freeAttempts ?? 0);
   // Refunds must not move this ceiling: otherwise a success-only loop has
@@ -253,15 +282,21 @@ function makeContext(options, ledger, workspace) {
   context.adapterConfigs = options.adapterConfigs ?? {};
   context.policyCtx = () => ({
     state: ledger.state,
-    candidate: ledger.state.workspaces[workspace.workspaceId]?.candidate ?? null,
+    candidate:
+      ledger.state.workspaces[workspace.workspaceId]?.candidate ?? null,
     workDir: join(repoRoot, "delivery", "work", ledger.state.run?.work ?? ""),
     worktreePath: workspace.worktreePath,
     readWorktree: () =>
-      existsSync(workspace.worktreePath) ? readback(workspace.worktreePath) : null,
+      existsSync(workspace.worktreePath)
+        ? readback(workspace.worktreePath)
+        : null,
   });
   context.subjectNow = () => {
-    const candidate = ledger.state.workspaces[workspace.workspaceId]?.candidate ?? workspace.base;
-    const lastEvidence = ledger.state.evidence[ledger.state.evidence.length - 1];
+    const candidate =
+      ledger.state.workspaces[workspace.workspaceId]?.candidate ??
+      workspace.base;
+    const lastEvidence =
+      ledger.state.evidence[ledger.state.evidence.length - 1];
     return {
       candidate,
       planDigest: ledger.state.run?.planDigest ?? "UNVERIFIED",
@@ -273,7 +308,13 @@ function makeContext(options, ledger, workspace) {
       type: "HUMAN_REQUESTED",
       actor: KERNEL,
       ts: context.now(),
-      data: { transition, subject: context.subjectNow(), reasons, kind, ...(grants.length ? { grants } : {}) },
+      data: {
+        transition,
+        subject: context.subjectNow(),
+        reasons,
+        kind,
+        ...(grants.length ? { grants } : {}),
+      },
     });
   };
   return context;
@@ -283,17 +324,24 @@ function makeContext(options, ledger, workspace) {
 function budgetUsage(context, step) {
   const state = context.ledger.state.steps[step];
   const attempts = state?.attempts ?? 0;
-  const used = attempts - (state?.infraAttempts ?? 0) - (state?.freeAttempts ?? 0);
-  const failures = context.ledger.events.filter((event) =>
-    event.type === "STEP_FINISHED" && event.data.step === step &&
-    event.data.status !== "succeeded" && event.data.infra !== true).length;
+  const used =
+    attempts - (state?.infraAttempts ?? 0) - (state?.freeAttempts ?? 0);
+  const failures = context.ledger.events.filter(
+    (event) =>
+      event.type === "STEP_FINISHED" &&
+      event.data.step === step &&
+      event.data.status !== "succeeded" &&
+      event.data.infra !== true,
+  ).length;
   return { attempts, used, failures, limit: context.budgetLimitFor(step) };
 }
 
 function budgetReasons(context, step, safeguard = false) {
   const { attempts, used, failures, limit } = budgetUsage(context, step);
-  const charging = context.workflow.steps.find((item) => item.id === step)?.readonly
-    ? "each round is charged" : "successful attempts are not charged";
+  const charging = context.workflow.steps.find((item) => item.id === step)
+    ?.readonly
+    ? "each round is charged"
+    : "successful attempts are not charged";
   return [
     safeguard
       ? `${step} budget exhausted (runaway safeguard): ${attempts}/${context.totalAttemptsFor(step)} total attempt(s), ${failures} real failure(s)`
@@ -306,10 +354,15 @@ function workReviewBudget(context, step) {
   const stepDef = context.workflow.steps.find((item) => item.id === step);
   const cap = context.reviewRoundsPerWork;
   if (!isReviewStep(step, stepDef)) return null;
-  const prior = computeWorkCost(context.repoRoot, context.ledger.state.run.work, {
-    excludeRun: context.ledger.state.run.id,
-  });
-  const rounds = prior.reviewRounds + (context.ledger.state.steps[step]?.attempts ?? 0);
+  const prior = computeWorkCost(
+    context.repoRoot,
+    context.ledger.state.run.work,
+    {
+      excludeRun: context.ledger.state.run.id,
+    },
+  );
+  const rounds =
+    prior.reviewRounds + (context.ledger.state.steps[step]?.attempts ?? 0);
   const allowed = cap + (context.ledger.state.workReviewGrants ?? 0);
   return { rounds, allowed, exhausted: rounds >= allowed };
 }
@@ -318,11 +371,16 @@ function workReviewBudget(context, step) {
 // at stop time, so one approval lifts both layers (run and work) at once.
 function budgetGrants(context, step) {
   const grants = [];
-  if ((context.ledger.state.steps[step]?.attempts ?? 0) >= context.maxAttemptsFor(step) ||
-      (context.ledger.state.steps[step]?.attempts ?? 0) >= context.totalAttemptsFor(step)) {
+  if (
+    (context.ledger.state.steps[step]?.attempts ?? 0) >=
+      context.maxAttemptsFor(step) ||
+    (context.ledger.state.steps[step]?.attempts ?? 0) >=
+      context.totalAttemptsFor(step)
+  ) {
     grants.push({ step, scope: "run" });
   }
-  if (workReviewBudget(context, step)?.exhausted) grants.push({ step, scope: "work" });
+  if (workReviewBudget(context, step)?.exhausted)
+    grants.push({ step, scope: "work" });
   return grants;
 }
 
@@ -340,25 +398,44 @@ function reviewRoundAttempt(ref, step) {
 // converge; a shrinking set of new findings keeps going without asking
 // anyone. Returns the stop reason, or null.
 function reviewNotConverging(context, step, blockingFindings) {
-  const rounds = context.ledger.state.evidence.filter((item) =>
-    item.kind === "review" && reviewRoundAttempt(item.ref ?? "", step) !== null);
+  const rounds = context.ledger.state.evidence.filter(
+    (item) =>
+      item.kind === "review" &&
+      reviewRoundAttempt(item.ref ?? "", step) !== null,
+  );
   if (rounds.length < 2) return null;
   const adjudicated = latestAdjudications(
     readFindingsAccount(context.repoRoot, context.ledger.state.run.work),
   );
-  const blocking = (round) => (round.findings ?? [])
-    .filter((finding) => finding.severity === "P0" || finding.severity === "P1")
-    .filter((finding) => adjudicated.get(fingerprintFinding(finding))?.action !== "dismiss");
-  const earlier = rounds.slice(0, -1).flatMap((round, index) =>
-    blocking(round).map((finding) => ({ finding, round: index + 1 })));
-  const lastCount = new Set(blocking(rounds.at(-2)).map(fingerprintFinding)).size;
-  const current = [...new Map(blockingFindings.map((finding) => [fingerprintFinding(finding), finding])).values()];
+  const blocking = (round) =>
+    (round.findings ?? [])
+      .filter(
+        (finding) => finding.severity === "P0" || finding.severity === "P1",
+      )
+      .filter(
+        (finding) =>
+          adjudicated.get(fingerprintFinding(finding))?.action !== "dismiss",
+      );
+  const earlier = rounds
+    .slice(0, -1)
+    .flatMap((round, index) =>
+      blocking(round).map((finding) => ({ finding, round: index + 1 })),
+    );
+  const lastCount = new Set(blocking(rounds.at(-2)).map(fingerprintFinding))
+    .size;
+  const current = [
+    ...new Map(
+      blockingFindings.map((finding) => [fingerprintFinding(finding), finding]),
+    ).values(),
+  ];
   const repeated = current.flatMap((finding) => {
     const match = earlier.find((item) => sameIssue(finding, item.finding));
     if (!match) return [];
     const now = fingerprintFinding(finding);
     const before = fingerprintFinding(match.finding);
-    return [now === before ? now : `${now} restates round ${match.round} ${before}`];
+    return [
+      now === before ? now : `${now} restates round ${match.round} ${before}`,
+    ];
   });
   if (repeated.length > 0) {
     return `${step} is not converging: ${repeated.length} blocking finding(s) came back after fix (${repeated.join(", ")}); approving runs fix + re-verify + one more review round, dismissing a finding stops it blocking`;
@@ -373,7 +450,11 @@ function reviewNotConverging(context, step, blockingFindings) {
 // verdict as a POLICY_EVALUATED event, and reports what the kernel must do.
 // ADVISORY failures are recorded but never gate (doctor reports the gap).
 function runPolicyGate(context, type, appliesTo) {
-  const rows = evaluatePolicies(context.policies, { type, appliesTo }, context.policyCtx());
+  const rows = evaluatePolicies(
+    context.policies,
+    { type, appliesTo },
+    context.policyCtx(),
+  );
   for (const row of rows) {
     context.ledger.append({
       type: "POLICY_EVALUATED",
@@ -388,7 +469,9 @@ function runPolicyGate(context, type, appliesTo) {
       },
     });
   }
-  const enforced = rows.filter((row) => row.enforcement !== "ADVISORY" && row.result !== "PASS");
+  const enforced = rows.filter(
+    (row) => row.enforcement !== "ADVISORY" && row.result !== "PASS",
+  );
   if (enforced.length === 0) {
     return { action: "continue", rows };
   }
@@ -427,8 +510,15 @@ function settleOutcome(context, step, outcome, tree, exec) {
     }
     // A step that failed its final attempt can never run again, so routing
     // to fix would spend a worker on a candidate nothing can verify.
-    if ((ledger.state.steps[step]?.attempts ?? 0) >= context.maxAttemptsFor(step)) {
-      context.waitHuman(`resume-${step}`, budgetReasons(context, step), "budget", budgetGrants(context, step));
+    if (
+      (ledger.state.steps[step]?.attempts ?? 0) >= context.maxAttemptsFor(step)
+    ) {
+      context.waitHuman(
+        `resume-${step}`,
+        budgetReasons(context, step),
+        "budget",
+        budgetGrants(context, step),
+      );
       return null;
     }
   }
@@ -450,7 +540,9 @@ function settleOutcome(context, step, outcome, tree, exec) {
       phase: "transition",
       result,
       enforcement: "LOCAL_ENFORCED",
-      reason: to ? `(${step}, ${outcome}) -> ${to}` : `no transition for (${step}, ${outcome})`,
+      reason: to
+        ? `(${step}, ${outcome}) -> ${to}`
+        : `no transition for (${step}, ${outcome})`,
     },
   });
   if (!to) {
@@ -474,8 +566,17 @@ function settleOutcome(context, step, outcome, tree, exec) {
     actor: KERNEL,
     ts: now(),
     data: {
-      resumePoint: { step: to, attempt: (ledger.state.steps[to]?.attempts ?? 0) + 1 },
-      workspaceStates: [{ workspaceId: workspace.workspaceId, head: tree.head, dirty: tree.dirty }],
+      resumePoint: {
+        step: to,
+        attempt: (ledger.state.steps[to]?.attempts ?? 0) + 1,
+      },
+      workspaceStates: [
+        {
+          workspaceId: workspace.workspaceId,
+          head: tree.head,
+          dirty: tree.dirty,
+        },
+      ],
     },
   });
   return to;
@@ -501,7 +602,9 @@ function checkBeforeStep(context, step, { skipBoundary }) {
     return null;
   }
   if (context.stopAt.includes(step) && !skipBoundary) {
-    context.waitHuman(`enter-${step}`, [`automation boundary: stopAt includes ${step}`]);
+    context.waitHuman(`enter-${step}`, [
+      `automation boundary: stopAt includes ${step}`,
+    ]);
     return null;
   }
   const stepDef = workflow.steps.find((candidate) => candidate.id === step);
@@ -551,12 +654,22 @@ function checkBeforeStep(context, step, { skipBoundary }) {
   const attempt = (ledger.state.steps[step]?.attempts ?? 0) + 1;
   const maxAttempts = context.maxAttemptsFor(step);
   if (attempt > maxAttempts) {
-    context.waitHuman(`resume-${step}`, budgetReasons(context, step), "budget", budgetGrants(context, step));
+    context.waitHuman(
+      `resume-${step}`,
+      budgetReasons(context, step),
+      "budget",
+      budgetGrants(context, step),
+    );
     return null;
   }
 
   if (attempt > context.totalAttemptsFor(step)) {
-    context.waitHuman(`resume-${step}`, budgetReasons(context, step, true), "budget", budgetGrants(context, step));
+    context.waitHuman(
+      `resume-${step}`,
+      budgetReasons(context, step, true),
+      "budget",
+      budgetGrants(context, step),
+    );
     return null;
   }
 
@@ -582,14 +695,24 @@ function beginStep(context, step, stepDef, attempt) {
     },
   });
   const before = stepDef.readonly ? readback(workspace.worktreePath) : null;
-  const outputsDir = join(context.runtimeDir, "runs", ledger.state.run.id, "outputs");
+  const outputsDir = join(
+    context.runtimeDir,
+    "runs",
+    ledger.state.run.id,
+    "outputs",
+  );
   mkdirSync(outputsDir, { recursive: true });
   const outputPath = join(outputsDir, `${step}-${attempt}.json`);
   // Anchored review: readonly (reviewer) steps receive the adjudicated
   // findings history so a fresh reviewer inherits settled verdicts instead
   // of re-litigating them; writing steps get the latest review findings
   // with their adjudication status (the fixer's worklist).
-  const input = { workId: ledger.state.run.work, runId: ledger.state.run.id, step, attempt };
+  const input = {
+    workId: ledger.state.run.work,
+    runId: ledger.state.run.id,
+    step,
+    attempt,
+  };
   const anchor = buildAnchor(context.repoRoot, ledger.state.run.work);
   if (anchor && stepDef.readonly) {
     input.anchor = anchor;
@@ -605,7 +728,8 @@ function beginStep(context, step, stepDef, attempt) {
         severity: finding.severity,
         summary: finding.summary,
         fingerprint: fingerprintFinding(finding),
-        adjudication: adjudicated.get(fingerprintFinding(finding))?.action ?? "open",
+        adjudication:
+          adjudicated.get(fingerprintFinding(finding))?.action ?? "open",
       }));
     }
   }
@@ -621,13 +745,23 @@ function beginStep(context, step, stepDef, attempt) {
     repoRoot: context.repoRoot,
   });
   if (prompt) {
-    input.envelope = { promptRef: prompt.ref, file: prompt.file, digest: context.envelope.digest, vars: context.envelope.vars };
+    input.envelope = {
+      promptRef: prompt.ref,
+      file: prompt.file,
+      digest: context.envelope.digest,
+      vars: context.envelope.vars,
+    };
   }
   // Incremental review (C7): tell a reviewer which candidate the last
   // review saw when it is an ancestor of this one.
   if (stepDef.readonly) {
     const head = before.head;
-    const lastReviewed = lastReviewedCandidate(context.repoRoot, ledger.state.run.work, workspace.worktreePath, head);
+    const lastReviewed = lastReviewedCandidate(
+      context.repoRoot,
+      ledger.state.run.work,
+      workspace.worktreePath,
+      head,
+    );
     if (lastReviewed) {
       input.lastReviewed = lastReviewed;
     }
@@ -637,7 +771,14 @@ function beginStep(context, step, stepDef, attempt) {
 
 // Runs the worker, or references identical passed evidence (verification
 // reuse), then records the command evidence for the tree git reads back.
-function executeOrReuse(context, step, stepDef, adapter, attempt, { before, outputPath, input, prompt }) {
+function executeOrReuse(
+  context,
+  step,
+  stepDef,
+  adapter,
+  attempt,
+  { before, outputPath, input, prompt },
+) {
   const { ledger, workspace, now } = context;
   // Verification reuse (C7): same tree + same worker + same envelope that
   // already passed is referenced, not re-run. Failures always re-run.
@@ -694,7 +835,7 @@ function executeOrReuse(context, step, stepDef, adapter, attempt, { before, outp
     attempt,
     execResult: exec,
     subject: tree.head,
-    grade: reused ? reused.grade : stepDef.grade ?? "L2",
+    grade: reused ? reused.grade : (stepDef.grade ?? "L2"),
     redact: context.redact,
   });
   ledger.append({
@@ -709,7 +850,15 @@ function executeOrReuse(context, step, stepDef, adapter, attempt, { before, outp
       status: evidence.status,
       grade: evidence.grade,
       ...(stepCacheKey ? { cacheKey: stepCacheKey } : {}),
-      ...(reused ? { reused: { run: reused.run, evidenceRef: reused.evidenceRef, digest: reused.digest } } : {}),
+      ...(reused
+        ? {
+            reused: {
+              run: reused.run,
+              evidenceRef: reused.evidenceRef,
+              digest: reused.digest,
+            },
+          }
+        : {}),
     },
   });
 
@@ -720,11 +869,21 @@ function executeOrReuse(context, step, stepDef, adapter, attempt, { before, outp
 // worker envelope, status and infrastructure failures, review findings,
 // scope, the pinned candidate and post policies. Returns the result to
 // route, or null when the run stopped.
-function recordStepResult(context, step, stepDef, attempt, { before, outputPath }, { exec, tree }) {
+function recordStepResult(
+  context,
+  step,
+  stepDef,
+  attempt,
+  { before, outputPath },
+  { exec, tree },
+) {
   const { ledger, workspace, now } = context;
   // Read-only enforcement: a reviewer that changed the workspace is a
   // policy violation, not a candidate (invariants 9/17).
-  if (stepDef.readonly && (tree.head !== before.head || tree.dirty !== before.dirty)) {
+  if (
+    stepDef.readonly &&
+    (tree.head !== before.head || tree.dirty !== before.dirty)
+  ) {
     ledger.append({
       type: "POLICY_EVALUATED",
       actor: KERNEL,
@@ -751,7 +910,11 @@ function recordStepResult(context, step, stepDef, attempt, { before, outputPath 
 
   let envelopeRaw = exec.envelope;
   if (exec.envelope !== undefined && exec.envelope !== null) {
-    writeFileSync(outputPath, `${JSON.stringify(exec.envelope, null, 2)}\n`, "utf8");
+    writeFileSync(
+      outputPath,
+      `${JSON.stringify(exec.envelope, null, 2)}\n`,
+      "utf8",
+    );
   } else if (existsSync(outputPath)) {
     envelopeRaw = readFileSync(outputPath, "utf8");
   }
@@ -789,8 +952,14 @@ function recordStepResult(context, step, stepDef, attempt, { before, outputPath 
     type: "STEP_FINISHED",
     actor: KERNEL,
     ts: now(),
-    data: { step, attempt, status: stepStatus, exitCode: exec.exitCode,
-      ...(infra ? { infra: true } : {}), ...(free ? { free: true } : {}) },
+    data: {
+      step,
+      attempt,
+      status: stepStatus,
+      exitCode: exec.exitCode,
+      ...(infra ? { infra: true } : {}),
+      ...(free ? { free: true } : {}),
+    },
   });
   ledger.append({
     type: "BUDGET_CONSUMED",
@@ -813,7 +982,11 @@ function recordStepResult(context, step, stepDef, attempt, { before, outputPath 
       `resume-${step}`,
       [
         `worker infrastructure failure at ${step}: ${cause}; not a candidate defect, attempt not charged`,
-        ...(tree.dirty ? [`the failed worker left the worktree dirty; inspect before rerunning`] : []),
+        ...(tree.dirty
+          ? [
+              `the failed worker left the worktree dirty; inspect before rerunning`,
+            ]
+          : []),
         `approve resume-${step} to rerun once the backend/environment is back; reject to end the run`,
       ],
       "infra",
@@ -855,7 +1028,9 @@ function recordStepResult(context, step, stepDef, attempt, { before, outputPath 
         status: blockingFindings.length > 0 ? "failed" : "passed",
         grade: "L2",
         findings: envelope.findings,
-        ...(suppressed.length > 0 ? { suppressedFingerprints: suppressed } : {}),
+        ...(suppressed.length > 0
+          ? { suppressedFingerprints: suppressed }
+          : {}),
       },
     });
   }
@@ -869,7 +1044,8 @@ function recordStepResult(context, step, stepDef, attempt, { before, outputPath 
       (path) =>
         !context.allowedPaths.some(
           (prefix) =>
-            path === prefix || path.startsWith(prefix.endsWith("/") ? prefix : `${prefix}/`),
+            path === prefix ||
+            path.startsWith(prefix.endsWith("/") ? prefix : `${prefix}/`),
         ),
     );
     if (violations.length > 0) {
@@ -938,7 +1114,12 @@ function recordStepResult(context, step, stepDef, attempt, { before, outputPath 
 // Settles the outcome and picks the next step; blocking findings stop once
 // for triage, the review budget or a review that is not converging before
 // any fixer runs. Returns the next step, or null when the run stopped.
-function routeAfterStep(context, step, stepDef, { stepStatus, blockingFindings, tree, exec }) {
+function routeAfterStep(
+  context,
+  step,
+  stepDef,
+  { stepStatus, blockingFindings, tree, exec },
+) {
   let outcome;
   if (stepStatus !== "succeeded") {
     outcome = "failed";
@@ -953,7 +1134,9 @@ function routeAfterStep(context, step, stepDef, { stepStatus, blockingFindings, 
   if (routed && outcome === "findings-blocking") {
     const review = isReviewStep(step, stepDef);
     const grants = review ? budgetGrants(context, step) : [];
-    const stalled = review ? reviewNotConverging(context, step, blockingFindings) : null;
+    const stalled = review
+      ? reviewNotConverging(context, step, blockingFindings)
+      : null;
     const triage = context.reviewTriage === "required";
     if (triage || grants.length || stalled) {
       const { used, limit, failures } = budgetUsage(context, step);
@@ -961,16 +1144,26 @@ function routeAfterStep(context, step, stepDef, { stepStatus, blockingFindings, 
       context.waitHuman(
         `enter-${routed}`,
         [
-          ...(grants.length ? [
-            `${step} budget exhausted: ${used}/${limit} review round(s) used in this run${workBudget ? `, ${workBudget.rounds}/${workBudget.allowed} across the work` : ""}, ${failures} real failure(s); approve enter-${routed} = fix + re-verify + one more review round; reject = end this run and decide the merge on the evidence you have`,
-          ] : []),
+          ...(grants.length
+            ? [
+                `${step} budget exhausted: ${used}/${limit} review round(s) used in this run${workBudget ? `, ${workBudget.rounds}/${workBudget.allowed} across the work` : ""}, ${failures} real failure(s); approve enter-${routed} = fix + re-verify + one more review round; reject = end this run and decide the merge on the evidence you have`,
+              ]
+            : []),
           ...(stalled ? [stalled] : []),
           `review found ${blockingFindings.length} blocking finding(s); ${triage ? "triage" : "approve another round"} before ${routed} runs`,
-          ...blockingFindings.slice(0, 5).map((finding) =>
-            `[${finding.severity} ${fingerprintFinding(finding)}] ${finding.summary.slice(0, 200)}`),
+          ...blockingFindings
+            .slice(0, 5)
+            .map(
+              (finding) =>
+                `[${finding.severity} ${fingerprintFinding(finding)}] ${finding.summary.slice(0, 200)}`,
+            ),
           `adjudicate fingerprints (findings adjudicate), then approve enter-${routed} or reject the run`,
         ],
-        triage ? "finding-triage" : grants.length ? "budget" : "review-not-converging",
+        triage
+          ? "finding-triage"
+          : grants.length
+            ? "budget"
+            : "review-not-converging",
         grants,
       );
       return null;
@@ -983,15 +1176,31 @@ function drive(context, startStep, { skipBoundaryOnce = false } = {}) {
   let step = startStep;
   let firstStep = true;
   while (step) {
-    const entry = checkBeforeStep(context, step, { skipBoundary: skipBoundaryOnce && firstStep });
+    const entry = checkBeforeStep(context, step, {
+      skipBoundary: skipBoundaryOnce && firstStep,
+    });
     firstStep = false;
     if (!entry) {
       return;
     }
     const { stepDef, adapter, attempt } = entry;
     const started = beginStep(context, step, stepDef, attempt);
-    const ran = executeOrReuse(context, step, stepDef, adapter, attempt, started);
-    const result = recordStepResult(context, step, stepDef, attempt, started, ran);
+    const ran = executeOrReuse(
+      context,
+      step,
+      stepDef,
+      adapter,
+      attempt,
+      started,
+    );
+    const result = recordStepResult(
+      context,
+      step,
+      stepDef,
+      attempt,
+      started,
+      ran,
+    );
     if (!result) {
       return;
     }
@@ -1052,7 +1261,10 @@ function supersedeWaitingRuns(repoRoot, workId, newRunId, now) {
         type: "RUN_TERMINAL",
         actor: KERNEL,
         ts: now(),
-        data: { status: "SUPERSEDED", reason: `superseded by ${newRunId} (same work ${workId})` },
+        data: {
+          status: "SUPERSEDED",
+          reason: `superseded by ${newRunId} (same work ${workId})`,
+        },
       });
       writeRunRecord({ repoRoot, ledger: locked, ts: now() });
       superseded.push(entry);
@@ -1064,7 +1276,14 @@ function supersedeWaitingRuns(repoRoot, workId, newRunId, now) {
 }
 
 function openLedgerFor(repoRoot, runId) {
-  const ledgerPath = join(repoRoot, ".buildbeat", "runtime", "runs", runId, "events.jsonl");
+  const ledgerPath = join(
+    repoRoot,
+    ".buildbeat",
+    "runtime",
+    "runs",
+    runId,
+    "events.jsonl",
+  );
   const ledger = EventLedger.open(ledgerPath);
   if (ledger.corruption) {
     throw new OrchestratorError(
@@ -1094,7 +1313,9 @@ export function startRun(options) {
     throw new OrchestratorError(`entry step not in workflow: ${entry}`);
   }
   if (!workflowDigest) {
-    throw new OrchestratorError("workflowDigest is required (pin what you run)");
+    throw new OrchestratorError(
+      "workflowDigest is required (pin what you run)",
+    );
   }
   // Environment contract first: a missing or too-old binary fails the start
   // with a readable cause instead of burning a run on an implicit PATH fact.
@@ -1103,59 +1324,83 @@ export function startRun(options) {
   }
   const { ledger, ledgerPath } = openLedgerFor(repoRoot, runId);
   if (ledger.events.length > 0) {
-    throw new OrchestratorError(`run ${runId} already has a ledger; use resumeRun`);
+    throw new OrchestratorError(
+      `run ${runId} already has a ledger; use resumeRun`,
+    );
   }
 
-  return withRunLocks(repoRoot, runId, () => {
-    const workspace = withRepoGitLock(repoRoot, () => createWorkspace({ repoRoot, runId, base }));
-    const context = makeContext(options, ledger, workspace);
-    const now = context.now;
-    const supersession =
-      options.supersede === "off"
-        ? { superseded: [], skipped: [] }
-        : supersedeWaitingRuns(repoRoot, workId, runId, now);
-    ledger.append({
-      type: "RUN_CREATED",
-      actor: KERNEL,
-      ts: now(),
-      run: runId,
-      work: workId,
-      data: {
-        workflowRef: workflow.name,
-        workflowDigest,
-        base: workspace.base,
-        riskPreset,
-        entry,
-        planDigest: planDigest ?? "UNVERIFIED",
-        intentDigest: intentDigest ?? "UNVERIFIED",
-        ...(supersession.superseded.length > 0 ? { supersedes: supersession.superseded } : {}),
-        ...(options.envelope ? { envelopeDigest: options.envelope.digest, envelopeSource: options.envelope.source } : {}),
-      },
-    });
-    ledger.append({ type: "RUN_STARTED", actor: KERNEL, ts: now(), data: {} });
-    ledger.append({
-      type: "WORKSPACE_BOUND",
-      actor: KERNEL,
-      ts: now(),
-      data: {
-        workspaceId: workspace.workspaceId,
-        repo: toRepoRef(repoRoot, repoRoot),
-        branch: workspace.branch,
-        worktreePath: toRepoRef(repoRoot, workspace.worktreePath),
-        base: workspace.base,
-      },
-    });
-    drive(context, entry);
-    return {
-      runId,
-      workId,
-      ledgerPath,
-      state: ledger.state,
-      workspace,
-      superseded: supersession.superseded,
-      supersedeSkipped: supersession.skipped,
-    };
-  }, { workId, parallel: options.parallel === true });
+  return withRunLocks(
+    repoRoot,
+    runId,
+    () => {
+      const workspace = withRepoGitLock(repoRoot, () =>
+        createWorkspace({ repoRoot, runId, base }),
+      );
+      const context = makeContext(options, ledger, workspace);
+      const now = context.now;
+      const supersession =
+        options.supersede === "off"
+          ? { superseded: [], skipped: [] }
+          : supersedeWaitingRuns(repoRoot, workId, runId, now);
+      ledger.append({
+        type: "RUN_CREATED",
+        actor: KERNEL,
+        ts: now(),
+        run: runId,
+        work: workId,
+        data: {
+          workflowRef: workflow.name,
+          workflowDigest,
+          base: workspace.base,
+          riskPreset,
+          entry,
+          planDigest: planDigest ?? "UNVERIFIED",
+          intentDigest: intentDigest ?? "UNVERIFIED",
+          ...(options.deliveryChecks
+            ? { deliveryChecks: options.deliveryChecks }
+            : {}),
+          ...(supersession.superseded.length > 0
+            ? { supersedes: supersession.superseded }
+            : {}),
+          ...(options.envelope
+            ? {
+                envelopeDigest: options.envelope.digest,
+                envelopeSource: options.envelope.source,
+              }
+            : {}),
+        },
+      });
+      ledger.append({
+        type: "RUN_STARTED",
+        actor: KERNEL,
+        ts: now(),
+        data: {},
+      });
+      ledger.append({
+        type: "WORKSPACE_BOUND",
+        actor: KERNEL,
+        ts: now(),
+        data: {
+          workspaceId: workspace.workspaceId,
+          repo: toRepoRef(repoRoot, repoRoot),
+          branch: workspace.branch,
+          worktreePath: toRepoRef(repoRoot, workspace.worktreePath),
+          base: workspace.base,
+        },
+      });
+      drive(context, entry);
+      return {
+        runId,
+        workId,
+        ledgerPath,
+        state: ledger.state,
+        workspace,
+        superseded: supersession.superseded,
+        supersedeSkipped: supersession.skipped,
+      };
+    },
+    { workId, parallel: options.parallel === true },
+  );
 }
 
 function resumeStepFromTransition(transition) {
@@ -1168,26 +1413,61 @@ function resumeStepFromTransition(transition) {
   return null;
 }
 
-function resumeTarget(options, { ledger, ledgerPath }) {
-  const { repoRoot, workflowDigest, runId } = options;
-  const state = ledger.state;
-  if (!state.run) {
-    throw new OrchestratorError(`no ledger for run ${runId}; use startRun`);
+export function assertRunConfiguration(state, options) {
+  if (!state.run) throw new OrchestratorError("run has no creation record");
+  if (options.workId && options.workId !== state.run.work)
+    throw new OrchestratorError("run belongs to a different work");
+  const { workflowDigest } = options;
+  if (
+    state.run.deliveryChecks &&
+    canonicalJson(state.run.deliveryChecks) !==
+      canonicalJson(options.deliveryChecks ?? null)
+  ) {
+    throw new OrchestratorError(
+      "delivery safeguards changed since the run was created; refusing to resume (docs/MIGRATION.md)",
+    );
   }
   if (workflowDigest && state.run.workflowDigest !== workflowDigest) {
     throw new OrchestratorError(
       `workflow changed since the run was created (${state.run.workflowDigest} != ${workflowDigest}); refusing to resume`,
     );
   }
+}
+
+function resumeTarget(options, { ledger, ledgerPath }) {
+  const { repoRoot, workflowDigest, runId } = options;
+  const state = ledger.state;
+  if (!state.run) {
+    throw new OrchestratorError(`no ledger for run ${runId}; use startRun`);
+  }
+  assertRunConfiguration(state, options);
   if (state.terminal) {
-    return { early: { runId, ledgerPath, state, resumed: false, reason: "run is terminal" } };
+    return {
+      early: {
+        runId,
+        ledgerPath,
+        state,
+        resumed: false,
+        reason: "run is terminal",
+      },
+    };
   }
   if (state.run.status === "WAITING_HUMAN" && state.pendingHuman) {
-    return { early: { runId, ledgerPath, state, resumed: false, reason: "waiting on a human decision" } };
+    return {
+      early: {
+        runId,
+        ledgerPath,
+        state,
+        resumed: false,
+        reason: "waiting on a human decision",
+      },
+    };
   }
   const bound = state.workspaces[runId];
   if (!bound) {
-    throw new OrchestratorError(`run ${runId} has no bound workspace; cannot resume`);
+    throw new OrchestratorError(
+      `run ${runId} has no bound workspace; cannot resume`,
+    );
   }
   const worktreePath = resolveRepoRef(repoRoot, bound.worktreePath);
   if (!existsSync(worktreePath)) {
@@ -1226,178 +1506,255 @@ export function resumeRun(options) {
     return outside.early;
   }
 
-  return withRunLocks(repoRoot, runId, () => {
-    const { ledger, ledgerPath } = openLedgerFor(repoRoot, runId);
-    const target = resumeTarget(options, { ledger, ledgerPath });
-    if (target.early) {
-      return target.early;
-    }
-    const { workspace } = target;
-    const state = ledger.state;
-    const context = makeContext(options, ledger, workspace);
-    const now = context.now;
+  return withRunLocks(
+    repoRoot,
+    runId,
+    () => {
+      const { ledger, ledgerPath } = openLedgerFor(repoRoot, runId);
+      const target = resumeTarget(options, { ledger, ledgerPath });
+      if (target.early) {
+        return target.early;
+      }
+      const { workspace } = target;
+      const state = ledger.state;
+      const context = makeContext(options, ledger, workspace);
+      const now = context.now;
 
-    if (state.run.status === "WAITING_HUMAN") {
-      // Pending request already resolved: continue only if the approval's
-      // subject is still exactly what the human saw (F6 machine closure).
-      const approval = [...state.approvals].reverse().find((entry) => !entry.stale);
-      if (!approval) {
-        return { runId, ledgerPath, state, resumed: false, reason: "no active approval to act on" };
-      }
-      const tree = readback(workspace.worktreePath);
-      const changed = [];
-      if (tree.head !== approval.subject.candidate) {
-        changed.push("candidate");
-      }
-      if (
-        planDigest &&
-        approval.subject.planDigest !== "UNVERIFIED" &&
-        planDigest !== approval.subject.planDigest
-      ) {
-        changed.push("plan");
-      }
-      if (changed.length > 0) {
-        ledger.append({
-          type: "APPROVAL_STALE",
-          actor: KERNEL,
-          ts: now(),
-          data: { approvalRef: approval.decisionRef, changed },
-        });
-        return { runId, ledgerPath, state: ledger.state, resumed: true, stale: true, reason: null };
-      }
-      // An adopted candidate names where to resume (verify, by convention):
-      // the fixer step the request was waiting on has nothing left to do.
-      const step = approval.resumeAt ?? resumeStepFromTransition(approval.transition);
-      if (!step || !context.workflow.stepIds.has(step)) {
-        throw new OrchestratorError(
-          `cannot derive a resume step from approved transition ${approval.transition}`,
-        );
-      }
-      // An approved resume-<step> on an exhausted budget is the human saying
-      // "one more"; record the grant before driving or the same request
-      // comes straight back (the pilot's app-login runs ended CANCELLED
-      // with their candidates in production because of exactly that).
-      const decisionIndex = ledger.events.findIndex((event) =>
-        event.type === "DECISION_RECORDED" && event.data.decisionRef === approval.decisionRef);
-      // APPROVAL_STALE is itself a new request, with no inherited grants.
-      // Restrict lookup to this decision, rather than an older request for
-      // the same transition (or one whose subject was refreshed).
-      const request = ledger.events.slice(0, decisionIndex).reverse().find((event) =>
-        event.type === "HUMAN_REQUESTED" || event.type === "APPROVAL_STALE");
-      const requestData = request?.type === "HUMAN_REQUESTED" &&
-        request.data.transition === approval.transition ? request.data : null;
-      // The grant plan is fixed once, then pinned on the first
-      // BUDGET_EXTENDED it produces; a resume after a crash between two
-      // grants replays that plan instead of re-deriving it from a state the
-      // first grant already raised.
-      const applied = ledger.events.filter((event) =>
-        event.type === "BUDGET_EXTENDED" && event.data.approvalRef === approval.decisionRef);
-      let grants;
-      if (Array.isArray(applied[0]?.data.grants)) {
-        grants = applied[0].data.grants;
-      } else if (
-        Array.isArray(requestData?.grants) &&
-        (canonicalJson(requestData.subject) === canonicalJson(approval.subject) ||
-          // resume --adopt answers this very request with a new candidate by
-          // design; the grant belongs to the round, not to a candidate. Real
-          // incident: the session's hand fix was adopted and the run stopped
-          // again at resume-review for the round the human had just granted.
-          (ledger.events[decisionIndex]?.data.adopted &&
-            approval.subject.planDigest === requestData.subject.planDigest))
-      ) {
-        grants = requestData.grants;
-      } else {
-        // Requests without grants: ledgers written before grants existed,
-        // or a request refreshed by APPROVAL_STALE.
-        grants = [];
-        const attempts = state.steps[step]?.attempts ?? 0;
-        const runCapApproval = approval.transition.startsWith("resume-") &&
-          (attempts >= context.maxAttemptsFor(step) || attempts >= context.totalAttemptsFor(step));
-        if (requestData?.kind === "work-review-cap") grants.push({ step, scope: "work" });
-        if (runCapApproval) grants.push({ step, scope: "run" });
-        if (grants.length > 0) grants.push(...budgetGrants(context, step));
-      }
-      const plan = [];
-      const planned = new Set();
-      for (const grant of grants) {
-        const key = `${grant.step}:${grant.scope}`;
-        if (!planned.has(key)) {
-          planned.add(key);
-          plan.push({ step: grant.step, scope: grant.scope });
+      if (state.run.status === "WAITING_HUMAN") {
+        // Pending request already resolved: continue only if the approval's
+        // subject is still exactly what the human saw (F6 machine closure).
+        const approval = [...state.approvals]
+          .reverse()
+          .find((entry) => !entry.stale);
+        if (!approval) {
+          return {
+            runId,
+            ledgerPath,
+            state,
+            resumed: false,
+            reason: "no active approval to act on",
+          };
         }
-      }
-      const extended = new Set(applied.map((event) => `${event.data.step}:${event.data.scope ?? "run"}`));
-      for (const grant of plan) {
-        const key = `${grant.step}:${grant.scope}`;
-        if (extended.has(key)) continue;
-        extended.add(key);
+        const tree = readback(workspace.worktreePath);
+        const changed = [];
+        if (tree.head !== approval.subject.candidate) {
+          changed.push("candidate");
+        }
+        if (
+          planDigest &&
+          approval.subject.planDigest !== "UNVERIFIED" &&
+          planDigest !== approval.subject.planDigest
+        ) {
+          changed.push("plan");
+        }
+        if (changed.length > 0) {
+          ledger.append({
+            type: "APPROVAL_STALE",
+            actor: KERNEL,
+            ts: now(),
+            data: { approvalRef: approval.decisionRef, changed },
+          });
+          return {
+            runId,
+            ledgerPath,
+            state: ledger.state,
+            resumed: true,
+            stale: true,
+            reason: null,
+          };
+        }
+        // An adopted candidate names where to resume (verify, by convention):
+        // the fixer step the request was waiting on has nothing left to do.
+        const step =
+          approval.resumeAt ?? resumeStepFromTransition(approval.transition);
+        if (!step || !context.workflow.stepIds.has(step)) {
+          throw new OrchestratorError(
+            `cannot derive a resume step from approved transition ${approval.transition}`,
+          );
+        }
+        // An approved resume-<step> on an exhausted budget is the human saying
+        // "one more"; record the grant before driving or the same request
+        // comes straight back (the pilot's app-login runs ended CANCELLED
+        // with their candidates in production because of exactly that).
+        const decisionIndex = ledger.events.findIndex(
+          (event) =>
+            event.type === "DECISION_RECORDED" &&
+            event.data.decisionRef === approval.decisionRef,
+        );
+        // APPROVAL_STALE is itself a new request, with no inherited grants.
+        // Restrict lookup to this decision, rather than an older request for
+        // the same transition (or one whose subject was refreshed).
+        const request = ledger.events
+          .slice(0, decisionIndex)
+          .reverse()
+          .find(
+            (event) =>
+              event.type === "HUMAN_REQUESTED" ||
+              event.type === "APPROVAL_STALE",
+          );
+        const requestData =
+          request?.type === "HUMAN_REQUESTED" &&
+          request.data.transition === approval.transition
+            ? request.data
+            : null;
+        // The grant plan is fixed once, then pinned on the first
+        // BUDGET_EXTENDED it produces; a resume after a crash between two
+        // grants replays that plan instead of re-deriving it from a state the
+        // first grant already raised.
+        const applied = ledger.events.filter(
+          (event) =>
+            event.type === "BUDGET_EXTENDED" &&
+            event.data.approvalRef === approval.decisionRef,
+        );
+        let grants;
+        if (Array.isArray(applied[0]?.data.grants)) {
+          grants = applied[0].data.grants;
+        } else if (
+          Array.isArray(requestData?.grants) &&
+          (canonicalJson(requestData.subject) ===
+            canonicalJson(approval.subject) ||
+            // resume --adopt answers this very request with a new candidate by
+            // design; the grant belongs to the round, not to a candidate. Real
+            // incident: the session's hand fix was adopted and the run stopped
+            // again at resume-review for the round the human had just granted.
+            (ledger.events[decisionIndex]?.data.adopted &&
+              approval.subject.planDigest === requestData.subject.planDigest))
+        ) {
+          grants = requestData.grants;
+        } else {
+          // Requests without grants: ledgers written before grants existed,
+          // or a request refreshed by APPROVAL_STALE.
+          grants = [];
+          const attempts = state.steps[step]?.attempts ?? 0;
+          const runCapApproval =
+            approval.transition.startsWith("resume-") &&
+            (attempts >= context.maxAttemptsFor(step) ||
+              attempts >= context.totalAttemptsFor(step));
+          if (requestData?.kind === "work-review-cap")
+            grants.push({ step, scope: "work" });
+          if (runCapApproval) grants.push({ step, scope: "run" });
+          if (grants.length > 0) grants.push(...budgetGrants(context, step));
+        }
+        const plan = [];
+        const planned = new Set();
+        for (const grant of grants) {
+          const key = `${grant.step}:${grant.scope}`;
+          if (!planned.has(key)) {
+            planned.add(key);
+            plan.push({ step: grant.step, scope: grant.scope });
+          }
+        }
+        const extended = new Set(
+          applied.map(
+            (event) => `${event.data.step}:${event.data.scope ?? "run"}`,
+          ),
+        );
+        for (const grant of plan) {
+          const key = `${grant.step}:${grant.scope}`;
+          if (extended.has(key)) continue;
+          extended.add(key);
+          ledger.append({
+            type: "BUDGET_EXTENDED",
+            actor: KERNEL,
+            ts: now(),
+            data: {
+              step: grant.step,
+              amount: 1,
+              ...(grant.scope === "work" ? { scope: "work" } : {}),
+              maxAttempts:
+                grant.scope === "work"
+                  ? context.reviewRoundsPerWork +
+                    (ledger.state.workReviewGrants ?? 0) +
+                    1
+                  : context.maxAttemptsFor(grant.step) + 1,
+              approvalRef: approval.decisionRef,
+              grants: plan,
+            },
+          });
+        }
         ledger.append({
-          type: "BUDGET_EXTENDED",
+          type: "RUN_STARTED",
           actor: KERNEL,
           ts: now(),
-          data: {
-            step: grant.step,
-            amount: 1,
-            ...(grant.scope === "work" ? { scope: "work" } : {}),
-            maxAttempts: grant.scope === "work"
-              ? context.reviewRoundsPerWork + (ledger.state.workReviewGrants ?? 0) + 1
-              : context.maxAttemptsFor(grant.step) + 1,
-            approvalRef: approval.decisionRef,
-            grants: plan,
-          },
+          data: {},
         });
+        drive(context, step, { skipBoundaryOnce: true });
+        return {
+          runId,
+          ledgerPath,
+          state: ledger.state,
+          resumed: true,
+          reason: null,
+        };
       }
-      ledger.append({ type: "RUN_STARTED", actor: KERNEL, ts: now(), data: {} });
-      drive(context, step, { skipBoundaryOnce: true });
-      return { runId, ledgerPath, state: ledger.state, resumed: true, reason: null };
-    }
 
-    // Crash recovery: the process died while RUNNING.
-    ledger.append({
-      type: "RUN_INTERRUPTED",
-      actor: KERNEL,
-      ts: now(),
-      data: { cause: "resume after process loss" },
-    });
-    const tree = readback(workspace.worktreePath);
-    let startStep = null;
-    if (state.currentStep) {
-      const step = state.currentStep;
-      const attempt = state.steps[step].attempts;
+      // Crash recovery: the process died while RUNNING.
       ledger.append({
-        type: "STEP_FINISHED",
+        type: "RUN_INTERRUPTED",
         actor: KERNEL,
         ts: now(),
-        data: { step, attempt, status: "crashed" },
+        data: { cause: "resume after process loss" },
       });
-      if (tree.dirty) {
-        context.waitHuman(`resume-${step}`, [
-          `interrupted step ${step} left a dirty worktree; decide whether to keep or discard before rerunning`,
+      const tree = readback(workspace.worktreePath);
+      let startStep = null;
+      if (state.currentStep) {
+        const step = state.currentStep;
+        const attempt = state.steps[step].attempts;
+        ledger.append({
+          type: "STEP_FINISHED",
+          actor: KERNEL,
+          ts: now(),
+          data: { step, attempt, status: "crashed" },
+        });
+        if (tree.dirty) {
+          context.waitHuman(`resume-${step}`, [
+            `interrupted step ${step} left a dirty worktree; decide whether to keep or discard before rerunning`,
+          ]);
+          return {
+            runId,
+            ledgerPath,
+            state: ledger.state,
+            resumed: true,
+            reason: null,
+          };
+        }
+        // An interrupted attempt says nothing about the candidate, so the step
+        // itself reruns (the lost attempt still counts against its budget)
+        // instead of settling as a step failure — routing a crash through the
+        // failure edge dispatched a fixer with no verifier evidence (real
+        // incident: deploy-18's verify worker was killed by a host timeout).
+        startStep = step;
+      } else if (tree.dirty) {
+        context.waitHuman("resume-run", [
+          "worktree is dirty at resume with no step in flight; human triage required",
         ]);
-        return { runId, ledgerPath, state: ledger.state, resumed: true, reason: null };
+        return {
+          runId,
+          ledgerPath,
+          state: ledger.state,
+          resumed: true,
+          reason: null,
+        };
+      } else {
+        startStep =
+          state.lastCheckpoint?.resumePoint?.step ?? state.run.entry ?? null;
+        if (!startStep) {
+          throw new OrchestratorError(
+            "no checkpoint and no recorded entry; cannot derive a safe resume point",
+          );
+        }
       }
-      // An interrupted attempt says nothing about the candidate, so the step
-      // itself reruns (the lost attempt still counts against its budget)
-      // instead of settling as a step failure — routing a crash through the
-      // failure edge dispatched a fixer with no verifier evidence (real
-      // incident: deploy-18's verify worker was killed by a host timeout).
-      startStep = step;
-    } else if (tree.dirty) {
-      context.waitHuman("resume-run", [
-        "worktree is dirty at resume with no step in flight; human triage required",
-      ]);
-      return { runId, ledgerPath, state: ledger.state, resumed: true, reason: null };
-    } else {
-      startStep = state.lastCheckpoint?.resumePoint?.step ?? state.run.entry ?? null;
-      if (!startStep) {
-        throw new OrchestratorError(
-          "no checkpoint and no recorded entry; cannot derive a safe resume point",
-        );
+      if (startStep) {
+        drive(context, startStep);
       }
-    }
-    if (startStep) {
-      drive(context, startStep);
-    }
-    return { runId, ledgerPath, state: ledger.state, resumed: true, reason: null };
-  }, { workId: outerLedger.state.run.work, parallel: options.parallel === true });
+      return {
+        runId,
+        ledgerPath,
+        state: ledger.state,
+        resumed: true,
+        reason: null,
+      };
+    },
+    { workId: outerLedger.state.run.work, parallel: options.parallel === true },
+  );
 }

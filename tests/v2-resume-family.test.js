@@ -60,7 +60,7 @@ for (const explicit of [false, true]) {
     assert.match(f.start(), /attempt: RUN-FAMILY-01/);
     assert.equal(f.state(id).pendingHuman.transition, "enter-review");
     const approved = f.approve(id);
-    assert.match(approved, /decision recorded; continue with: buildbeat resume --config <run-config.yaml> --run RUN-FAMILY-01/);
+    assert.match(approved, /decision recorded; continue with: buildbeat run --config <run-config.yaml> --run RUN-FAMILY-01/);
     assert.doesNotMatch(approved, /run\.js/);
     const out = cli(["resume", "--config", f.path, ...(explicit ? ["--run", id] : [])]);
     if (!explicit) assert.match(out, /resuming RUN-FAMILY-01 \(the open run of family RUN-FAMILY\)/);
@@ -159,6 +159,6 @@ test("adopt resolves the family before recording the candidate decision", (t) =>
   assert.equal(existsSync(f.ledgerPath(f.family)), false);
 });
 
-test("help advertises explicit resume selection", () => {
-  assert.match(cli([]), /buildbeat resume --config <run-config.yaml> \[--run <RUN-ID>\]/);
+test("help advertises explicit run selection", () => {
+  assert.match(cli([]), /buildbeat run --config <run-config.yaml> \[--run <RUN-ID>\]/);
 });

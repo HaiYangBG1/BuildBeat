@@ -10,14 +10,14 @@
 | [templates/v2/CLAUDE.md](../../../templates/v2/CLAUDE.md) / [templates/v2/BUILDBEAT.md](../../../templates/v2/BUILDBEAT.md) | 一行指针与版本标记(运行时版本、装载方式、升级 = 升级 CLI、回灌通道) |
 | [templates/v2/run-config.example.yaml](../../../templates/v2/run-config.example.yaml) | 可原样解析的 run 配置样板(含 fixer、reviewTriage、budgets、cache、envelope、redact);机器验证见 `tests/v2-templates-firstrun.test.js` |
 | [templates/v2/envelope/worker.sh](../../../templates/v2/envelope/worker.sh) + [prompts/](../../../templates/v2/envelope/prompts/builder.md) | worker 包装(工具缺失 exit 75、喂 prompt、写入步机械 commit、只读步落信封)与 builder / reviewer / fixer 三份 prompt;拷到仓级 `delivery/envelope/` |
-| [templates/pm/decisions.md](../../../templates/pm/decisions.md) | 平台级决策包台账(全工作区唯一决策单点;Run 级批准由内核落 `decisions.jsonl`) |
-| [templates/pm/adr/README.md](../../../templates/pm/adr/README.md) / [ADR 模板](../../../templates/pm/adr/ADR-0000-template.md) | 可选 ADR 判据、四态 Status 与替代链;默认不生成 |
-| [templates/contracts/PROTOCOL.md](../../../templates/contracts/PROTOCOL.md) | 跨边界契约唯一入口骨架(多仓项目) |
-| [templates/ARCHITECTURE.md](../../../templates/ARCHITECTURE.md) | 全栈总图骨架(架构/基础设施/凭据位置/子项目索引;多仓项目) |
-| [templates/standards/STACK.md](../../../templates/standards/STACK.md) / [CODE](../../../templates/standards/CODE.md) / [REVIEW](../../../templates/standards/REVIEW.md) / [DESIGN](../../../templates/standards/DESIGN.md) | 可选 project-owned 规范(Policy 输入工件);缺失跳过,Draft 显式待确认,DESIGN 仅 UI 项目 |
+| [templates/pm/decisions.md](../retired-templates/pm/decisions.md) | 平台级决策包台账(全工作区唯一决策单点;Run 级批准由内核落 `decisions.jsonl`) |
+| [templates/pm/adr/README.md](../retired-templates/pm/adr/README.md) / [ADR 模板](../retired-templates/pm/adr/ADR-0000-template.md) | 可选 ADR 判据、四态 Status 与替代链;默认不生成 |
+| [templates/contracts/PROTOCOL.md](../retired-templates/contracts/PROTOCOL.md) | 跨边界契约唯一入口骨架(多仓项目) |
+| [templates/ARCHITECTURE.md](../retired-templates/ARCHITECTURE.md) | 全栈总图骨架(架构/基础设施/凭据位置/子项目索引;多仓项目) |
+| [templates/standards/STACK.md](../retired-templates/standards/STACK.md) / [CODE](../retired-templates/standards/CODE.md) / [REVIEW](../retired-templates/standards/REVIEW.md) / [DESIGN](../retired-templates/standards/DESIGN.md) | 可选 project-owned 规范(Policy 输入工件);缺失跳过,Draft 显式待确认,DESIGN 仅 UI 项目 |
 | [templates/gitignore.template](../../../templates/gitignore.template) | 工作区 .gitignore 模板(排除子仓、*.env、`.buildbeat/runtime/`、`.buildbeat/worktrees/`;拷入后改名) |
 
-> 运行时命令面(`accept / start / resume / status / inbox / overview / approve / reject / findings / doctor / preflight / gc / metrics / observe / watch`)见 [docs/v2/guide/README.md](../guide/README.md);Skill-only 手工路径 / 运行时 / Claude 插件各自的可用面见 [docs/CAPABILITY-MATRIX.md](../../CAPABILITY-MATRIX.md)。
+> 运行时命令面(`accept / start / resume / status / inbox / overview / approve / reject / findings / doctor / preflight / gc / metrics / observe / watch`)见 [docs/v2/guide/README.md](../../v2/guide/README.md);Skill-only 手工路径 / 运行时 / Claude 插件各自的可用面见 [docs/CAPABILITY-MATRIX.md](../../CAPABILITY-MATRIX.md)。
 
 ## 10. 反模式与实战教训
 

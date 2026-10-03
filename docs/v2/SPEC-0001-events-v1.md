@@ -1,5 +1,8 @@
 # SPEC-0001：Event Ledger 格式 v1（冻结）
 
+> 2026-10-03 revision (unreleased 4.0.0-dev.0): the owner approved product simplification. New work uses work.md, a fixed delivery loop and built-in checks. Observe/release execution, UI-specific policies, custom workflow/Policy authoring and default governance scaffolding are retired. Legacy official delivery files and historical events remain readable; unsupported configurations fail explicitly. RUN_CREATED may carry optional deliveryChecks, frozen for resume/approval. See [migration](../MIGRATION.md). The original dated specification below is preserved as history.
+
+
 > 状态：**FROZEN**（2026-08-28 项目所有者定稿，`V2-D3`；[`V2-PLAN.md`](../history/V2-PLAN.md) 裁决 #8：格式 day-1 冻结，此后 additive-only）
 > 日期：2026-08-28
 > 冻结范围：**信封字段、通用规则、损坏处理、reducer 合同、初始事件类型注册表的语义**。文件摆放位置、快照格式、CLI 展示均为非规范内容，可变。

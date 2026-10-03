@@ -81,7 +81,7 @@ test("names are checked against the workflow", () => {
 test("every problem is listed at once", () => {
   const problems = checkRunConfigShape({ work: "WORK X", run: 7, stopat: [], workers: { verifier: { command: "x", inheritEnv: "yes" } } });
   assert.ok(problems.length >= 5, problems.join("\n"));
-  for (const expected of [/^repo: required/, /^workflow: required/, /^stopat: unknown key/, /^run: must be a string/, /inheritEnv: must be true or false/]) {
+  for (const expected of [/^repo: required/, /^stopat: unknown key/, /^run: must be a string/, /inheritEnv: must be true or false/]) {
     assert.ok(problems.some((problem) => expected.test(problem)), `${expected} not in:\n${problems.join("\n")}`);
   }
 });

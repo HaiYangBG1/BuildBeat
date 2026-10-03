@@ -2,6 +2,18 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+## v4.0.0-dev.0 — unreleased product simplification candidate
+
+- Focus the product on portable work context, the recoverable delivery loop, and evidence-backed human decisions.
+- Retire observe execution, the release lane, UI-specific gates, generic workflow/Policy authoring, default governance scaffolding, and the separate Skill-only product path. Existing target-project files and historical records are never deleted by the CLI.
+- Introduce work.md for new work; consolidate run/status/decide/check/history over shared runtime handlers. Core old command spellings remain compatibility aliases.
+- Replace programmable gates with built-in acceptance and current-candidate evidence/review checks. Freeze safeguards with each new run so approval and resume cannot bypass or weaken them.
+- Preserve official legacy delivery configurations and their exact workflow digest; reject unsupported custom/release configurations before side effects, with a migration route to finish active work on 3.3.1.
+- Preserve cache, recovery, scope checks, parallel isolation, notifications, event schema and archived release readback. Update package contents, first-run regression coverage, and bilingual guides together.
+
+
 ## v3.3.1 — 2026-10-02（补丁：review 收敛判断认得出换了说法的同一问题；lessons 与发布 runbook 补齐）
 
 > **发布状态**：`@haiyangbg/buildbeat@3.3.1` 已于 2026-10-02 从 `main`（PR #66 内容，release PR #67，merge commit `cc7a6db`，tag `v3.3.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 36982501415，publish 与 verify 双 job 一次 success；所有者授权「合并并发 3.3.1」）。独立回读（直连 npmjs.org）：`latest` = 3.3.1、`dist.integrity` 与本地用 Node 24 + npm 11.19.0 打的候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 3.3.1、裸调用零写入、包内含 `sameIssue` 与教训 23、`npm audit signatures` 通过；GitHub Release v3.3.1 标 Latest；本机两份全局安装均为 3.3.1；证据见 [`docs/releases/V3.3.1-RELEASE-EVIDENCE-2026-10-02.md`](docs/releases/V3.3.1-RELEASE-EVIDENCE-2026-10-02.md)。同日所有者本人经 npm 两步验证把 dist-tag `next` 从 3.3.0 挪到 3.3.1；直连 npmjs.org 回读 `next` = `latest` = 3.3.1。

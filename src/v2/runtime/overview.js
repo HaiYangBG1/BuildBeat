@@ -45,18 +45,31 @@ export function artifactStatus(workDir, decisions, artifact) {
     return { exists: false, accepted: false, stale: false };
   }
   const digest = sha256File(path);
-  const accepts = decisions.filter((row) => row.transition === `accept-${artifact}` && row.decision === "approved");
+  const accepts = decisions.filter(
+    (row) =>
+      row.transition === `accept-${artifact}` && row.decision === "approved",
+  );
   const latest = accepts[accepts.length - 1];
   if (!latest) {
     return { exists: true, accepted: false, stale: false };
   }
   const stale = latest.subject?.digest !== digest;
-  return { exists: true, accepted: !stale, stale, by: latest.by, at: latest.ts };
+  return {
+    exists: true,
+    accepted: !stale,
+    stale,
+    by: latest.by,
+    at: latest.ts,
+  };
 }
 
 function isAncestor(repoRoot, sha, ref) {
   try {
-    execFileSync("git", ["-C", repoRoot, "merge-base", "--is-ancestor", sha, ref], { stdio: "ignore" });
+    execFileSync(
+      "git",
+      ["-C", repoRoot, "merge-base", "--is-ancestor", sha, ref],
+      { stdio: "ignore" },
+    );
     return true;
   } catch {
     return false;
@@ -65,7 +78,11 @@ function isAncestor(repoRoot, sha, ref) {
 
 function headRef(repoRoot) {
   try {
-    return execFileSync("git", ["-C", repoRoot, "rev-parse", "--abbrev-ref", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    return execFileSync(
+      "git",
+      ["-C", repoRoot, "rev-parse", "--abbrev-ref", "HEAD"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    ).trim();
   } catch {
     return "HEAD";
   }
@@ -131,10 +148,15 @@ function runsFor(repoRoot, workId) {
       }
     }
   }
-  return [...runs.values()].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+  return [...runs.values()].sort((a, b) =>
+    String(a.createdAt).localeCompare(String(b.createdAt)),
+  );
 }
 
-export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {}) {
+export function computeOverview(
+  repoRoot,
+  { work = null, repoLabel = "." } = {},
+) {
   const workRoot = join(repoRoot, "delivery", "work");
   const rows = [];
   if (!existsSync(workRoot)) {
@@ -146,17 +168,30 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
       continue;
     }
     const workDir = join(workRoot, workId);
-    if (!existsSync(join(workDir, "intent.md")) && !existsSync(join(workDir, "plan.md")) && !existsSync(join(workDir, "decisions.jsonl")) && !existsSync(join(workDir, "runs"))) {
+    if (
+      !existsSync(join(workDir, "intent.md")) &&
+      !existsSync(join(workDir, "plan.md")) &&
+      !existsSync(join(workDir, "decisions.jsonl")) &&
+      !existsSync(join(workDir, "runs"))
+    ) {
       continue;
     }
     const decisions = readJsonl(join(workDir, "decisions.jsonl"));
-    const intent = artifactStatus(workDir, decisions, "intent");
-    const plan = artifactStatus(workDir, decisions, "plan");
+    const unified = existsSync(join(workDir, "work.md"));
+    const intent = artifactStatus(
+      workDir,
+      decisions,
+      unified ? "work" : "intent",
+    );
+    const plan = unified ? intent : artifactStatus(workDir, decisions, "plan");
     const envFacts = existsSync(join(workDir, "env-facts.md"));
     const findingRows = readFindingsAccount(repoRoot, workId);
     const adjudicated = latestAdjudications(findingRows);
     const openFindings = findingRows.filter(
-      (row) => row.kind === "finding" && (row.severity === "P0" || row.severity === "P1") && !adjudicated.has(row.fingerprint),
+      (row) =>
+        row.kind === "finding" &&
+        (row.severity === "P0" || row.severity === "P1") &&
+        !adjudicated.has(row.fingerprint),
     ).length;
     const runs = runsFor(repoRoot, workId);
     const live = runs.filter((run) => run.status !== "SUPERSEDED");
@@ -166,28 +201,43 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
     // (its in-run review budget ran out and closure happened elsewhere) and
     // overview reported the shipped work as STOPPED_CANCELLED.
     const mergedRun =
-      [...runs].reverse().find((run) => run.candidate && isAncestor(repoRoot, run.candidate, mainRef)) ?? null;
+      [...runs]
+        .reverse()
+        .find(
+          (run) =>
+            run.candidate && isAncestor(repoRoot, run.candidate, mainRef),
+        ) ?? null;
     const merged = Boolean(mergedRun);
     const RELEASE_STEPS = ["preflight", "apply-readback", "observe"];
     const isReleaseLane = (run) =>
-      Boolean(run) && (run.workflow === "release-readback" || run.steps.some((step) => RELEASE_STEPS.includes(step)));
+      Boolean(run) &&
+      (run.workflow === "release-readback" ||
+        run.steps.some((step) => RELEASE_STEPS.includes(step)));
 
     // A Work is closed by an explicit row in decisions.jsonl:
     //   {"transition":"close-work","decision":"closed"|"cancelled","subject":{"result":"..."}}
     // A live run (RUNNING / WAITING_HUMAN) contradicts a closure and wins, so a
     // stale close row can never hide something that still needs a human.
-    const closure = [...decisions].reverse().find((row) => row.transition === "close-work");
-    const liveRun = latest && (latest.status === "RUNNING" || latest.status === "WAITING_HUMAN");
+    const closure = [...decisions]
+      .reverse()
+      .find((row) => row.transition === "close-work");
+    const liveRun =
+      latest &&
+      (latest.status === "RUNNING" || latest.status === "WAITING_HUMAN");
 
     let stage;
     let next;
     if (closure && !liveRun) {
       stage = closure.decision === "cancelled" ? "CANCELLED" : "CLOSED";
-      const result = typeof closure.subject?.result === "string" && closure.subject.result.length > 0 ? closure.subject.result : "see decisions.jsonl";
+      const result =
+        typeof closure.subject?.result === "string" &&
+        closure.subject.result.length > 0
+          ? closure.subject.result
+          : "see decisions.jsonl";
       next = `${stage.toLowerCase()} @ ${closure.ts ?? "?"}: ${result.slice(0, 160)}`;
     } else if (!intent.exists) {
       stage = "NO_INTENT";
-      next = `write delivery/work/${workId}/intent.md (what and why), then plan.md`;
+      next = `write delivery/work/${workId}/work.md (goal, scope, acceptance, implementation plan)`;
     } else if (!latest) {
       if (!plan.exists) {
         stage = intent.accepted ? "INTENT_ACCEPTED" : "INTENT_DRAFT";
@@ -196,11 +246,17 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
           : `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact intent --by <you>`;
       } else if (!plan.accepted) {
         stage = plan.stale ? "PLAN_STALE" : "PLAN_DRAFT";
-        const artifacts = intent.accepted ? "plan" : "intent,plan";
+        const artifacts = unified
+          ? "work"
+          : intent.accepted
+            ? "plan"
+            : "intent,plan";
         next = `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact ${artifacts} --by <you>${plan.stale ? "   # plan changed since acceptance" : ""}`;
       } else {
         stage = "READY_TO_RUN";
-        const configs = readdirSync(workDir).filter((name) => /^run-config.*\.ya?ml$/.test(name));
+        const configs = readdirSync(workDir).filter((name) =>
+          /^run-config.*\.ya?ml$/.test(name),
+        );
         next =
           configs.length > 0
             ? `buildbeat start --config delivery/work/${workId}/${configs[0]} --attempt new`
@@ -210,8 +266,13 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
       stage = "RUNNING";
       next = `buildbeat status --repo ${repoLabel} --run ${latest.id}`;
     } else if (latest.status === "WAITING_HUMAN") {
-      stage = latest.pendingHuman?.kind === "final-decision" ? "MERGE_DECISION" : "WAITING_HUMAN";
-      const replies = latest.state ? nextReply({ repoLabel, state: latest.state }) : [];
+      stage =
+        latest.pendingHuman?.kind === "final-decision"
+          ? "MERGE_DECISION"
+          : "WAITING_HUMAN";
+      const replies = latest.state
+        ? nextReply({ repoLabel, state: latest.state })
+        : [];
       next = replies[0] ?? `buildbeat inbox --repo ${repoLabel}`;
     } else if (latest.status === "SUCCEEDED" && isReleaseLane(latest)) {
       // A release-readback lane that reached wait-close and was approved is
@@ -222,7 +283,9 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
       stage = "MERGED";
       next =
         `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release/deploy stays a human action; then buildbeat gc --repo ${repoLabel}` +
-        (latest.status !== "SUCCEEDED" ? `   # latest run ${latest.id} ended ${latest.status} after the merge` : "");
+        (latest.status !== "SUCCEEDED"
+          ? `   # latest run ${latest.id} ended ${latest.status} after the merge`
+          : "");
     } else if (latest.status === "SUCCEEDED") {
       stage = "MERGE_READY";
       next = latest.candidate
@@ -239,12 +302,27 @@ export function computeOverview(repoRoot, { work = null, repoLabel = "." } = {})
       stage,
       intent,
       plan,
+      ...(unified ? { workArtifact: "work" } : {}),
       envFacts,
       openFindings,
+      findings: findingRows
+        .filter((item) => item.kind === "finding")
+        .map((item) => ({
+          ...item,
+          adjudication: adjudicated.get(item.fingerprint)?.action ?? "open",
+        })),
       runs: runs.length,
       cost: runs.length > 0 ? computeWorkCost(repoRoot, workId) : null,
       latest: latest
-        ? { id: latest.id, status: latest.status, candidate: latest.candidate, at: latest.lastAt, source: latest.source, terminalReason: latest.terminal?.reason ?? null, waiting: latest.pendingHuman?.transition ?? null }
+        ? {
+            id: latest.id,
+            status: latest.status,
+            candidate: latest.candidate,
+            at: latest.lastAt,
+            source: latest.source,
+            terminalReason: latest.terminal?.reason ?? null,
+            waiting: latest.pendingHuman?.transition ?? null,
+          }
         : null,
       merged,
       mergedCandidate: mergedRun?.candidate ?? null,
@@ -271,13 +349,28 @@ export function renderOverview(rows) {
   const lines = [];
   for (const row of rows) {
     lines.push(`${row.work}  ${row.stage}`);
-    const parts = [`intent ${mark(row.intent)}`, `plan ${mark(row.plan)}`, `runs ${row.runs}`];
-    const settled = ["MERGED", "RELEASED", "CLOSED", "CANCELLED"].includes(row.stage);
+    const parts =
+      row.workArtifact === "work"
+        ? [`work.md ${mark(row.plan)}`, `runs ${row.runs}`]
+        : [
+            `intent ${mark(row.intent)}`,
+            `plan ${mark(row.plan)}`,
+            `runs ${row.runs}`,
+          ];
+    const settled = ["MERGED", "RELEASED", "CLOSED", "CANCELLED"].includes(
+      row.stage,
+    );
     if (row.openFindings > 0 && !settled) {
       // Unadjudicated, not necessarily unresolved: a fixer may have closed
       // them without anyone recording a verdict. The number says "nobody
       // ruled on these", which is exactly what a human should know.
       parts.push(`unadjudicated P0/P1 findings ${row.openFindings}`);
+    }
+    if (!settled && row.findings?.length) {
+      for (const finding of row.findings)
+        lines.push(
+          `  [${finding.severity} ${finding.fingerprint}] (${finding.adjudication}) ${finding.summary}`,
+        );
     }
     if (row.envFacts) {
       parts.push("env-facts ✓");
@@ -293,8 +386,12 @@ export function renderOverview(rows) {
         ? ` candidate ${row.latest.candidate.slice(0, 7)}${row.latest.candidate === row.mergedCandidate ? " (merged)" : ""}`
         : "";
       const wait = row.latest.waiting ? ` waiting ${row.latest.waiting}` : "";
-      const why = row.latest.terminalReason ? ` — ${row.latest.terminalReason.slice(0, 100)}` : "";
-      lines.push(`  latest ${row.latest.id} ${row.latest.status}${cand}${wait} @ ${row.latest.at ?? "?"}${why}`);
+      const why = row.latest.terminalReason
+        ? ` — ${row.latest.terminalReason.slice(0, 100)}`
+        : "";
+      lines.push(
+        `  latest ${row.latest.id} ${row.latest.status}${cand}${wait} @ ${row.latest.at ?? "?"}${why}`,
+      );
     }
     lines.push(`  next: ${row.next}`);
   }

@@ -1,208 +1,174 @@
-// Minimal workflow parser per docs/v2/RFC-0003-workflow-policy.md §1.
-// The kernel is phase-agnostic: business steps come entirely from the
-// workflow file. Movement combines the declared step order (each step chains
-// to the next on "succeeded") with explicit transitions, which override the
-// default edge for the same (from, on) pair. Unknown fields are rejected.
-
+// Fixed delivery graph. Legacy official files are decoded only to preserve
+// their exact pinned digest and safeguards; arbitrary workflow authoring is retired.
 import { readFileSync } from "node:fs";
-
 import { parseYamlSubset } from "./yaml-subset.js";
 
-export class WorkflowError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "WorkflowError";
-  }
-}
-
-const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
-const TOP_FIELDS = new Set([
-  "kind",
-  "version",
-  "name",
-  "entry",
-  "steps",
-  "transitions",
-  "terminal",
-  "policies",
-  "budgets",
+export class WorkflowError extends Error {}
+export const DELIVERY_TEXT = `kind: workflow
+version: 1
+name: software-delivery
+entry: build
+steps:
+  - id: build
+    worker: builder
+  - id: verify
+    worker: verifier
+  - id: review
+    worker: reviewer
+    readonly: true
+  - id: wait-merge
+  - id: fix
+    worker: fixer
+transitions:
+  - from: verify
+    on: failed
+    to: fix
+  - from: fix
+    on: succeeded
+    to: verify
+  - from: review
+    on: findings-blocking
+    to: fix
+terminal:
+  - wait-merge
+`;
+const CORE = ["build", "verify", "review", "wait-merge", "fix"];
+const LEGACY = ["intent", "spec", "plan", ...CORE];
+const ROLES = {
+  intent: "planner",
+  spec: "planner",
+  plan: "planner",
+  build: "builder",
+  verify: "verifier",
+  review: "reviewer",
+  fix: "fixer",
+};
+const EDGES = new Map([
+  ["build|succeeded", "verify"],
+  ["verify|succeeded", "review"],
+  ["verify|failed", "fix"],
+  ["review|succeeded", "wait-merge"],
+  ["review|findings-blocking", "fix"],
+  ["fix|succeeded", "verify"],
 ]);
-const STEP_FIELDS = new Set(["id", "worker", "optional", "requiredWhen", "readonly", "grade"]);
-const EVIDENCE_GRADES = new Set(["L0", "L1", "L2", "L3", "L4"]);
-const TRANSITION_FIELDS = new Set(["from", "on", "to"]);
-
-function rejectUnknownFields(object, allowed, where) {
-  for (const key of Object.keys(object)) {
-    if (!allowed.has(key)) {
-      throw new WorkflowError(`unknown field "${key}" in ${where}`);
-    }
-  }
+const RETIRED =
+  "custom workflows and the release lane are retired; finish active runs with 3.3.1, then migrate using docs/MIGRATION.md";
+function reject(detail) {
+  throw new WorkflowError(`${detail}; ${RETIRED}`);
 }
-
-function requireId(value, where) {
-  if (typeof value !== "string" || !ID_PATTERN.test(value)) {
-    throw new WorkflowError(`${where} must be a lowercase id, got: ${JSON.stringify(value)}`);
-  }
-  return value;
-}
-
 export function parseWorkflow(text) {
   const doc = parseYamlSubset(text);
-  if (!doc || typeof doc !== "object" || Array.isArray(doc)) {
-    throw new WorkflowError("workflow document must be a map");
-  }
-  rejectUnknownFields(doc, TOP_FIELDS, "workflow");
-  if (doc.kind !== "workflow") {
-    throw new WorkflowError(`kind must be "workflow", got: ${JSON.stringify(doc.kind)}`);
-  }
-  if (doc.version !== 1) {
-    throw new WorkflowError(`unsupported workflow version: ${JSON.stringify(doc.version)}`);
-  }
-  const name = requireId(doc.name, "name");
-  if (!Array.isArray(doc.steps) || doc.steps.length === 0) {
-    throw new WorkflowError("steps must be a non-empty list");
-  }
-
-  const steps = [];
-  const stepIds = new Set();
-  for (const raw of doc.steps) {
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-      throw new WorkflowError("each step must be a map");
-    }
-    rejectUnknownFields(raw, STEP_FIELDS, `step ${JSON.stringify(raw.id)}`);
-    const id = requireId(raw.id, "step id");
-    if (stepIds.has(id)) {
-      throw new WorkflowError(`duplicate step id: ${id}`);
-    }
-    if (raw.worker !== undefined) {
-      requireId(raw.worker, `step ${id} worker`);
-    }
-    if (raw.optional !== undefined && typeof raw.optional !== "boolean") {
-      throw new WorkflowError(`step ${id} optional must be a boolean`);
-    }
-    if (raw.readonly !== undefined && typeof raw.readonly !== "boolean") {
-      throw new WorkflowError(`step ${id} readonly must be a boolean`);
-    }
-    // Evidence grade a step's command evidence is recorded at (iteration 08:
-    // release readbacks run against the real environment and are L4).
-    if (raw.grade !== undefined && !EVIDENCE_GRADES.has(raw.grade)) {
-      throw new WorkflowError(`step ${id} grade must be one of L0-L4`);
-    }
-    stepIds.add(id);
-    steps.push({
-      id,
+  if (
+    !doc ||
+    doc.kind !== "workflow" ||
+    doc.version !== 1 ||
+    doc.name !== "software-delivery"
+  )
+    reject("expected the fixed software-delivery workflow");
+  for (const key of Object.keys(doc))
+    if (
+      ![
+        "kind",
+        "version",
+        "name",
+        "entry",
+        "steps",
+        "transitions",
+        "terminal",
+        "budgets",
+        "policies",
+      ].includes(key)
+    )
+      reject(`unknown workflow field ${key}`);
+  if (!Array.isArray(doc.steps)) reject("steps must be a list");
+  const ids = doc.steps.map((step) => step?.id);
+  const legacy = JSON.stringify(ids) === JSON.stringify(LEGACY);
+  if (!legacy && JSON.stringify(ids) !== JSON.stringify(CORE))
+    reject("delivery step order changed");
+  if (doc.entry !== (legacy ? "intent" : "build"))
+    reject("workflow entry changed");
+  if (JSON.stringify(doc.terminal) !== '["wait-merge"]')
+    reject("delivery terminal changed");
+  if (doc.policies?.length) reject("workflow policies are unsupported");
+  const steps = doc.steps.map((raw) => {
+    for (const key of Object.keys(raw))
+      if (
+        ![
+          "id",
+          "worker",
+          "readonly",
+          "optional",
+          "requiredWhen",
+          "grade",
+        ].includes(key)
+      )
+        reject(`unknown step field ${key}`);
+    const spec = legacy && raw.id === "spec";
+    if (
+      (raw.worker ?? null) !== (ROLES[raw.id] ?? null) ||
+      (raw.readonly ?? false) !== (raw.id === "review") ||
+      (raw.optional ?? false) !== spec ||
+      (raw.requiredWhen ?? null) !== (spec ? "ui-delivery" : null)
+    )
+      reject(`delivery role or safeguard changed at ${raw.id}`);
+    if (
+      raw.grade !== undefined &&
+      !["L0", "L1", "L2", "L3", "L4"].includes(raw.grade)
+    )
+      reject("grade must be one of L0-L4");
+    return {
+      id: raw.id,
       worker: raw.worker ?? null,
-      optional: raw.optional ?? false,
-      requiredWhen: raw.requiredWhen ?? null,
-      readonly: raw.readonly ?? false,
+      readonly: raw.id === "review",
+      optional: spec,
+      requiredWhen: null,
       grade: raw.grade ?? "L2",
-    });
+    };
+  });
+  const expected = new Map([
+    ["verify|failed", "fix"],
+    ["fix|succeeded", "verify"],
+    ["review|findings-blocking", "fix"],
+  ]);
+  if (
+    !Array.isArray(doc.transitions) ||
+    doc.transitions.length !== expected.size
+  )
+    reject("delivery transitions changed");
+  const seen = new Set();
+  for (const row of doc.transitions) {
+    const key = `${row.from}|${row.on}`;
+    if (
+      Object.keys(row).some((key) => !["from", "on", "to"].includes(key)) ||
+      expected.get(key) !== row.to ||
+      seen.has(key)
+    )
+      reject("delivery transitions changed");
+    seen.add(key);
   }
-
-  const entry = requireId(doc.entry, "entry");
-  if (!stepIds.has(entry)) {
-    throw new WorkflowError(`entry references unknown step: ${entry}`);
+  const edges = new Map(EDGES);
+  if (legacy) {
+    edges.set("intent|succeeded", "spec");
+    edges.set("spec|succeeded", "plan");
+    edges.set("plan|succeeded", "build");
   }
-  if (!Array.isArray(doc.terminal) || doc.terminal.length === 0) {
-    throw new WorkflowError("terminal must be a non-empty list");
-  }
-  const terminal = new Set();
-  for (const id of doc.terminal) {
-    if (!stepIds.has(id)) {
-      throw new WorkflowError(`terminal references unknown step: ${id}`);
-    }
-    terminal.add(id);
-  }
-
-  const edges = new Map();
-  const explicit = doc.transitions ?? [];
-  if (!Array.isArray(explicit)) {
-    throw new WorkflowError("transitions must be a list");
-  }
-  for (const raw of explicit) {
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-      throw new WorkflowError("each transition must be a map");
-    }
-    rejectUnknownFields(raw, TRANSITION_FIELDS, "transition");
-    const from = requireId(raw.from, "transition from");
-    const to = requireId(raw.to, "transition to");
-    if (!stepIds.has(from) || !stepIds.has(to)) {
-      throw new WorkflowError(`transition references unknown step: ${from} -> ${to}`);
-    }
-    if (typeof raw.on !== "string" || raw.on.length === 0) {
-      throw new WorkflowError(`transition ${from} -> ${to} needs a non-empty "on"`);
-    }
-    const key = `${from}|${raw.on}`;
-    if (edges.has(key)) {
-      throw new WorkflowError(`duplicate transition for (${from}, ${raw.on})`);
-    }
-    edges.set(key, to);
-  }
-
-  for (const [index, step] of steps.entries()) {
-    const key = `${step.id}|succeeded`;
-    if (terminal.has(step.id) || edges.has(key)) {
-      continue;
-    }
-    const next = steps[index + 1];
-    if (next) {
-      edges.set(key, next.id);
-    }
-  }
-
-  const outgoing = new Map();
-  for (const [key, to] of edges) {
-    const from = key.split("|")[0];
-    if (!outgoing.has(from)) {
-      outgoing.set(from, []);
-    }
-    outgoing.get(from).push(to);
-  }
-
-  const reachable = new Set([entry]);
-  const queue = [entry];
-  while (queue.length > 0) {
-    const current = queue.pop();
-    for (const to of outgoing.get(current) ?? []) {
-      if (!reachable.has(to)) {
-        reachable.add(to);
-        queue.push(to);
-      }
-    }
-  }
-  const reachesTerminal = new Set(terminal);
-  let grew = true;
-  while (grew) {
-    grew = false;
-    for (const [from, targets] of outgoing) {
-      if (!reachesTerminal.has(from) && targets.some((to) => reachesTerminal.has(to))) {
-        reachesTerminal.add(from);
-        grew = true;
-      }
-    }
-  }
-  for (const id of reachable) {
-    if (!reachesTerminal.has(id)) {
-      throw new WorkflowError(`step "${id}" has no path to a terminal step`);
-    }
-  }
-
   return {
-    name,
-    entry,
+    name: doc.name,
+    entry: doc.entry,
     steps,
-    stepIds,
-    terminal,
+    stepIds: new Set(ids),
+    terminal: new Set(["wait-merge"]),
     edges,
-    policies: doc.policies ?? [],
+    policies: [],
     budgets: doc.budgets ?? {},
   };
 }
-
 export function loadWorkflow(filePath) {
   return parseWorkflow(readFileSync(filePath, "utf8"));
 }
-
+export function deliveryWorkflow() {
+  return parseWorkflow(DELIVERY_TEXT);
+}
 export function nextStep(workflow, from, outcome) {
   return workflow.edges.get(`${from}|${outcome}`) ?? null;
 }

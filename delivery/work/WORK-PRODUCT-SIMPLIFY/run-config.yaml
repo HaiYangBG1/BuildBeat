@@ -1,0 +1,52 @@
+# The baseline 3.3.1 driver verifies and independently reviews this breaking candidate.
+repo: ../../..
+work: WORK-PRODUCT-SIMPLIFY
+run: RUN-PRODUCT-SIMPLIFY
+workflow: workflow.yaml
+riskPreset: standard
+entry: verify
+allowedPaths:
+  - src
+  - bin
+  - tests
+  - docs
+  - templates
+  - example
+  - plugins
+  - .claude-plugin
+  - delivery/work/WORK-PRODUCT-SIMPLIFY
+  - README.md
+  - README.en.md
+  - SKILL.md
+  - CONTRIBUTING.md
+  - CHANGELOG.md
+  - package.json
+  - package-lock.json
+reviewTriage: off
+budgets:
+  reviewRoundsPerWork: 6
+cache:
+  verify: tree
+envelope:
+  prompts: prompts
+requires:
+  - command: node
+    min: "20"
+  - command: codex
+workers:
+  verifier:
+    command: bash
+    args:
+      - -lc
+      - npm test && npm run check:docs && npm run test:envelope && npm run test:plugin && npm run test:pack-firstrun && git diff --check
+  reviewer:
+    command: bash
+    timeoutMs: 900000
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only

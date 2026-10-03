@@ -1,5 +1,8 @@
 # RFC-0001：BuildBeat v2 产品定位
 
+> 2026-10-03 revision (unreleased 4.0.0-dev.0): the owner approved product simplification. New work uses work.md, a fixed delivery loop and built-in checks. Observe/release execution, UI-specific policies, custom workflow/Policy authoring and default governance scaffolding are retired. Legacy official delivery files and historical events remain readable; unsupported configurations fail explicitly. RUN_CREATED may carry optional deliveryChecks, frozen for resume/approval. See [migration](../MIGRATION.md). The original dated specification below is preserved as history.
+
+
 > 状态：`FINAL`（2026-08-28 项目所有者定稿，`V2-D3`；M0 随三份 RFC 与 [`SPEC-0001-events-v1.md`](SPEC-0001-events-v1.md) 定稿退出）
 > 日期：2026-08-28
 > 上游：[`V2-PLAN.md`](../history/V2-PLAN.md)（执行基线，`V2-D0=B`）；内核范围：完整内核（`V2-D2=A`，[`V2-DECISIONS.md`](../history/V2-DECISIONS.md)）

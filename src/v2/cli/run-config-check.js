@@ -28,9 +28,17 @@ const TOP_KEYS = [
   "supersede",
   "stallAfterMs",
   "parallel",
+  "maxReviewSeverity",
 ];
-const REQUIRED = ["repo", "work", "run", "workflow"];
-const NULL_REPORTED = ["base", "entry", "riskPreset", "stepTimeoutMs", "maxAttemptsPerStep"];
+const REQUIRED = ["repo", "work", "run"];
+const NULL_REPORTED = [
+  "workflow",
+  "base",
+  "entry",
+  "riskPreset",
+  "stepTimeoutMs",
+  "maxAttemptsPerStep",
+];
 const WORKER_KEYS = ["command", "args", "timeoutMs", "inheritEnv", "env"];
 const ENVELOPE_KEYS = ["prompts", "vars", "pin"];
 const LISTS = ["stopAt", "allowedPaths", "policies", "redact", "requires"];
@@ -38,7 +46,9 @@ const ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 export class RunConfigError extends Error {
   constructor(label, problems) {
-    super(`run config ${label} has ${problems.length} problem(s):\n${problems.map((problem) => `  - ${problem}`).join("\n")}`);
+    super(
+      `run config ${label} has ${problems.length} problem(s):\n${problems.map((problem) => `  - ${problem}`).join("\n")}`,
+    );
     this.name = "RunConfigError";
     this.problems = problems;
   }
@@ -55,7 +65,11 @@ function distance(a, b) {
     row[0] = i;
     for (let j = 1; j <= b.length; j += 1) {
       const kept = row[j];
-      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, previous + (a[i - 1] === b[j - 1] ? 0 : 1));
+      row[j] = Math.min(
+        row[j] + 1,
+        row[j - 1] + 1,
+        previous + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
       previous = kept;
     }
   }
@@ -99,7 +113,9 @@ function nonEmptyString(value) {
 // resolution.
 export function checkRunConfigShape(config) {
   if (!isMap(config)) {
-    return ["the file must be a map of keys (repo, work, run, workflow, workers, ...)"];
+    return [
+      "the file must be a map of keys (repo, work, run, workflow, workers, ...)",
+    ];
   }
   const problems = [];
   for (const key of Object.keys(config)) {
@@ -117,13 +133,17 @@ export function checkRunConfigShape(config) {
   // (cache: null has always meant no cache; lists must be lists).
   for (const key of NULL_REPORTED) {
     if (Object.hasOwn(config, key) && config[key] === null) {
-      problems.push(`${key}: has no value; remove the line to use the default, or give it a value`);
+      problems.push(
+        `${key}: has no value; remove the line to use the default, or give it a value`,
+      );
     }
   }
   for (const key of ["repo", "workflow", "riskPreset", "base", "entry"]) {
     const value = config[key];
     if (value !== undefined && value !== null && !nonEmptyString(value)) {
-      problems.push(`${key}: must be a non-empty string, got ${JSON.stringify(value)}`);
+      problems.push(
+        `${key}: must be a non-empty string, got ${JSON.stringify(value)}`,
+      );
     }
   }
   for (const key of ["work", "run"]) {
@@ -132,28 +152,51 @@ export function checkRunConfigShape(config) {
       continue;
     }
     if (typeof value !== "string") {
-      problems.push(`${key}: must be a string, got ${JSON.stringify(value)} (quote it, e.g. ${key}: "${value}")`);
+      problems.push(
+        `${key}: must be a string, got ${JSON.stringify(value)} (quote it, e.g. ${key}: "${value}")`,
+      );
     } else if (!ID.test(value) || value.includes("..") || value.length > 100) {
-      problems.push(`${key}: "${value}" may only use letters, digits, ".", "_" and "-", start with a letter or digit, contain no "..", and be at most 100 characters (it becomes part of paths and branch names)`);
+      problems.push(
+        `${key}: "${value}" may only use letters, digits, ".", "_" and "-", start with a letter or digit, contain no "..", and be at most 100 characters (it becomes part of paths and branch names)`,
+      );
     }
   }
+  if (
+    config.maxReviewSeverity !== undefined &&
+    !["P2", "P3"].includes(config.maxReviewSeverity)
+  ) {
+    problems.push("maxReviewSeverity: must be P2 or P3");
+  }
+  if (Array.isArray(config.policies) && config.policies.length) {
+    problems.push(
+      "policies: custom policy files are retired; migrate safeguards explicitly (docs/MIGRATION.md)",
+    );
+  }
   if (config.parallel !== undefined && typeof config.parallel !== "boolean") {
-    problems.push(`parallel: must be true or false, got ${JSON.stringify(config.parallel)}`);
+    problems.push(
+      `parallel: must be true or false, got ${JSON.stringify(config.parallel)}`,
+    );
   }
   for (const key of ["stepTimeoutMs", "maxAttemptsPerStep"]) {
     if (config[key] !== undefined && !positiveInteger(config[key])) {
-      problems.push(`${key}: must be a positive integer, got ${JSON.stringify(config[key])}`);
+      problems.push(
+        `${key}: must be a positive integer, got ${JSON.stringify(config[key])}`,
+      );
     }
   }
   for (const key of LISTS) {
     if (config[key] !== undefined && !Array.isArray(config[key])) {
-      problems.push(`${key}: must be a list (one "- item" per line), got ${JSON.stringify(config[key])}`);
+      problems.push(
+        `${key}: must be a list (one "- item" per line), got ${JSON.stringify(config[key])}`,
+      );
     }
   }
   if (Array.isArray(config.allowedPaths)) {
     config.allowedPaths.forEach((entry, index) => {
       if (!nonEmptyString(entry)) {
-        problems.push(`allowedPaths[${index}]: must be a non-empty path, got ${JSON.stringify(entry)}`);
+        problems.push(
+          `allowedPaths[${index}]: must be a non-empty path, got ${JSON.stringify(entry)}`,
+        );
       }
     });
   }
@@ -169,9 +212,13 @@ export function checkRunConfigShape(config) {
     }
   }
   if (config.workers === undefined || config.workers === null) {
-    problems.push("workers: required and missing (at least the verifier; see templates/v2/run-config.example.yaml)");
+    problems.push(
+      "workers: required and missing (at least the verifier; see templates/v2/run-config.example.yaml)",
+    );
   } else if (!isMap(config.workers)) {
-    problems.push("workers: must be a map of worker name -> { command, args, ... }");
+    problems.push(
+      "workers: must be a map of worker name -> { command, args, ... }",
+    );
   } else {
     for (const [name, spec] of Object.entries(config.workers)) {
       const where = `workers.${name}`;
@@ -190,11 +237,21 @@ export function checkRunConfigShape(config) {
       if (spec.args !== undefined && !Array.isArray(spec.args)) {
         problems.push(`${where}.args: must be a list (one "- arg" per line)`);
       }
-      if (spec.timeoutMs !== undefined && !(typeof spec.timeoutMs === "number" && spec.timeoutMs > 0)) {
-        problems.push(`${where}.timeoutMs: must be a positive number, got ${JSON.stringify(spec.timeoutMs)}`);
+      if (
+        spec.timeoutMs !== undefined &&
+        !(typeof spec.timeoutMs === "number" && spec.timeoutMs > 0)
+      ) {
+        problems.push(
+          `${where}.timeoutMs: must be a positive number, got ${JSON.stringify(spec.timeoutMs)}`,
+        );
       }
-      if (spec.inheritEnv !== undefined && typeof spec.inheritEnv !== "boolean") {
-        problems.push(`${where}.inheritEnv: must be true or false, got ${JSON.stringify(spec.inheritEnv)} (anything else used to mean false silently)`);
+      if (
+        spec.inheritEnv !== undefined &&
+        typeof spec.inheritEnv !== "boolean"
+      ) {
+        problems.push(
+          `${where}.inheritEnv: must be true or false, got ${JSON.stringify(spec.inheritEnv)} (anything else used to mean false silently)`,
+        );
       }
       if (spec.env !== undefined && !isMap(spec.env)) {
         problems.push(`${where}.env: must be a map of NAME -> value`);
@@ -208,22 +265,34 @@ export function checkRunConfigShape(config) {
 export function checkRunConfigAgainstWorkflow(config, workflow) {
   const problems = [];
   const steps = [...workflow.stepIds];
-  const workers = [...new Set(workflow.steps.map((step) => step.worker).filter(Boolean))];
+  const workers = [
+    ...new Set(workflow.steps.map((step) => step.worker).filter(Boolean)),
+  ];
   for (const name of Object.keys(isMap(config.workers) ? config.workers : {})) {
     if (!workers.includes(name)) {
       const guess = suggest(name, workers);
-      problems.push(`workers.${name}: no step of the workflow uses this worker${guess ? ` (did you mean ${guess}?)` : ""}; workers in this workflow: ${workers.join(", ")}`);
+      problems.push(
+        `workers.${name}: no step of the workflow uses this worker${guess ? ` (did you mean ${guess}?)` : ""}; workers in this workflow: ${workers.join(", ")}`,
+      );
     }
   }
   for (const step of Array.isArray(config.stopAt) ? config.stopAt : []) {
     if (!workflow.stepIds.has(step)) {
       const guess = suggest(step, steps);
-      problems.push(`stopAt: "${step}" is not a step of the workflow${guess ? ` (did you mean ${guess}?)` : ""}; steps: ${steps.join(", ")}`);
+      problems.push(
+        `stopAt: "${step}" is not a step of the workflow${guess ? ` (did you mean ${guess}?)` : ""}; steps: ${steps.join(", ")}`,
+      );
     }
   }
-  if (config.entry !== undefined && config.entry !== null && !workflow.stepIds.has(config.entry)) {
+  if (
+    config.entry !== undefined &&
+    config.entry !== null &&
+    !workflow.stepIds.has(config.entry)
+  ) {
     const guess = suggest(config.entry, steps);
-    problems.push(`entry: "${config.entry}" is not a step of the workflow${guess ? ` (did you mean ${guess}?)` : ""}; steps: ${steps.join(", ")}`);
+    problems.push(
+      `entry: "${config.entry}" is not a step of the workflow${guess ? ` (did you mean ${guess}?)` : ""}; steps: ${steps.join(", ")}`,
+    );
   }
   return problems;
 }

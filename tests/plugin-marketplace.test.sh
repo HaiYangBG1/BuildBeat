@@ -113,7 +113,7 @@ plugins = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 matching = [item for item in plugins if item.get("id") == "buildbeat@buildbeat-plugins"]
 assert len(matching) == 1
 plugin = matching[0]
-assert plugin.get("version") == "0.3.0"
+assert plugin.get("version") == "0.4.0"
 assert plugin.get("scope") == "user"
 assert plugin.get("enabled") is True
 
@@ -148,10 +148,11 @@ fi
 cmp -s "$REPO_ROOT/SKILL.md" "$INSTALL_PATH/SKILL.md" \
   || fail "installed root skill differs from the canonical SKILL.md"
 cmp -s \
-  "$REPO_ROOT/templates/standards/STACK.md" \
-  "$INSTALL_PATH/templates/standards/STACK.md" \
+  "$REPO_ROOT/templates/v2/work.example.md" \
+  "$INSTALL_PATH/templates/v2/work.example.md" \
   || fail "installed templates differ from the canonical repository source"
-pass "cached plugin is self-contained, dereferenced, and excludes the CLI bin"
+[ ! -e "$INSTALL_PATH/templates/standards" ] || fail "retired governance templates are still installed by default"
+pass "cached plugin is self-contained, dereferenced, and excludes retired templates and the CLI bin"
 
 run_claude plugin validate "$INSTALL_PATH" --strict >/dev/null
 pass "Claude Code strict validation accepts the installed cached plugin"

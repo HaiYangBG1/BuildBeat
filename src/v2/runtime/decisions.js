@@ -6,12 +6,26 @@
 // as a DECISION_RECORDED event and as a line in the Git plane
 // (delivery/work/<work>/decisions.jsonl).
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+} from "node:fs";
 import { join } from "node:path";
 
-import { evaluatePolicies, sha256Text } from "../policy/policy.js";
+import {
+  deliveryChecks,
+  evaluatePolicies,
+  sha256Text,
+} from "../policy/policy.js";
 import { EventLedger } from "../storage/event-ledger.js";
-import { acquireLock, readback, releaseLock } from "../workspace/workspace-manager.js";
+import {
+  acquireLock,
+  readback,
+  releaseLock,
+} from "../workspace/workspace-manager.js";
 import { writeRunRecord } from "./run-record.js";
 import { resolveRepoRef } from "./repo-ref.js";
 
@@ -39,7 +53,9 @@ function openWaiting(repoRoot, runId) {
     throw new DecisionError(`no ledger for run ${runId}`);
   }
   if (ledger.state.terminal) {
-    throw new DecisionError(`run ${runId} is already terminal (${ledger.state.terminal.status})`);
+    throw new DecisionError(
+      `run ${runId} is already terminal (${ledger.state.terminal.status})`,
+    );
   }
   if (!ledger.state.pendingHuman) {
     throw new DecisionError(`run ${runId} has no pending human request`);
@@ -50,10 +66,18 @@ function openWaiting(repoRoot, runId) {
 function recordDecisionFile(repoRoot, work, line) {
   const dir = join(repoRoot, "delivery", "work", work);
   mkdirSync(dir, { recursive: true });
-  appendFileSync(join(dir, "decisions.jsonl"), `${JSON.stringify(line)}\n`, "utf8");
+  appendFileSync(
+    join(dir, "decisions.jsonl"),
+    `${JSON.stringify(line)}\n`,
+    "utf8",
+  );
 }
 
-export function approveRun(repoRoot, runId, { by = "human", transition, ts, policies } = {}) {
+export function approveRun(
+  repoRoot,
+  runId,
+  { by = "human", transition, ts, policies } = {},
+) {
   // Read, check and write under the run lock: a ledger read before the
   // lock may be stale by the time it is written to.
   acquireLock(repoRoot, runId);
@@ -71,14 +95,19 @@ export function approveRun(repoRoot, runId, { by = "human", transition, ts, poli
       );
     }
     const bound = ledger.state.workspaces[runId];
-    const worktreePath = bound ? resolveRepoRef(repoRoot, bound.worktreePath) : null;
+    const worktreePath = bound
+      ? resolveRepoRef(repoRoot, bound.worktreePath)
+      : null;
     if (!bound || !existsSync(worktreePath)) {
-      throw new DecisionError(`worktree missing for ${runId}; cannot verify the approval subject`);
+      throw new DecisionError(
+        `worktree missing for ${runId}; cannot verify the approval subject`,
+      );
     }
     const tree = readback(worktreePath);
     const when = ts ?? new Date().toISOString();
     if (tree.dirty || tree.head !== pending.subject.candidate) {
-      const lastEvidence = ledger.state.evidence[ledger.state.evidence.length - 1];
+      const lastEvidence =
+        ledger.state.evidence[ledger.state.evidence.length - 1];
       ledger.append({
         type: "HUMAN_REQUESTED",
         actor: KERNEL,
@@ -90,17 +119,46 @@ export function approveRun(repoRoot, runId, { by = "human", transition, ts, poli
             planDigest: ledger.state.run.planDigest,
             evidenceDigest: lastEvidence?.digest ?? "UNVERIFIED",
           },
-          reasons: ["subject changed since the request; review the new state before approving"],
+          reasons: [
+            "subject changed since the request; review the new state before approving",
+          ],
           kind: pending.kind,
         },
       });
-      return { approved: false, refreshed: true, subject: ledger.state.pendingHuman.subject };
+      return {
+        approved: false,
+        refreshed: true,
+        subject: ledger.state.pendingHuman.subject,
+      };
+    }
+
+    const frozenChecks = ledger.state.run.deliveryChecks;
+    if (
+      frozenChecks &&
+      (frozenChecks.requireAcceptance ||
+        pending.subject.planDigest !== "UNVERIFIED")
+    ) {
+      const file = join(
+        repoRoot,
+        "delivery",
+        "work",
+        ledger.state.run.work,
+        `${frozenChecks.artifact}.md`,
+      );
+      if (
+        !existsSync(file) ||
+        sha256Text(readFileSync(file, "utf8")) !== pending.subject.planDigest
+      ) {
+        throw new DecisionError(
+          "work artifact changed since the run was created; accept the new scope and start a new attempt",
+        );
+      }
     }
 
     // Transition policies are enforced at the moment of stamping: an
     // approval that a LOCAL_ENFORCED policy forbids is refused, not logged.
     const policyRows = evaluatePolicies(
-      policies ?? [],
+      frozenChecks ? deliveryChecks(frozenChecks) : (policies ?? []),
       { type: "transition", appliesTo: pending.transition },
       {
         state: ledger.state,
@@ -167,7 +225,8 @@ export function approveRun(repoRoot, runId, { by = "human", transition, ts, poli
         ts: when,
         data: {
           status: "SUCCEEDED",
-          reason: "final decision approved; the external action (merge) stays manual",
+          reason:
+            "final decision approved; the external action (merge) stays manual",
         },
       });
       writeRunRecord({ repoRoot, ledger, ts: when });
@@ -195,40 +254,64 @@ export function approveRun(repoRoot, runId, { by = "human", transition, ts, poli
 // each time (a frontend run reached verify #5 and fix #3 for three hand
 // fixes). The commit must already be the worktree HEAD: git is read back,
 // the claim is not trusted.
-export function adoptCandidate(repoRoot, runId, { sha, by = "human", resumeAt, ts } = {}) {
+export function adoptCandidate(
+  repoRoot,
+  runId,
+  { sha, by = "human", resumeAt, ts } = {},
+) {
   acquireLock(repoRoot, runId);
   try {
     if (!sha || typeof sha !== "string" || sha.length < 7) {
-      throw new DecisionError("adopt requires a commit sha (at least 7 characters)");
+      throw new DecisionError(
+        "adopt requires a commit sha (at least 7 characters)",
+      );
     }
     if (!resumeAt) {
-      throw new DecisionError("adopt requires the step to resume at (resumeAt)");
+      throw new DecisionError(
+        "adopt requires the step to resume at (resumeAt)",
+      );
     }
     const ledger = openWaiting(repoRoot, runId);
     const pending = ledger.state.pendingHuman;
     if (pending.kind === "final-decision") {
-      throw new DecisionError("adopt is for a run waiting before fix/verify, not at the merge decision");
+      throw new DecisionError(
+        "adopt is for a run waiting before fix/verify, not at the merge decision",
+      );
     }
     const bound = ledger.state.workspaces[runId];
-    const worktreePath = bound ? resolveRepoRef(repoRoot, bound.worktreePath) : null;
+    const worktreePath = bound
+      ? resolveRepoRef(repoRoot, bound.worktreePath)
+      : null;
     if (!bound || !existsSync(worktreePath)) {
-      throw new DecisionError(`worktree missing for ${runId}; cannot adopt a candidate`);
+      throw new DecisionError(
+        `worktree missing for ${runId}; cannot adopt a candidate`,
+      );
     }
     const tree = readback(worktreePath);
     if (tree.dirty) {
-      throw new DecisionError("worktree is dirty; commit the hand fix before adopting it");
+      throw new DecisionError(
+        "worktree is dirty; commit the hand fix before adopting it",
+      );
     }
     if (!tree.head.startsWith(sha)) {
-      throw new DecisionError(`worktree HEAD is ${tree.head}, not ${sha}; adopt what git reads back`);
+      throw new DecisionError(
+        `worktree HEAD is ${tree.head}, not ${sha}; adopt what git reads back`,
+      );
     }
     const when = ts ?? new Date().toISOString();
-    const lastEvidence = ledger.state.evidence[ledger.state.evidence.length - 1];
+    const lastEvidence =
+      ledger.state.evidence[ledger.state.evidence.length - 1];
     if (bound.candidate !== tree.head) {
       ledger.append({
         type: "CANDIDATE_PINNED",
         actor: { kind: "human", id: by },
         ts: when,
-        data: { workspaceId: runId, base: bound.base, candidate: tree.head, adopted: true },
+        data: {
+          workspaceId: runId,
+          base: bound.base,
+          candidate: tree.head,
+          adopted: true,
+        },
       });
     }
     const subject = {
@@ -261,7 +344,13 @@ export function adoptCandidate(repoRoot, runId, { sha, by = "human", resumeAt, t
       adopted: tree.head,
       resumeAt,
     });
-    return { adopted: tree.head, decisionRef, transition: pending.transition, resumeAt, state: ledger.state };
+    return {
+      adopted: tree.head,
+      decisionRef,
+      transition: pending.transition,
+      resumeAt,
+      state: ledger.state,
+    };
   } finally {
     releaseLock(repoRoot, runId);
   }
@@ -271,13 +360,26 @@ export function adoptCandidate(repoRoot, runId, { sha, by = "human", resumeAt, t
 // file's current digest in the Git plane. If the file changes afterwards,
 // artifact.accepted evaluates false again — acceptance cannot go stale
 // silently (closes MVP DoD #1 with staleness included).
-export function acceptArtifact(repoRoot, workId, artifact, { by = "human", ts } = {}) {
+export function acceptArtifact(
+  repoRoot,
+  workId,
+  artifact,
+  { by = "human", ts } = {},
+) {
+  if (!["work", "intent", "plan", "spec"].includes(artifact))
+    throw new DecisionError("artifact must be work, intent, plan or spec");
   const filePath = join(repoRoot, "delivery", "work", workId, `${artifact}.md`);
   if (!existsSync(filePath)) {
     throw new DecisionError(`artifact file missing: ${filePath}`);
   }
   const digest = sha256Text(readFileSync(filePath, "utf8"));
-  const decisionsPath = join(repoRoot, "delivery", "work", workId, "decisions.jsonl");
+  const decisionsPath = join(
+    repoRoot,
+    "delivery",
+    "work",
+    workId,
+    "decisions.jsonl",
+  );
   const count = existsSync(decisionsPath)
     ? readFileSync(decisionsPath, "utf8").split("\n").filter(Boolean).length
     : 0;
@@ -298,19 +400,30 @@ export function acceptArtifact(repoRoot, workId, artifact, { by = "human", ts } 
 // acceptance is written, and each artifact keeps its own digest-bound line.
 export function acceptArtifacts(repoRoot, workId, artifacts, options = {}) {
   const unique = [...new Set(artifacts)];
+  if (unique.some((name) => !["work", "intent", "plan", "spec"].includes(name)))
+    throw new DecisionError("artifact must be work, intent, plan or spec");
   if (unique.length === 0) {
     throw new DecisionError("no artifact to accept");
   }
   const missing = unique
-    .map((artifact) => join(repoRoot, "delivery", "work", workId, `${artifact}.md`))
+    .map((artifact) =>
+      join(repoRoot, "delivery", "work", workId, `${artifact}.md`),
+    )
     .filter((filePath) => !existsSync(filePath));
   if (missing.length > 0) {
     throw new DecisionError(`artifact file missing: ${missing.join(", ")}`);
   }
-  return unique.map((artifact) => ({ artifact, ...acceptArtifact(repoRoot, workId, artifact, options) }));
+  return unique.map((artifact) => ({
+    artifact,
+    ...acceptArtifact(repoRoot, workId, artifact, options),
+  }));
 }
 
-export function rejectRun(repoRoot, runId, { by = "human", transition, reason, ts } = {}) {
+export function rejectRun(
+  repoRoot,
+  runId,
+  { by = "human", transition, reason, ts } = {},
+) {
   acquireLock(repoRoot, runId);
   try {
     const ledger = openWaiting(repoRoot, runId);
@@ -347,7 +460,10 @@ export function rejectRun(repoRoot, runId, { by = "human", transition, reason, t
       type: "RUN_TERMINAL",
       actor: KERNEL,
       ts: when,
-      data: { status: "CANCELLED", reason: `rejected by ${by}${reason ? `: ${reason}` : ""}` },
+      data: {
+        status: "CANCELLED",
+        reason: `rejected by ${by}${reason ? `: ${reason}` : ""}`,
+      },
     });
     writeRunRecord({ repoRoot, ledger, ts: when });
     return { rejected: true, decisionRef, state: ledger.state };
@@ -373,7 +489,11 @@ export function listInbox(repoRoot) {
       continue;
     }
     const state = ledger.state;
-    if (state.run && state.run.status === "WAITING_HUMAN" && state.pendingHuman) {
+    if (
+      state.run &&
+      state.run.status === "WAITING_HUMAN" &&
+      state.pendingHuman
+    ) {
       rows.push({
         run: state.run.id,
         work: state.run.work,

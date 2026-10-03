@@ -55,7 +55,7 @@ test("yaml subset fails closed on unsupported syntax", () => {
 test("the official software-delivery preset loads with the expected graph", () => {
   const workflow = loadWorkflow(PRESET_PATH);
   assert.equal(workflow.name, "software-delivery");
-  assert.equal(workflow.entry, "intent");
+  assert.equal(workflow.entry, "build");
   assert.ok(workflow.terminal.has("wait-merge"));
 
   assert.equal(nextStep(workflow, "build", "succeeded"), "verify");
@@ -66,9 +66,7 @@ test("the official software-delivery preset loads with the expected graph", () =
   assert.equal(nextStep(workflow, "review", "succeeded"), "wait-merge");
   assert.equal(nextStep(workflow, "wait-merge", "succeeded"), null);
 
-  const spec = workflow.steps.find((step) => step.id === "spec");
-  assert.equal(spec.optional, true);
-  assert.equal(spec.requiredWhen, "ui-delivery");
+  assert.deepEqual(workflow.steps.map(step=>step.id), ["build","verify","review","wait-merge","fix"]);
 });
 
 function minimalDoc(overrides = "") {
