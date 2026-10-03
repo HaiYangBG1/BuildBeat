@@ -114,7 +114,6 @@ git -C "$PROJECT" config user.name "Pilot"
 mkdir -p "$PROJECT/src" "$PROJECT/tests" "$PROJECT/tools" "$PROJECT/delivery/work/WORK-PACK"
 : > "$PROJECT/src/.gitkeep"
 : > "$PROJECT/tests/.gitkeep"
-printf '# intent\nadd feature. stop-loss: 2 runs\n' > "$PROJECT/delivery/work/WORK-PACK/intent.md"
 printf '# plan\n1. write src/feature.txt\n' > "$PROJECT/delivery/work/WORK-PACK/work.md"
 cp "$PKG_DIR/src/v2/presets/software-delivery.yaml" "$PROJECT/delivery/work/WORK-PACK/workflow.yaml"
 cp -R "$PKG_DIR/templates/v2/envelope" "$PROJECT/delivery/envelope"
@@ -123,6 +122,7 @@ cat > "$PROJECT/tools/fake-agent.sh" <<'AGENT'
 #!/usr/bin/env bash
 set -euo pipefail
 role=$1
+node -e 'const i=JSON.parse(process.env.BUILDBEAT_INPUT);const fs=require("node:fs");if(i.workArtifact?.ref!=="delivery/work/WORK-PACK/work.md"||!fs.existsSync(i.workArtifact.ref)||!fs.readFileSync(process.env.BUILDBEAT_PROMPT,"utf8").includes("work.md"))process.exit(9)'
 prompt=${@: -1}
 case "$role" in
   build) [ -n "$prompt" ] || exit 9; echo feature > src/feature.txt ;;

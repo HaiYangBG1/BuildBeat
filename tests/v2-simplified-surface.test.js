@@ -243,3 +243,129 @@ test("an adopt request with changed safeguards is refused before writing a candi
   assert.match(result.stderr, /safeguards changed/);
   assert.equal(readFileSync(path, "utf8"), before);
 });
+
+test("a dismissed finding does not re-block approval after a no-op fix of the same candidate", () => {
+  const f = fixture();
+  const worker = join(f.root, "worker.sh");
+  writeFileSync(
+    worker,
+    readFileSync(worker, "utf8")
+      .replace("test -f fixed.txt", "test -f feature.txt")
+      .replace(
+        "echo fixed > fixed.txt; git add fixed.txt; git commit -qm fix",
+        "true",
+      )
+      .replace(
+        '"findings":[]',
+        '"findings":[{"severity":"P1","summary":"false positive"}]',
+      ),
+  );
+  writeFileSync(f.config, f.text + "reviewTriage: required\n");
+  f.git("add", "worker.sh", "delivery/work/WORK-S/run-config.yaml");
+  f.git("commit", "-qm", "review fixture");
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  const before = JSON.parse(
+    f.ok("status", "--repo", ".", "--run", "RUN-S-01", "--json"),
+  ).state;
+  assert.equal(before.pendingHuman.transition, "enter-fix");
+  const card = JSON.parse(
+    f.ok("status", "--repo", ".", "--work", "WORK-S", "--json"),
+  );
+  const fingerprint = card.works[0].findings[0].fingerprint;
+  f.ok(
+    "decide",
+    "--repo",
+    ".",
+    "--work",
+    "WORK-S",
+    "--action",
+    "dismiss",
+    "--fingerprint",
+    fingerprint,
+    "--by",
+    "owner",
+  );
+  f.ok(
+    "decide",
+    "--repo",
+    ".",
+    "--run",
+    "RUN-S-01",
+    "--action",
+    "approve",
+    "--transition",
+    "enter-fix",
+  );
+  f.ok("run", "--config", f.config);
+  const after = JSON.parse(
+    f.ok("status", "--repo", ".", "--run", "RUN-S-01", "--json"),
+  ).state;
+  assert.equal(
+    after.pendingHuman.subject.candidate,
+    before.pendingHuman.subject.candidate,
+  );
+  assert.equal(after.pendingHuman.transition, "enter-wait-merge");
+  f.ok(
+    "decide",
+    "--repo",
+    ".",
+    "--run",
+    "RUN-S-01",
+    "--action",
+    "approve",
+    "--transition",
+    "enter-wait-merge",
+  );
+});
+
+test("scoped text status only offers decisions for the selected work", () => {
+  const f = fixture();
+  const second = join(f.root, "delivery", "work", "WORK-B");
+  mkdirSync(second, { recursive: true });
+  writeFileSync(join(second, "work.md"), "Another independent work");
+  writeFileSync(
+    join(second, "run-config.yaml"),
+    f.text.replaceAll("WORK-S", "WORK-B").replaceAll("RUN-S", "RUN-B"),
+  );
+  f.git("add", "delivery/work/WORK-B");
+  f.git("commit", "-qm", "second work");
+  for (const [work, config] of [
+    ["WORK-S", f.config],
+    ["WORK-B", join(second, "run-config.yaml")],
+  ]) {
+    f.ok("accept", "--repo", ".", "--work", work);
+    f.ok("run", "--config", config);
+  }
+  const scoped = f.ok("status", "--repo", ".", "--work", "WORK-S");
+  assert.match(scoped, /RUN-S-01/);
+  assert.doesNotMatch(scoped, /WORK-B|RUN-B/);
+});
+
+test("an unaccepted work.md draft is discoverable before any decision or run exists", () => {
+  const f = fixture();
+  const json = JSON.parse(
+    f.ok("status", "--repo", ".", "--work", "WORK-S", "--json"),
+  );
+  assert.equal(json.works.length, 1);
+  assert.equal(json.works[0].stage, "WORK_DRAFT");
+  assert.equal(json.works[0].workArtifact, "work");
+  assert.match(f.ok("status", "--repo", "."), /work\.md draft/);
+  assert.equal(existsSync(join(f.root, ".buildbeat")), false);
+});
+
+test("workers cannot start from a different committed work artifact than the accepted one", () => {
+  const f = fixture();
+  writeFileSync(
+    join(f.dir, "work.md"),
+    "Changed goal not yet in the selected base",
+  );
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  const result = f.call("run", "--config", f.config);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /commit the accepted work artifact/);
+  assert.equal(existsSync(join(f.root, ".buildbeat")), false);
+  f.git("add", "delivery/work/WORK-S/work.md");
+  f.git("commit", "-qm", "accepted scope");
+  f.ok("run", "--config", f.config);
+});

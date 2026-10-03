@@ -713,6 +713,12 @@ function beginStep(context, step, stepDef, attempt) {
     step,
     attempt,
   };
+  const artifact = ledger.state.run.deliveryChecks?.artifact;
+  if (artifact)
+    input.workArtifact = {
+      ref: `delivery/work/${ledger.state.run.work}/${artifact}.md`,
+      digest: ledger.state.run.planDigest,
+    };
   const anchor = buildAnchor(context.repoRoot, ledger.state.run.work);
   if (anchor && stepDef.readonly) {
     input.anchor = anchor;

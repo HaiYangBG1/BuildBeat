@@ -2,10 +2,26 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { WorkflowError, loadWorkflow, nextStep, parseWorkflow } from "../src/v2/engine/workflow.js";
-import { YamlSubsetError, parseYamlSubset } from "../src/v2/engine/yaml-subset.js";
+import {
+  DELIVERY_TEXT,
+  WorkflowError,
+  loadWorkflow,
+  nextStep,
+  parseWorkflow,
+} from "../src/v2/engine/workflow.js";
+import {
+  YamlSubsetError,
+  parseYamlSubset,
+} from "../src/v2/engine/yaml-subset.js";
 
-const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
+const PRESET_PATH = join(
+  import.meta.dirname,
+  "..",
+  "src",
+  "v2",
+  "presets",
+  "software-delivery.yaml",
+);
 
 test("yaml subset parses maps, lists, and scalar types", () => {
   const doc = parseYamlSubset(
@@ -66,7 +82,10 @@ test("the official software-delivery preset loads with the expected graph", () =
   assert.equal(nextStep(workflow, "review", "succeeded"), "wait-merge");
   assert.equal(nextStep(workflow, "wait-merge", "succeeded"), null);
 
-  assert.deepEqual(workflow.steps.map(step=>step.id), ["build","verify","review","wait-merge","fix"]);
+  assert.deepEqual(
+    workflow.steps.map((step) => step.id),
+    ["build", "verify", "review", "wait-merge", "fix"],
+  );
 });
 
 function minimalDoc(overrides = "") {
@@ -88,7 +107,11 @@ function minimalDoc(overrides = "") {
 }
 
 test("workflow validation rejects malformed documents", () => {
-  assert.throws(() => parseWorkflow(minimalDoc("extra: field")), WorkflowError, "unknown field");
+  assert.throws(
+    () => parseWorkflow(minimalDoc("extra: field")),
+    WorkflowError,
+    "unknown field",
+  );
   assert.throws(
     () => parseWorkflow(minimalDoc().replace("version: 1", "version: 2")),
     WorkflowError,
@@ -107,7 +130,14 @@ test("workflow validation rejects malformed documents", () => {
   assert.throws(
     () =>
       parseWorkflow(
-        minimalDoc(["transitions:", "  - from: a", "    on: failed", "    to: nope"].join("\n")),
+        minimalDoc(
+          [
+            "transitions:",
+            "  - from: a",
+            "    on: failed",
+            "    to: nope",
+          ].join("\n"),
+        ),
       ),
     WorkflowError,
     "unknown transition target",
@@ -153,4 +183,22 @@ test("a cycle with no path to terminal is rejected", () => {
     "  - c",
   ].join("\n");
   assert.throws(() => parseWorkflow(doc), WorkflowError);
+});
+
+test("fixed workflows reject hidden policies and malformed budgets instead of dropping them", () => {
+  assert.throws(
+    () => parseWorkflow(DELIVERY_TEXT + "policies:\n  hidden: true\n"),
+    /policies are unsupported/,
+  );
+  assert.throws(
+    () =>
+      parseWorkflow(
+        DELIVERY_TEXT + "budgets:\n  maxAttempts:\n    review: never\n",
+      ),
+    /invalid workflow attempt budget/,
+  );
+  const strict = parseWorkflow(
+    DELIVERY_TEXT + "budgets:\n  maxAttempts:\n    review: 2\n",
+  );
+  assert.equal(strict.budgets.maxAttempts.review, 2);
 });

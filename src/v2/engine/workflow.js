@@ -89,7 +89,31 @@ export function parseWorkflow(text) {
     reject("workflow entry changed");
   if (JSON.stringify(doc.terminal) !== '["wait-merge"]')
     reject("delivery terminal changed");
-  if (doc.policies?.length) reject("workflow policies are unsupported");
+  if (
+    doc.policies !== undefined &&
+    (!Array.isArray(doc.policies) || doc.policies.length)
+  )
+    reject("workflow policies are unsupported");
+  if (doc.budgets !== undefined) {
+    if (
+      !doc.budgets ||
+      typeof doc.budgets !== "object" ||
+      Array.isArray(doc.budgets) ||
+      Object.keys(doc.budgets).some((key) => key !== "maxAttempts")
+    )
+      reject("unsupported workflow budget");
+    const attempts = doc.budgets.maxAttempts ?? {};
+    if (
+      !attempts ||
+      typeof attempts !== "object" ||
+      Array.isArray(attempts) ||
+      Object.entries(attempts).some(
+        ([step, value]) =>
+          !ids.includes(step) || !Number.isInteger(value) || value < 1,
+      )
+    )
+      reject("invalid workflow attempt budget");
+  }
   const steps = doc.steps.map((raw) => {
     for (const key of Object.keys(raw))
       if (
@@ -121,7 +145,7 @@ export function parseWorkflow(text) {
       worker: raw.worker ?? null,
       readonly: raw.id === "review",
       optional: spec,
-      requiredWhen: null,
+      requiredWhen: raw.requiredWhen ?? null,
       grade: raw.grade ?? "L2",
     };
   });
@@ -137,6 +161,8 @@ export function parseWorkflow(text) {
     reject("delivery transitions changed");
   const seen = new Set();
   for (const row of doc.transitions) {
+    if (!row || typeof row !== "object" || Array.isArray(row))
+      reject("invalid delivery transition");
     const key = `${row.from}|${row.on}`;
     if (
       Object.keys(row).some((key) => !["from", "on", "to"].includes(key)) ||

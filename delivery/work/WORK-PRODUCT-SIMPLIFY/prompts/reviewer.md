@@ -1,6 +1,9 @@
 You are the independent read-only reviewer of the product-simplification candidate.
 Read delivery/work/WORK-PRODUCT-SIMPLIFY/intent.md, plan.md and docs/MIGRATION.md.
-Review the complete branch delta against commit 9fc8454, not only the last commit.
+For the first review, inspect the complete delta against commit 9fc8454.
+On subsequent reviews, use BUILDBEAT_INPUT.lastReviewed.range and the recorded
+findings to verify their fixes and inspect the new delta; retain prior verified
+context without re-reviewing unchanged code.
 The owner authorized the retirements and consolidation in those documents.
 
 Inspect correctness of the fixed delivery graph and checks, work.md acceptance,

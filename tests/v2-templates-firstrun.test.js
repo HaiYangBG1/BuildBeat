@@ -68,7 +68,6 @@ test("templates/v2 envelope drives a run to the merge decision with a scripted a
   mkdirSync(work, { recursive: true });
   cpSync(join(TEMPLATES, "envelope"), join(root, "delivery", "envelope"), { recursive: true });
   cpSync(PRESET, join(work, "workflow.yaml"));
-  writeFileSync(join(work, "intent.md"), "# intent\nadd feature. stop-loss: 2 runs\n");
   writeFileSync(join(work, "work.md"), "# plan\n1. write src/feature.txt\n");
   writeFileSync(join(root, "README.md"), "fixture\n");
 
@@ -80,6 +79,7 @@ test("templates/v2 envelope drives a run to the merge decision with a scripted a
       "#!/usr/bin/env bash",
       "set -euo pipefail",
       "role=$1",
+      `node -e 'const i=JSON.parse(process.env.BUILDBEAT_INPUT);const fs=require("node:fs");if(i.workArtifact?.ref!=="delivery/work/WORK-T/work.md"||!fs.existsSync(i.workArtifact.ref)||!fs.readFileSync(process.env.BUILDBEAT_PROMPT,"utf8").includes("work.md"))process.exit(9)'`,
       "prompt=${@: -1}",
       "case \"$role\" in",
       "  build) [ -n \"$prompt\" ] || exit 9; echo feature > src/feature.txt ;;",

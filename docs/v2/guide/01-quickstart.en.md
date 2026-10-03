@@ -90,3 +90,5 @@ workers:
 ```
 
 [Migration](../../MIGRATION.md) · [Worker contract](05-worker-contract.en.md) · [Recovery](10-recovery.en.md)
+
+Before starting, commit work.md and worker scripts into the selected base so the isolated checkout sees the accepted scope. Acceptance records may be committed afterward.

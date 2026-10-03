@@ -12,6 +12,7 @@ import {
   PolicyError,
 } from "../src/v2/policy/policy.js";
 import { acceptArtifact } from "../src/v2/runtime/decisions.js";
+import { fingerprintFinding } from "../src/v2/runtime/findings.js";
 import { tempDir } from "./support/tmp.js";
 function ctx(extra = {}) {
   return {
@@ -124,4 +125,33 @@ test("unrecognized custom rules are refused rather than ignored", () => {
       ),
     PolicyError,
   );
+});
+
+test("a newer accept reopens a previously suppressed finding", () => {
+  const finding = { severity: "P1", summary: "same issue" };
+  const fingerprint = fingerprintFinding(finding);
+  const c = ctx({
+    state: {
+      evidence: [
+        {
+          kind: "review",
+          subject: "current",
+          findings: [finding],
+          suppressedFingerprints: [fingerprint],
+        },
+      ],
+    },
+  });
+  const account = join(c.workDir, "review-findings.jsonl");
+  const dismiss = { kind: "adjudication", fingerprint, action: "dismiss" };
+  writeFileSync(account, JSON.stringify(dismiss) + "\n");
+  assert.equal(reviewClear("P2", c).ok, true);
+  writeFileSync(
+    account,
+    JSON.stringify(dismiss) +
+      "\n" +
+      JSON.stringify({ ...dismiss, action: "accept" }) +
+      "\n",
+  );
+  assert.equal(reviewClear("P2", c).ok, false);
 });

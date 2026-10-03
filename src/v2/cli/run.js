@@ -601,6 +601,27 @@ function spawnStallWatcher(repoRoot, runId, stallAfterMs) {
 
 async function commandStart(flags) {
   const options = loadRunConfig(flags, "start");
+  if (options.deliveryChecks.requireAcceptance) {
+    const ref = `delivery/work/${options.workId}/${options.workArtifact}.md`;
+    let committed;
+    try {
+      committed = execFileSync(
+        "git",
+        ["-C", options.repoRoot, "show", `${options.base}:${ref}`],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      );
+    } catch {
+      throw new Error(
+        `commit ${ref} into the selected base before starting; workers read that isolated checkout`,
+      );
+    }
+    const digest = `sha256:${createHash("sha256").update(committed, "utf8").digest("hex")}`;
+    if (digest !== options.planDigest)
+      throw new Error(
+        `the selected base contains a different ${ref}; commit the accepted work artifact before starting`,
+      );
+  }
+
   if (flags.attempt !== undefined) {
     if (flags.attempt !== "new") {
       throw new Error(
@@ -817,7 +838,9 @@ function commandInbox(flags) {
     throw new Error("inbox requires --repo");
   }
   const repoRoot = resolve(flags.repo);
-  const rows = listInbox(repoRoot);
+  const rows = listInbox(repoRoot).filter(
+    (row) => !flags.work || row.work === flags.work || row.corrupted,
+  );
   if (rows.length === 0) {
     console.log("inbox empty: no runs waiting on a human");
     return;

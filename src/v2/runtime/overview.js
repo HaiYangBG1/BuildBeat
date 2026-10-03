@@ -169,6 +169,7 @@ export function computeOverview(
     }
     const workDir = join(workRoot, workId);
     if (
+      !existsSync(join(workDir, "work.md")) &&
       !existsSync(join(workDir, "intent.md")) &&
       !existsSync(join(workDir, "plan.md")) &&
       !existsSync(join(workDir, "decisions.jsonl")) &&
@@ -245,7 +246,13 @@ export function computeOverview(
           ? `write delivery/work/${workId}/plan.md, then accept it`
           : `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact intent --by <you>`;
       } else if (!plan.accepted) {
-        stage = plan.stale ? "PLAN_STALE" : "PLAN_DRAFT";
+        stage = unified
+          ? plan.stale
+            ? "WORK_STALE"
+            : "WORK_DRAFT"
+          : plan.stale
+            ? "PLAN_STALE"
+            : "PLAN_DRAFT";
         const artifacts = unified
           ? "work"
           : intent.accepted

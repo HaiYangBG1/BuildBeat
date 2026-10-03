@@ -3,7 +3,10 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fingerprintFinding } from "../runtime/findings.js";
+import {
+  fingerprintFinding,
+  latestAdjudications,
+} from "../runtime/findings.js";
 export class PolicyError extends Error {}
 const GRADES = { L0: 0, L1: 1, L2: 2, L3: 3, L4: 4 };
 const SEVERITY = { P0: 0, P1: 1, P2: 2, P3: 3 };
@@ -71,12 +74,30 @@ export function reviewClear(atMost, ctx) {
       ok: "unverified",
       why: "no review evidence for the current candidate",
     };
+  // Adjudication is current Work-level authority. A no-op fix may keep the
+  // candidate SHA, so an older unsuppressed review must not undo a later
+  // dismissal. Conversely, a later accept must reopen a formerly suppressed
+  // finding; historical suppression alone cannot override that decision.
+  const account = ctx.workDir
+    ? join(ctx.workDir, "review-findings.jsonl")
+    : null;
+  const rows =
+    account && existsSync(account)
+      ? readFileSync(account, "utf8")
+          .split("\n")
+          .filter(Boolean)
+          .map((line) => JSON.parse(line))
+      : [];
+  const adjudications = latestAdjudications(rows);
   const severe = reviews
     .flatMap((e) =>
-      (e.findings ?? []).filter(
-        (f) =>
-          !(e.suppressedFingerprints ?? []).includes(fingerprintFinding(f)),
-      ),
+      (e.findings ?? []).filter((f) => {
+        const fingerprint = fingerprintFinding(f);
+        const verdict = adjudications.get(fingerprint);
+        return verdict
+          ? verdict.action !== "dismiss"
+          : !(e.suppressedFingerprints ?? []).includes(fingerprint);
+      }),
     )
     .filter((f) => (SEVERITY[f.severity] ?? 0) < SEVERITY[atMost]);
   return {

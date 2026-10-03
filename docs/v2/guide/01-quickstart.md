@@ -90,3 +90,5 @@ workers:
 ```
 
 [Migration](../../MIGRATION.md) · [Worker contract](05-worker-contract.md) · [Recovery](10-recovery.md)
+
+启动前将 work.md 和 worker 脚本提交到所选 base，确保隔离工作树能读到同一份已确认范围；接受记录可以随后提交。

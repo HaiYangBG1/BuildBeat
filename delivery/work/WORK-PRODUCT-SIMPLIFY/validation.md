@@ -23,3 +23,19 @@ Compatibility: new attempts can use legacy official delivery configurations.
 Pre-4.x active runs remain readable/cancellable but must resume/approve with their
 original runtime because their ledgers do not prove frozen delivery checks.
 No target-project files, installed runtime, remote branch or publication changed.
+
+## First independent review and corrections
+
+The first read-only review inspected candidate 4f24f20 and reported one P1 and
+two P2 findings (review-1.json). Fixes select work.md in shipped prompts with an
+explicit legacy fallback, expose unaccepted drafts, and scope text decision
+cards to the selected Work. First-run tests now omit all legacy artifacts and
+validate the worker artifact reference plus prompt guidance. The selected base
+must contain the same accepted artifact that workers will read.
+
+An additional CLI regression reproduced a dismissed finding re-blocking final
+approval after a no-op fix of the same candidate. It failed before the correction
+and passed afterward. Current Work adjudication now applies to all reviews of
+that candidate, while a later accept reopens a suppressed issue. Legacy workflow
+validation also refuses hidden policies or malformed budgets rather than dropping
+them. Final verification and incremental independent review are pending.

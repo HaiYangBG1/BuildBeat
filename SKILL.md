@@ -123,3 +123,5 @@ workers:
 - [恢复](docs/v2/guide/10-recovery.md)、[接续](docs/v2/guide/11-session-handoff.md)
 - [安全边界](docs/v2/guide/09-security-boundaries.md)
 - [迁移](docs/MIGRATION.md)
+
+启动前将 work.md 和 worker 脚本提交到所选 base，确保隔离工作树能读到同一份已确认范围；接受记录可以随后提交。

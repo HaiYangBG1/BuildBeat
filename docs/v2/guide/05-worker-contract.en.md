@@ -9,3 +9,5 @@ Structured output: {"status":"succeeded","findings":[{"severity":"P2","summary":
 Review input includes adjudication anchors and an available lastReviewed incremental range. Fix input includes current findings and adjudications. Prompts may use these facts but cannot approve decisions.
 
 Use exit 75 for missing tools, unavailable backends or an unusable execution environment. Do not change business code to hide an environment failure. Do not print credentials. The runner reads candidate, exit status and evidence itself.
+
+`BUILDBEAT_INPUT.workArtifact` carries the selected repository-relative `ref` and accepted `digest`. Read that artifact; use work.md first and legacy intent/plan only when work.md is absent.
