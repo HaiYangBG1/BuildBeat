@@ -16,8 +16,8 @@
           "feature.txt"
         ]
       },
-      "baselineMs": 304,
-      "candidateMs": 307
+      "baselineMs": 343,
+      "candidateMs": 324
     },
     {
       "scenario": "repair",
@@ -36,8 +36,8 @@
           "fixed.txt"
         ]
       },
-      "baselineMs": 393,
-      "candidateMs": 393
+      "baselineMs": 404,
+      "candidateMs": 400
     },
     {
       "scenario": "resume",
@@ -54,8 +54,8 @@
           "feature.txt"
         ]
       },
-      "baselineMs": 546,
-      "candidateMs": 539
+      "baselineMs": 545,
+      "candidateMs": 546
     },
     {
       "scenario": "stale",
@@ -71,8 +71,8 @@
           "feature.txt"
         ]
       },
-      "baselineMs": 530,
-      "candidateMs": 527
+      "baselineMs": 526,
+      "candidateMs": 532
     }
   ]
 }

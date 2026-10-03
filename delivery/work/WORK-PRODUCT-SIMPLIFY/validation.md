@@ -1,54 +1,44 @@
-# Validation record
+# BuildBeat 减法实施与验证
 
-Status: implementation candidate; independent review pending.
+本地实现与验证完成，等待人工合并决定。源码候选 `9bc9632e5c00bf3ebd060b0e049dee0fa8b04d75`，版本 `4.0.0-dev.0`，尚未推送或发布。
 
-Baseline: commit 9fc8454, package 3.3.1, 267 Node tests passed. The candidate
-retires observe/release execution tests and replaces generic-rule tests with
-fixed-check, migration-refusal and unified-command regressions; core cache,
-recovery, isolation, budgeting, findings, notification and evidence tests remain.
+## 已实施
 
-Four deterministic scenarios were run against both baseline and candidate:
-clean delivery, failed verification followed by repair, resuming an approved
-boundary, and invalidating an approval after the candidate moves. All outcomes,
-worker invocation counts and human-request counts match. See parity-results.json
-and compare-baseline.mjs. Millisecond readings are local scripted-worker timings,
-not a model-performance claim.
+- 移出生产巡检、上线专用流程、UI 专属策略、通用 Workflow/Policy 编写能力，以及默认治理脚手架。历史文档与记录保留。
+- 新工作使用一份 work.md；执行、状态、决策、诊断收敛为 run/status/decide/check。旧核心命令保留兼容别名，共用处理逻辑。
+- 固定交付循环与内置接受、验证和审查校验；Run 冻结校验条件，恢复与批准不会省略或降低这些条件。
+- 保留缓存、增量审查、恢复、范围检查、并行隔离、通知和安全清理。渠道格式移到适配层。
+- 修复新工件提示词、草稿发现、按 Work 筛选、历史裁决误阻断，以及 CRLF/LF 检出差异。
 
-Installed-package first run: 17 assertions passed, including a failed verifier,
-a fixer and independent reviewer. Envelope shell contract: 18 checks passed with
-Bash 3.2. Plugin validation and isolated actual installation: 7 checks passed.
-Documentation, shell syntax and ShellCheck passed before independent review.
+## 验证
 
-Compatibility: new attempts can use legacy official delivery configurations.
-Pre-4.x active runs remain readable/cancellable but must resume/approve with their
-original runtime because their ledgers do not prove frozen delivery checks.
-No target-project files, installed runtime, remote branch or publication changed.
+| 检查 | 结果 |
+|---|---|
+| Node 回归 | 269 通过，0 失败 |
+| 安装包首跑 | 17 项通过，包含验证失败后修复、重验、审查 |
+| Bash 信封合同 | 18 项通过，Bash 3.2 |
+| Claude 插件 | 7 项通过，含隔离环境真实安装与缓存验证 |
+| 文档、ShellCheck、脚本语法 | 通过 |
+| 独立只读审查 | 共 3 轮；最终 findings 为空 |
+| 正常交付、修复、恢复、过期批准四场景对照 | 结果与 worker 调用次数均与基线一致 |
 
-## First independent review and corrections
+前两份审查分别记录在 [review-1.json](review-1.json)、[review-2.json](review-2.json)。最终结论在 [final-review.json](final-review.json)。完整摘要与证据 digest 在 [verification-summary.json](verification-summary.json)。对照数据在 [parity-results.json](parity-results.json)，复现入口是 compare-baseline.mjs。
 
-The first read-only review inspected candidate 4f24f20 and reported one P1 and
-two P2 findings (review-1.json). Fixes select work.md in shipped prompts with an
-explicit legacy fallback, expose unaccepted drafts, and scope text decision
-cards to the selected Work. First-run tests now omit all legacy artifacts and
-validate the worker artifact reference plus prompt guidance. The selected base
-must contain the same accepted artifact that workers will read.
+## 产品体积
 
-An additional CLI regression reproduced a dismissed finding re-blocking final
-approval after a no-op fix of the same candidate. It failed before the correction
-and passed afterward. Current Work adjudication now applies to all reviews of
-that candidate, while a later accept reopens a suppressed issue. Legacy workflow
-validation also refuses hidden policies or malformed budgets rather than dropping
-them. Final verification and incremental independent review are pending.
+| 本地打包指标 | 基线 3.3.1 | 当前候选 |
+|---|---:|---:|
+| 文件数 | 127 | 103 |
+| 压缩字节 | 285778 | 173981 |
+| 解压字节 | 794414 | 517333 |
 
-## Second independent review
+解压体积减少 34.9%。这是产品分发体积变化，不能据此声称真实模型交付速度提升。脚本对照仅证明所测路径没有新增 worker 调用或人工请求。
 
-Candidate e7284df passed all 267 Node tests plus documentation, envelope, plugin
-and installed-package first run. Independent review confirmed the earlier fixes
-and returned one P2: raw Git blobs differ from accepted checkout bytes under
-CRLF conversion. Both real-Git autocrlf and .gitattributes cases reproduced the
-failure; checkout-filter-aware comparison fixes them without changing acceptance
-digests. A real content change still refuses startup.
+## 兼容与接续
 
-The next verification run starts at the manual fix handoff from e7284df, adopts
-the committed repair, and reruns verification/review. The previous merge request
-will be superseded, not approved. No merge decision is being made by the driver.
+- 旧版活动 Run 需使用其原运行时收尾。它们缺少冻结校验元数据，新主版本只读或取消，不接管执行与批准。
+- 旧官方交付配置可启动新一轮，保留原有要求；自定义/上线配置明确拒绝，按 [迁移说明](../../../docs/MIGRATION.md) 显式处理。
+- 原分支 v2、本机已安装运行时、远端仓库和目标项目未改动。没有执行合并、推送、发布或部署。
+- 验证使用稳定的 3.3.1 运行时管理独立工作树，执行候选中的测试、包首跑及只读 reviewer；这不是宣称所有真实 AI 工具已验收。
+- 最终运行 `RUN-PRODUCT-SIMPLIFY-02` 停在 `enter-wait-merge`；候选分支和现场保留。上一轮已标记 SUPERSEDED，工作树与分支已安全清理，提交和审查记录仍可达。
+- 此后的证据归档提交只修改本 Work 的记录；受测、受审的产品代码与打包内容仍对应上面的候选。
