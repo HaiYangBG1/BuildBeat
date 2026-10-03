@@ -28,6 +28,7 @@ import {
   acquireLock,
   createWorkspace,
   describeLockOwner,
+  discardWorkspace,
   listChangedPaths,
   liveParallelMarkers,
   readback,
@@ -1342,6 +1343,16 @@ export function startRun(options) {
       const workspace = withRepoGitLock(repoRoot, () =>
         createWorkspace({ repoRoot, runId, base }),
       );
+      // The checkout workers will read is the final word on what they were
+      // given; a run whose checkout fails the caller's check never starts.
+      if (options.verifyCheckout) {
+        try {
+          options.verifyCheckout(workspace.worktreePath);
+        } catch (error) {
+          withRepoGitLock(repoRoot, () => discardWorkspace(workspace));
+          throw error;
+        }
+      }
       const context = makeContext(options, ledger, workspace);
       const now = context.now;
       const supersession =

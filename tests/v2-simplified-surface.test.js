@@ -10,7 +10,8 @@ import {
 import { join } from "node:path";
 import test from "node:test";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
-import { DELIVERY_TEXT } from "../src/v2/engine/workflow.js";
+import { DELIVERY_TEXT, deliveryWorkflow } from "../src/v2/engine/workflow.js";
+import { startRun } from "../src/v2/runtime/orchestrator.js";
 import { tempDir } from "./support/tmp.js";
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 function fixture() {
@@ -648,4 +649,77 @@ test("approval without --config still applies the frozen review severity floor",
   ).state;
   assert.equal(state.run.status, "WAITING_HUMAN");
   assert.equal(state.terminal, null);
+});
+
+test("an accepted artifact marked export-ignore still starts: the check follows checkout, not archive", () => {
+  const f = fixture();
+  writeFileSync(
+    join(f.root, ".gitattributes"),
+    "delivery/work/WORK-S/work.md export-ignore\n",
+  );
+  f.git("add", ".gitattributes");
+  f.git("commit", "-qm", "keep work records out of archives");
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  const checkout = join(
+    f.root,
+    ".buildbeat/worktrees/RUN-S-01/delivery/work/WORK-S/work.md",
+  );
+  assert.equal(
+    readFileSync(checkout, "utf8"),
+    readFileSync(join(f.dir, "work.md"), "utf8"),
+  );
+});
+
+test("start keeps the validated base commit when the ref moves during requires probes", () => {
+  const f = fixture();
+  const validated = f.git("rev-parse", "HEAD");
+  const accepted = readFileSync(join(f.dir, "work.md"), "utf8");
+  writeFileSync(
+    f.config,
+    `${f.text}requires:\n  - probe: echo moved >> delivery/work/WORK-S/work.md && git commit -qam moved\n`,
+  );
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  assert.notEqual(f.git("rev-parse", "HEAD"), validated, "the probe moved HEAD");
+  const created = readFileSync(
+    join(f.root, ".buildbeat/runtime/runs/RUN-S-01/events.jsonl"),
+    "utf8",
+  )
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line))
+    .find((event) => event.type === "RUN_CREATED");
+  assert.equal(created.data.base, validated);
+  assert.equal(
+    readFileSync(
+      join(f.root, ".buildbeat/worktrees/RUN-S-01/delivery/work/WORK-S/work.md"),
+      "utf8",
+    ),
+    accepted,
+  );
+});
+
+test("a checkout that fails the start check is discarded before anything is recorded", () => {
+  const f = fixture();
+  const options = {
+    repoRoot: f.root,
+    workflow: deliveryWorkflow(),
+    workflowDigest: "sha256:test",
+    workId: "WORK-S",
+    runId: "RUN-S-01",
+    entry: "build",
+    verifyCheckout: () => {
+      throw new Error("checkout differs from the accepted artifact");
+    },
+  };
+  assert.throws(() => startRun(options), /checkout differs/);
+  assert.equal(existsSync(join(f.root, ".buildbeat/worktrees/RUN-S-01")), false);
+  assert.equal(f.git("branch", "--list", "run/RUN-S-01"), "");
+  assert.equal(
+    existsSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/events.jsonl")),
+    false,
+  );
+  const started = startRun({ ...options, verifyCheckout: undefined });
+  assert.equal(started.state.run.id, "RUN-S-01");
 });

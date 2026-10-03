@@ -614,36 +614,38 @@ function spawnStallWatcher(repoRoot, runId, stallAfterMs) {
 }
 
 // Text a checkout of `commit` writes at `ref`, or null when the path is
-// absent. git archive applies the archived tree's attributes and the
-// repository's EOL settings, as the isolated worktree checkout does
-// (cat-file --filters would apply the current checkout's attributes).
+// absent: checkout filters with the attributes of that commit's own tree
+// (archive would also apply export-ignore/export-subst, which checkout does
+// not). Git without --attr-source falls back to the current checkout's
+// attributes; startRun re-checks the real worktree either way.
 function checkoutText(repoRoot, commit, ref) {
-  let tar;
-  try {
-    tar = execFileSync(
+  const read = (attrSource) =>
+    execFileSync(
       "git",
-      ["-C", repoRoot, "archive", "--format=tar", commit, "--", ref],
-      { stdio: ["ignore", "pipe", "pipe"], maxBuffer: 256 * 1024 * 1024 },
+      [
+        "-C",
+        repoRoot,
+        ...(attrSource ? [`--attr-source=${commit}`] : []),
+        "cat-file",
+        "--filters",
+        `${commit}:${ref}`,
+      ],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );
+  try {
+    return read(true);
+  } catch (error) {
+    if (!/unknown option/i.test(String(error.stderr ?? ""))) return null;
+  }
+  try {
+    return read(false);
   } catch {
     return null;
   }
-  for (let offset = 0; offset + 512 <= tar.length; ) {
-    const header = tar.subarray(offset, offset + 512);
-    if (header.every((byte) => byte === 0)) break;
-    const size = Number.parseInt(
-      header.toString("latin1", 124, 136).replace(/\0/g, "").trim() || "0",
-      8,
-    );
-    const body = offset + 512;
-    // A regular file is type "0" (or NUL); pax and directory entries skip.
-    if (header[156] === 0x30 || header[156] === 0) {
-      return tar.subarray(body, body + size).toString("utf8");
-    }
-    offset = body + Math.ceil(size / 512) * 512;
-  }
-  return null;
 }
+
+const textDigest = (text) =>
+  `sha256:${createHash("sha256").update(text, "utf8").digest("hex")}`;
 
 async function commandStart(flags, options = loadRunConfig(flags, "start")) {
   // Pin the base first: the artifacts are checked in, and the workspace is
@@ -667,24 +669,36 @@ async function commandStart(flags, options = loadRunConfig(flags, "start")) {
     deliveryChecks: options.deliveryChecks,
     intentDigest: options.intentDigest ?? "UNVERIFIED",
   };
-  for (const { artifact, digest, committed } of boundArtifacts(
+  const committed = boundArtifacts(
     creation,
     options.planDigest ?? "UNVERIFIED",
-  )) {
-    if (!committed) continue;
-    const ref = `delivery/work/${options.workId}/${artifact}.md`;
-    const text = checkoutText(options.repoRoot, options.base, ref);
+  ).filter((entry) => entry.committed);
+  const mismatch = (ref, text, digest) => {
     if (text === null) {
       throw new Error(
         `commit ${ref} into the selected base before starting; workers read that isolated checkout`,
       );
     }
-    const found = `sha256:${createHash("sha256").update(text, "utf8").digest("hex")}`;
-    if (found !== digest)
+    if (textDigest(text) !== digest) {
       throw new Error(
         `the selected base contains a different ${ref}; commit the accepted work artifact before starting`,
       );
+    }
+  };
+  for (const { artifact, digest } of committed) {
+    const ref = `delivery/work/${options.workId}/${artifact}.md`;
+    mismatch(ref, checkoutText(options.repoRoot, options.base, ref), digest);
   }
+  // The same check on the isolated checkout itself, before the ledger is
+  // written: it is what workers actually read.
+  options.verifyCheckout = (worktreePath) => {
+    for (const { artifact, digest } of committed) {
+      const ref = `delivery/work/${options.workId}/${artifact}.md`;
+      const file = join(worktreePath, ref);
+      const text = existsSync(file) ? readFileSync(file, "utf8") : null;
+      mismatch(ref, text, digest);
+    }
+  };
 
   if (flags.attempt !== undefined) {
     if (flags.attempt !== "new") {
