@@ -135,8 +135,9 @@ Publishing the artifact is one surface. These are the others; each has drifted a
 - [ ] `CHANGELOG.md`: `## Unreleased` renamed to the version with date and the publication paragraph (run id, dist-tag, readback).
 - [ ] `docs/releases/<VERSION>-RELEASE-EVIDENCE-<date>.md` archived; the current-state paragraph at the top of this runbook names the new version and the previous stable moves to a dated past tense — never two "current" versions in one runbook.
 - [ ] `README.md` / `README.en.md`: version and channel claims (`@latest` is what it says it is), no `@next` install line unless a pre-release is being announced as such.
-- [ ] `SKILL.md` §0.5 install line and `docs/v2/guide/01-quickstart.md` install line: stable channel.
-- [ ] `docs/CLI.md` status line, `docs/CAPABILITY-MATRIX.md` status line and distribution section.
+- [ ] `README.md` / `README.en.md` getting-started install block and the opening of `docs/v2/guide/01-quickstart.md` / `.en.md`: a stable-channel install line, with no unreleased-candidate wording left behind.
+- [ ] `SKILL.md` runtime-version section: names the runtime majors the released Skill supports, so a plugin refresh never hands an older installed runtime commands it lacks.
+- [ ] `docs/CAPABILITY-MATRIX.md` status line and distribution section.
 - [ ] Active RFC / plan documents whose channel policy the release changed get a dated "生效修订" note; history keeps its original text.
 - [ ] GitHub repository About (description, topics, homepage) still describes the product that was just released — cannot be checked from the repository, do it by hand.
 - [ ] GitHub Release marked Latest for a stable release, not for a pre-release.

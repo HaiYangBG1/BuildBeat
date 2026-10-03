@@ -7,6 +7,14 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 
 承诺：换会话能接着干，AI 自动推进工作，交付有证据。入口是 Skill，执行需要本地 `buildbeat` 运行时；文件始终可读，手工接管时必须如实说明哪些自动机制没有执行。
 
+## 运行时版本
+
+先跑 `buildbeat --version`，按结果选命令：
+
+- 4.x：按下文操作。
+- 3.x：下文的 `run`、`status --work`、`decide`、`check`、`history` 和 `work.md` 在 3.x 不存在，沿用项目现有的 3.x 写法：`intent.md` + `plan.md` 并 `accept --artifact intent,plan`；`start --config <config> --attempt new` 开工，`resume --config <config> [--run <RUN>] [--adopt <sha> --by <name>]` 续跑；`overview`、`inbox`、`status --run <RUN>` 看进度；`approve --transition <t>` / `reject --reason <why>` 决定；`findings adjudicate` 裁决问题；`doctor` 检查配置；run-config 保留 `workflow:` 与 `riskPreset:`。
+- 3.x 的活动 Run 只能用 3.x 运行时完成或取消。升级到 4.x 前先问用户，并按[迁移说明](docs/MIGRATION.md)处理。
+
 ## 会话操作
 
 | 用户意图 | 操作 |

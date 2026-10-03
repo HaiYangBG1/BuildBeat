@@ -126,7 +126,10 @@ test("triage keeps its kind and names the stall; the budget still wins at the ca
 test("nextReply offers the findings commands for a review that is not converging", () => {
   const reply = nextReply({
     repoLabel: ".",
-    state: { run: { id: "RUN-N", work: "WORK-N" }, pendingHuman: { transition: "enter-fix", kind: "review-not-converging" } },
+    state: {
+      run: { id: "RUN-N", work: "WORK-N", deliveryChecks: { artifact: "work" } },
+      pendingHuman: { transition: "enter-fix", kind: "review-not-converging" },
+    },
   });
   assert.match(reply[0], /status --repo \. --work WORK-N/);
   assert.match(reply[1], /decide .* --action accept\|dismiss/);

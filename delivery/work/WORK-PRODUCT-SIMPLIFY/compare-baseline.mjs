@@ -41,7 +41,13 @@ esac
   const events=readFileSync(join(root,'.buildbeat/runtime/runs/RUN-P-01/events.jsonl'),'utf8').trim().split('\n').map(line=>JSON.parse(line));
   const attempts={};for(const e of events.filter(e=>e.type==='STEP_STARTED'))attempts[e.data.step]=(attempts[e.data.step]??0)+1;
   const requested=events.filter(e=>e.type==='HUMAN_REQUESTED');
-  return {outcome:{attempts,humanRequests:requested.length,lastTransition:requested.at(-1).data.transition,staleApprovals:events.filter(e=>e.type==='APPROVAL_STALE').length,changedPaths:git('diff','--name-only',base,'run/RUN-P-01').split('\n')},elapsedMs:Date.now()-start};
+  // Commits differ per repository; trees and step names are comparable, so
+  // candidates and evidence subjects are projected onto their trees.
+  const tree=sha=>git('rev-parse',`${sha}^{tree}`);
+  const evidence=events.filter(e=>e.type==='EVIDENCE_RECORDED').map(e=>({kind:e.data.kind,status:e.data.status,grade:e.data.grade,step:(e.data.evidenceRef.match(/([a-z-]+)-\d+\.(?:log|json)$/)??[])[1]??null,subjectTree:tree(e.data.subject)}));
+  const decisions=events.filter(e=>e.type==='DECISION_RECORDED').map(e=>({transition:e.data.transition,decision:e.data.decision}));
+  const terminal=events.find(e=>e.type==='RUN_TERMINAL')?.data.status??null;
+  return {outcome:{attempts,humanRequests:requested.length,lastTransition:requested.at(-1).data.transition,waitingKind:requested.at(-1).data.kind??null,staleApprovals:events.filter(e=>e.type==='APPROVAL_STALE').length,changedPaths:git('diff','--name-only',base,'run/RUN-P-01').split('\n'),candidateTree:tree('run/RUN-P-01'),evidence,decisions,terminal},elapsedMs:Date.now()-start};
  }finally{rmSync(root,{recursive:true,force:true});}
 }
 const results=[];
@@ -50,4 +56,4 @@ for(const name of ['clean','repair','resume','stale']){
  assert.deepEqual(after.outcome,before.outcome,`${name} delivery behavior changed`);
  results.push({scenario:name,outcome:after.outcome,baselineMs:before.elapsedMs,candidateMs:after.elapsedMs});
 }
-console.log(JSON.stringify({scope:'scripted workers; equal outcomes and invocation counts; not an AI performance benchmark',results},null,2));
+console.log(JSON.stringify({scope:'scripted workers; equal outcomes, invocation counts, candidate trees, evidence and decisions; not an AI performance benchmark',results},null,2));

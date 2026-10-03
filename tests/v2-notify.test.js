@@ -29,7 +29,7 @@ function writeNotify(root, body) {
 
 function waitingState(kind = "boundary") {
   return {
-    run: { id: "RUN-N", work: "WORK-N", status: "WAITING_HUMAN" },
+    run: { id: "RUN-N", work: "WORK-N", status: "WAITING_HUMAN", deliveryChecks: { artifact: "work" } },
     pendingHuman: { transition: kind === "final-decision" ? "enter-wait-merge" : "enter-fix", reasons: ["budget exhausted"], kind, subject: { candidate: "abc1234" } },
     workspaces: { "RUN-N": { candidate: "abc1234" } },
     terminal: null,
@@ -85,6 +85,17 @@ test("nextReply spells out the copyable commands for every kind of wait", () => 
   assert.match(triage[0], /status --repo \. --work WORK-N/);
   assert.match(triage[1], /decide .* --fingerprint <fp> --action accept\|dismiss/);
   assert.deepEqual(nextReply({ repoLabel: ".", state: { run: null, pendingHuman: null } }), []);
+});
+
+test("nextReply sends a legacy 3.x run back to its original runtime instead of offering decide", () => {
+  const state = waitingState("finding-triage");
+  delete state.run.deliveryChecks;
+  const legacy = nextReply({ repoLabel: ".", state });
+  assert.equal(legacy.length, 3);
+  assert.match(legacy[0], /^buildbeat findings adjudicate --repo \. --work WORK-N .*3\.3\.1 runtime/);
+  assert.match(legacy[1], /^buildbeat approve --repo \. --run RUN-N --transition enter-fix .*3\.3\.1 runtime/);
+  assert.match(legacy[2], /^buildbeat reject --repo \. --run RUN-N/);
+  assert.ok(legacy.every((line) => !line.includes("decide")));
 });
 
 test("dispatch is fail-open: sends to subscribed channels, skips without env, survives HTTP errors, logs every outcome", async () => {

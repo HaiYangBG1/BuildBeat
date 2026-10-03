@@ -83,7 +83,24 @@ export function nextReply({ repoLabel, state }) {
   }
   const runId = state.run.id;
   const lines = [];
-  if (pending.kind === "finding-triage" || pending.kind === "review-not-converging") {
+  const triage = pending.kind === "finding-triage" || pending.kind === "review-not-converging";
+  // A ledger without frozen safeguards was written by 3.x: this runtime
+  // refuses to approve or resume it, so offer the spellings its original
+  // runtime understands (reject works on both).
+  if (!state.run.deliveryChecks) {
+    const legacy = "   # legacy 3.x run: use its original 3.3.1 runtime (docs/MIGRATION.md)";
+    if (triage) {
+      lines.push(
+        `buildbeat findings adjudicate --repo ${repoLabel} --work ${state.run.work} --fingerprint <fp> --action accept|dismiss --by <you>${legacy}`,
+      );
+    }
+    lines.push(
+      `buildbeat approve --repo ${repoLabel} --run ${runId} --transition ${pending.transition} --by <you>${legacy}`,
+    );
+    lines.push(`buildbeat reject --repo ${repoLabel} --run ${runId} --reason <why> --by <you>`);
+    return lines;
+  }
+  if (triage) {
     lines.push(`buildbeat status --repo ${repoLabel} --work ${state.run.work}`);
     lines.push(
       `buildbeat decide --repo ${repoLabel} --work ${state.run.work} --fingerprint <fp> --action accept|dismiss --by <you>`,

@@ -14,6 +14,7 @@
 - Preserve cache, recovery, scope checks, parallel isolation, notifications, event schema and archived release readback. Update package contents, first-run regression coverage, and bilingual guides together.
 - Review follow-ups: `run` only treats `<run>` and `<run>-NN` ledgers as its family; a finished run reports its outcome and points to `--new` instead of a configuration error; a legacy workflow config without riskPreset keeps having no artifact gate; legacy planner entry combined with an acceptance preset fails before any run; status hints name `run` / `work.md` for unified works.
 - Independent review follow-ups: final approval also checks the candidate's copy of the bound work artifact (and intent.md under the legacy controlled safeguards), and resume refuses a changed bound artifact; start pins the base commit and reads artifacts via `git archive`, so the base tree's attributes apply; `run` selects the unique unfinished run across the whole family; the `requires:` probe regression and a frozen severity-floor refusal test are restored.
+- The Skill checks `buildbeat --version` first and keeps 3.x runtimes on their own command spellings; status and notifications send a legacy 3.x run back to its original runtime instead of offering `decide`; the release checklist names the current install sections; workflow validation tests now change one field of the fixed workflow at a time; the 3.3.1 parity script also compares candidate trees, evidence, waiting kind and decisions.
 
 
 ## v3.3.1 — 2026-10-02（补丁：review 收敛判断认得出换了说法的同一问题；lessons 与发布 runbook 补齐）

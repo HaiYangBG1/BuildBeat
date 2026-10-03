@@ -24,6 +24,8 @@
 
 前两份审查分别记录在 [review-1.json](review-1.json)、[review-2.json](review-2.json)。最终结论在 [final-review.json](final-review.json)。完整摘要与证据 digest 在 [verification-summary.json](verification-summary.json)。对照数据在 [parity-results.json](parity-results.json)，复现入口是 compare-baseline.mjs。
 
+> 2026-10-03 补记（WORK-PR70-REVIEW 独立审查）：上面的对照只比较了步骤次数、人工请求数、最后待决定对象、过期批准数和改动路径，不足以支撑"结果一致"。compare-baseline.mjs 已补充比较候选树、证据（类型、状态、等级、步骤、对应的候选树）、待决定类型、决定记录与终态；加强后的四场景结果仍与 3.3.1 一致，记录在 [../WORK-PR70-REVIEW/parity-results.json](../WORK-PR70-REVIEW/parity-results.json)。本文件与原 parity-results.json 保留当时的原文。
+
 ## 产品体积
 
 | 本地打包指标 | 基线 3.3.1 | 当前候选 |

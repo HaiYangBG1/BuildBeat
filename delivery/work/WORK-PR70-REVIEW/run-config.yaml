@@ -24,6 +24,9 @@ allowedPaths:
   - package.json
   - package-lock.json
   - delivery/work/WORK-PR70-REVIEW
+  # the owner asked for the P2 findings too, one of which is the parity
+  # script and its recorded results in the simplification Work
+  - delivery/work/WORK-PRODUCT-SIMPLIFY
 reviewTriage: off
 budgets:
   reviewRoundsPerWork: 4
