@@ -42,7 +42,10 @@ reviewTriage: required add explicit human boundaries when actually needed.
 
 Creation freezes deliveryChecks in the event ledger. Resume cannot weaken them;
 approval derives them from the ledger even without --config. Changing work.md
-invalidates its acceptance and cannot authorize an old candidate implicitly.
+invalidates its acceptance and cannot authorize an old candidate implicitly;
+the same holds for a candidate that edits its own copy, and for intent.md under
+the legacy controlled safeguards. Start pins the base to one commit and checks
+the artifacts exactly as that commit checks them out.
 Legacy projects may keep their old files; do not add work.md in the middle of an
 active legacy run because that changes the bound artifact.
 

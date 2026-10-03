@@ -63,6 +63,35 @@ function openWaiting(repoRoot, runId) {
   return ledger;
 }
 
+// Work artifacts whose digests a run froze at creation: the plan or work.md
+// it was started on and, for the legacy controlled safeguards, intent.md.
+// `committed` marks the ones start verified in the base checkout, so the
+// candidate must still carry them unchanged.
+export function boundArtifacts(run, planDigest = run.planDigest) {
+  const checks = run.deliveryChecks;
+  if (!checks) return [];
+  const bound = [];
+  if (checks.requireAcceptance || planDigest !== "UNVERIFIED") {
+    bound.push({
+      artifact: checks.artifact,
+      digest: planDigest,
+      committed: checks.requireAcceptance,
+    });
+  }
+  if (checks.requireIntent && checks.artifact !== "work") {
+    bound.push({
+      artifact: "intent",
+      digest: run.intentDigest ?? "UNVERIFIED",
+      committed: true,
+    });
+  }
+  return bound;
+}
+
+function digestOf(file) {
+  return existsSync(file) ? sha256Text(readFileSync(file, "utf8")) : null;
+}
+
 function recordDecisionFile(repoRoot, work, line) {
   const dir = join(repoRoot, "delivery", "work", work);
   mkdirSync(dir, { recursive: true });
@@ -132,25 +161,29 @@ export function approveRun(
       };
     }
 
+    // Both the accepted copy (main checkout) and the candidate's copy must
+    // still be the bytes bound at creation: a builder or fixer that edits
+    // the work artifact in its worktree must not carry a different scope
+    // into a final approval.
     const frozenChecks = ledger.state.run.deliveryChecks;
-    if (
-      frozenChecks &&
-      (frozenChecks.requireAcceptance ||
-        pending.subject.planDigest !== "UNVERIFIED")
-    ) {
-      const file = join(
-        repoRoot,
+    for (const { artifact, digest, committed } of boundArtifacts(
+      ledger.state.run,
+      pending.subject.planDigest,
+    )) {
+      const rel = join(
         "delivery",
         "work",
         ledger.state.run.work,
-        `${frozenChecks.artifact}.md`,
+        `${artifact}.md`,
       );
-      if (
-        !existsSync(file) ||
-        sha256Text(readFileSync(file, "utf8")) !== pending.subject.planDigest
-      ) {
+      if (digestOf(join(repoRoot, rel)) !== digest) {
         throw new DecisionError(
-          "work artifact changed since the run was created; accept the new scope and start a new attempt",
+          `work artifact changed since the run was created (${artifact}.md); accept the new scope and start a new attempt`,
+        );
+      }
+      if (committed && digestOf(join(worktreePath, rel)) !== digest) {
+        throw new DecisionError(
+          `the candidate changed the bound ${artifact}.md; restore the accepted version in the candidate, or accept the new scope and start a new attempt`,
         );
       }
     }

@@ -28,6 +28,7 @@ import { deliveryChecks } from "../policy/policy.js";
 import {
   acceptArtifacts,
   adoptCandidate,
+  boundArtifacts,
   approveRun,
   listInbox,
   rejectRun,
@@ -612,30 +613,74 @@ function spawnStallWatcher(repoRoot, runId, stallAfterMs) {
   return true;
 }
 
+// Text a checkout of `commit` writes at `ref`, or null when the path is
+// absent. git archive applies the archived tree's attributes and the
+// repository's EOL settings, as the isolated worktree checkout does
+// (cat-file --filters would apply the current checkout's attributes).
+function checkoutText(repoRoot, commit, ref) {
+  let tar;
+  try {
+    tar = execFileSync(
+      "git",
+      ["-C", repoRoot, "archive", "--format=tar", commit, "--", ref],
+      { stdio: ["ignore", "pipe", "pipe"], maxBuffer: 256 * 1024 * 1024 },
+    );
+  } catch {
+    return null;
+  }
+  for (let offset = 0; offset + 512 <= tar.length; ) {
+    const header = tar.subarray(offset, offset + 512);
+    if (header.every((byte) => byte === 0)) break;
+    const size = Number.parseInt(
+      header.toString("latin1", 124, 136).replace(/\0/g, "").trim() || "0",
+      8,
+    );
+    const body = offset + 512;
+    // A regular file is type "0" (or NUL); pax and directory entries skip.
+    if (header[156] === 0x30 || header[156] === 0) {
+      return tar.subarray(body, body + size).toString("utf8");
+    }
+    offset = body + Math.ceil(size / 512) * 512;
+  }
+  return null;
+}
+
 async function commandStart(flags, options = loadRunConfig(flags, "start")) {
-  if (options.deliveryChecks.requireAcceptance) {
-    const ref = `delivery/work/${options.workId}/${options.workArtifact}.md`;
-    // Match the bytes Git checks out (EOL/smudge filters), not its normalized blob.
-    let committed;
-    try {
-      committed = execFileSync(
-        "git",
-        [
-          "-C",
-          options.repoRoot,
-          "cat-file",
-          "--filters",
-          `${options.base}:${ref}`,
-        ],
-        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-      );
-    } catch {
+  // Pin the base first: the artifacts are checked in, and the workspace is
+  // created from, the same commit even if the ref moves meanwhile.
+  try {
+    options.base = execFileSync(
+      "git",
+      [
+        "-C",
+        options.repoRoot,
+        "rev-parse",
+        "--verify",
+        `${options.base}^{commit}`,
+      ],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    ).trim();
+  } catch {
+    throw new Error(`base ${options.base} does not name a commit`);
+  }
+  const creation = {
+    deliveryChecks: options.deliveryChecks,
+    intentDigest: options.intentDigest ?? "UNVERIFIED",
+  };
+  for (const { artifact, digest, committed } of boundArtifacts(
+    creation,
+    options.planDigest ?? "UNVERIFIED",
+  )) {
+    if (!committed) continue;
+    const ref = `delivery/work/${options.workId}/${artifact}.md`;
+    const text = checkoutText(options.repoRoot, options.base, ref);
+    if (text === null) {
       throw new Error(
         `commit ${ref} into the selected base before starting; workers read that isolated checkout`,
       );
     }
-    const digest = `sha256:${createHash("sha256").update(committed, "utf8").digest("hex")}`;
-    if (digest !== options.planDigest)
+    const found = `sha256:${createHash("sha256").update(text, "utf8").digest("hex")}`;
+    if (found !== digest)
       throw new Error(
         `the selected base contains a different ${ref}; commit the accepted work artifact before starting`,
       );
@@ -754,8 +799,16 @@ function inRunFamily(family, id) {
 }
 
 // Resolve only from runtime ledgers. Reading candidates does not acquire
-// their locks; resumeRun still owns the lock and freshness checks.
-function resolveResumeRun(repoRoot, family, explicitRun) {
+// their locks; resumeRun still owns the lock and freshness checks. The
+// legacy resume spelling keeps 3.3.1's exact-id precedence; `run` picks the
+// unique unfinished run across the whole family (exact id included), and
+// with none unfinished reports the latest one so the user sees --new.
+function resolveResumeRun(
+  repoRoot,
+  family,
+  explicitRun,
+  { familyWide = false } = {},
+) {
   if (explicitRun !== undefined) {
     if (!inRunFamily(family, explicitRun)) {
       throw new Error(
@@ -767,14 +820,14 @@ function resolveResumeRun(repoRoot, family, explicitRun) {
     }
     return explicitRun;
   }
-  if (existsSync(ledgerPathFor(repoRoot, family))) {
+  if (!familyWide && existsSync(ledgerPathFor(repoRoot, family))) {
     return family;
   }
   const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
   const runs = (existsSync(runsDir) ? readdirSync(runsDir) : [])
     .filter(
       (id) =>
-        id !== family &&
+        (familyWide || id !== family) &&
         inRunFamily(family, id) &&
         existsSync(ledgerPathFor(repoRoot, id)),
     )
@@ -790,6 +843,9 @@ function resolveResumeRun(repoRoot, family, explicitRun) {
   }
   if (open.length === 0) {
     const latest = runs.at(-1);
+    if (familyWide && latest) {
+      return latest.id;
+    }
     throw new Error(
       `no open run in family ${family}; ${latest ? `latest run ${latest.id}: ${latest.state.terminal.status}` : "no ledgers found"}; use --run <RUN-ID> to select an existing run explicitly, or run --new to start another attempt`,
     );
@@ -802,8 +858,11 @@ function resolveResumeRun(repoRoot, family, explicitRun) {
 async function commandResume(
   flags,
   options = loadRunConfig(flags, "resume"),
+  { familyWide = false } = {},
 ) {
-  options.runId = resolveResumeRun(options.repoRoot, options.runId, flags.run);
+  options.runId = resolveResumeRun(options.repoRoot, options.runId, flags.run, {
+    familyWide,
+  });
   const prior = EventLedger.open(
     ledgerPathFor(options.repoRoot, options.runId),
   );
@@ -821,14 +880,22 @@ async function commandResume(
   if (!prior.state.terminal) {
     assertRunConfiguration(prior.state, options);
   }
-  if (
-    flags.adopt !== undefined &&
-    prior.state.run?.deliveryChecks &&
-    (options.planDigest ?? "UNVERIFIED") !== prior.state.run.planDigest
-  ) {
-    throw new Error(
-      "work artifact changed; cannot adopt a candidate under a different scope",
-    );
+  // A frozen run continues only under the artifacts it was created with;
+  // its final approval would refuse a changed scope anyway.
+  if (!prior.state.terminal && prior.state.run?.deliveryChecks) {
+    const now = {
+      [prior.state.run.deliveryChecks.artifact]:
+        options.planDigest ?? "UNVERIFIED",
+      intent: options.intentDigest ?? "UNVERIFIED",
+    };
+    const changed = boundArtifacts(prior.state.run)
+      .filter(({ artifact, digest }) => now[artifact] !== digest)
+      .map(({ artifact }) => `${artifact}.md`);
+    if (changed.length > 0) {
+      throw new Error(
+        `work artifact changed since the run was created (${changed.join(", ")}); cannot ${flags.adopt !== undefined ? "adopt a candidate" : "resume"} under a different scope; accept it and start a new attempt with run --new`,
+      );
+    }
   }
   if (flags.adopt !== undefined) {
     const resumeAt = nextStep(options.workflow, "fix", "succeeded") ?? "verify";
@@ -1421,7 +1488,8 @@ async function commandRun(flags) {
     throw new Error("--new cannot be combined with --run or --adopt");
   if (flags.new === "true")
     return commandStart({ ...flags, attempt: "new" }, options);
-  if (flags.run || flags.adopt) return commandResume(flags, options);
+  if (flags.run || flags.adopt)
+    return commandResume(flags, options, { familyWide: true });
   // Resume an existing family, including its exact ID. Never interpret an
   // ambiguous, corrupt, or terminal run as permission to start another one.
   const dir = join(options.repoRoot, ".buildbeat", "runtime", "runs");
@@ -1442,7 +1510,7 @@ async function commandRun(flags) {
   const archived =
     existsSync(records) &&
     readdirSync(records).some((id) => inRunFamily(options.runId, id));
-  if (found) return commandResume(flags, options);
+  if (found) return commandResume(flags, options, { familyWide: true });
   if (archived)
     throw new Error(
       "this work has archived runs; inspect status, then use --new explicitly for a new attempt",

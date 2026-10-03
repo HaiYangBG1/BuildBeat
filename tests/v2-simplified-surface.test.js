@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
@@ -509,4 +515,137 @@ test("status points a ready work at the consolidated run command", () => {
   );
   assert.equal(overview.works[0].stage, "READY_TO_RUN");
   assert.match(overview.works[0].next, /^buildbeat run --config /);
+});
+
+function approve(f, run) {
+  return f.call(
+    "decide",
+    "--repo",
+    ".",
+    "--run",
+    run,
+    "--action",
+    "approve",
+    "--transition",
+    "enter-wait-merge",
+  );
+}
+
+function rewriteWorker(f, from, to) {
+  const path = join(f.root, "worker.sh");
+  const text = readFileSync(path, "utf8");
+  assert.ok(text.includes(from));
+  writeFileSync(path, text.replace(from, to));
+}
+
+test("a candidate that rewrites the bound work.md cannot be approved", () => {
+  const f = fixture();
+  rewriteWorker(
+    f,
+    "git add feature.txt;",
+    "git add feature.txt; echo widened >> delivery/work/WORK-S/work.md; git add delivery/work/WORK-S/work.md;",
+  );
+  writeFileSync(
+    f.config,
+    f.text.replace("allowedPaths:\n", "allowedPaths:\n  - delivery/work/WORK-S\n"),
+  );
+  f.git("add", ".");
+  f.git("commit", "-qm", "builder edits its work.md");
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  const state = JSON.parse(
+    f.ok("status", "--repo", ".", "--run", "RUN-S-01", "--json"),
+  ).state;
+  assert.equal(state.pendingHuman.transition, "enter-wait-merge");
+  const decisions = readFileSync(join(f.dir, "decisions.jsonl"), "utf8");
+  const no = approve(f, "RUN-S-01");
+  assert.notEqual(no.status, 0);
+  assert.match(no.stderr, /candidate changed the bound work\.md/);
+  assert.equal(readFileSync(join(f.dir, "decisions.jsonl"), "utf8"), decisions);
+});
+
+test("a legacy controlled run stays bound to the intent.md it was created with", () => {
+  const f = fixture();
+  writeFileSync(join(f.dir, "intent.md"), "# Intent\nDeliver feature.\n");
+  useLegacyWorkflow(f, DELIVERY_TEXT, "riskPreset: controlled\n");
+  f.ok("accept", "--repo", ".", "--work", "WORK-S", "--artifact", "intent,plan");
+  f.ok("run", "--config", f.config);
+  writeFileSync(join(f.dir, "intent.md"), "# Intent\nDeliver something else.\n");
+  f.ok("accept", "--repo", ".", "--work", "WORK-S", "--artifact", "intent");
+  const no = approve(f, "RUN-S-01");
+  assert.notEqual(no.status, 0);
+  assert.match(no.stderr, /changed since the run was created \(intent\.md\)/);
+  const resumed = f.call("run", "--config", f.config);
+  assert.notEqual(resumed.status, 0);
+  assert.match(resumed.stderr, /changed since the run was created \(intent\.md\)/);
+});
+
+test("run resumes the unfinished numbered attempt even when a finished exact-id run exists", () => {
+  const f = fixture();
+  const exact = new EventLedger(
+    join(f.root, ".buildbeat", "runtime", "runs", "RUN-S", "events.jsonl"),
+  );
+  exact.append({
+    type: "RUN_CREATED",
+    actor: { kind: "kernel", id: "legacy-fixture" },
+    run: "RUN-S",
+    work: "WORK-S",
+    data: {
+      workflowRef: "software-delivery",
+      workflowDigest: "sha256:legacy",
+      base: f.git("rev-parse", "HEAD"),
+      riskPreset: "standard",
+    },
+  });
+  exact.append({
+    type: "RUN_TERMINAL",
+    actor: { kind: "kernel", id: "legacy-fixture" },
+    data: { status: "SUCCEEDED", reason: "merged" },
+  });
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config, "--new");
+  const out = f.ok("run", "--config", f.config);
+  assert.match(out, /resuming RUN-S-01/);
+  assert.doesNotMatch(out, /run is terminal/);
+});
+
+test("startup reads the artifact as the selected base checks it out, not with today's attributes", () => {
+  const f = fixture();
+  const base = f.git("rev-parse", "HEAD");
+  writeFileSync(join(f.root, ".gitattributes"), "*.md text eol=crlf\n");
+  f.git("add", ".gitattributes");
+  f.git("commit", "-qm", "crlf attributes");
+  rmSync(join(f.dir, "work.md"));
+  f.git("checkout", "--", "delivery/work/WORK-S/work.md");
+  assert.match(readFileSync(join(f.dir, "work.md"), "utf8"), /\r\n/);
+  writeFileSync(f.config, `${f.text}base: ${base}\n`);
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  const no = f.call("run", "--config", f.config);
+  assert.notEqual(no.status, 0);
+  assert.match(no.stderr, /selected base contains a different/);
+  assert.equal(existsSync(join(f.root, ".buildbeat", "runtime", "runs")), false);
+});
+
+test("approval without --config still applies the frozen review severity floor", () => {
+  const f = fixture();
+  rewriteWorker(
+    f,
+    '{"status":"succeeded","findings":[]}',
+    '{"status":"succeeded","findings":[{"severity":"P2","summary":"feature.txt:1 needs a clearer label"}]}',
+  );
+  writeFileSync(f.config, `${f.text}maxReviewSeverity: P3\n`);
+  f.git("add", ".");
+  f.git("commit", "-qm", "reviewer reports a P2 finding");
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  const decisions = readFileSync(join(f.dir, "decisions.jsonl"), "utf8");
+  const no = approve(f, "RUN-S-01");
+  assert.notEqual(no.status, 0);
+  assert.match(no.stderr, /refused by policy: merge-evidence-floor/);
+  assert.equal(readFileSync(join(f.dir, "decisions.jsonl"), "utf8"), decisions);
+  const state = JSON.parse(
+    f.ok("status", "--repo", ".", "--run", "RUN-S-01", "--json"),
+  ).state;
+  assert.equal(state.run.status, "WAITING_HUMAN");
+  assert.equal(state.terminal, null);
 });
