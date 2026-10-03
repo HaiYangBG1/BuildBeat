@@ -39,3 +39,16 @@ and passed afterward. Current Work adjudication now applies to all reviews of
 that candidate, while a later accept reopens a suppressed issue. Legacy workflow
 validation also refuses hidden policies or malformed budgets rather than dropping
 them. Final verification and incremental independent review are pending.
+
+## Second independent review
+
+Candidate e7284df passed all 267 Node tests plus documentation, envelope, plugin
+and installed-package first run. Independent review confirmed the earlier fixes
+and returned one P2: raw Git blobs differ from accepted checkout bytes under
+CRLF conversion. Both real-Git autocrlf and .gitattributes cases reproduced the
+failure; checkout-filter-aware comparison fixes them without changing acceptance
+digests. A real content change still refuses startup.
+
+The next verification run starts at the manual fix handoff from e7284df, adopts
+the committed repair, and reruns verification/review. The previous merge request
+will be superseded, not approved. No merge decision is being made by the driver.

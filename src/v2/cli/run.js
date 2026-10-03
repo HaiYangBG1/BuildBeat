@@ -603,11 +603,18 @@ async function commandStart(flags) {
   const options = loadRunConfig(flags, "start");
   if (options.deliveryChecks.requireAcceptance) {
     const ref = `delivery/work/${options.workId}/${options.workArtifact}.md`;
+    // Match the bytes Git checks out (EOL/smudge filters), not its normalized blob.
     let committed;
     try {
       committed = execFileSync(
         "git",
-        ["-C", options.repoRoot, "show", `${options.base}:${ref}`],
+        [
+          "-C",
+          options.repoRoot,
+          "cat-file",
+          "--filters",
+          `${options.base}:${ref}`,
+        ],
         { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
       );
     } catch {

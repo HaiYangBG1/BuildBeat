@@ -4,7 +4,8 @@ work: WORK-PRODUCT-SIMPLIFY
 run: RUN-PRODUCT-SIMPLIFY
 workflow: workflow.yaml
 riskPreset: standard
-entry: verify
+entry: fix
+base: e7284df8a15519aace4ad32b8f8203af5ef93282
 allowedPaths:
   - src
   - bin

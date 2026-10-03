@@ -369,3 +369,44 @@ test("workers cannot start from a different committed work artifact than the acc
   f.git("commit", "-qm", "accepted scope");
   f.ok("run", "--config", f.config);
 });
+
+for (const mode of ["autocrlf", "attributes"]) {
+  test(`startup compares checkout filters rather than raw blobs (${mode})`, () => {
+    const f = fixture();
+    if (mode === "autocrlf") f.git("config", "core.autocrlf", "true");
+    writeFileSync(
+      join(f.root, ".gitattributes"),
+      "*.sh text eol=lf\n" +
+        (mode === "attributes" ? "*.md text eol=crlf\n" : ""),
+    );
+    const workFile = join(f.dir, "work.md");
+    const acceptedText = readFileSync(workFile, "utf8").replaceAll(
+      "\n",
+      "\r\n",
+    );
+    writeFileSync(workFile, acceptedText);
+    f.git("add", ".gitattributes", "delivery/work/WORK-S/work.md");
+    f.git("commit", "-qm", "checkout line endings");
+    assert.doesNotMatch(
+      f.git("show", "HEAD:delivery/work/WORK-S/work.md"),
+      /\r/,
+    );
+    f.ok("accept", "--repo", ".", "--work", "WORK-S");
+    f.ok("run", "--config", f.config);
+    const checkout = join(
+      f.root,
+      ".buildbeat",
+      "worktrees",
+      "RUN-S-01",
+      "delivery",
+      "work",
+      "WORK-S",
+      "work.md",
+    );
+    assert.equal(readFileSync(checkout, "utf8"), acceptedText);
+    const state = JSON.parse(
+      f.ok("status", "--repo", ".", "--run", "RUN-S-01", "--json"),
+    ).state;
+    assert.equal(state.pendingHuman.transition, "enter-wait-merge");
+  });
+}
