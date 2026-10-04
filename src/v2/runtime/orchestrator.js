@@ -16,6 +16,8 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -43,6 +45,7 @@ import {
   cacheKey,
   findReusableEvidence,
   lastReviewedCandidate,
+  linkedScreenshots,
   treeHash,
 } from "./cache.js";
 import {
@@ -772,8 +775,33 @@ function beginStep(context, step, stepDef, attempt) {
     if (lastReviewed) {
       input.lastReviewed = lastReviewed;
     }
+    // The reviewer judges the real render it is shown, not a description.
+    const screenshots = ledger.state.evidence.filter(
+      (item) =>
+        item.kind === "screenshot" &&
+        item.status === "passed" &&
+        item.subject === head,
+    );
+    if (screenshots.length > 0) {
+      input.screenshots = screenshots.map((item) => ({
+        path: resolveRepoRef(context.repoRoot, item.ref),
+        digest: item.digest,
+      }));
+    }
   }
   return { before, outputPath, input, prompt };
+}
+
+const SCREENSHOT_FILE = /\.(png|jpe?g|webp)$/i;
+
+function screenshotFiles(dir) {
+  return readdirSync(dir)
+    .filter(
+      (name) =>
+        SCREENSHOT_FILE.test(name) && statSync(join(dir, name)).isFile(),
+    )
+    .sort()
+    .map((name) => join(dir, name));
 }
 
 // Runs the worker, or references identical passed evidence (verification
@@ -787,6 +815,12 @@ function executeOrReuse(
   { before, outputPath, input, prompt },
 ) {
   const { ledger, workspace, now } = context;
+  // UI work (requireScreenshot): verify leaves screenshots of the real
+  // render in a fresh directory outside the worktree; each image becomes
+  // screenshot evidence for this candidate.
+  const wantsScreenshots =
+    step === "verify" &&
+    ledger.state.run.deliveryChecks?.requireScreenshot === true;
   // Verification reuse (C7): same tree + same worker + same envelope that
   // already passed is referenced, not re-run. Failures always re-run.
   let stepCacheKey = null;
@@ -800,9 +834,34 @@ function executeOrReuse(
         adapterSpec: context.adapterConfigs[stepDef.worker] ?? null,
         adapterName: adapter.name,
         envelopeDigest: context.envelope?.digest ?? null,
+        screenshots: wantsScreenshots,
       });
       reused = findReusableEvidence(context.repoRoot, stepCacheKey);
     }
+  }
+  // A reused verify carries its screenshots; one without any runs again.
+  let reusedScreenshots = [];
+  if (reused && wantsScreenshots) {
+    reusedScreenshots = linkedScreenshots(
+      context.repoRoot,
+      reused.run,
+      reused.evidenceRef,
+    );
+    if (reusedScreenshots.length === 0) {
+      reused = null;
+    }
+  }
+  let screenshotDir = null;
+  if (wantsScreenshots && !reused) {
+    screenshotDir = join(
+      context.runtimeDir,
+      "runs",
+      ledger.state.run.id,
+      "screenshots",
+      `${step}-${attempt}`,
+    );
+    rmSync(screenshotDir, { recursive: true, force: true });
+    mkdirSync(screenshotDir, { recursive: true });
   }
   let exec;
   if (reused) {
@@ -832,7 +891,25 @@ function executeOrReuse(
       liveDir: join(context.runtimeDir, "runs", ledger.state.run.id),
       promptPath: prompt?.path ?? null,
       vars: context.envelope?.vars ?? null,
+      extraEnv: screenshotDir
+        ? { BUILDBEAT_SCREENSHOT_DIR: screenshotDir }
+        : undefined,
     });
+  }
+  const shots = screenshotDir ? screenshotFiles(screenshotDir) : [];
+  if (
+    screenshotDir &&
+    shots.length === 0 &&
+    exec.exitCode === 0 &&
+    !exec.timedOut &&
+    !exec.signal &&
+    !exec.spawnError
+  ) {
+    exec = {
+      ...exec,
+      requirementFailure:
+        "requireScreenshot is on, but verify left no image (png, jpg, jpeg, webp) in BUILDBEAT_SCREENSHOT_DIR",
+    };
   }
   const tree = readback(workspace.worktreePath);
   const evidence = collectCommandEvidence({
@@ -868,6 +945,38 @@ function executeOrReuse(
         : {}),
     },
   });
+  if (evidence.status === "passed") {
+    const source = toRepoRef(context.repoRoot, evidence.location);
+    const recorded = reused
+      ? reusedScreenshots.map((item) => ({
+          ref: item.evidenceRef,
+          digest: item.digest,
+        }))
+      : shots.map((file) => ({
+          ref: toRepoRef(context.repoRoot, file),
+          digest: `sha256:${createHash("sha256").update(readFileSync(file)).digest("hex")}`,
+        }));
+    for (const shot of recorded) {
+      ledger.append({
+        type: "EVIDENCE_RECORDED",
+        actor: KERNEL,
+        ts: now(),
+        data: {
+          evidenceRef: shot.ref,
+          kind: "screenshot",
+          subject: tree.head,
+          digest: shot.digest,
+          status: "passed",
+          grade: "L2",
+          source,
+          ...(stepCacheKey ? { cacheKey: stepCacheKey } : {}),
+          ...(reused
+            ? { reused: { run: reused.run, evidenceRef: shot.ref } }
+            : {}),
+        },
+      });
+    }
+  }
 
   return { exec, tree };
 }
@@ -936,6 +1045,10 @@ function recordStepResult(
     stepStatus = "crashed";
   } else if (exec.exitCode !== 0) {
     stepStatus = "failed";
+  } else if (exec.requirementFailure) {
+    // The command passed but a requirement the runner checks did not
+    // (no screenshots): a candidate failure, routed like any other.
+    stepStatus = "failed";
   } else if (envelopeError) {
     stepStatus = "invalid-output";
   } else {
@@ -964,6 +1077,7 @@ function recordStepResult(
       attempt,
       status: stepStatus,
       exitCode: exec.exitCode,
+      ...(exec.requirementFailure ? { reason: exec.requirementFailure } : {}),
       ...(infra ? { infra: true } : {}),
       ...(free ? { free: true } : {}),
     },

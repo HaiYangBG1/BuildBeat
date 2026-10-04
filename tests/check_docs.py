@@ -50,6 +50,8 @@ ACTIVE_DOCS = (
     "docs/v2/guide/10-recovery.en.md",
     "docs/v2/guide/11-session-handoff.md",
     "docs/v2/guide/11-session-handoff.en.md",
+    "docs/v2/guide/12-without-runtime.md",
+    "docs/v2/guide/12-without-runtime.en.md",
     "templates/v2/AGENTS.md",
     "templates/v2/指挥台.md",
     "templates/v2/BUILDBEAT.md",

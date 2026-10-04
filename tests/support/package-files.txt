@@ -34,6 +34,8 @@ docs/v2/guide/10-recovery.en.md
 docs/v2/guide/10-recovery.md
 docs/v2/guide/11-session-handoff.en.md
 docs/v2/guide/11-session-handoff.md
+docs/v2/guide/12-without-runtime.en.md
+docs/v2/guide/12-without-runtime.md
 docs/v2/guide/README.en.md
 docs/v2/guide/README.md
 example/.buildbeat/notify.yaml
@@ -85,6 +87,7 @@ src/v2/runtime/metrics.js
 src/v2/runtime/notify.js
 src/v2/runtime/orchestrator.js
 src/v2/runtime/overview.js
+src/v2/runtime/release.js
 src/v2/runtime/repo-ref.js
 src/v2/runtime/run-record.js
 src/v2/runtime/work-cost.js

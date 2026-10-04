@@ -106,10 +106,12 @@ export function deliveryChecks({
   requireAcceptance = true,
   requireIntent = false,
   maxSeverity = "P2",
+  requireScreenshot = false,
 } = {}) {
   if (
     !["work", "plan"].includes(artifact) ||
-    !["P2", "P3"].includes(maxSeverity)
+    !["P2", "P3"].includes(maxSeverity) ||
+    typeof requireScreenshot !== "boolean"
   )
     throw new PolicyError("invalid delivery safeguards");
   const rows = [];
@@ -135,6 +137,7 @@ export function deliveryChecks({
     artifact,
     requireAcceptance,
     requireIntent,
+    ...(requireScreenshot ? { requireScreenshot } : {}),
   });
   return rows;
 }
@@ -158,6 +161,10 @@ export function evaluatePolicies(policies, { type, appliesTo }, ctx) {
           v = artifactAccepted(p.artifact, ctx);
         if (v.ok === true && p.requireIntent && p.artifact !== "work")
           v = artifactAccepted("intent", ctx);
+        // UI work proves its real render: screenshots the verify step left
+        // for this candidate (lessons.md "静态稿拍板 → 返工螺旋").
+        if (v.ok === true && p.requireScreenshot)
+          v = evidencePresent({ kind: "screenshot", minGrade: "L2" }, ctx);
         if (v.ok === true) v = reviewClear(p.maxSeverity ?? "P2", ctx);
       } else
         throw new PolicyError(

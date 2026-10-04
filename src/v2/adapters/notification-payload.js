@@ -10,6 +10,9 @@ function renderText(notification) {
   if (notification.candidate) {
     lines.push(`candidate: ${notification.candidate}`);
   }
+  for (const shot of notification.screenshots ?? []) {
+    lines.push(`screenshot: ${shot.ref} ${shot.digest}`);
+  }
   if (notification.nextReply?.length) {
     lines.push("next:");
     for (const line of notification.nextReply) {

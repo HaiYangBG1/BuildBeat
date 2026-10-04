@@ -74,6 +74,22 @@ export function subscribes(config, event) {
   return Boolean(config?.channels.some((channel) => channel.events.includes(event)));
 }
 
+// Screenshot evidence recorded for a candidate: what a person deciding on a
+// UI change should look at. References and digests only, never the images.
+export function candidateScreenshots(state, candidate) {
+  if (!candidate) {
+    return [];
+  }
+  return (state.evidence ?? [])
+    .filter(
+      (item) =>
+        item.kind === "screenshot" &&
+        item.status === "passed" &&
+        item.subject === candidate,
+    )
+    .map((item) => ({ ref: item.ref, digest: item.digest }));
+}
+
 // The exact commands a human can copy to answer a pending request. Shared by
 // status, inbox and notifications so "what do I say now" has one answer.
 export function nextReply({ repoLabel, state }) {
@@ -126,11 +142,16 @@ export function buildNotification(kind, { repoLabel, state, detail = {} }) {
   };
   if (kind === "HUMAN_REQUESTED") {
     const pending = state.pendingHuman;
+    const screenshots = candidateScreenshots(
+      state,
+      pending?.subject?.candidate ?? null,
+    );
     return {
       ...base,
       title: `[BuildBeat] ${run.id} 等你拍板：${pending?.transition ?? "?"}`,
       reasons: pending?.reasons ?? [],
       candidate: pending?.subject?.candidate ?? null,
+      ...(screenshots.length > 0 ? { screenshots } : {}),
       nextReply: nextReply({ repoLabel, state }),
     };
   }

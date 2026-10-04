@@ -11,5 +11,6 @@
 - [09-security-boundaries](09-security-boundaries.md)
 - [10-recovery](10-recovery.md)
 - [11-session-handoff](11-session-handoff.md)
+- [12-without-runtime](12-without-runtime.md)
 
 [Migration](../../MIGRATION.md)

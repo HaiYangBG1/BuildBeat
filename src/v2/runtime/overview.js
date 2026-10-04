@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { EventLedger } from "../storage/event-ledger.js";
 import { latestAdjudications, readFindingsAccount } from "./findings.js";
 import { nextReply } from "./notify.js";
+import { readReleases } from "./release.js";
 import { computeWorkCost, renderWorkCost } from "./work-cost.js";
 
 function sha256File(path) {
@@ -89,7 +90,7 @@ function headRef(repoRoot) {
 }
 
 // Runs for a work: runtime ledgers first, run-records for the rest.
-function runsFor(repoRoot, workId) {
+export function runsFor(repoRoot, workId) {
   const runs = new Map();
   const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
   if (existsSync(runsDir)) {
@@ -222,6 +223,7 @@ export function computeOverview(
     const closure = [...decisions]
       .reverse()
       .find((row) => row.transition === "close-work");
+    const readback = readReleases(repoRoot, workId).at(-1) ?? null;
     const liveRun =
       latest &&
       (latest.status === "RUNNING" || latest.status === "WAITING_HUMAN");
@@ -288,11 +290,23 @@ export function computeOverview(
       next = `release window closed by ${latest.id}; close the work with a decisions.jsonl row {"transition":"close-work","decision":"closed","subject":{"result":"released"}}`;
     } else if (merged) {
       stage = "MERGED";
-      next =
-        `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release/deploy stays a human action; then buildbeat gc --repo ${repoLabel}` +
-        (latest.status !== "SUCCEEDED"
-          ? `   # latest run ${latest.id} ended ${latest.status} after the merge`
-          : "");
+      // After the merge: the person releases, the project's readback proves
+      // it, and the window closes on a passing readback.
+      const configs = readdirSync(workDir).filter((name) =>
+        /^run-config.*\.ya?ml$/.test(name),
+      );
+      const config = configs.length
+        ? `delivery/work/${workId}/${configs[0]}`
+        : "<run-config.yaml>";
+      const close = `buildbeat decide --repo ${repoLabel} --work ${workId} --action close --result <what was released> --by <you>`;
+      next = !readback
+        ? `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release it (a human action), then buildbeat release --config ${config}; then ${close}`
+        : readback.status === "passed"
+          ? `readback passed @ ${readback.ts} (${readback.commit.slice(0, 7)}); close the window: ${close}`
+          : `latest readback failed @ ${readback.ts} (exit ${readback.exitCode}); fix the release, then buildbeat release --config ${config} again`;
+      if (latest.status !== "SUCCEEDED") {
+        next += `   # latest run ${latest.id} ended ${latest.status} after the merge`;
+      }
     } else if (latest.status === "SUCCEEDED") {
       stage = "MERGE_READY";
       next = latest.candidate
@@ -333,6 +347,17 @@ export function computeOverview(
         : null,
       merged,
       mergedCandidate: mergedRun?.candidate ?? null,
+      ...(readback
+        ? {
+            readback: {
+              status: readback.status,
+              at: readback.ts,
+              commit: readback.commit,
+              digest: readback.digest,
+              ...(readback.note ? { note: readback.note } : {}),
+            },
+          }
+        : {}),
       next,
     });
   }

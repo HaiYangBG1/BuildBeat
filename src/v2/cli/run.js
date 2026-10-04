@@ -47,7 +47,9 @@ import {
   computeOverview,
   readJsonl,
   renderOverview,
+  runsFor,
 } from "../runtime/overview.js";
+import { closeWork, runReadback } from "../runtime/release.js";
 import {
   DEFAULT_STALL_AFTER_MS,
   describeLiveness,
@@ -58,6 +60,7 @@ import { computeMetrics, renderMetrics } from "../runtime/metrics.js";
 import {
   NOTIFY_CONFIG,
   buildNotification,
+  candidateScreenshots,
   dispatchNotification,
   loadNotifyConfig,
   nextReply,
@@ -94,6 +97,8 @@ Usage:
   buildbeat status --repo <path> [--work <WORK-ID> | --run <RUN-ID>] [--json]
   buildbeat decide --repo <path> --run <RUN-ID> --action approve|reject --transition <t> [--by <name>] [--reason <text>]
   buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--note <text>]
+  buildbeat release --config <run-config.yaml> [--ref <ref>] [--note <text>]
+  buildbeat decide --repo <path> --work <WORK-ID> --action close --result <text> [--by <name>]
   buildbeat check --config <run-config.yaml> [--step <id>]
   buildbeat stop --repo <path> --run <RUN-ID> --reason <text>
   buildbeat gc --repo <path> [--apply] [--force]
@@ -394,6 +399,11 @@ function loadRunConfig(flags, command) {
     }
     safeguards.maxSeverity = config.maxReviewSeverity;
   }
+  // Frozen with the run like every other safeguard; absent unless enabled,
+  // so runs created before the switch existed compare equal.
+  if (config.requireScreenshot === true) {
+    safeguards.requireScreenshot = true;
+  }
   const policies = deliveryChecks(safeguards);
   const presetStopAt = [];
   const entry = config.entry ?? workflow.entry;
@@ -517,6 +527,12 @@ function loadRunConfig(flags, command) {
     stopAt: config.stopAt ?? presetStopAt ?? [],
     adapters,
     adapterConfigs: config.workers ?? {},
+    release: config.release
+      ? {
+          ...config.release,
+          env: workerEnvOverrides("release", config.release.env),
+        }
+      : null,
     policies,
     deliveryChecks: safeguards,
     workArtifact: artifact,
@@ -976,6 +992,12 @@ function commandInbox(flags, rows = null) {
     console.log(`    candidate: ${row.subject.candidate}`);
     console.log(`    planDigest: ${row.subject.planDigest}`);
     console.log(`    evidenceDigest: ${row.subject.evidenceDigest}`);
+    for (const shot of candidateScreenshots(
+      ledger.state,
+      row.subject.candidate,
+    )) {
+      console.log(`    screenshot: ${shot.ref} ${shot.digest}`);
+    }
     for (const reason of row.reasons) {
       console.log(`    reason: ${reason}`);
     }
@@ -1094,6 +1116,12 @@ function commandDoctor(flags) {
       `  ${policy.name}: type=${policy.type} appliesTo=${policy.appliesTo} declared=${policy.enforcement} actual=${actual}`,
     );
   }
+  console.log(
+    `screenshot evidence: ${options.deliveryChecks.requireScreenshot ? "required (verify writes images to BUILDBEAT_SCREENSHOT_DIR)" : "not required"}`,
+  );
+  console.log(
+    `release readback: ${options.release ? `${options.release.command} ${(options.release.args ?? []).join(" ")}`.trim() : "none configured (release: section)"}`,
+  );
   console.log("worker isolation:");
   for (const [worker, spec] of Object.entries(options.adapterConfigs)) {
     const mode =
@@ -1510,7 +1538,57 @@ async function commandRun(flags) {
   return commandStart({ ...flags, attempt: "new" }, options);
 }
 
+// Runs the project's release readback once and records it in the Work.
+function commandRelease(flags) {
+  const options = loadRunConfig(flags, "release");
+  if (!options.release) {
+    throw new Error(
+      "release needs a release: section in the run config (command, args, timeoutMs, env, like a worker)",
+    );
+  }
+  const row = runReadback({
+    repoRoot: options.repoRoot,
+    workId: options.workId,
+    spec: options.release,
+    redact: options.redact,
+    runs: runsFor(options.repoRoot, options.workId),
+    ref: flags.ref ?? "HEAD",
+    note: flags.note ?? null,
+  });
+  const repoLabel = repoLabelFor(options.repoRoot);
+  console.log(
+    `readback ${row.status} (exit ${row.exitCode}) at ${row.commit.slice(0, 7)} for candidate ${row.candidate.slice(0, 7)} (${row.run})${row.note ? ` — ${row.note}` : ""}`,
+  );
+  console.log(`  log: ${row.log}`);
+  console.log(`  recorded: delivery/work/${options.workId}/releases.jsonl`);
+  for (const line of row.tail.slice(-5)) {
+    console.log(`  | ${line}`);
+  }
+  console.log(
+    row.status === "passed"
+      ? `next: buildbeat decide --repo ${repoLabel} --work ${options.workId} --action close --result <what was released> --by <you>`
+      : "next: fix the release, then run buildbeat release again; the window cannot close on a failed readback",
+  );
+  if (row.status !== "passed") {
+    process.exitCode = 1;
+  }
+}
+
 function commandDecide(flags) {
+  if (flags.action === "close") {
+    if (!flags.repo || !flags.work)
+      throw new Error("closing a work requires --repo and --work");
+    const row = closeWork({
+      repoRoot: resolve(flags.repo),
+      workId: flags.work,
+      result: flags.result,
+      by: flags.by ?? "human",
+    });
+    console.log(
+      `closed ${flags.work} as ${row.decisionRef} (readback ${row.subject.readback.slice(0, 19)} at ${row.subject.commit.slice(0, 7)})`,
+    );
+    return;
+  }
   if (flags.action === "approve") return commandApprove(flags);
   if (flags.action === "reject") return commandReject(flags);
   if (["accept", "dismiss"].includes(flags.action) && flags.fingerprint) {
@@ -1526,7 +1604,7 @@ function commandDecide(flags) {
     return;
   }
   throw new Error(
-    "decide requires --action approve|reject, or accept|dismiss with --work and --fingerprint",
+    "decide requires --action approve|reject, accept|dismiss with --work and --fingerprint, or close with --work and --result",
   );
 }
 
@@ -1762,6 +1840,8 @@ async function main() {
       await commandRun(flags);
     } else if (command === "decide") {
       commandDecide(flags);
+    } else if (command === "release") {
+      commandRelease(flags);
     } else if (command === "check") {
       flags.step ? commandPreflight(flags) : commandDoctor(flags);
     } else if (command === "history") {

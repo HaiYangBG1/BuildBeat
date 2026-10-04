@@ -30,12 +30,15 @@ export function treeHash(worktreePath) {
   return git(worktreePath, ["rev-parse", "HEAD^{tree}"]);
 }
 
-export function cacheKey({ tree, worker, adapterSpec, adapterName, envelopeDigest }) {
+export function cacheKey({ tree, worker, adapterSpec, adapterName, envelopeDigest, screenshots = false }) {
+  // Only a run that requires screenshots adds the field, so existing keys
+  // (and the evidence they point at) stay valid.
   const body = canonicalJson({
     tree,
     worker,
     adapter: adapterSpec ?? adapterName ?? null,
     envelope: envelopeDigest ?? null,
+    ...(screenshots ? { screenshots: true } : {}),
   });
   return `sha256:${createHash("sha256").update(body, "utf8").digest("hex")}`;
 }
@@ -83,6 +86,24 @@ export function findReusableEvidence(repoRoot, key) {
     }
   }
   return best;
+}
+
+// Screenshot evidence a verify recorded alongside its command evidence
+// (`source`), so a reused verify carries the same screenshots.
+export function linkedScreenshots(repoRoot, runId, evidenceRef) {
+  const path = join(repoRoot, ".buildbeat", "runtime", "runs", runId, "events.jsonl");
+  if (!existsSync(path)) {
+    return [];
+  }
+  return EventLedger.open(path)
+    .events.filter(
+      (event) =>
+        event.type === "EVIDENCE_RECORDED" &&
+        event.data.kind === "screenshot" &&
+        event.data.source === evidenceRef &&
+        !event.data.reused,
+    )
+    .map((event) => ({ evidenceRef: event.data.evidenceRef, digest: event.data.digest }));
 }
 
 // The most recent review evidence for this work whose subject is an ancestor
