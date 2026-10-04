@@ -55,6 +55,7 @@ function makePng(
     fill = null,
     patchHeader = null,
     extraChunks = [],
+    beforeData = [],
   } = {},
 ) {
   const header = Buffer.alloc(13);
@@ -84,6 +85,7 @@ function makePng(
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     pngChunk("IHDR", header),
     ...(plte ? [pngChunk("PLTE", Buffer.alloc(paletteEntries * 3, 0x7f))] : []),
+    ...beforeData,
     pngChunk("IDAT", deflateSync(Buffer.concat(rows))),
     ...extraChunks,
     pngChunk("IEND", Buffer.alloc(0)),
@@ -586,6 +588,36 @@ test("the screenshot check accepts decodable PNGs and nothing else", () => {
   assert.equal(png.valid(makePng(9, 5, { interlace: 1, filterByte: 5 })), false, "interlaced, unknown filter");
   assert.equal(png.valid(makePng(9, 5, { patchHeader: (h) => { h[12] = 1; } })), false, "interlaced header, plain data");
   assert.equal(png.valid(makePng(9, 5, { interlace: 1, filterByte: 4 })), true, "interlaced, Paeth filter");
+  // Palette indices are judged after reconstruction: Sub turns 1,1,1 into 1,2,3.
+  assert.equal(png.valid(makePng(3, 1, { color: 3, depth: 8, filterByte: 1, fill: 1 })), false, "filtered index outside the palette");
+  assert.equal(png.valid(makePng(3, 1, { color: 3, depth: 8, filterByte: 1, fill: 1, paletteEntries: 4 })), true, "filtered index inside the palette");
+  assert.equal(png.valid(makePng(9, 5, { color: 3, depth: 8, interlace: 1, filterByte: 2, fill: 1 })), false, "interlaced Up filter leaves the palette");
+  assert.equal(png.valid(makePng(9, 5, { color: 3, depth: 8, interlace: 1, filterByte: 2, fill: 0 })), true, "interlaced indexed image");
+  // A huge declared size is rejected from the header, without allocating.
+  const huge = Buffer.from("iVBORw0KGgoAAAANSUhEUn////8AAAABEAYAAADwpu+eAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==", "base64");
+  assert.equal(png.valid(huge), false, "width 2^31-1");
+  assert.equal(png.valid(makePng(64, 64, { patchHeader: (h) => h.writeUInt32BE(1 << 20, 4) })), false, "data far shorter than the header");
+  // Ancillary chunks that change decoding: sizes, values and placement.
+  const emptyTrns = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAHRSTlM2uXDMAAAADElEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC", "base64");
+  assert.equal(png.valid(emptyTrns), false, "empty tRNS");
+  assert.equal(png.valid(makePng(2, 2, { beforeData: [pngChunk("tRNS", Buffer.alloc(6))] })), true, "RGB tRNS");
+  assert.equal(png.valid(makePng(2, 2, { color: 6, beforeData: [pngChunk("tRNS", Buffer.alloc(6))] })), false, "tRNS on RGBA");
+  assert.equal(png.valid(makePng(2, 2, { color: 3, depth: 8, beforeData: [pngChunk("tRNS", Buffer.alloc(3))] })), false, "tRNS longer than the palette");
+  assert.equal(png.valid(makePng(2, 2, { beforeData: [pngChunk("gAMA", Buffer.alloc(3))] })), false, "short gAMA");
+  assert.equal(png.valid(makePng(2, 2, { beforeData: [pngChunk("sRGB", Buffer.from([9]))] })), false, "sRGB intent 9");
+  const gama = pngChunk("gAMA", Buffer.from([0, 0, 0xb1, 0x8f]));
+  assert.equal(png.valid(makePng(2, 2, { beforeData: [gama, gama] })), false, "two gAMA");
+  assert.equal(png.valid(makePng(2, 2, { color: 3, depth: 8, beforeData: [pngChunk("sRGB", Buffer.from([0]))] })), false, "sRGB after PLTE");
+  assert.equal(png.valid(makePng(2, 2, { color: 3, depth: 8, beforeData: [pngChunk("bKGD", Buffer.from([5]))] })), false, "bKGD outside the palette");
+  const phys = Buffer.alloc(9);
+  phys.writeUInt32BE(2835, 0);
+  phys.writeUInt32BE(2835, 4);
+  phys[8] = 1;
+  assert.equal(
+    png.valid(makePng(2, 2, { beforeData: [pngChunk("sRGB", Buffer.from([0])), gama, pngChunk("pHYs", phys)] })),
+    true,
+    "the chunks browser screenshots carry",
+  );
 });
 
 test("a screenshot recorded under looser rules carries neither a merge nor a cached verify", () => {

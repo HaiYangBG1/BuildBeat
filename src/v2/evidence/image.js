@@ -25,6 +25,53 @@ const PNG_COLOR = {
   6: { channels: 4, depths: [8, 16] },
 };
 const CRITICAL = new Set(["IHDR", "PLTE", "IDAT", "IEND"]);
+
+// Ancillary chunks that change how pixels decode or display, checked
+// against the specification's sizes, values and placement (at most once,
+// before the image data; `afterPalette` ones after PLTE, `beforePalette`
+// ones before it). Other ancillary chunks (text, time, metadata) are
+// ignored, as decoders ignore them.
+function ancillaryValid(type, body, header, paletteSize, seenPalette) {
+  const sizeFor = (byColor) => byColor[header.color];
+  switch (type) {
+    case "tRNS":
+      if (header.color === 3) {
+        return seenPalette && body.length >= 1 && body.length <= paletteSize;
+      }
+      return body.length === sizeFor({ 0: 2, 2: 6 });
+    case "gAMA":
+      return !seenPalette && body.length === 4 && body.readUInt32BE(0) > 0;
+    case "cHRM":
+      return !seenPalette && body.length === 32;
+    case "sRGB":
+      return !seenPalette && body.length === 1 && body[0] <= 3;
+    case "sBIT":
+      return !seenPalette && body.length === sizeFor({ 0: 1, 2: 3, 3: 3, 4: 2, 6: 4 });
+    case "iCCP": {
+      const nul = body.indexOf(0);
+      if (seenPalette || nul < 1 || nul > 79 || body[nul + 1] !== 0) {
+        return false;
+      }
+      try {
+        return inflateSync(body.subarray(nul + 2), { maxOutputLength: 16 * 1024 * 1024 }).length > 0;
+      } catch {
+        return false;
+      }
+    }
+    case "bKGD":
+      if (header.color === 3) {
+        return seenPalette && body.length === 1 && body[0] < paletteSize;
+      }
+      return body.length === sizeFor({ 0: 2, 4: 2, 2: 6, 6: 6 });
+    case "hIST":
+      return seenPalette && body.length === 2 * paletteSize;
+    case "pHYs":
+      return body.length === 9 && body[8] <= 1;
+    default:
+      return true;
+  }
+}
+const ONCE_BEFORE_DATA = new Set(["tRNS", "gAMA", "cHRM", "sRGB", "sBIT", "iCCP", "bKGD", "hIST", "pHYs"]);
 // Adam7 passes: x start, y start, x step, y step.
 const ADAM7 = [
   [0, 0, 8, 8],
@@ -76,8 +123,24 @@ function paeth(a, b, c) {
   return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
 }
 
+// The exact byte length of the decompressed image data, or Infinity when
+// it exceeds the screenshot size limit. Computed from the header alone, so
+// nothing is allocated or inflated for an implausible declaration.
+const MAX_IMAGE_BYTES = 256 * 1024 * 1024;
+function expectedDataLength(header) {
+  const bits = header.depth * PNG_COLOR[header.color].channels;
+  let total = 0;
+  for (const [width, height] of subImages(header)) {
+    total += height * (1 + Math.ceil((width * bits) / 8));
+    if (total > MAX_IMAGE_BYTES) {
+      return Infinity;
+    }
+  }
+  return total;
+}
+
 // Reconstructs every scanline (filters 0-4) and, for an indexed image,
-// checks each pixel's palette index.
+// checks each pixel's palette index. `raw` already has the expected length.
 function scanlinesValid(raw, header, paletteSize) {
   const bits = header.depth * PNG_COLOR[header.color].channels;
   const bpp = Math.max(1, bits / 8);
@@ -127,6 +190,7 @@ function validPng(bytes) {
   let header = null;
   let paletteSize = 0;
   let dataState = "none"; // none -> open -> closed
+  const seen = new Set();
   const data = [];
   while (offset + 12 <= bytes.length) {
     const length = bytes.readUInt32BE(offset);
@@ -205,15 +269,31 @@ function validPng(bytes) {
       ) {
         return false;
       }
+      const expected = expectedDataLength(header);
+      if (!Number.isFinite(expected)) {
+        return false;
+      }
       let raw;
       try {
-        raw = inflateSync(Buffer.concat(data));
+        // A decompression bomb stops at one byte past the declared size.
+        raw = inflateSync(Buffer.concat(data), { maxOutputLength: expected + 1 });
       } catch {
         return false;
       }
-      return scanlinesValid(raw, header, paletteSize);
-    } else if (dataState === "open") {
-      dataState = "closed";
+      return raw.length === expected && scanlinesValid(raw, header, paletteSize);
+    } else {
+      if (ONCE_BEFORE_DATA.has(type)) {
+        if (seen.has(type) || dataState !== "none") {
+          return false;
+        }
+        seen.add(type);
+      }
+      if (!ancillaryValid(type, body, header, paletteSize, paletteSize > 0)) {
+        return false;
+      }
+      if (dataState === "open") {
+        dataState = "closed";
+      }
     }
     offset = end;
   }
