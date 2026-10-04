@@ -1,0 +1,46 @@
+# Run config for WORK-4.0-INTENT-FOLLOWUPS. Paths resolve relative to this file.
+# Driven by the 4.0 runtime from the main checkout (node bin/buildbeat.js),
+# which uses the fixed delivery flow: no workflow or riskPreset keys.
+repo: ../../..
+work: WORK-4.0-INTENT-FOLLOWUPS
+run: RUN-4.0-INTENT-FOLLOWUPS
+allowedPaths:
+  - src
+  - bin
+  - tests
+  - docs
+  - templates
+  - example
+  - plugins
+  - README.md
+  - README.en.md
+  - SKILL.md
+  - CHANGELOG.md
+  - package.json
+  - package-lock.json
+  - delivery/work/WORK-4.0-INTENT-FOLLOWUPS
+reviewTriage: off
+budgets:
+  reviewRoundsPerWork: 6
+cache:
+  verify: tree
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+requires:
+  - command: node
+    min: "20"
+  - command: codex
+# builder / fixer are deliberately absent: the driving session writes the
+# code and hands each commit over with --adopt; verify and review stay
+# independent workers.
+workers:
+  verifier:
+    command: bash
+    timeoutMs: 1800000
+    args:
+      - delivery/work/WORK-4.0-INTENT-FOLLOWUPS/verify.sh
+  reviewer:
+    command: bash
+    timeoutMs: 5400000
+    args:
+      - delivery/work/WORK-4.0-INTENT-FOLLOWUPS/review.sh
