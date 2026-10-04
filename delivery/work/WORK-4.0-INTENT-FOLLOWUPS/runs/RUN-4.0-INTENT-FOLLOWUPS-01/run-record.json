@@ -1,0 +1,302 @@
+{
+  "run": "RUN-4.0-INTENT-FOLLOWUPS-01",
+  "work": "WORK-4.0-INTENT-FOLLOWUPS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-4.0-INTENT-FOLLOWUPS-02 (same work WORK-4.0-INTENT-FOLLOWUPS)"
+  },
+  "events": {
+    "from": 1,
+    "to": 65,
+    "lastDigest": "sha256:b77b7437aaf24cc31b1d8640c570d88aa9127303c1d1d1c66974e96dca601d35"
+  },
+  "startedAt": "2026-10-04T08:12:31.932Z",
+  "finishedAt": "2026-10-04T09:36:16.159Z",
+  "attempts": {
+    "verify": 3,
+    "review": 3
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 3,
+      "remaining": 3
+    }
+  },
+  "cost": {
+    "reviewRounds": 3,
+    "humanWaits": 5,
+    "infraFailures": 0,
+    "workerMs": 1779208
+  },
+  "workspaces": {
+    "RUN-4.0-INTENT-FOLLOWUPS-01": {
+      "repo": ".",
+      "branch": "run/RUN-4.0-INTENT-FOLLOWUPS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-4.0-INTENT-FOLLOWUPS-01",
+      "base": "055836ddac9ddf7d845271040eafa194b67c29a2",
+      "candidate": "0d875ec9cae3447eb716fa1bc565f2aab64a14e3"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "0d238048a0d0cbe80874abb76273710fb6597819",
+      "digest": "sha256:0d38078634a4c21cd864c80aca15413645b89b32fe25af819e66c2662ffaae26",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:a28a1efa1362ae2a9fe3071ebda230a74051b104d40e4d8e3fcc32ee530992eb"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "0d238048a0d0cbe80874abb76273710fb6597819",
+      "digest": "sha256:e3ff2b8171829a16718b139dfc99d620445ce85a8c4e6e3dcdfb6566057f1bb2",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "0d238048a0d0cbe80874abb76273710fb6597819",
+      "digest": "sha256:c302137ab05a20f902321b516f1fab7355a3e3f4ab835d4dcd0e95604375422a",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/runtime/orchestrator.js:801 — Screenshot detection checks only filename extension and stat.isFile(). A verifier running `: > \"$BUILDBEAT_SCREENSHOT_DIR/home.png\"` produces passed screenshot evidence and satisfies the merge gate without a renderable image. Validate image contents before recording evidence; an all-invalid directory must trigger the missing-screenshot failure. Add empty/corrupt-image regressions."
+        },
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/runtime/orchestrator.js:955 — Screenshot paths are recorded in place, and statSync follows symlinks. If verify supplies home.png as a symlink to a temporary capture, no stored copy is created; cleanup of the target leaves an unavailable image that cache reuse and approval still accept from ledger metadata. Reject symlinks or materialize regular-file copies and hash those bytes; validate availability and digest before reuse and approval."
+        },
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/runtime/release.js:85 — With --ref C while the main checkout is at D, the readback executes D's files but records C as its commit and reports success 'at C'. A readback command of `git rev-parse HEAD` demonstrates the discrepancy. Record the actual checkout commit separately from the resolved target ref, or reject a mismatch; cover a non-HEAD ref in regression tests."
+        },
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/runtime/release.js:146 — Log filenames use releases.jsonl's unprotected row count. Two concurrent readbacks can both choose release-N.log, overwrite each other's output, and append records referencing the same file with different digests. An in-memory interleaving reproduced a stored-log digest mismatch. Serialize log allocation and record append per Work, or allocate unique immutable log paths; add a concurrent-readback regression."
+        },
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/cli/run.js:995 — Screenshot paths and digests are added only to commandInbox. `status --repo . --run <RUN-ID>` takes the printState path, which prints screenshot references without their digests, so the run-specific merge decision card lacks the required information. Share the candidate screenshot formatter with printState and test this status invocation."
+        },
+        {
+          "severity": "P1",
+          "summary": "[docs-surface] docs/v2/guide/06-evidence-guide.md:9 (also .en.md:9) — the promised screenshot digest is missing from the Run-specific decision view. For a screenshot-enabled Run awaiting enter-wait-merge, `buildbeat status --repo . --run <RUN>` selects printState (src/v2/cli/run.js:1498), whose evidence renderer prints only status, grade, kind and path (lines 273–280), followed by approval commands. Read-only execution of that renderer confirmed the screenshot path appears but its digest does not. The owner therefore lacks the required digest when inspecting this documented approval surface. Render current-candidate screenshot paths and digests here, and extend the regression test beyond repository-wide status to `status --run`."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-screenshot-release.test.js:112 — The approval-card test checks repository status, which renders commandInbox, but never checks status --run. At enter-wait-merge, the single-run card uses src/v2/cli/run.js:273-280 and prints screenshot paths without their required digests. Add assertions for the single-run card and run output, and render the current candidate's screenshot paths and digests there."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-screenshot-release.test.js:236 — The closeout regression covers failure followed by success, but never success followed by failure. Selecting an earlier passing readback instead of the latest row would satisfy both existing close assertions while allowing closure after a newer failed readback. Add a passing readback, then a failing one, and assert close is refused without appending close-work; a subsequent pass should permit closure bound to that latest record."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-screenshot-release.test.js:227 — Every release invocation uses default HEAD; the required --ref containment behavior has no test. Dropping flags.ref at src/v2/cli/run.js:1555 would leave these tests unchanged while allowing release against a requested ref that excludes the candidate whenever HEAD includes it. Add explicit refs whose candidate reachability differs from HEAD, covering refusal and success, and assert the recorded ref and commit."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-screenshot-release.test.js:219 — The release fixture configures only command and args, and its readback never inspects environment variables. Existing worker environment tests do not exercise the new release configuration path, so dropping release.env or enabling unrestricted inheritance would escape regression detection despite the required worker-equivalent environment contract. Add a CLI release test asserting that a host-only sentinel is absent and explicitly configured release.env values reach the readback."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/check_docs.py:53 — Registering the compatibility pages only adds existence and stale-claim checks. Bilingual validation still targets the root READMEs, and the runtime test at tests/v2-screenshot-release.test.js:272 hard-codes its acceptance example. Changing the English example's transition or deleting the Skill/index links would therefore pass. Add checks for normalized bilingual examples and required entrypoint links, and exercise acceptance using the actual documented example."
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "4a5015bf779bed17142da85d4ef73e825a446158",
+      "digest": "sha256:8762bab302ae2a34978bda10f8ebe0c3d8b13c3c3143dfed5572a175a8c31882",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:3b6e3beff0229a6f463b207d6906b4a359106664f930e992d3b039e7156a2b36"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "4a5015bf779bed17142da85d4ef73e825a446158",
+      "digest": "sha256:66de79dd7b3915ce9827a60cafbbb02bbc8cfe13c23f5f11418ec0e13fa52da3",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "4a5015bf779bed17142da85d4ef73e825a446158",
+      "digest": "sha256:1d32d87ffd885fcf7fa660e9067123756890b1651fdb55d7e224b8f343670301",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/runtime/orchestrator.js:803 — Screenshot validation still accepts non-images. A successful verifier running `printf '\\211PNG\\r\\n\\032\\nX' > \"$BUILDBEAT_SCREENSHOT_DIR/home.png\"` supplies only nine bytes, without image dimensions or pixels, yet receives passed screenshot evidence and satisfies the digest-based merge gate. The positive test fixture likewise contains only PNG magic plus 'IHDR-bytes'. Validate decodable image content before recording evidence; use genuine image fixtures and add truncated-image rejection tests."
+        },
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/policy/policy.js:82 — A missing historical screenshot permanently blocks same-candidate recovery. After verify-1 passes, lose its image during a review/fix pause and re-verify the unchanged SHA. The new cache fallback correctly executes verify-2 and records a valid screenshot, but the append-only evidence still contains verify-1, and this check rejects every subsequent merge/approval because that older file is missing. Reproduced in memory through executeOrReuse and screenshotsPresent. Check the latest successful verification's screenshot set using its source linkage, and add a same-Run recapture regression."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-screenshot-release.test.js:94 — Every successful screenshot integration test uses an invalid 18-byte PNG. Its first chunk type is '-byt', and its declared chunk length is 1229472850 bytes; it cannot render. These tests require malformed image acceptance and would fail after proper image validation. Replace RENDER with valid image fixtures and add a negative case rejecting signature-only or truncated images."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/check_docs.py:783 — Placeholder normalization discards required literal content. Replacing the English example's 'sha256:<64 hex digits>' with 'sha512:<64 hex digits>' still returns no errors; the runtime test also overwrites the entire digest at tests/v2-screenshot-release.test.js:306. Such acceptance records are rejected as stale by src/v2/runtime/overview.js:57. The checker also omits the inline close-work example, which remains hard-coded in the runtime test. Preserve literal prefixes, compare all documented records, and exercise examples by substituting only their placeholders."
+        },
+        {
+          "severity": "P2",
+          "summary": "[tests-package] tests/v2-screenshot-release.test.js:408 — The claimed concurrent-log regression invokes synchronous runReadback twice sequentially. The previous row-count allocator produces release-1.log and release-2.log and passes both uniqueness and digest assertions, despite retaining its concurrency bug. Identical timestamps do not create overlapping allocations. Add coordinated concurrent calls or an injected interleaving that allocates both logs from the same ledger snapshot, then verify distinct paths and correct digests."
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-01/logs/verify-3.log",
+      "kind": "command",
+      "subject": "0d875ec9cae3447eb716fa1bc565f2aab64a14e3",
+      "digest": "sha256:fa7f16778f5f9c904351a4b2740b23e277061e19b8615f0bfd9da6493f352455",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:37b50bb42ea1941d85191464f87ad081218f16a2cae01c789a3d102ab5361545"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-01/logs/review-3.log",
+      "kind": "command",
+      "subject": "0d875ec9cae3447eb716fa1bc565f2aab64a14e3",
+      "digest": "sha256:12218b48715196834b539754da5187dac89eb32ada465ca9dda2d0149a2528e5",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-01/outputs/review-3.json",
+      "kind": "review",
+      "subject": "0d875ec9cae3447eb716fa1bc565f2aab64a14e3",
+      "digest": "sha256:7d2b8ec64af7a785eed9754393907a639d1af0eafc7629d82aacdd7e31c62b74",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/evidence/image.js:161 — Image validation still accepts files without decodable pixels. Reproduce with `node --input-type=module -e 'import { screenshotFormat } from \"./src/v2/evidence/image.js\"; console.log(screenshotFormat(\"x.webp\").valid(Buffer.from(\"UklGRhYAAABXRUJQVlA4WAoAAAAAAAAAAAAAAAAA\", \"base64\")))'`: it prints true for a 30-byte VP8X header containing no image payload; independent Pillow decoding fails. If a successful verifier writes these bytes as home.webp, orchestrator.js:811 accepts it and records passed screenshot evidence, satisfying the screenshot merge requirement. The interlaced PNG branch at line 78 and JPEG branch at line 123 similarly accepted undecodable samples. Require successful image decoding or complete payload validation before recording evidence, and add negative regressions for these cases."
+        },
+        {
+          "severity": "P1",
+          "summary": "[docs-surface] docs/v2/guide/06-evidence-guide.md:9 (also .en.md:9) — The new guarantee that validation proves a complete image is false. Reproduce read-only: node --input-type=module -e 'import {screenshotFormat} from \"./src/v2/evidence/image.js\"; console.log(screenshotFormat(\"x.webp\").valid(Buffer.from(\"524946461600000057454250565038580a00000000000000000000000000\",\"hex\")))' prints true. These 30 bytes contain only RIFF/VP8X headers and no pixels; an available WebP decoder rejects them. src/v2/evidence/image.js:161 accepts the header alone, and src/v2/runtime/orchestrator.js:973 records it as passed screenshot evidence when verify succeeds, satisfying the screenshot requirement without a renderable image. Validate the complete image payload before recording evidence and retaining this guarantee in both guides; add a header-only WebP regression."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-screenshot-release.test.js:527 — WebP negatives only exercise a RIFF-length mismatch; a length-only validator passes both assertions. The 30-byte sample Buffer.from('UklGRhYAAABXRUJQVlA4WAoAAAAAAAAAAAAAAAAA','base64') contains no image payload, yet screenshotFormat('header.webp').valid(sample) returns true and a decoder rejects it. This leaves non-renderable screenshot evidence undetected. Add size-consistent header-only and truncated-payload negatives, including a verify integration asserting rejection."
+        },
+        {
+          "severity": "P2",
+          "summary": "[tests-package] tests/v2-screenshot-release.test.js:522 — Changing the PNG width invalidates its CRC, so the 'zero width' assertion rejects at CRC validation before reaching the dimension check. Removing the dimension guard still passes this assertion. Use makePng(0, 1), which preserves valid CRC and scanline structure and fails specifically on the missing dimension guard."
+        },
+        {
+          "severity": "P2",
+          "summary": "[tests-package] tests/v2-screenshot-release.test.js:485 — Sleeping inside the readback does not force concurrent log allocation: the former row-count allocator reads releases.jsonl only after the command finishes. Overlapping workers can therefore serialize allocation and satisfy every assertion with the unsafe allocator; an in-memory replay reproduces this. Add deterministic interleaving at journal read/log allocation, with distinct outputs, so restoring the row-count allocator reliably fails."
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "0d238048a0d0cbe80874abb76273710fb6597819",
+        "planDigest": "sha256:74ed7dd54053f9edd62f217d042e64d1e533a383d2edad36c4dad97f6a1cda3b",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-01-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "4a5015bf779bed17142da85d4ef73e825a446158",
+        "planDigest": "sha256:74ed7dd54053f9edd62f217d042e64d1e533a383d2edad36c4dad97f6a1cda3b",
+        "evidenceDigest": "sha256:c302137ab05a20f902321b516f1fab7355a3e3f4ab835d4dcd0e95604375422a"
+      },
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-01-2"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "4a5015bf779bed17142da85d4ef73e825a446158",
+        "planDigest": "sha256:74ed7dd54053f9edd62f217d042e64d1e533a383d2edad36c4dad97f6a1cda3b",
+        "evidenceDigest": "sha256:1d32d87ffd885fcf7fa660e9067123756890b1651fdb55d7e224b8f343670301"
+      },
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-01-3"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "0d875ec9cae3447eb716fa1bc565f2aab64a14e3",
+        "planDigest": "sha256:74ed7dd54053f9edd62f217d042e64d1e533a383d2edad36c4dad97f6a1cda3b",
+        "evidenceDigest": "sha256:1d32d87ffd885fcf7fa660e9067123756890b1651fdb55d7e224b8f343670301"
+      },
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-01-4"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "0d238048a0d0cbe80874abb76273710fb6597819",
+        "planDigest": "sha256:74ed7dd54053f9edd62f217d042e64d1e533a383d2edad36c4dad97f6a1cda3b",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-01-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "4a5015bf779bed17142da85d4ef73e825a446158",
+        "planDigest": "sha256:74ed7dd54053f9edd62f217d042e64d1e533a383d2edad36c4dad97f6a1cda3b",
+        "evidenceDigest": "sha256:c302137ab05a20f902321b516f1fab7355a3e3f4ab835d4dcd0e95604375422a"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-01-3",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "4a5015bf779bed17142da85d4ef73e825a446158",
+        "planDigest": "sha256:74ed7dd54053f9edd62f217d042e64d1e533a383d2edad36c4dad97f6a1cda3b",
+        "evidenceDigest": "sha256:1d32d87ffd885fcf7fa660e9067123756890b1651fdb55d7e224b8f343670301"
+      },
+      "stale": false
+    },
+    {
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-01-4",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "0d875ec9cae3447eb716fa1bc565f2aab64a14e3",
+        "planDigest": "sha256:74ed7dd54053f9edd62f217d042e64d1e533a383d2edad36c4dad97f6a1cda3b",
+        "evidenceDigest": "sha256:1d32d87ffd885fcf7fa660e9067123756890b1651fdb55d7e224b8f343670301"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    }
+  ],
+  "unverified": []
+}

@@ -1,0 +1,357 @@
+{
+  "run": "RUN-4.0-INTENT-FOLLOWUPS-02",
+  "work": "WORK-4.0-INTENT-FOLLOWUPS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 90,
+    "lastDigest": "sha256:4473277f60597db95a60988fdabb05efef05f2fea05e27dc23fcd41170b6d510"
+  },
+  "startedAt": "2026-10-04T09:36:16.187Z",
+  "finishedAt": "2026-10-04T12:11:16.505Z",
+  "attempts": {
+    "verify": 4,
+    "review": 4
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 4,
+      "remaining": 2
+    }
+  },
+  "cost": {
+    "reviewRounds": 4,
+    "humanWaits": 7,
+    "infraFailures": 0,
+    "workerMs": 1809478
+  },
+  "workspaces": {
+    "RUN-4.0-INTENT-FOLLOWUPS-02": {
+      "repo": ".",
+      "branch": "run/RUN-4.0-INTENT-FOLLOWUPS-02",
+      "worktreePath": ".buildbeat/worktrees/RUN-4.0-INTENT-FOLLOWUPS-02",
+      "base": "4e5d35dfd82f68e7403c18948f1018533b34f0cb",
+      "candidate": "cfa0893464f6df88f0785dc6094d4a7e50cae735"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-02/logs/verify-1.log",
+      "kind": "command",
+      "subject": "fe6f891dd7c616871dfe41f5af2e19e09cf23f35",
+      "digest": "sha256:f0eadd4e6b604f757f2db532f69ff246ef6ebd92b355567921e3fb90f3ae2753",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:a5e4cc7736004c59eb25c0fa62917a555ad8c3d8441a0fc1678e67d95727439e"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-02/logs/review-1.log",
+      "kind": "command",
+      "subject": "fe6f891dd7c616871dfe41f5af2e19e09cf23f35",
+      "digest": "sha256:0717944dcd2eed6c00eeb1b3927b580d5139923ed7167f9ed78d276b5af9c28a",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-02/outputs/review-1.json",
+      "kind": "review",
+      "subject": "fe6f891dd7c616871dfe41f5af2e19e09cf23f35",
+      "digest": "sha256:ab47dd429df287151c746ff407a70af9faa3f84b24eac6c8aa213a9d168ddef2",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/evidence/image.js:125 — PLTE validation accepts oversized palettes, so an undecodable PNG becomes passed screenshot evidence. A CRC-correct 1×1 indexed PNG with 257 palette entries returns true; Pillow rejects it with 'invalid palette size'. Reproduce: node --input-type=module -e 'import {inflateSync} from \"node:zlib\"; import {screenshotFormat} from \"./src/v2/evidence/image.js\"; console.log(screenshotFormat(\"x.png\").valid(inflateSync(Buffer.from(\"eJzrDPBz5+WS4mJgYOD19HAJYmBgYARhDmYGBgaN0ya7GRiYmQN8QlwZRsEoGNnALa+9h4GBgcvTxTGkYk5yAgMDAxMDo8f6JYUgWU9XP5d1TglNAEMED9M=\",\"base64\"))))'. Enforce the 256-entry maximum and indexed bit-depth limit, with a regression for this sample."
+        },
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/runtime/orchestrator.js:868 — Cached screenshots bypass the new PNG-only validation. With cache.verify: tree and matching evidence from the previous revision containing a WebP screenshot, reuse checks only existence and digest, skips the verifier, and records that WebP as passed evidence. The approval check at src/v2/policy/policy.js:99 also checks only the digest. An in-memory reproduction confirmed workerCalled=false and screenshotsPresent().ok=true. Revalidate stored screenshots against the current PNG rules during cache reuse and approval; invalidate incompatible cached verification and require another verify."
+        },
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/runtime/orchestrator.js:938 — Rejection reasons are recorded only when no screenshot was accepted. A successful verifier leaving both valid home.png and mobile.jpg passes with PNG evidence, but the JPG rejection disappears from the verify log and ledger. This misses work.md's explicit requirement to explain rejected formats. An in-memory execution using the actual collector confirmed an empty rejection log. Persist rejected filenames and reasons whenever present, independently of whether valid PNG evidence allows verification to pass; cover mixed-format output."
+        },
+        {
+          "severity": "P1",
+          "summary": "[docs-surface] docs/v2/guide/06-evidence-guide.md:9 (also .en.md:9) — The new decodable-PNG guarantee fails for a malformed second IHDR chunk. Reproduce: node --input-type=module -e 'import {screenshotFormat} from \"./src/v2/evidence/image.js\"; console.log(screenshotFormat(\"x.png\").valid(Buffer.from(\"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAElIRFKooa4KAAAADElEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC\",\"base64\")))'. It returns true; Pillow rejects the same bytes with ValueError: Truncated IHDR chunk. src/v2/evidence/image.js:99-139 ignores subsequent IHDR chunks, allowing an undecodable file to become passed screenshot evidence. Reject duplicate or malformed critical chunks and add this decoding regression before retaining the guarantee."
+        },
+        {
+          "severity": "P1",
+          "summary": "[docs-surface] docs/v2/guide/06-evidence-guide.md:9 (also .en.md:9) — Unsupported images are not always rejected with the promised explanation. With requireScreenshot enabled, have a successful verifier leave valid home.png alongside photo.jpg. src/v2/runtime/orchestrator.js:811-813 collects the JPG rejection, but lines 927-940 forward rejection reasons only when zero PNGs were accepted. The verify passes and photo.jpg silently disappears from evidence without a diagnostic, violating work.md's explicit rejection-reason requirement. Persist rejection reasons even when another screenshot succeeds, and cover mixed valid-PNG/unsupported-format output."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-screenshot-release.test.js:534 — Required interlaced PNG validation lacks negative coverage; the only Adam7 sample expects success. A read-only probe replacing src/v2/evidence/image.js:138 with `return header.interlace === 1 ? raw.length > 0 : scanlinesValid(raw, header);` preserved all 15 existing PNG sample results while accepting invalid interlaced filters and insufficient pixel data. Add CRC-correct Adam7 rejection cases for invalid filters and incorrect decompressed lengths."
+        },
+        {
+          "severity": "P2",
+          "summary": "[tests-package] tests/v2-screenshot-release.test.js:535 — The palette success fixture contains invalid pixel indices; makePng(3,3,{color:3,depth:4}) supplies two palette entries but its first pixel references index 4, an error under the [PNG specification](https://www.w3.org/TR/png-3/). Expecting true makes the decodability coverage misleading and prevents stricter validation from passing. Generate indexed pixels using the supplied palette entries and retain out-of-range indices as a separate negative fixture."
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-02/logs/verify-2.log",
+      "kind": "command",
+      "subject": "0e4b17a494751033e7e0345d79791d9eb81e403d",
+      "digest": "sha256:a69bb715e3fe072bec9ceb9c5fef36ef9894ff954b9e84961643ea634f0c8d38",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:c3e5e43975121a9825d59b27da84648bdebea0e5186a7039e40392a1177e0eb5"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-02/logs/review-2.log",
+      "kind": "command",
+      "subject": "0e4b17a494751033e7e0345d79791d9eb81e403d",
+      "digest": "sha256:3cdb2d3a909dafbb2cdc054e2c4c68c03c3926e6d89b53ba132656930d3255f2",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-02/outputs/review-2.json",
+      "kind": "review",
+      "subject": "0e4b17a494751033e7e0345d79791d9eb81e403d",
+      "digest": "sha256:ae5e5bbceab2fbf8c3f3a884132ba59ae9f33cdf463d355dded1e35aee56adac",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/evidence/image.js:87 — Scanline allocation precedes the inflated-length check, so malformed screenshots can abort verification instead of following the required failure route. On supported Node 20.19.4, a 67-byte PNG declaring width 2147483647, height 1 and 16-bit RGBA attempts Buffer.alloc(17179869176), throwing ERR_OUT_OF_RANGE before recordStepResult. The prior revision returns false for the same input. Reproduce on Node 20: node --input-type=module -e 'import {screenshotFormat} from \"./src/v2/evidence/image.js\"; console.log(screenshotFormat(\"x.png\").valid(Buffer.from(\"iVBORw0KGgoAAAANSUhEUn////8AAAABEAYAAADwpu+eAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==\",\"base64\")))'. Validate the complete expected scanline length, including Adam7 passes, against raw.length before allocating row buffers; add a regression requiring this input to return false without an oversized allocation."
+        },
+        {
+          "severity": "P1",
+          "summary": "[docs-surface] docs/v2/guide/06-evidence-guide.md:9 (also .en.md:9) — The decodable-PNG guarantee remains incomplete: malformed ancillary chunks pass validation. Reproduce read-only: node --input-type=module -e 'import {screenshotFormat} from \"./src/v2/evidence/image.js\"; console.log(screenshotFormat(\"x.png\").valid(Buffer.from(\"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAHRSTlM2uXDMAAAADElEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC\",\"base64\")))'. This prints true for a PNG containing an empty tRNS chunk; Pillow 12.2.0 cannot decode the same bytes. src/v2/evidence/image.js:215 skips ancillary payload validation. A successful verifier supplying this file receives passed screenshot evidence at src/v2/runtime/orchestrator.js:989-992, and the approval recheck uses the same validator. Validate ancillary chunks consumed by decoders, including tRNS length and colour-type constraints, and add this regression before retaining the guarantee in both guides."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-screenshot-release.test.js:570 — All palette fixtures use filter 0, while the Paeth fixture at line 588 is RGB, so no assertion tests reconstruction of palette indices. A read-only mutation replacing src/v2/evidence/image.js:103 with `line[i] = line[i]` preserves the existing fixtures' results but incorrectly accepts `makePng(3,1,{color:3,depth:8,filterByte:1,fill:1})`: its reconstructed indices are 1,2,3 against a two-entry palette. The required decodability check can therefore regress undetected. Add filtered indexed PNG positives and negatives, including Adam7, whose validity depends on reconstructed indices."
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-02/logs/verify-3.log",
+      "kind": "command",
+      "subject": "2cea3d8f71dcf42ac68261edee904b48c98a9a7a",
+      "digest": "sha256:b63875147a08da2fd41b42aee4a736757fd910d486f8892067076d4d02818163",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:5f72b30c74c368171e68f1ba342f598c69260c47abba8833a7af86f4e6d988c9"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-02/logs/review-3.log",
+      "kind": "command",
+      "subject": "2cea3d8f71dcf42ac68261edee904b48c98a9a7a",
+      "digest": "sha256:e4dce81b8475d85c98550161c83ae84cdaf38cd163f3de82c70fa9b27d46b05e",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-02/outputs/review-3.json",
+      "kind": "review",
+      "subject": "2cea3d8f71dcf42ac68261edee904b48c98a9a7a",
+      "digest": "sha256:155eba95ee090a44f002c282882d8783e891a5eb84d125168814ce734e17ff7a",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/evidence/image.js:70 — The ancillary-chunk fallback still accepts PNGs that common decoders cannot open. Read-only reproduction: node --input-type=module -e 'import {screenshotFormat} from \"./src/v2/evidence/image.js\"; console.log(screenshotFormat(\"x.png\").valid(Buffer.from(\"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAABHpUWHR4AP8AXggmAQAAAAxJREFUeJxjYGBgAAAABAAB9hc4VQAAAABJRU5ErkJggg==\",\"base64\")))' prints true. This CRC-correct image contains zTXt compression method 255; only method 0 is defined by the [PNG specification](https://www.w3.org/TR/png-3/#11zTXt). Pillow 12.2 Image.open(BytesIO(decoded_bytes)).load() raises UnidentifiedImageError. If a successful verifier leaves this file, orchestrator.js:801 accepts it and policy.js:103 repeats the same permissive check, allowing unusable screenshot evidence through approval. Validate known ancillary chunks that decoders parse, including compressed-text headers and streams, or remove unsupported optional metadata from the stored copy before validating and hashing it; add this malformed fixture and valid-metadata controls."
+        },
+        {
+          "severity": "P1",
+          "summary": "[docs-surface] docs/v2/guide/06-evidence-guide.md:9 (also .en.md:9) — The new claim that decoders ignore text chunks breaks the promised decodable-PNG guarantee. Reproduce read-only: node --input-type=module -e 'import {screenshotFormat} from \"./src/v2/evidence/image.js\"; console.log(screenshotFormat(\"x.png\").valid(Buffer.from(\"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAEHpUWHRrAAF4nMtIzcnJBwAGLAIV74cuCQAAAAxJREFUeJxjYGBgAAAABAAB9hc4VQAAAABJRU5ErkJggg==\",\"base64\")))'. This returns true, but Pillow 12.2.0 rejects the same bytes with 'Unknown compression method 1 in zTXt chunk'. src/v2/evidence/image.js:70-71 accepts this metadata without validation, allowing a successful verifier to supply an undecodable screenshot that also passes the approval recheck. Validate decoder-consumed text chunks, add this regression, and correct both guides' blanket statement that decoders ignore them."
+        },
+        {
+          "severity": "P2",
+          "summary": "[tests-package] tests/v2-screenshot-release.test.js:565 — The zero-width regression still passes with the width guard removed. makePng(0, 1) skips its only scanline at line 76, causing an independent decompressed-length rejection. A read-only mutation replacing `!header.width ||` with `false ||` in src/v2/evidence/image.js:228 leaves this assertion passing. Construct a CRC-correct zero-width, one-row PNG whose IDAT inflates to one zero filter byte; that fixture distinguishes the dimension guard from the downstream length check."
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-02/logs/verify-4.log",
+      "kind": "command",
+      "subject": "cfa0893464f6df88f0785dc6094d4a7e50cae735",
+      "digest": "sha256:afeb9e8ac03e15402b3cbd3dd9c5544d069e3c5c20e9b380d5f1e352449372b6",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:26bea2a940ffcd28089bc3dc3de874630ee0e586020b8c763b8b3a8a1777a76a"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-02/logs/review-4.log",
+      "kind": "command",
+      "subject": "cfa0893464f6df88f0785dc6094d4a7e50cae735",
+      "digest": "sha256:b65eb67bf75d50cf4c96949fc76ce9e34cd41e21e8c32e6a810d4d511bba5b1c",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-4.0-INTENT-FOLLOWUPS-02/outputs/review-4.json",
+      "kind": "review",
+      "subject": "cfa0893464f6df88f0785dc6094d4a7e50cae735",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "fe6f891dd7c616871dfe41f5af2e19e09cf23f35",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "0e4b17a494751033e7e0345d79791d9eb81e403d",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "sha256:ab47dd429df287151c746ff407a70af9faa3f84b24eac6c8aa213a9d168ddef2"
+      },
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-2"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "0e4b17a494751033e7e0345d79791d9eb81e403d",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "sha256:ae5e5bbceab2fbf8c3f3a884132ba59ae9f33cdf463d355dded1e35aee56adac"
+      },
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-3"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "2cea3d8f71dcf42ac68261edee904b48c98a9a7a",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "sha256:ae5e5bbceab2fbf8c3f3a884132ba59ae9f33cdf463d355dded1e35aee56adac"
+      },
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-4"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "2cea3d8f71dcf42ac68261edee904b48c98a9a7a",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "sha256:155eba95ee090a44f002c282882d8783e891a5eb84d125168814ce734e17ff7a"
+      },
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-5"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "cfa0893464f6df88f0785dc6094d4a7e50cae735",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "sha256:155eba95ee090a44f002c282882d8783e891a5eb84d125168814ce734e17ff7a"
+      },
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-6"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "cfa0893464f6df88f0785dc6094d4a7e50cae735",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-7"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "fe6f891dd7c616871dfe41f5af2e19e09cf23f35",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "0e4b17a494751033e7e0345d79791d9eb81e403d",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "sha256:ab47dd429df287151c746ff407a70af9faa3f84b24eac6c8aa213a9d168ddef2"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-3",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "0e4b17a494751033e7e0345d79791d9eb81e403d",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "sha256:ae5e5bbceab2fbf8c3f3a884132ba59ae9f33cdf463d355dded1e35aee56adac"
+      },
+      "stale": false
+    },
+    {
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-4",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "2cea3d8f71dcf42ac68261edee904b48c98a9a7a",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "sha256:ae5e5bbceab2fbf8c3f3a884132ba59ae9f33cdf463d355dded1e35aee56adac"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-5",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "2cea3d8f71dcf42ac68261edee904b48c98a9a7a",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "sha256:155eba95ee090a44f002c282882d8783e891a5eb84d125168814ce734e17ff7a"
+      },
+      "stale": false
+    },
+    {
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-6",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "cfa0893464f6df88f0785dc6094d4a7e50cae735",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "sha256:155eba95ee090a44f002c282882d8783e891a5eb84d125168814ce734e17ff7a"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-4.0-INTENT-FOLLOWUPS-02-7",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "cfa0893464f6df88f0785dc6094d4a7e50cae735",
+        "planDigest": "sha256:6b15dc517532017a303df6c3fa8907cc8d749b7892591bc3dce558112e2b0f4e",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
