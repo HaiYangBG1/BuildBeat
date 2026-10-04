@@ -50,6 +50,8 @@ ACTIVE_DOCS = (
     "docs/v2/guide/10-recovery.en.md",
     "docs/v2/guide/11-session-handoff.md",
     "docs/v2/guide/11-session-handoff.en.md",
+    "docs/v2/guide/12-without-runtime.md",
+    "docs/v2/guide/12-without-runtime.en.md",
     "templates/v2/AGENTS.md",
     "templates/v2/指挥台.md",
     "templates/v2/BUILDBEAT.md",
@@ -773,6 +775,47 @@ def check_lesson_citations() -> list[str]:
     return errors
 
 
+def _example_shape(value):
+    """Structure of a documented record: keys and literal values. Only the
+    <placeholder> parts of a string differ per language; the literal text
+    around them (a `sha256:` prefix, say) must match."""
+    if isinstance(value, dict):
+        return {key: _example_shape(item) for key, item in value.items()}
+    if isinstance(value, str):
+        return re.sub(r"<[^<>]*>", "<>", value)
+    return value
+
+
+def check_without_runtime_guide() -> list[str]:
+    """The hand-written record formats are a contract with the runtime:
+    both languages must show the same records, and the Skill and guide
+    indexes must lead to them."""
+    errors: list[str] = []
+    shapes = {}
+    for suffix in (".md", ".en.md"):
+        relative = f"docs/v2/guide/12-without-runtime{suffix}"
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        blocks = re.findall(r"```json\n(.*?)\n\s*```", text, re.DOTALL)
+        blocks += re.findall(r"`(\{[^`]*\})`", text)
+        if not blocks:
+            errors.append(f"{relative}: no json record examples")
+        try:
+            shapes[suffix] = [_example_shape(json.loads(block)) for block in blocks]
+        except json.JSONDecodeError as error:
+            errors.append(f"{relative}: record example is not valid JSON ({error})")
+            shapes[suffix] = None
+    if shapes.get(".md") is not None and shapes.get(".md") != shapes.get(".en.md"):
+        errors.append("docs/v2/guide/12-without-runtime: zh/en record examples differ")
+    for relative, target in (
+        ("SKILL.md", "docs/v2/guide/12-without-runtime.md"),
+        ("docs/v2/guide/README.md", "12-without-runtime.md"),
+        ("docs/v2/guide/README.en.md", "12-without-runtime.en.md"),
+    ):
+        if f"]({target})" not in (ROOT / relative).read_text(encoding="utf-8"):
+            errors.append(f"{relative}: must link {target}")
+    return errors
+
+
 def main() -> int:
     paths = markdown_files()
     errors = []
@@ -788,6 +831,7 @@ def main() -> int:
     errors.extend(check_repository_governance())
     errors.extend(check_active_docs_currency())
     errors.extend(check_lesson_citations())
+    errors.extend(check_without_runtime_guide())
 
     if errors:
         print("Documentation checks failed:", file=sys.stderr)

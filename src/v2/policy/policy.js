@@ -3,6 +3,8 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { checkScreenshotFile } from "../evidence/image.js";
+import { resolveRepoRef } from "../runtime/repo-ref.js";
 import {
   fingerprintFinding,
   latestAdjudications,
@@ -63,6 +65,55 @@ export function evidencePresent(
       : `no passed evidence of kind ${kind} at grade >= ${minGrade} for the current candidate`,
   };
 }
+// The screenshot set of a candidate is what its latest passed verify left
+// (screenshot evidence links to that verify through `source`); screenshots
+// of earlier verifies of the same candidate are history, not requirements.
+export function currentScreenshots(evidence, candidate) {
+  const verify = [...evidence]
+    .reverse()
+    .find(
+      (e) =>
+        e.kind === "command" &&
+        e.status === "passed" &&
+        (!candidate || e.subject === candidate) &&
+        /(?:^|\/)verify-[0-9]+\.log$/.test(e.ref ?? ""),
+    );
+  if (!verify) return [];
+  return evidence.filter(
+    (e) =>
+      e.kind === "screenshot" &&
+      e.status === "passed" &&
+      e.source === verify.ref &&
+      (!candidate || e.subject === candidate),
+  );
+}
+// Screenshots of the current candidate's latest verify; when the repository
+// is known, each file must still hold the bytes its digest names.
+export function screenshotsPresent(ctx) {
+  const shots = currentScreenshots(ctx.state.evidence, ctx.candidate);
+  if (!shots.length)
+    return {
+      ok: false,
+      why: "no screenshot evidence for the current candidate",
+    };
+  if (ctx.repoRoot) {
+    // Today's screenshot check, not only the digest: evidence recorded
+    // under looser rules cannot carry a merge.
+    const changed = shots.filter((e) => {
+      const checked = checkScreenshotFile(resolveRepoRef(ctx.repoRoot, e.ref));
+      return !checked.ok || checked.digest !== e.digest;
+    });
+    if (changed.length)
+      return {
+        ok: false,
+        why: `screenshot evidence no longer matches its file: ${changed.map((e) => e.ref).join(", ")}`,
+      };
+  }
+  return {
+    ok: true,
+    why: `${shots.length} screenshot(s) for the current candidate`,
+  };
+}
 export function reviewClear(atMost, ctx) {
   if (SEVERITY[atMost] === undefined)
     return { ok: "unverified", why: `unknown severity ${atMost}` };
@@ -106,10 +157,12 @@ export function deliveryChecks({
   requireAcceptance = true,
   requireIntent = false,
   maxSeverity = "P2",
+  requireScreenshot = false,
 } = {}) {
   if (
     !["work", "plan"].includes(artifact) ||
-    !["P2", "P3"].includes(maxSeverity)
+    !["P2", "P3"].includes(maxSeverity) ||
+    typeof requireScreenshot !== "boolean"
   )
     throw new PolicyError("invalid delivery safeguards");
   const rows = [];
@@ -135,6 +188,7 @@ export function deliveryChecks({
     artifact,
     requireAcceptance,
     requireIntent,
+    ...(requireScreenshot ? { requireScreenshot } : {}),
   });
   return rows;
 }
@@ -158,6 +212,9 @@ export function evaluatePolicies(policies, { type, appliesTo }, ctx) {
           v = artifactAccepted(p.artifact, ctx);
         if (v.ok === true && p.requireIntent && p.artifact !== "work")
           v = artifactAccepted("intent", ctx);
+        // UI work proves its real render: screenshots the verify step left
+        // for this candidate (lessons.md "静态稿拍板 → 返工螺旋").
+        if (v.ok === true && p.requireScreenshot) v = screenshotsPresent(ctx);
         if (v.ok === true) v = reviewClear(p.maxSeverity ?? "P2", ctx);
       } else
         throw new PolicyError(

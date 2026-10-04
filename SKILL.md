@@ -14,6 +14,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 - 4.x：按下文操作。
 - 3.x：下文的 `run`、`status --work`、`decide`、`check`、`history` 和 `work.md` 在 3.x 不存在，沿用项目现有的 3.x 写法：`intent.md` + `plan.md`，分别 `accept --artifact intent` 与 `accept --artifact plan`；`start --config <config> --attempt new` 开工，`resume --config <config> [--run <RUN>] [--adopt <sha> --by <name>]` 续跑；`overview`、`inbox`、`status --run <RUN>` 看进度；`approve --transition <t>` / `reject --reason <why>` 决定；`findings adjudicate` 裁决问题；`doctor` 检查配置；run-config 保留 `workflow:` 与 `riskPreset:`。
 - 3.x 的活动 Run 只能用 3.x 运行时完成或取消。升级到 4.x 前先问用户，并按[迁移说明](docs/MIGRATION.md)处理。
+- 没有运行时：按[不装运行时也能参与](docs/v2/guide/12-without-runtime.md)只读状态、写 `work.md` 和规定格式的决定行；不得代批 Run，不得声称验证、审查或回读已通过。
 
 ## 会话操作
 
@@ -27,6 +28,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 | 问题接受、驳回 | `buildbeat decide --repo . --work <ID> --action accept|dismiss --fingerprint <fp> --by <owner> --note <reason>` |
 | 已手修并提交 | `buildbeat run --config <config> --run <RUN> --adopt <sha> --by <name>`；检查干净工作树与实际 HEAD 后从 verify 继续 |
 | 配置或环境有问题 | `buildbeat check --config <config>`；显式 `--step <step>` 会在主检出执行 worker，只有用户任务需要才调用，结果不是正式证据 |
+| 上线后回读、关窗 | 人完成上线后 `buildbeat release --config <config> [--note <text>]`；最近一次回读通过再 `buildbeat decide --repo . --work <ID> --action close --result <text> --by <owner>`。回读失败不能关窗 |
 | 结束一轮 | `buildbeat stop --repo . --run <RUN> --reason <reason>`；活动驱动持锁时先处理进程，不能把 stop 当作进程杀手 |
 | 清理 | `buildbeat gc --repo .` 查看计划，授权范围内再加 `--apply`；不得丢唯一候选或脏工作树 |
 
@@ -40,7 +42,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 - Work review 预算默认 6 轮，跨所有 Run 累计；保留缓存、增量审查、人工修复接管和环境故障分类。
 - 长运行脱离宿主短超时启动。状态、最近输出、耗时和通知用于发现停顿；STALLED 不等于进程已终止。
 - 新会话先读项目入口、work.md、Git 与状态。旧的 intent/plan 和历史记录继续读取；活动运行不能随意删除或重复启动。
-- 既有项目规范由项目所有者维护，不覆盖、不生成整套组织治理模板。生产监控、部署与 UI 验证放在项目工具和验收命令中。
+- 既有项目规范由项目所有者维护，不覆盖；项目治理模板不在 BuildBeat 范围内。生产监控与部署放在项目工具中。有 UI 的交付在 run-config 写 `requireScreenshot: true`，verify 把真渲染截图以 PNG 写进 `BUILDBEAT_SCREENSHOT_DIR`。
 - merge、push、发布、部署需要对应授权；最终批准只表示候选具备合并条件。不要用 `git add -A`，只提交本次具体文件。
 - 保留范围检查、环境变量白名单、批准绑定、台账校验。它们不替代宿主沙箱和服务端保护。
 - 新项目配置通知时确认用户希望使用的通道；已有决定直接沿用，URL 只来自环境变量。无通知时如实说明。
@@ -81,6 +83,13 @@ envelope:
 # worker 输出落成证据前按这些 JS 正则脱敏（不支持 (?i) 这类内联标志）
 redact:
   - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+# 有 UI 的交付：verify 把真渲染截图以 PNG 写进 $BUILDBEAT_SCREENSHOT_DIR（只收可解码的 PNG），合并检查要求当前候选有截图
+# requireScreenshot: true
+# 合并并上线后由 buildbeat release 在主检出运行的只读回读命令（形状同 worker）；回读通过后才能关窗
+# release:
+#   command: bash
+#   args:
+#     - scripts/readback.sh
 # worker 以隔离 worktree 为 cwd 运行；delivery/envelope/worker.sh 已随仓库进 worktree。
 # 换工具只改 `--` 后面的命令：codex exec … / claude -p … / 任意脚本。
 workers:
@@ -130,6 +139,7 @@ workers:
 - [决定与证据](docs/v2/guide/07-approval-guide.md)
 - [恢复](docs/v2/guide/10-recovery.md)、[接续](docs/v2/guide/11-session-handoff.md)
 - [安全边界](docs/v2/guide/09-security-boundaries.md)
+- [不装运行时也能参与](docs/v2/guide/12-without-runtime.md)
 - [迁移](docs/MIGRATION.md)
 
 启动前将 work.md 和 worker 脚本提交到所选 base，确保隔离工作树能读到同一份已确认范围；接受记录可以随后提交。

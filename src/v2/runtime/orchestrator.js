@@ -16,13 +16,15 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 
 import { nextStep } from "../engine/workflow.js";
 import { collectCommandEvidence } from "../evidence/collector.js";
-import { evaluatePolicies } from "../policy/policy.js";
+import { checkScreenshotFile, screenshotFormat } from "../evidence/image.js";
+import { currentScreenshots, evaluatePolicies } from "../policy/policy.js";
 import { EventLedger, canonicalJson } from "../storage/event-ledger.js";
 import {
   acquireLock,
@@ -43,6 +45,7 @@ import {
   cacheKey,
   findReusableEvidence,
   lastReviewedCandidate,
+  linkedScreenshots,
   treeHash,
 } from "./cache.js";
 import {
@@ -282,6 +285,7 @@ function makeContext(options, ledger, workspace) {
   context.redact = options.redact ?? [];
   context.adapterConfigs = options.adapterConfigs ?? {};
   context.policyCtx = () => ({
+    repoRoot,
     state: ledger.state,
     candidate:
       ledger.state.workspaces[workspace.workspaceId]?.candidate ?? null,
@@ -772,8 +776,36 @@ function beginStep(context, step, stepDef, attempt) {
     if (lastReviewed) {
       input.lastReviewed = lastReviewed;
     }
+    // The reviewer judges the real render it is shown, not a description.
+    const screenshots = currentScreenshots(ledger.state.evidence, head);
+    if (screenshots.length > 0) {
+      input.screenshots = screenshots.map((item) => ({
+        path: resolveRepoRef(context.repoRoot, item.ref),
+        digest: item.digest,
+      }));
+    }
   }
   return { before, outputPath, input, prompt };
+}
+
+// An image counts only as a regular file (no symlink that could point at
+// something removed later) that is structurally complete for its format.
+function screenshotFiles(dir) {
+  const accepted = [];
+  const rejected = [];
+  for (const name of readdirSync(dir).sort()) {
+    if (!screenshotFormat(name)) {
+      continue;
+    }
+    const path = join(dir, name);
+    const checked = checkScreenshotFile(path);
+    if (checked.ok) {
+      accepted.push({ file: path, digest: checked.digest });
+    } else {
+      rejected.push(checked.reason);
+    }
+  }
+  return { accepted, rejected };
 }
 
 // Runs the worker, or references identical passed evidence (verification
@@ -787,6 +819,12 @@ function executeOrReuse(
   { before, outputPath, input, prompt },
 ) {
   const { ledger, workspace, now } = context;
+  // UI work (requireScreenshot): verify leaves screenshots of the real
+  // render in a fresh directory outside the worktree; each image becomes
+  // screenshot evidence for this candidate.
+  const wantsScreenshots =
+    step === "verify" &&
+    ledger.state.run.deliveryChecks?.requireScreenshot === true;
   // Verification reuse (C7): same tree + same worker + same envelope that
   // already passed is referenced, not re-run. Failures always re-run.
   let stepCacheKey = null;
@@ -800,9 +838,43 @@ function executeOrReuse(
         adapterSpec: context.adapterConfigs[stepDef.worker] ?? null,
         adapterName: adapter.name,
         envelopeDigest: context.envelope?.digest ?? null,
+        screenshots: wantsScreenshots,
       });
       reused = findReusableEvidence(context.repoRoot, stepCacheKey);
     }
+  }
+  // A reused verify carries its screenshots; one without any runs again.
+  let reusedScreenshots = [];
+  if (reused && wantsScreenshots) {
+    reusedScreenshots = linkedScreenshots(
+      context.repoRoot,
+      reused.run,
+      reused.evidenceRef,
+    );
+    // Only files that still pass today's screenshot check with their
+    // recorded bytes carry over; anything else means verify runs again.
+    const intact = reusedScreenshots.every((item) => {
+      const checked = checkScreenshotFile(
+        resolveRepoRef(context.repoRoot, item.evidenceRef),
+      );
+      return checked.ok && checked.digest === item.digest;
+    });
+    if (reusedScreenshots.length === 0 || !intact) {
+      reused = null;
+      reusedScreenshots = [];
+    }
+  }
+  let screenshotDir = null;
+  if (wantsScreenshots && !reused) {
+    screenshotDir = join(
+      context.runtimeDir,
+      "runs",
+      ledger.state.run.id,
+      "screenshots",
+      `${step}-${attempt}`,
+    );
+    rmSync(screenshotDir, { recursive: true, force: true });
+    mkdirSync(screenshotDir, { recursive: true });
   }
   let exec;
   if (reused) {
@@ -832,7 +904,35 @@ function executeOrReuse(
       liveDir: join(context.runtimeDir, "runs", ledger.state.run.id),
       promptPath: prompt?.path ?? null,
       vars: context.envelope?.vars ?? null,
+      extraEnv: screenshotDir
+        ? { BUILDBEAT_SCREENSHOT_DIR: screenshotDir }
+        : undefined,
     });
+  }
+  const found = screenshotDir
+    ? screenshotFiles(screenshotDir)
+    : { accepted: [], rejected: [] };
+  const shots = found.accepted;
+  // Rejections are reported whether or not another screenshot passed.
+  if (found.rejected.length > 0) {
+    exec = { ...exec, screenshotsRejected: found.rejected };
+  }
+  if (
+    screenshotDir &&
+    shots.length === 0 &&
+    exec.exitCode === 0 &&
+    !exec.timedOut &&
+    !exec.signal &&
+    !exec.spawnError
+  ) {
+    exec = {
+      ...exec,
+      requirementFailure:
+        "requireScreenshot is on, but verify left no PNG screenshot in BUILDBEAT_SCREENSHOT_DIR" +
+        (found.rejected.length > 0
+          ? `; rejected: ${found.rejected.join(", ")}`
+          : ""),
+    };
   }
   const tree = readback(workspace.worktreePath);
   const evidence = collectCommandEvidence({
@@ -868,6 +968,38 @@ function executeOrReuse(
         : {}),
     },
   });
+  if (evidence.status === "passed") {
+    const source = toRepoRef(context.repoRoot, evidence.location);
+    const recorded = reused
+      ? reusedScreenshots.map((item) => ({
+          ref: item.evidenceRef,
+          digest: item.digest,
+        }))
+      : shots.map((shot) => ({
+          ref: toRepoRef(context.repoRoot, shot.file),
+          digest: shot.digest,
+        }));
+    for (const shot of recorded) {
+      ledger.append({
+        type: "EVIDENCE_RECORDED",
+        actor: KERNEL,
+        ts: now(),
+        data: {
+          evidenceRef: shot.ref,
+          kind: "screenshot",
+          subject: tree.head,
+          digest: shot.digest,
+          status: "passed",
+          grade: "L2",
+          source,
+          ...(stepCacheKey ? { cacheKey: stepCacheKey } : {}),
+          ...(reused
+            ? { reused: { run: reused.run, evidenceRef: shot.ref } }
+            : {}),
+        },
+      });
+    }
+  }
 
   return { exec, tree };
 }
@@ -936,6 +1068,10 @@ function recordStepResult(
     stepStatus = "crashed";
   } else if (exec.exitCode !== 0) {
     stepStatus = "failed";
+  } else if (exec.requirementFailure) {
+    // The command passed but a requirement the runner checks did not
+    // (no screenshots): a candidate failure, routed like any other.
+    stepStatus = "failed";
   } else if (envelopeError) {
     stepStatus = "invalid-output";
   } else {
@@ -964,6 +1100,10 @@ function recordStepResult(
       attempt,
       status: stepStatus,
       exitCode: exec.exitCode,
+      ...(exec.requirementFailure ? { reason: exec.requirementFailure } : {}),
+      ...(exec.screenshotsRejected
+        ? { screenshotsRejected: exec.screenshotsRejected }
+        : {}),
       ...(infra ? { infra: true } : {}),
       ...(free ? { free: true } : {}),
     },

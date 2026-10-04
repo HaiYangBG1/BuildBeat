@@ -29,6 +29,13 @@ envelope:
 # worker 输出落成证据前按这些 JS 正则脱敏（不支持 (?i) 这类内联标志）
 redact:
   - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+# 有 UI 的交付：verify 把真渲染截图以 PNG 写进 $BUILDBEAT_SCREENSHOT_DIR（只收可解码的 PNG），合并检查要求当前候选有截图
+# requireScreenshot: true
+# 合并并上线后由 buildbeat release 在主检出运行的只读回读命令（形状同 worker）；回读通过后才能关窗
+# release:
+#   command: bash
+#   args:
+#     - scripts/readback.sh
 # worker 以隔离 worktree 为 cwd 运行；delivery/envelope/worker.sh 已随仓库进 worktree。
 # 换工具只改 `--` 后面的命令：codex exec … / claude -p … / 任意脚本。
 workers:

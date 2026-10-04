@@ -39,6 +39,12 @@ export function collectCommandEvidence({
     `signal: ${execResult.signal}`,
     `timedOut: ${execResult.timedOut}`,
     `spawnError: ${execResult.spawnError}`,
+    ...(execResult.requirementFailure
+      ? [`requirement: ${execResult.requirementFailure}`]
+      : []),
+    ...(execResult.screenshotsRejected?.length
+      ? [`screenshots rejected: ${execResult.screenshotsRejected.join(", ")}`]
+      : []),
     "--- stdout ---",
     scrub(execResult.stdout),
     "--- stderr ---",
@@ -50,7 +56,12 @@ export function collectCommandEvidence({
   let status;
   if (execResult.spawnError) {
     status = "unverified";
-  } else if (execResult.exitCode === 0 && !execResult.timedOut && !execResult.signal) {
+  } else if (
+    execResult.exitCode === 0 &&
+    !execResult.timedOut &&
+    !execResult.signal &&
+    !execResult.requirementFailure
+  ) {
     status = "passed";
   } else {
     status = "failed";

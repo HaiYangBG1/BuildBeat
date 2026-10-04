@@ -67,7 +67,7 @@ export function createShellAdapter(config) {
   return {
     name,
     envMode,
-    execute({ step, worker, workspacePath, input, timeoutMs, outputPath, liveDir, promptPath, vars }) {
+    execute({ step, worker, workspacePath, input, timeoutMs, outputPath, liveDir, promptPath, vars, extraEnv }) {
       const context = { step, worker, workspacePath, promptPath, vars };
       const args = (config.args ?? []).map((arg) => fillTemplate(String(arg), context));
       const command = [config.command, ...args].join(" ");
@@ -91,6 +91,8 @@ export function createShellAdapter(config) {
       if (promptPath) {
         env.BUILDBEAT_PROMPT = promptPath;
       }
+      // Step-specific variables the kernel sets (BUILDBEAT_SCREENSHOT_DIR).
+      Object.assign(env, extraEnv ?? {});
 
       let live = null;
       let stdio = "pipe";

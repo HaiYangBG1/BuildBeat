@@ -29,6 +29,8 @@ const TOP_KEYS = [
   "stallAfterMs",
   "parallel",
   "maxReviewSeverity",
+  "requireScreenshot",
+  "release",
 ];
 const REQUIRED = ["repo", "work", "run"];
 const NULL_REPORTED = [
@@ -221,42 +223,55 @@ export function checkRunConfigShape(config) {
     );
   } else {
     for (const [name, spec] of Object.entries(config.workers)) {
-      const where = `workers.${name}`;
-      if (!isMap(spec)) {
-        problems.push(`${where}: must be a map with at least a command`);
-        continue;
-      }
-      for (const key of Object.keys(spec)) {
-        if (!WORKER_KEYS.includes(key)) {
-          problems.push(unknownKey(`${where}.`, key, WORKER_KEYS));
-        }
-      }
-      if (!nonEmptyString(spec.command)) {
-        problems.push(`${where}.command: required, a non-empty string`);
-      }
-      if (spec.args !== undefined && !Array.isArray(spec.args)) {
-        problems.push(`${where}.args: must be a list (one "- arg" per line)`);
-      }
-      if (
-        spec.timeoutMs !== undefined &&
-        !(typeof spec.timeoutMs === "number" && spec.timeoutMs > 0)
-      ) {
-        problems.push(
-          `${where}.timeoutMs: must be a positive number, got ${JSON.stringify(spec.timeoutMs)}`,
-        );
-      }
-      if (
-        spec.inheritEnv !== undefined &&
-        typeof spec.inheritEnv !== "boolean"
-      ) {
-        problems.push(
-          `${where}.inheritEnv: must be true or false, got ${JSON.stringify(spec.inheritEnv)} (anything else used to mean false silently)`,
-        );
-      }
-      if (spec.env !== undefined && !isMap(spec.env)) {
-        problems.push(`${where}.env: must be a map of NAME -> value`);
-      }
+      problems.push(...checkCommandSpec(`workers.${name}`, spec));
     }
+  }
+  if (
+    config.requireScreenshot !== undefined &&
+    typeof config.requireScreenshot !== "boolean"
+  ) {
+    problems.push(
+      `requireScreenshot: must be true or false, got ${JSON.stringify(config.requireScreenshot)}`,
+    );
+  }
+  // The release readback command has the shape of a worker.
+  if (config.release !== undefined) {
+    problems.push(...checkCommandSpec("release", config.release));
+  }
+  return problems;
+}
+
+function checkCommandSpec(where, spec) {
+  const problems = [];
+  if (!isMap(spec)) {
+    return [`${where}: must be a map with at least a command`];
+  }
+  for (const key of Object.keys(spec)) {
+    if (!WORKER_KEYS.includes(key)) {
+      problems.push(unknownKey(`${where}.`, key, WORKER_KEYS));
+    }
+  }
+  if (!nonEmptyString(spec.command)) {
+    problems.push(`${where}.command: required, a non-empty string`);
+  }
+  if (spec.args !== undefined && !Array.isArray(spec.args)) {
+    problems.push(`${where}.args: must be a list (one "- arg" per line)`);
+  }
+  if (
+    spec.timeoutMs !== undefined &&
+    !(typeof spec.timeoutMs === "number" && spec.timeoutMs > 0)
+  ) {
+    problems.push(
+      `${where}.timeoutMs: must be a positive number, got ${JSON.stringify(spec.timeoutMs)}`,
+    );
+  }
+  if (spec.inheritEnv !== undefined && typeof spec.inheritEnv !== "boolean") {
+    problems.push(
+      `${where}.inheritEnv: must be true or false, got ${JSON.stringify(spec.inheritEnv)} (anything else used to mean false silently)`,
+    );
+  }
+  if (spec.env !== undefined && !isMap(spec.env)) {
+    problems.push(`${where}.env: must be a map of NAME -> value`);
   }
   return problems;
 }

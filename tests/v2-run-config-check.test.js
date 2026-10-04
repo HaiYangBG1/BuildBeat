@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 
 import { checkRunConfigAgainstWorkflow, checkRunConfigShape, suggest } from "../src/v2/cli/run-config-check.js";
-import { loadWorkflow } from "../src/v2/engine/workflow.js";
+import { deliveryWorkflow, loadWorkflow } from "../src/v2/engine/workflow.js";
 import { parseYamlSubset } from "../src/v2/engine/yaml-subset.js";
 import { tempDir } from "./support/tmp.js";
 
@@ -185,6 +185,11 @@ test("every run config in this repository passes against the workflow it names",
   for (const path of configs) {
     const config = parseYamlSubset(readFileSync(path, "utf8"));
     assert.deepEqual(checkRunConfigShape(config), [], path);
+    // 4.0 configs omit workflow and use the fixed delivery flow.
+    if (config.workflow === undefined && !TEMPLATE_WORKFLOW[path]) {
+      assert.deepEqual(checkRunConfigAgainstWorkflow(config, deliveryWorkflow()), [], path);
+      continue;
+    }
     const workflowPath = TEMPLATE_WORKFLOW[path] ?? resolve(dirname(path), config.workflow);
     assert.ok(existsSync(workflowPath), `${path} names a workflow that does not exist: ${config.workflow}`);
     assert.deepEqual(checkRunConfigAgainstWorkflow(config, loadWorkflow(workflowPath)), [], path);
