@@ -1,6 +1,6 @@
 # Quickstart
 
-This branch is an unpublished 4.0.0-dev.0 candidate. Use a locally packed runtime from this branch; published 3.3.1 does not support every new entry point. Do not replace a runtime underneath an active run.
+Install the runtime: `npm install --global @haiyangbg/buildbeat@latest` (Node ≥ 20). Before upgrading from 3.x, finish or cancel runs still in progress with their original 3.x runtime, see [Migration](../../MIGRATION.md); never replace a runtime underneath an active run.
 
 1. Check Node ≥20, Git, Bash and an authenticated AI tool. Keep project-owned instructions.
 2. Install templates/v2/AGENTS.md and CLAUDE.md according to the tool's loading rules; copy runtime exclusions from gitignore.template.

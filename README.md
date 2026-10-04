@@ -10,15 +10,11 @@ BuildBeat 面向人和 AI 会话，把工作上下文留在项目文件中，自
 
 ## 开始使用
 
-本分支是未发布的 4.0.0-dev.0 候选。使用本分支的本地隔离安装，勿覆盖仍在执行活动项目的运行时。
-
-Read [SKILL.md](SKILL.md) and the [quickstart](docs/v2/guide/01-quickstart.md).
+运行时需要 Node ≥ 20。从 3.x 升级前，先用原来的 3.x 运行时完成或取消仍在进行的 Run（见[迁移说明](docs/MIGRATION.md)）。先读 [SKILL.md](SKILL.md) 与[快速开始](docs/v2/guide/01-quickstart.md)。
 
 ```bash
-buildbeat_preview=$(mktemp -d)
-npm pack --pack-destination "$buildbeat_preview"
-npm install --global --prefix "$buildbeat_preview/runtime" --ignore-scripts "$buildbeat_preview"/*.tgz
-export PATH="$buildbeat_preview/runtime/bin:$PATH"
+npm view @haiyangbg/buildbeat@latest version
+npm install --global @haiyangbg/buildbeat@latest
 buildbeat --version
 ```
 

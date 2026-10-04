@@ -10,15 +10,11 @@ Switch sessions without losing progress; let the loop implement, verify, review 
 
 ## Start
 
-This branch is an unpublished 4.0.0-dev.0 candidate. Use a local isolated installation of this checkout. Do not overwrite the runtime driving an active project.
-
-Read [SKILL.md](SKILL.md) and the [quickstart](docs/v2/guide/01-quickstart.en.md).
+The runtime needs Node ≥ 20. Before upgrading from 3.x, finish or cancel runs still in progress with their original 3.x runtime (see [Migration](docs/MIGRATION.md)). Read [SKILL.md](SKILL.md) and the [quickstart](docs/v2/guide/01-quickstart.en.md).
 
 ```bash
-buildbeat_preview=$(mktemp -d)
-npm pack --pack-destination "$buildbeat_preview"
-npm install --global --prefix "$buildbeat_preview/runtime" --ignore-scripts "$buildbeat_preview"/*.tgz
-export PATH="$buildbeat_preview/runtime/bin:$PATH"
+npm view @haiyangbg/buildbeat@latest version
+npm install --global @haiyangbg/buildbeat@latest
 buildbeat --version
 ```
 
