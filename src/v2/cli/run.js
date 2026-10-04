@@ -17,11 +17,22 @@ import { fileURLToPath } from "node:url";
 
 import { createShellAdapter } from "../adapters/shell.js";
 import { loadRiskPreset } from "../engine/risk-preset.js";
-import { loadWorkflow, nextStep } from "../engine/workflow.js";
+import {
+  DELIVERY_TEXT,
+  loadWorkflow,
+  deliveryWorkflow,
+  nextStep,
+} from "../engine/workflow.js";
 import { parseYamlSubset } from "../engine/yaml-subset.js";
-import { parsePolicyDoc } from "../policy/policy.js";
-import { observeStatus, runObserveCycle, triageIntent } from "../observe/observe.js";
-import { acceptArtifacts, adoptCandidate, approveRun, listInbox, rejectRun } from "../runtime/decisions.js";
+import { deliveryChecks } from "../policy/policy.js";
+import {
+  acceptArtifacts,
+  adoptCandidate,
+  boundArtifacts,
+  approveRun,
+  listInbox,
+  rejectRun,
+} from "../runtime/decisions.js";
 import { checkRequires } from "../runtime/env-contract.js";
 import {
   adjudicateFinding,
@@ -31,7 +42,12 @@ import {
 } from "../runtime/findings.js";
 import { loadEnvelope, nextAttemptId } from "../runtime/envelope.js";
 import { applyGc, planGc } from "../runtime/gc.js";
-import { artifactStatus, computeOverview, readJsonl, renderOverview } from "../runtime/overview.js";
+import {
+  artifactStatus,
+  computeOverview,
+  readJsonl,
+  renderOverview,
+} from "../runtime/overview.js";
 import {
   DEFAULT_STALL_AFTER_MS,
   describeLiveness,
@@ -48,11 +64,24 @@ import {
   subscribes,
 } from "../runtime/notify.js";
 import { writeRunRecord } from "../runtime/run-record.js";
-import { DEFAULT_REVIEW_ROUNDS_PER_WORK, resumeRun, startRun } from "../runtime/orchestrator.js";
+import {
+  DEFAULT_REVIEW_ROUNDS_PER_WORK,
+  assertRunConfiguration,
+  resumeRun,
+  startRun,
+} from "../runtime/orchestrator.js";
 import { toRepoRef } from "../runtime/repo-ref.js";
 import { EventLedger } from "../storage/event-ledger.js";
-import { acquireLock, listHeldRunLocks, releaseLock } from "../workspace/workspace-manager.js";
-import { checkRunConfigAgainstWorkflow, checkRunConfigShape, RunConfigError } from "./run-config-check.js";
+import {
+  acquireLock,
+  listHeldRunLocks,
+  releaseLock,
+} from "../workspace/workspace-manager.js";
+import {
+  checkRunConfigAgainstWorkflow,
+  checkRunConfigShape,
+  RunConfigError,
+} from "./run-config-check.js";
 
 const KERNEL = { kind: "kernel", id: "cli" };
 
@@ -60,32 +89,23 @@ const USAGE = `BuildBeat runtime
 
 Usage:
   buildbeat --version
-  buildbeat start --config <run-config.yaml> [--attempt new]
-  buildbeat resume --config <run-config.yaml> [--run <RUN-ID>] [--adopt <sha> --by <name>]   # --adopt: hand fix committed in the worktree; skip fix, resume at verify
-  buildbeat status --repo <path> --run <RUN-ID> [--stall-after <minutes>]
-  buildbeat inbox --repo <path>
-  buildbeat overview --repo <path> [--work <WORK-ID>] [--json]
-  buildbeat approve --repo <path> --run <RUN-ID> --transition <t> [--by <name>] [--config <run-config.yaml>]
-  buildbeat reject --repo <path> --run <RUN-ID> [--transition <t>] [--reason <text>] [--by <name>]
-  buildbeat accept --repo <path> --work <WORK-ID> --artifact <plan|intent|spec>[,<more>] [--by <name>]
-  buildbeat doctor --config <run-config.yaml>
-  buildbeat events --repo <path> --run <RUN-ID>
-  buildbeat replay --repo <path> --run <RUN-ID>
-  buildbeat metrics --repo <path> [--json]
+  buildbeat accept --repo <path> --work <WORK-ID> [--by <name>]
+  buildbeat run --config <run-config.yaml> [--run <RUN-ID>] [--new] [--adopt <sha> --by <name>]
+  buildbeat status --repo <path> [--work <WORK-ID> | --run <RUN-ID>] [--json]
+  buildbeat decide --repo <path> --run <RUN-ID> --action approve|reject --transition <t> [--by <name>] [--reason <text>]
+  buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--note <text>]
+  buildbeat check --config <run-config.yaml> [--step <id>]
   buildbeat stop --repo <path> --run <RUN-ID> --reason <text>
   buildbeat gc --repo <path> [--apply] [--force]
-  buildbeat watch --repo <path> --run <RUN-ID> [--stall-after <minutes>] [--interval <seconds>] [--once]
-  buildbeat observe run --config <observe.yaml>
-  buildbeat observe status --repo <path>
-  buildbeat observe triage --repo <path> --intent <ref> --action <fix_now|schedule|dismiss> [--by <name>] [--note <text>]
-  buildbeat preflight --config <run-config.yaml> --step <id>
-  buildbeat findings list --repo <path> --work <WORK-ID>
-  buildbeat findings adjudicate --repo <path> --work <WORK-ID> --fingerprint <fp> --action <accept|dismiss> [--by <name>] [--note <text>]
+  buildbeat history --repo <path> --run <RUN-ID> [--verify]
+
+Core legacy command spellings remain aliases; see docs/MIGRATION.md.
+check --step executes that worker in the main checkout, outside the evidence ledger.
 `;
 
 // Switches may stand alone (`--json`) or take an explicit true/false
 // (`--json true`, the older spelling); every other flag needs a value.
-const SWITCHES = new Set(["json", "apply", "force", "once"]);
+const SWITCHES = new Set(["json", "apply", "force", "once", "new", "verify"]);
 
 function parseFlags(argv) {
   const flags = {};
@@ -115,7 +135,14 @@ function parseFlags(argv) {
 }
 
 function ledgerPathFor(repo, runId) {
-  return join(resolve(repo), ".buildbeat", "runtime", "runs", runId, "events.jsonl");
+  return join(
+    resolve(repo),
+    ".buildbeat",
+    "runtime",
+    "runs",
+    runId,
+    "events.jsonl",
+  );
 }
 
 function stallAfterFromFlags(flags, fallbackMs = DEFAULT_STALL_AFTER_MS) {
@@ -177,7 +204,9 @@ function printState(state, ledger, view = {}) {
       : { steps: {}, inFlight: null };
   console.log(`run: ${state.run.id} (work ${state.run.work})`);
   console.log(`status: ${state.run.status}`);
-  console.log(`workflow: ${state.run.workflowRef} @ ${state.run.workflowDigest}`);
+  console.log(
+    `workflow: ${state.run.workflowRef} @ ${state.run.workflowDigest}`,
+  );
   for (const [id, workspace] of Object.entries(state.workspaces)) {
     console.log(
       `workspace ${id}: base ${workspace.base.slice(0, 7)} candidate ${workspace.candidate ? workspace.candidate.slice(0, 7) : "(none)"}`,
@@ -201,11 +230,16 @@ function printState(state, ledger, view = {}) {
         suffix = ` [${parts.join(", ")}]`;
       }
     }
-    console.log(`step ${step}: ${info.status} (attempts ${info.attempts})${suffix}`);
+    console.log(
+      `step ${step}: ${info.status} (attempts ${info.attempts})${suffix}`,
+    );
   }
   const live = liveness.inFlight;
   if (live) {
-    const typical = live.typicalMs !== null ? `, typical ${formatMs(live.typicalMs)} n=${live.samples}` : "";
+    const typical =
+      live.typicalMs !== null
+        ? `, typical ${formatMs(live.typicalMs)} n=${live.samples}`
+        : "";
     console.log(
       `in flight: ${live.step} attempt ${live.attempt} since ${live.startedAt} (elapsed ${formatMs(live.elapsedMs)}${typical})`,
     );
@@ -213,9 +247,13 @@ function printState(state, ledger, view = {}) {
       console.log(`  worker: ${live.command}`);
     }
     if (live.lastOutputAt) {
-      console.log(`  last output: ${live.lastOutputAt} (${formatMs(live.sinceOutputMs)} ago, ${live.bytes} bytes so far)`);
+      console.log(
+        `  last output: ${live.lastOutputAt} (${formatMs(live.sinceOutputMs)} ago, ${live.bytes} bytes so far)`,
+      );
     } else {
-      console.log(`  last output: (none yet, ${formatMs(live.sinceOutputMs)} since start)`);
+      console.log(
+        `  last output: (none yet, ${formatMs(live.sinceOutputMs)} since start)`,
+      );
     }
     if (live.stalled) {
       console.log(
@@ -228,9 +266,13 @@ function printState(state, ledger, view = {}) {
     }
   }
   for (const item of state.evidence) {
-    const ref = isAbsolute(item.ref) ? "<legacy-absolute-evidence-ref>" : item.ref;
+    const ref = isAbsolute(item.ref)
+      ? "<legacy-absolute-evidence-ref>"
+      : item.ref;
     const reused = item.reused ? ` (reused from ${item.reused.run})` : "";
-    console.log(`evidence [${item.status}/${item.grade}] ${item.kind} ${ref}${reused}`);
+    console.log(
+      `evidence [${item.status}/${item.grade}] ${item.kind} ${ref}${reused}`,
+    );
   }
   if (state.pendingHuman) {
     console.log(`waiting on human: ${state.pendingHuman.transition}`);
@@ -242,7 +284,9 @@ function printState(state, ledger, view = {}) {
     }
   }
   if (state.terminal) {
-    console.log(`terminal: ${state.terminal.status} (${state.terminal.reason})`);
+    console.log(
+      `terminal: ${state.terminal.status} (${state.terminal.reason})`,
+    );
   }
   if (state.compacted) {
     console.log(`compacted: ${state.compacted.runRecordRef}`);
@@ -254,7 +298,9 @@ function workerEnvOverrides(worker, env) {
     return {};
   }
   if (typeof env !== "object" || Array.isArray(env)) {
-    throw new Error(`workers.${worker}.env must be a mapping of variable names to scalar values`);
+    throw new Error(
+      `workers.${worker}.env must be a mapping of variable names to scalar values`,
+    );
   }
   const out = {};
   for (const [key, value] of Object.entries(env)) {
@@ -288,8 +334,14 @@ function loadRunConfig(flags, command) {
       workflowText = readFileSync(workflowPath, "utf8");
       workflow = loadWorkflow(workflowPath);
     } catch (error) {
-      problems.push(`workflow: cannot load ${config.workflow}: ${error.message}`);
+      problems.push(
+        `workflow: cannot load ${config.workflow}: ${error.message}`,
+      );
     }
+  }
+  if (config?.workflow === undefined) {
+    workflow = deliveryWorkflow();
+    workflowPath = null;
   }
   if (workflow) {
     problems.push(...checkRunConfigAgainstWorkflow(config, workflow));
@@ -298,6 +350,7 @@ function loadRunConfig(flags, command) {
     throw new RunConfigError(flags.config, problems);
   }
   const repoRoot = resolve(configDir, config.repo);
+  workflowText ??= DELIVERY_TEXT;
   const workflowDigest = `sha256:${createHash("sha256").update(workflowText, "utf8").digest("hex")}`;
 
   const adapters = {};
@@ -323,45 +376,84 @@ function loadRunConfig(flags, command) {
     return `sha256:${createHash("sha256").update(readFileSync(filePath, "utf8"), "utf8").digest("hex")}`;
   };
 
-  const policies = [];
-  let presetStopAt = null;
-  let riskPreset = "standard";
-  if (config.riskPreset) {
-    const preset = loadRiskPreset(config.riskPreset);
-    policies.push(...preset.policies);
-    presetStopAt = preset.stopAt;
-    riskPreset = preset.name;
+  const workDir = join(repoRoot, "delivery", "work", config.work);
+  const artifact =
+    existsSync(join(workDir, "work.md")) || !config.workflow ? "work" : "plan";
+  // 3.3.1 ran a workflow config without riskPreset with no artifact gate;
+  // keep that (the merge evidence floor is now always on). New configs
+  // (no workflow) default to standard.
+  const riskPreset =
+    config.riskPreset ?? (config.workflow === undefined ? "standard" : "fast");
+  const preset = loadRiskPreset(riskPreset, { artifact });
+  const safeguards = { ...preset.checks };
+  if (config.maxReviewSeverity) {
+    if (safeguards.maxSeverity === "P3" && config.maxReviewSeverity === "P2") {
+      throw new Error(
+        "maxReviewSeverity cannot weaken the legacy controlled safeguards",
+      );
+    }
+    safeguards.maxSeverity = config.maxReviewSeverity;
   }
-  for (const policyPath of config.policies ?? []) {
-    policies.push(parsePolicyDoc(parseYamlSubset(readFileSync(resolve(configDir, policyPath), "utf8"))));
+  const policies = deliveryChecks(safeguards);
+  const presetStopAt = [];
+  const entry = config.entry ?? workflow.entry;
+  // Legacy planner steps would write the artifact inside the run, but an
+  // accepted artifact is bound (and checked in base) before the run starts.
+  if (
+    safeguards.requireAcceptance &&
+    ["intent", "spec", "plan"].includes(entry)
+  ) {
+    throw new Error(
+      `entry ${entry} starts at the retired planner steps, but risk preset ${riskPreset} binds an accepted ${artifact}.md before the run starts; write, accept and commit ${artifact}.md, then set entry: build (docs/MIGRATION.md)`,
+    );
   }
 
-  if (config.reviewTriage !== undefined && !["required", "off"].includes(config.reviewTriage)) {
-    throw new Error(`reviewTriage must be "required" or "off", got: ${config.reviewTriage}`);
+  if (
+    config.reviewTriage !== undefined &&
+    !["required", "off"].includes(config.reviewTriage)
+  ) {
+    throw new Error(
+      `reviewTriage must be "required" or "off", got: ${config.reviewTriage}`,
+    );
   }
-  if (config.supersede !== undefined && !["waiting", "off"].includes(config.supersede)) {
-    throw new Error(`supersede must be "waiting" or "off", got: ${config.supersede}`);
+  if (
+    config.supersede !== undefined &&
+    !["waiting", "off"].includes(config.supersede)
+  ) {
+    throw new Error(
+      `supersede must be "waiting" or "off", got: ${config.supersede}`,
+    );
   }
   if (config.stallAfterMs !== undefined && !(Number(config.stallAfterMs) > 0)) {
-    throw new Error(`stallAfterMs must be a positive number, got: ${config.stallAfterMs}`);
+    throw new Error(
+      `stallAfterMs must be a positive number, got: ${config.stallAfterMs}`,
+    );
   }
   // budgets: run config beats the preset (a preset cap that could not be
   // raised per run once ended a pilot's shipped candidates as CANCELLED
   // runs).
   const budgets = {};
   if (config.budgets !== undefined) {
-    if (!config.budgets || typeof config.budgets !== "object" || Array.isArray(config.budgets)) {
+    if (
+      !config.budgets ||
+      typeof config.budgets !== "object" ||
+      Array.isArray(config.budgets)
+    ) {
       throw new Error("budgets must be a map");
     }
     for (const key of Object.keys(config.budgets)) {
       if (!["maxAttempts", "reviewRoundsPerWork"].includes(key)) {
-        throw new Error(`unknown budgets key: ${key} (known: maxAttempts, reviewRoundsPerWork)`);
+        throw new Error(
+          `unknown budgets key: ${key} (known: maxAttempts, reviewRoundsPerWork)`,
+        );
       }
     }
     if (config.budgets.maxAttempts !== undefined) {
       const map = config.budgets.maxAttempts;
       if (!map || typeof map !== "object" || Array.isArray(map)) {
-        throw new Error("budgets.maxAttempts must be a map of step -> positive integer");
+        throw new Error(
+          "budgets.maxAttempts must be a map of step -> positive integer",
+        );
       }
       budgets.maxAttempts = {};
       for (const [step, value] of Object.entries(map)) {
@@ -369,7 +461,9 @@ function loadRunConfig(flags, command) {
           throw new Error(`budgets.maxAttempts.${step}: step not in workflow`);
         }
         if (!Number.isInteger(Number(value)) || Number(value) < 1) {
-          throw new Error(`budgets.maxAttempts.${step} must be a positive integer, got: ${value}`);
+          throw new Error(
+            `budgets.maxAttempts.${step} must be a positive integer, got: ${value}`,
+          );
         }
         budgets.maxAttempts[step] = Number(value);
       }
@@ -377,7 +471,9 @@ function loadRunConfig(flags, command) {
     if (config.budgets.reviewRoundsPerWork !== undefined) {
       const value = Number(config.budgets.reviewRoundsPerWork);
       if (!Number.isInteger(value) || value < 1) {
-        throw new Error(`budgets.reviewRoundsPerWork must be a positive integer, got: ${config.budgets.reviewRoundsPerWork}`);
+        throw new Error(
+          `budgets.reviewRoundsPerWork must be a positive integer, got: ${config.budgets.reviewRoundsPerWork}`,
+        );
       }
       budgets.reviewRoundsPerWork = value;
     }
@@ -396,10 +492,16 @@ function loadRunConfig(flags, command) {
     try {
       return new RegExp(String(pattern), "g");
     } catch {
-      throw new Error(`redact pattern is not a valid regular expression: ${pattern}`);
+      throw new Error(
+        `redact pattern is not a valid regular expression: ${pattern}`,
+      );
     }
   });
-  const envelope = loadEnvelope(config, configDir, Object.keys(config.workers ?? {}));
+  const envelope = loadEnvelope(
+    config,
+    configDir,
+    Object.keys(config.workers ?? {}),
+  );
 
   return {
     envelope,
@@ -411,11 +513,13 @@ function loadRunConfig(flags, command) {
     workId: config.work,
     runId: config.run,
     base: config.base ?? "HEAD",
-    entry: config.entry ?? workflow.entry,
+    entry,
     stopAt: config.stopAt ?? presetStopAt ?? [],
     adapters,
     adapterConfigs: config.workers ?? {},
     policies,
+    deliveryChecks: safeguards,
+    workArtifact: artifact,
     riskPreset,
     maxAttemptsPerStep: config.maxAttemptsPerStep ?? 4,
     budgets,
@@ -425,8 +529,11 @@ function loadRunConfig(flags, command) {
     reviewTriage: config.reviewTriage === "required" ? "required" : null,
     supersede: config.supersede ?? "waiting",
     parallel: config.parallel === true,
-    stallAfterMs: config.stallAfterMs !== undefined ? Number(config.stallAfterMs) : DEFAULT_STALL_AFTER_MS,
-    planDigest: digestOfWorkFile("plan.md"),
+    stallAfterMs:
+      config.stallAfterMs !== undefined
+        ? Number(config.stallAfterMs)
+        : DEFAULT_STALL_AFTER_MS,
+    planDigest: digestOfWorkFile(`${artifact}.md`),
     intentDigest: digestOfWorkFile("intent.md"),
   };
 }
@@ -461,9 +568,17 @@ async function notifyForState(repoRoot, repoLabel, state) {
     if (!subscribes(config, kind)) {
       continue;
     }
-    const results = await dispatchNotification(config, buildNotification(kind, { repoLabel, state }), { repoRoot });
+    const results = await dispatchNotification(
+      config,
+      buildNotification(kind, { repoLabel, state }),
+      { repoRoot },
+    );
     for (const row of results) {
-      const outcome = row.ok ? "sent" : row.skipped ? `skipped (${row.error})` : `FAILED (${row.error})`;
+      const outcome = row.ok
+        ? "sent"
+        : row.skipped
+          ? `skipped (${row.error})`
+          : `FAILED (${row.error})`;
       console.log(`notify ${kind} -> ${row.channel}: ${outcome}`);
     }
   }
@@ -498,29 +613,108 @@ function spawnStallWatcher(repoRoot, runId, stallAfterMs) {
   return true;
 }
 
-async function commandStart(flags) {
-  const options = loadRunConfig(flags, "start");
+const textDigest = (text) =>
+  `sha256:${createHash("sha256").update(text, "utf8").digest("hex")}`;
+
+async function commandStart(flags, options = loadRunConfig(flags, "start")) {
+  // Pin the base first: the artifacts are checked in, and the workspace is
+  // created from, the same commit even if the ref moves meanwhile.
+  try {
+    options.base = execFileSync(
+      "git",
+      [
+        "-C",
+        options.repoRoot,
+        "rev-parse",
+        "--verify",
+        `${options.base}^{commit}`,
+      ],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    ).trim();
+  } catch {
+    throw new Error(`base ${options.base} does not name a commit`);
+  }
+  const creation = {
+    deliveryChecks: options.deliveryChecks,
+    intentDigest: options.intentDigest ?? "UNVERIFIED",
+  };
+  const committed = boundArtifacts(
+    creation,
+    options.planDigest ?? "UNVERIFIED",
+  ).filter((entry) => entry.committed);
+  const mismatch = (ref, text, digest) => {
+    if (text === null) {
+      throw new Error(
+        `commit ${ref} into the selected base before starting; workers read that isolated checkout`,
+      );
+    }
+    if (textDigest(text) !== digest) {
+      throw new Error(
+        `the selected base contains a different ${ref}; commit the accepted work artifact before starting`,
+      );
+    }
+  };
+  // Presence is checked before anything is created. Content is compared on
+  // the isolated checkout itself: Git applies that checkout's attributes and
+  // filters there, which no pre-read reproduces on every Git version.
+  for (const { artifact } of committed) {
+    const ref = `delivery/work/${options.workId}/${artifact}.md`;
+    try {
+      execFileSync(
+        "git",
+        ["-C", options.repoRoot, "cat-file", "-e", `${options.base}:${ref}`],
+        { stdio: "ignore" },
+      );
+    } catch {
+      mismatch(ref, null);
+    }
+  }
+  options.verifyCheckout = (worktreePath) => {
+    for (const { artifact, digest } of committed) {
+      const ref = `delivery/work/${options.workId}/${artifact}.md`;
+      const file = join(worktreePath, ref);
+      const text = existsSync(file) ? readFileSync(file, "utf8") : null;
+      mismatch(ref, text, digest);
+    }
+  };
+
   if (flags.attempt !== undefined) {
     if (flags.attempt !== "new") {
-      throw new Error(`--attempt must be "new" (auto-number the next run of this family), got: ${flags.attempt}`);
+      throw new Error(
+        `--attempt must be "new" (auto-number the next run of this family), got: ${flags.attempt}`,
+      );
     }
     // The run config names the family; the kernel numbers the attempt. One
     // config per work, not one per retry (the campaign hand-numbered -01..-30).
-    options.runId = nextAttemptId(options.repoRoot, options.workId, options.runId);
+    options.runId = nextAttemptId(
+      options.repoRoot,
+      options.workId,
+      options.runId,
+    );
     console.log(`attempt: ${options.runId}`);
   }
   if (options.envelope) {
-    console.log(`envelope: ${options.envelope.source} (${Object.keys(options.envelope.prompts).join(", ")}) ${options.envelope.digest}`);
+    console.log(
+      `envelope: ${options.envelope.source} (${Object.keys(options.envelope.prompts).join(", ")}) ${options.envelope.digest}`,
+    );
   }
   if (process.stdout.isTTY) {
     // Run launch discipline (real incident: a host-tool timeout killed a
     // verify worker mid-run): anything longer than minutes belongs in a
     // detached process, not an interactive foreground shell.
-    console.log("tip: long runs should be started detached (nohup/setsid); interactive shells die with their host");
+    console.log(
+      "tip: long runs should be started detached (nohup/setsid); interactive shells die with their host",
+    );
   }
-  const watching = spawnStallWatcher(options.repoRoot, options.runId, options.stallAfterMs);
+  const watching = spawnStallWatcher(
+    options.repoRoot,
+    options.runId,
+    options.stallAfterMs,
+  );
   if (watching) {
-    console.log(`stall watcher armed (no output for ${formatMs(options.stallAfterMs)} notifies STALLED)`);
+    console.log(
+      `stall watcher armed (no output for ${formatMs(options.stallAfterMs)} notifies STALLED)`,
+    );
   }
   let result;
   try {
@@ -535,28 +729,45 @@ async function commandStart(flags) {
       if (holders.length === 0) {
         // A dead owner would already have been reclaimed; the error below
         // names who holds the lock and what to do.
-        console.error("blocked by: the active-run lock alone (no run lock beside it); its owner is named below");
+        console.error(
+          "blocked by: the active-run lock alone (no run lock beside it); its owner is named below",
+        );
       }
       for (const holder of holders) {
-        const ledgerPath = join(options.repoRoot, ".buildbeat", "runtime", "runs", holder, "events.jsonl");
+        const ledgerPath = join(
+          options.repoRoot,
+          ".buildbeat",
+          "runtime",
+          "runs",
+          holder,
+          "events.jsonl",
+        );
         let summary = "(no ledger found)";
         if (existsSync(ledgerPath)) {
           const ledger = EventLedger.open(ledgerPath);
           const state = ledger.state;
-          const step = state.currentStep ? `step ${state.currentStep} attempt ${state.steps[state.currentStep]?.attempts ?? "?"}` : "between steps";
+          const step = state.currentStep
+            ? `step ${state.currentStep} attempt ${state.steps[state.currentStep]?.attempts ?? "?"}`
+            : "between steps";
           const since = ledger.events[ledger.events.length - 1]?.ts;
           summary = `${state.run?.work ?? "?"} ${state.run?.status ?? "?"} ${step}${since ? `, last event ${formatMs(Date.now() - Date.parse(since))} ago` : ""}`;
         }
         console.error(`blocked by ${holder}: ${summary}`);
-        console.error(`  watch it: buildbeat status --repo ${label} --run ${holder}`);
+        console.error(
+          `  watch it: buildbeat status --repo ${label} --run ${holder}`,
+        );
       }
-      console.error("queue position: next after the holder(s) above stop or wait on a human (by default one run drives a repository at a time; works whose run configs both set parallel: true can drive together)");
+      console.error(
+        "queue position: next after the holder(s) above stop or wait on a human (by default one run drives a repository at a time; works whose run configs both set parallel: true can drive together)",
+      );
     }
     throw error;
   }
   const repoLabel = repoLabelFor(options.repoRoot);
   for (const run of result.superseded ?? []) {
-    console.log(`superseded ${run} (was waiting on a human for the same work; now SUPERSEDED)`);
+    console.log(
+      `superseded ${run} (was waiting on a human for the same work; now SUPERSEDED)`,
+    );
   }
   for (const row of result.supersedeSkipped ?? []) {
     console.log(`could not supersede ${row.run}: ${row.reason}`);
@@ -571,27 +782,52 @@ async function commandStart(flags) {
   await notifyForState(options.repoRoot, repoLabel, ledger.state);
 }
 
+// A run family is the configured run id plus its numbered attempts
+// (<run>-01, <run>-02, ...); a longer id that merely shares the prefix
+// belongs to another family.
+function inRunFamily(family, id) {
+  const escaped = family.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return id === family || new RegExp(`^${escaped}-\\d{2,}$`).test(id);
+}
+
 // Resolve only from runtime ledgers. Reading candidates does not acquire
-// their locks; resumeRun still owns the lock and freshness checks.
-function resolveResumeRun(repoRoot, family, explicitRun) {
-  const pattern = new RegExp(`^${family.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-\\d{2,}$`);
+// their locks; resumeRun still owns the lock and freshness checks. The
+// legacy resume spelling keeps 3.3.1's exact-id precedence; `run` picks the
+// unique unfinished run across the whole family (exact id included), and
+// with none unfinished reports the latest one so the user sees --new.
+function resolveResumeRun(
+  repoRoot,
+  family,
+  explicitRun,
+  { familyWide = false } = {},
+) {
   if (explicitRun !== undefined) {
-    if (explicitRun !== family && !pattern.test(explicitRun)) {
-      throw new Error(`--run ${explicitRun} is not in run family ${family} of this config`);
+    if (!inRunFamily(family, explicitRun)) {
+      throw new Error(
+        `--run ${explicitRun} is not in run family ${family} of this config`,
+      );
     }
     if (!existsSync(ledgerPathFor(repoRoot, explicitRun))) {
       throw new Error(`no ledger for run ${explicitRun}`);
     }
     return explicitRun;
   }
-  if (existsSync(ledgerPathFor(repoRoot, family))) {
+  if (!familyWide && existsSync(ledgerPathFor(repoRoot, family))) {
     return family;
   }
   const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
   const runs = (existsSync(runsDir) ? readdirSync(runsDir) : [])
-    .filter((id) => pattern.test(id) && existsSync(ledgerPathFor(repoRoot, id)))
+    .filter(
+      (id) =>
+        (familyWide || id !== family) &&
+        inRunFamily(family, id) &&
+        existsSync(ledgerPathFor(repoRoot, id)),
+    )
     .sort((a, b) => a.localeCompare(b, "en", { numeric: true }))
-    .map((id) => ({ id, state: EventLedger.open(ledgerPathFor(repoRoot, id)).state }));
+    .map((id) => ({
+      id,
+      state: EventLedger.open(ledgerPathFor(repoRoot, id)).state,
+    }));
   const open = runs.filter(({ state }) => !state.terminal);
   if (open.length === 1) {
     console.log(`resuming ${open[0].id} (the open run of family ${family})`);
@@ -599,14 +835,60 @@ function resolveResumeRun(repoRoot, family, explicitRun) {
   }
   if (open.length === 0) {
     const latest = runs.at(-1);
-    throw new Error(`no open run in family ${family}; ${latest ? `latest run ${latest.id}: ${latest.state.terminal.status}` : "no ledgers found"}; use --run <RUN-ID> to select an existing run explicitly`);
+    if (familyWide && latest) {
+      return latest.id;
+    }
+    throw new Error(
+      `no open run in family ${family}; ${latest ? `latest run ${latest.id}: ${latest.state.terminal.status}` : "no ledgers found"}; use --run <RUN-ID> to select an existing run explicitly, or run --new to start another attempt`,
+    );
   }
-  throw new Error(`multiple open runs in family ${family}: ${open.map(({ id }) => id).join(", ")}; use --run <RUN-ID> to select one`);
+  throw new Error(
+    `multiple open runs in family ${family}: ${open.map(({ id }) => id).join(", ")}; use --run <RUN-ID> to select one`,
+  );
 }
 
-async function commandResume(flags) {
-  const options = loadRunConfig(flags, "resume");
-  options.runId = resolveResumeRun(options.repoRoot, options.runId, flags.run);
+async function commandResume(
+  flags,
+  options = loadRunConfig(flags, "resume"),
+  { familyWide = false } = {},
+) {
+  options.runId = resolveResumeRun(options.repoRoot, options.runId, flags.run, {
+    familyWide,
+  });
+  const prior = EventLedger.open(
+    ledgerPathFor(options.repoRoot, options.runId),
+  );
+  if (
+    prior.state.run &&
+    !prior.state.terminal &&
+    !prior.state.run.deliveryChecks
+  ) {
+    throw new Error(
+      "legacy active run: finish or cancel with its 3.3.1 runtime; new attempts can use this version (docs/MIGRATION.md)",
+    );
+  }
+  // A finished run only reports its outcome: a config migrated since it ran
+  // must not turn "already terminal" into a configuration error.
+  if (!prior.state.terminal) {
+    assertRunConfiguration(prior.state, options);
+  }
+  // A frozen run continues only under the artifacts it was created with;
+  // its final approval would refuse a changed scope anyway.
+  if (!prior.state.terminal && prior.state.run?.deliveryChecks) {
+    const now = {
+      [prior.state.run.deliveryChecks.artifact]:
+        options.planDigest ?? "UNVERIFIED",
+      intent: options.intentDigest ?? "UNVERIFIED",
+    };
+    const changed = boundArtifacts(prior.state.run)
+      .filter(({ artifact, digest }) => now[artifact] !== digest)
+      .map(({ artifact }) => `${artifact}.md`);
+    if (changed.length > 0) {
+      throw new Error(
+        `work artifact changed since the run was created (${changed.join(", ")}); cannot ${flags.adopt !== undefined ? "adopt a candidate" : "resume"} under a different scope; accept it and start a new attempt with run --new`,
+      );
+    }
+  }
   if (flags.adopt !== undefined) {
     const resumeAt = nextStep(options.workflow, "fix", "succeeded") ?? "verify";
     const adopted = adoptCandidate(options.repoRoot, options.runId, {
@@ -614,16 +896,29 @@ async function commandResume(flags) {
       by: flags.by ?? "human",
       resumeAt,
     });
-    console.log(`adopted ${adopted.adopted} as candidate (${adopted.decisionRef}, answers ${adopted.transition}); resuming at ${adopted.resumeAt}`);
+    console.log(
+      `adopted ${adopted.adopted} as candidate (${adopted.decisionRef}, answers ${adopted.transition}); resuming at ${adopted.resumeAt}`,
+    );
   }
-  const watching = spawnStallWatcher(options.repoRoot, options.runId, options.stallAfterMs);
+  const watching = spawnStallWatcher(
+    options.repoRoot,
+    options.runId,
+    options.stallAfterMs,
+  );
   if (watching) {
-    console.log(`stall watcher armed (no output for ${formatMs(options.stallAfterMs)} notifies STALLED)`);
+    console.log(
+      `stall watcher armed (no output for ${formatMs(options.stallAfterMs)} notifies STALLED)`,
+    );
   }
   const result = resumeRun(options);
   const repoLabel = repoLabelFor(options.repoRoot);
   if (!result.resumed) {
     console.log(`nothing to resume: ${result.reason}`);
+    if (result.state?.terminal) {
+      console.log(
+        "start another attempt with: buildbeat run --config <run-config.yaml> --new",
+      );
+    }
   }
   console.log(`ledger: ${toRepoRef(options.repoRoot, result.ledgerPath)}`);
   const ledger = EventLedger.open(result.ledgerPath);
@@ -637,21 +932,31 @@ async function commandResume(flags) {
   }
 }
 
-function commandInbox(flags) {
+function pendingFor(repoRoot, work) {
+  return listInbox(repoRoot).filter(
+    (row) => !work || row.work === work || row.corrupted,
+  );
+}
+
+function commandInbox(flags, rows = null) {
   if (!flags.repo) {
     throw new Error("inbox requires --repo");
   }
   const repoRoot = resolve(flags.repo);
-  const rows = listInbox(repoRoot);
+  rows ??= pendingFor(repoRoot, flags.work);
   if (rows.length === 0) {
     console.log("inbox empty: no runs waiting on a human");
     return;
   }
-  const sorted = [...rows].sort((a, b) => `${a.work ?? ""}${a.run}`.localeCompare(`${b.work ?? ""}${b.run}`));
+  const sorted = [...rows].sort((a, b) =>
+    `${a.work ?? ""}${a.run}`.localeCompare(`${b.work ?? ""}${b.run}`),
+  );
   let lastWork = null;
   for (const row of sorted) {
     if (row.corrupted) {
-      console.log(`${row.run}: LEDGER CORRUPTED after seq=${row.corrupted.afterSeq} (${row.corrupted.reason})`);
+      console.log(
+        `${row.run}: LEDGER CORRUPTED after seq=${row.corrupted.afterSeq} (${row.corrupted.reason})`,
+      );
       continue;
     }
     if (row.work !== lastWork) {
@@ -659,16 +964,25 @@ function commandInbox(flags) {
       lastWork = row.work;
     }
     const ledger = EventLedger.open(ledgerPathFor(repoRoot, row.run));
-    const requested = [...ledger.events].reverse().find((event) => event.type === "HUMAN_REQUESTED");
-    const age = requested ? formatMs(Date.now() - Date.parse(requested.ts)) : "?";
-    console.log(`  ${row.run} [${row.kind}] ${row.transition} — waiting ${age}${requested ? ` (since ${requested.ts})` : ""}`);
+    const requested = [...ledger.events]
+      .reverse()
+      .find((event) => event.type === "HUMAN_REQUESTED");
+    const age = requested
+      ? formatMs(Date.now() - Date.parse(requested.ts))
+      : "?";
+    console.log(
+      `  ${row.run} [${row.kind}] ${row.transition} — waiting ${age}${requested ? ` (since ${requested.ts})` : ""}`,
+    );
     console.log(`    candidate: ${row.subject.candidate}`);
     console.log(`    planDigest: ${row.subject.planDigest}`);
     console.log(`    evidenceDigest: ${row.subject.evidenceDigest}`);
     for (const reason of row.reasons) {
       console.log(`    reason: ${reason}`);
     }
-    for (const line of nextReply({ repoLabel: repoLabelFor(repoRoot, flags.repo), state: ledger.state })) {
+    for (const line of nextReply({
+      repoLabel: repoLabelFor(repoRoot, flags.repo),
+      state: ledger.state,
+    })) {
       console.log(`    next: ${line}`);
     }
   }
@@ -678,6 +992,16 @@ function commandApprove(flags) {
   if (!flags.repo || !flags.run || !flags.transition) {
     throw new Error("approve requires --repo, --run and --transition");
   }
+  const prior = EventLedger.open(ledgerPathFor(resolve(flags.repo), flags.run));
+  if (
+    prior.state.run &&
+    !prior.state.terminal &&
+    !prior.state.run.deliveryChecks
+  ) {
+    throw new Error(
+      "legacy active run: approve with its original 3.3.1 runtime (docs/MIGRATION.md)",
+    );
+  }
   const policies = flags.config ? loadRunConfig(flags, "approve").policies : [];
   const result = approveRun(resolve(flags.repo), flags.run, {
     by: flags.by ?? "human",
@@ -685,7 +1009,9 @@ function commandApprove(flags) {
     policies,
   });
   if (!result.approved) {
-    console.log("NOT approved: the subject changed since the request; a refreshed request was filed");
+    console.log(
+      "NOT approved: the subject changed since the request; a refreshed request was filed",
+    );
     console.log(`  new candidate: ${result.subject.candidate}`);
     return;
   }
@@ -696,9 +1022,13 @@ function commandApprove(flags) {
     console.log(`  advisory: ${warning}`);
   }
   if (result.terminal) {
-    console.log("run is terminal: SUCCEEDED (merge itself stays a manual external action)");
+    console.log(
+      "run is terminal: SUCCEEDED (merge itself stays a manual external action)",
+    );
   } else {
-    console.log(`decision recorded; continue with: buildbeat resume --config <run-config.yaml> --run ${flags.run}`);
+    console.log(
+      `decision recorded; continue with: buildbeat run --config <run-config.yaml> --run ${flags.run}`,
+    );
   }
 }
 
@@ -715,10 +1045,17 @@ function commandReject(flags) {
 }
 
 function commandAccept(flags) {
-  if (!flags.repo || !flags.work || !flags.artifact) {
-    throw new Error("accept requires --repo, --work and --artifact");
+  if (!flags.repo || !flags.work) {
+    throw new Error("accept requires --repo and --work");
   }
-  const artifacts = String(flags.artifact).split(",").map((name) => name.trim()).filter(Boolean);
+  const workDir = join(resolve(flags.repo), "delivery", "work", flags.work);
+  const selection =
+    flags.artifact ??
+    (existsSync(join(workDir, "work.md")) ? "work" : "intent,plan");
+  const artifacts = String(selection)
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean);
   const results = acceptArtifacts(resolve(flags.repo), flags.work, artifacts, {
     by: flags.by ?? "human",
   });
@@ -726,33 +1063,17 @@ function commandAccept(flags) {
     console.log(`accepted ${result.artifact} as ${result.decisionRef}`);
     console.log(`  digest: ${result.digest}`);
   }
-  console.log("  note: editing an artifact after acceptance makes its acceptance stale");
-}
-
-// Artifacts a policy rule requires to be accepted (artifact.accepted leaves
-// anywhere under all/any/not).
-function artifactsRequiredBy(rule, found = []) {
-  if (!rule || typeof rule !== "object") {
-    return found;
-  }
-  for (const [key, value] of Object.entries(rule)) {
-    if (key === "artifact.accepted" && value && typeof value.artifact === "string") {
-      found.push(value.artifact);
-    } else if (Array.isArray(value)) {
-      for (const item of value) {
-        artifactsRequiredBy(item, found);
-      }
-    } else if (value && typeof value === "object") {
-      artifactsRequiredBy(value, found);
-    }
-  }
-  return found;
+  console.log(
+    "  note: editing an artifact after acceptance makes its acceptance stale",
+  );
 }
 
 function commandDoctor(flags) {
   const options = loadRunConfig(flags, "doctor");
   console.log(`risk preset: ${options.riskPreset}`);
-  console.log(`stopAt boundaries: ${options.stopAt.length > 0 ? options.stopAt.join(", ") : "(none)"}`);
+  console.log(
+    `stopAt boundaries: ${options.stopAt.length > 0 ? options.stopAt.join(", ") : "(none)"}`,
+  );
   console.log("policies (declared vs actually achieved enforcement):");
   if (options.policies.length === 0) {
     console.log("  (none configured)");
@@ -762,24 +1083,30 @@ function commandDoctor(flags) {
     if (policy.enforcement === "ADVISORY") {
       actual = "ADVISORY (prompt-level only; nothing stops a worker)";
     } else if (policy.enforcement === "SERVER_ENFORCED") {
-      actual = "UNVERIFIED (branch protection/CI cannot be verified from here; not claiming it)";
+      actual =
+        "UNVERIFIED (branch protection/CI cannot be verified from here; not claiming it)";
     } else if (policy.type === "transition") {
       actual = "LOCAL_ENFORCED (approve gate refuses the stamp)";
     } else {
       actual = "LOCAL_ENFORCED (runner gate before/after the step)";
     }
-    console.log(`  ${policy.name}: type=${policy.type} appliesTo=${policy.appliesTo} declared=${policy.enforcement} actual=${actual}`);
+    console.log(
+      `  ${policy.name}: type=${policy.type} appliesTo=${policy.appliesTo} declared=${policy.enforcement} actual=${actual}`,
+    );
   }
   console.log("worker isolation:");
   for (const [worker, spec] of Object.entries(options.adapterConfigs)) {
-    const mode = spec.inheritEnv === true
-      ? "WARNING inherit (worker sees the full host env; credential isolation is ADVISORY only)"
-      : "env allowlist (host credential env vars withheld from the worker)";
+    const mode =
+      spec.inheritEnv === true
+        ? "WARNING inherit (worker sees the full host env; credential isolation is ADVISORY only)"
+        : "env allowlist (host credential env vars withheld from the worker)";
     console.log(`  ${worker}: ${mode}`);
   }
   let remotes = [];
   try {
-    remotes = execFileSync("git", ["-C", options.repoRoot, "remote"], { encoding: "utf8" })
+    remotes = execFileSync("git", ["-C", options.repoRoot, "remote"], {
+      encoding: "utf8",
+    })
       .split("\n")
       .filter(Boolean);
   } catch {
@@ -790,11 +1117,16 @@ function commandDoctor(flags) {
       `push protection: worktree pushurl override is applied at workspace creation for: ${remotes.join(", ")}`,
     );
   } else {
-    console.log("push protection: repository has no remotes (nothing to protect)");
+    console.log(
+      "push protection: repository has no remotes (nothing to protect)",
+    );
   }
-  console.log("kernel capabilities: merge/deploy/publish have no call path in the runner (invariant 20)");
+  console.log(
+    "kernel capabilities: merge/deploy/publish have no call path in the runner (invariant 20)",
+  );
   const budgetLines = [];
-  const reviewRounds = options.budgets.reviewRoundsPerWork ?? DEFAULT_REVIEW_ROUNDS_PER_WORK;
+  const reviewRounds =
+    options.budgets.reviewRoundsPerWork ?? DEFAULT_REVIEW_ROUNDS_PER_WORK;
   for (const step of options.workflow.steps) {
     if (!step.worker) {
       continue;
@@ -802,20 +1134,38 @@ function commandDoctor(flags) {
     const fromRun = options.budgets.maxAttempts?.[step.id];
     const fromPreset = options.workflow.budgets?.maxAttempts?.[step.id];
     const review = step.id === "review" || step.worker === "reviewer";
-    const effective = fromRun ?? fromPreset ?? (review ? reviewRounds : options.maxAttemptsPerStep);
-    const source = fromRun !== undefined ? "run config" : fromPreset !== undefined ? "workflow preset" : review ? "reviewRoundsPerWork" : "default";
+    const effective =
+      fromRun ??
+      fromPreset ??
+      (review ? reviewRounds : options.maxAttemptsPerStep);
+    const source =
+      fromRun !== undefined
+        ? "run config"
+        : fromPreset !== undefined
+          ? "workflow preset"
+          : review
+            ? "reviewRoundsPerWork"
+            : "default";
     budgetLines.push(`${step.id}=${effective} (${source})`);
   }
-  console.log(`budgets (maxAttempts per step; approving resume-<step> after exhaustion grants +1): ${budgetLines.join(", ")}`);
-  console.log(`budgets.reviewRoundsPerWork: ${reviewRounds}${options.budgets.reviewRoundsPerWork === undefined ? " (default)" : ""} (counted across every run of the work, superseded ones included)`);
+  console.log(
+    `budgets (maxAttempts per step; approving resume-<step> after exhaustion grants +1): ${budgetLines.join(", ")}`,
+  );
+  console.log(
+    `budgets.reviewRoundsPerWork: ${reviewRounds}${options.budgets.reviewRoundsPerWork === undefined ? " (default)" : ""} (counted across every run of the work, superseded ones included)`,
+  );
   // Same preconditions start's first gate will read (real incident, twice:
   // doctor passed, start stopped at build because plan.md was not mirrored
   // into the repository the run was started in).
   const workDir = join(options.repoRoot, "delivery", "work", options.workId);
   const decisions = readJsonl(join(workDir, "decisions.jsonl"));
-  console.log(`work artifacts in this repository (delivery/work/${options.workId}):`);
+  console.log(
+    `work artifacts in this repository (delivery/work/${options.workId}):`,
+  );
   const artifactState = {};
-  for (const artifact of ["intent", "plan"]) {
+  for (const artifact of options.workArtifact === "work"
+    ? ["work"]
+    : ["intent", "plan"]) {
     const status = artifactStatus(workDir, decisions, artifact);
     artifactState[artifact] = status;
     const label = !status.exists
@@ -828,12 +1178,17 @@ function commandDoctor(flags) {
     console.log(`  ${artifact}.md: ${label}`);
   }
   for (const policy of options.policies) {
-    for (const artifact of artifactsRequiredBy(policy.rule)) {
-      const status = artifactState[artifact] ?? artifactStatus(workDir, decisions, artifact);
+    for (const artifact of policy.kind === "artifact"
+      ? [policy.artifact]
+      : []) {
+      const status =
+        artifactState[artifact] ?? artifactStatus(workDir, decisions, artifact);
       if (!status.accepted) {
         console.log(
           `  WARNING policy ${policy.name} (${policy.type} ${policy.appliesTo}) needs an accepted ${artifact}.md; start will stop at ${policy.appliesTo}` +
-            (!status.exists ? " (file missing here: mirror it into this repository, then accept)" : " (accept it first)"),
+            (!status.exists
+              ? " (file missing here: mirror it into this repository, then accept)"
+              : " (accept it first)"),
         );
       }
     }
@@ -842,31 +1197,47 @@ function commandDoctor(flags) {
     console.log("environment contract (requires):");
     const check = checkRequires(options.requires);
     for (const row of check.checked) {
-      console.log(`  ${row.command}: OK${row.version ? ` (${row.version})` : ""}`);
+      console.log(
+        `  ${row.command}: OK${row.version ? ` (${row.version})` : ""}`,
+      );
     }
     for (const problem of check.problems) {
       console.log(`  PROBLEM ${problem}`);
     }
   } else {
-    console.log("environment contract: none declared (implicit PATH facts stay unchecked)");
+    console.log(
+      "environment contract: none declared (implicit PATH facts stay unchecked)",
+    );
   }
-  console.log(`supersede: ${options.supersede} (new run for the same work ${options.supersede === "off" ? "leaves" : "supersedes"} older WAITING_HUMAN runs)`);
+  console.log(
+    `supersede: ${options.supersede} (new run for the same work ${options.supersede === "off" ? "leaves" : "supersedes"} older WAITING_HUMAN runs)`,
+  );
   console.log(
     options.parallel
       ? "concurrency: parallel (runs of other works with parallel: true may drive at the same time; runs of this work stay exclusive; verifiers must not share fixed ports or databases)"
       : "concurrency: exclusive (default: one driving run per repository; set parallel: true to drive alongside other works)",
   );
-  console.log(`stall threshold: ${formatMs(options.stallAfterMs)} without worker output`);
-  const { config: notify, error: notifyError } = notifyConfigFor(options.repoRoot);
+  console.log(
+    `stall threshold: ${formatMs(options.stallAfterMs)} without worker output`,
+  );
+  const { config: notify, error: notifyError } = notifyConfigFor(
+    options.repoRoot,
+  );
   if (notifyError) {
     console.log(`notify: PROBLEM ${notifyError}`);
   } else if (!notify) {
-    console.log(`notify: none (${NOTIFY_CONFIG} absent; a waiting run reaches nobody until someone runs inbox)`);
+    console.log(
+      `notify: none (${NOTIFY_CONFIG} absent; a waiting run reaches nobody until someone runs inbox)`,
+    );
   } else {
     console.log("notify channels:");
     for (const channel of notify.channels) {
-      const urlState = process.env[channel.urlEnv] ? "url env set" : `WARNING env ${channel.urlEnv} not set in this shell`;
-      console.log(`  ${channel.id}: type=${channel.type} events=${channel.events.join(",")} (${urlState})`);
+      const urlState = process.env[channel.urlEnv]
+        ? "url env set"
+        : `WARNING env ${channel.urlEnv} not set in this shell`;
+      console.log(
+        `  ${channel.id}: type=${channel.type} events=${channel.events.join(",")} (${urlState})`,
+      );
     }
   }
 }
@@ -881,13 +1252,17 @@ function commandPreflight(flags) {
   if (!flags.step) {
     throw new Error("preflight requires --step");
   }
-  const stepDef = options.workflow.steps.find((candidate) => candidate.id === flags.step);
+  const stepDef = options.workflow.steps.find(
+    (candidate) => candidate.id === flags.step,
+  );
   if (!stepDef) {
     throw new Error(`step not in workflow: ${flags.step}`);
   }
   const spec = stepDef.worker ? options.adapterConfigs[stepDef.worker] : null;
   if (!spec) {
-    throw new Error(`step ${flags.step} has no configured worker command to preflight`);
+    throw new Error(
+      `step ${flags.step} has no configured worker command to preflight`,
+    );
   }
   if (options.requires.length > 0) {
     const check = checkRequires(options.requires);
@@ -906,7 +1281,16 @@ function commandPreflight(flags) {
     env = { ...process.env };
   } else {
     env = {};
-    for (const key of ["PATH", "HOME", "LANG", "LC_ALL", "TMPDIR", "TERM", "USER", "SHELL"]) {
+    for (const key of [
+      "PATH",
+      "HOME",
+      "LANG",
+      "LC_ALL",
+      "TMPDIR",
+      "TERM",
+      "USER",
+      "SHELL",
+    ]) {
       if (process.env[key] !== undefined) {
         env[key] = process.env[key];
       }
@@ -914,8 +1298,12 @@ function commandPreflight(flags) {
   }
   Object.assign(env, spec.env ?? {});
   env.BUILDBEAT_PREFLIGHT = "1";
-  console.log(`PREFLIGHT (dry signal, never evidence): step ${flags.step} -> ${spec.command} ${args.join(" ")}`);
-  console.log(`cwd: main checkout (no worktree, no ledger, no evidence written)`);
+  console.log(
+    `PREFLIGHT (dry signal, never evidence): step ${flags.step} -> ${spec.command} ${args.join(" ")}`,
+  );
+  console.log(
+    `cwd: main checkout (no worktree, no ledger, no evidence written)`,
+  );
   const result = spawnSync(spec.command, args, {
     cwd: options.repoRoot,
     stdio: "inherit",
@@ -923,10 +1311,14 @@ function commandPreflight(flags) {
     timeout: spec.timeoutMs,
   });
   if (result.error) {
-    throw new Error(`preflight could not run the command: ${result.error.message}`);
+    throw new Error(
+      `preflight could not run the command: ${result.error.message}`,
+    );
   }
   const exitCode = result.status ?? 1;
-  console.log(`preflight exit=${exitCode} — a Run must reproduce this before it counts`);
+  console.log(
+    `preflight exit=${exitCode} — a Run must reproduce this before it counts`,
+  );
   process.exitCode = exitCode;
 }
 
@@ -948,11 +1340,15 @@ function commandFindings(rest) {
       const verdict = adjudicated.get(row.fingerprint);
       const status = verdict ? `${verdict.action} by ${verdict.by}` : "open";
       const reRaised = row.reRaised ? " RE-RAISED" : "";
-      console.log(`[${row.severity} ${row.fingerprint}] (${status})${reRaised} ${row.summary}`);
+      console.log(
+        `[${row.severity} ${row.fingerprint}] (${status})${reRaised} ${row.summary}`,
+      );
     }
   } else if (sub === "adjudicate") {
     if (!flags.repo || !flags.work || !flags.fingerprint || !flags.action) {
-      throw new Error("findings adjudicate requires --repo, --work, --fingerprint and --action");
+      throw new Error(
+        "findings adjudicate requires --repo, --work, --fingerprint and --action",
+      );
     }
     const row = adjudicateFinding(resolve(flags.repo), flags.work, {
       fingerprint: flags.fingerprint,
@@ -960,12 +1356,18 @@ function commandFindings(rest) {
       by: flags.by,
       note: flags.note,
     });
-    console.log(`adjudicated ${row.fingerprint} -> ${row.action} ([${row.severity}] ${row.summary})`);
+    console.log(
+      `adjudicated ${row.fingerprint} -> ${row.action} ([${row.severity}] ${row.summary})`,
+    );
     if (row.action === "dismiss") {
-      console.log("dismissed: this fingerprint no longer blocks; an escalated severity reopens on its own");
+      console.log(
+        "dismissed: this fingerprint no longer blocks; an escalated severity reopens on its own",
+      );
     }
   } else {
-    throw new Error(`findings subcommand must be list|adjudicate, got: ${sub ?? "(none)"}`);
+    throw new Error(
+      `findings subcommand must be list|adjudicate, got: ${sub ?? "(none)"}`,
+    );
   }
 }
 
@@ -1001,7 +1403,9 @@ function commandReplay(flags) {
         "state below reflects the valid prefix only",
     );
   } else {
-    console.log(`chain OK: ${ledger.events.length} events verified (digest/prev/seq)`);
+    console.log(
+      `chain OK: ${ledger.events.length} events verified (digest/prev/seq)`,
+    );
   }
   printState(ledger.state, { corruption: null }, {});
 }
@@ -1019,16 +1423,111 @@ function commandMetrics(flags) {
 }
 
 function commandStatus(flags) {
-  if (!flags.repo || !flags.run) {
-    throw new Error("status requires --repo and --run");
-  }
+  if (!flags.repo) throw new Error("status requires --repo");
   const repoRoot = resolve(flags.repo);
-  const ledger = EventLedger.open(ledgerPathFor(repoRoot, flags.run));
-  printState(ledger.state, ledger, {
-    repoRoot,
-    repoLabel: repoLabelFor(repoRoot, flags.repo),
-    stallAfterMs: stallAfterFromFlags(flags),
-  });
+  if (flags.run && flags.work)
+    throw new Error("status: choose --run or --work");
+  if (!flags.run) {
+    const rows = computeOverview(repoRoot, {
+      work: flags.work ?? null,
+      repoLabel: repoLabelFor(repoRoot, flags.repo),
+    });
+    const pending = pendingFor(repoRoot, flags.work);
+    if (flags.json === "true")
+      console.log(
+        JSON.stringify(
+          {
+            works: rows,
+            pending,
+            metrics: flags.work ? null : computeMetrics(repoRoot),
+          },
+          null,
+          2,
+        ),
+      );
+    else {
+      console.log(renderOverview(rows));
+      if (pending.length) commandInbox(flags, pending);
+      if (!flags.work) console.log(renderMetrics(computeMetrics(repoRoot)));
+    }
+    return;
+  }
+  const path = ledgerPathFor(repoRoot, flags.run);
+  if (!existsSync(path))
+    throw new Error(
+      `no runtime ledger for ${flags.run}; use status --work to read archived records`,
+    );
+  const ledger = EventLedger.open(path);
+  if (flags.json === "true")
+    console.log(
+      JSON.stringify(
+        { state: ledger.state, corruption: ledger.corruption },
+        null,
+        2,
+      ),
+    );
+  else
+    printState(ledger.state, ledger, {
+      repoRoot,
+      repoLabel: repoLabelFor(repoRoot, flags.repo),
+      stallAfterMs: stallAfterFromFlags(flags),
+    });
+}
+
+async function commandRun(flags) {
+  const options = loadRunConfig(flags, "run");
+  if (flags.new === "true" && (flags.run || flags.adopt))
+    throw new Error("--new cannot be combined with --run or --adopt");
+  if (flags.new === "true")
+    return commandStart({ ...flags, attempt: "new" }, options);
+  if (flags.run || flags.adopt)
+    return commandResume(flags, options, { familyWide: true });
+  // Resume an existing family, including its exact ID. Never interpret an
+  // ambiguous, corrupt, or terminal run as permission to start another one.
+  const dir = join(options.repoRoot, ".buildbeat", "runtime", "runs");
+  const found =
+    existsSync(dir) &&
+    readdirSync(dir).some(
+      (id) =>
+        inRunFamily(options.runId, id) &&
+        existsSync(ledgerPathFor(options.repoRoot, id)),
+    );
+  const records = join(
+    options.repoRoot,
+    "delivery",
+    "work",
+    options.workId,
+    "runs",
+  );
+  const archived =
+    existsSync(records) &&
+    readdirSync(records).some((id) => inRunFamily(options.runId, id));
+  if (found) return commandResume(flags, options, { familyWide: true });
+  if (archived)
+    throw new Error(
+      "this work has archived runs; inspect status, then use --new explicitly for a new attempt",
+    );
+  return commandStart({ ...flags, attempt: "new" }, options);
+}
+
+function commandDecide(flags) {
+  if (flags.action === "approve") return commandApprove(flags);
+  if (flags.action === "reject") return commandReject(flags);
+  if (["accept", "dismiss"].includes(flags.action) && flags.fingerprint) {
+    if (!flags.repo || !flags.work)
+      throw new Error("finding decisions require --repo and --work");
+    const result = adjudicateFinding(resolve(flags.repo), flags.work, {
+      fingerprint: flags.fingerprint,
+      action: flags.action,
+      by: flags.by ?? "human",
+      note: flags.note,
+    });
+    console.log(JSON.stringify(result));
+    return;
+  }
+  throw new Error(
+    "decide requires --action approve|reject, or accept|dismiss with --work and --fingerprint",
+  );
 }
 
 function commandStop(flags) {
@@ -1068,7 +1567,10 @@ function commandOverview(flags) {
     throw new Error("overview requires --repo");
   }
   const repoRoot = resolve(flags.repo);
-  const rows = computeOverview(repoRoot, { work: flags.work ?? null, repoLabel: repoLabelFor(repoRoot, flags.repo) });
+  const rows = computeOverview(repoRoot, {
+    work: flags.work ?? null,
+    repoLabel: repoLabelFor(repoRoot, flags.repo),
+  });
   if (flags.json === "true") {
     console.log(JSON.stringify(rows, null, 2));
     return;
@@ -1095,12 +1597,16 @@ function commandGc(flags) {
       if (action.kind === "delete-branch") {
         return `delete branch ${action.branch} (${action.reason})`;
       }
-      return action.owner ? "remove active-run lock (owner process is gone)" : "remove stale lock";
+      return action.owner
+        ? "remove active-run lock (owner process is gone)"
+        : "remove stale lock";
     });
     actionable += row.actions.length;
     const keep = row.keep.map((reason) => `keep: ${reason}`);
     const parts = [...summary, ...keep];
-    console.log(`${row.run} [${row.status}] ${parts.length > 0 ? parts.join("; ") : "nothing to do"}`);
+    console.log(
+      `${row.run} [${row.status}] ${parts.length > 0 ? parts.join("; ") : "nothing to do"}`,
+    );
   }
   if (flags.apply !== "true") {
     console.log(
@@ -1113,7 +1619,8 @@ function commandGc(flags) {
   const results = applyGc(repoRoot, rows, { force: flags.force === "true" });
   let done = 0;
   for (const result of results) {
-    const target = result.kind === "delete-branch" ? result.branch : result.path;
+    const target =
+      result.kind === "delete-branch" ? result.branch : result.path;
     if (result.done) {
       done += 1;
       console.log(`  ${result.kind} ${target}: done`);
@@ -1133,7 +1640,8 @@ function processAlive(pid) {
   }
 }
 
-const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
+const sleep = (ms) =>
+  new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 
 // Watches one RUNNING run and reports a stall once per step attempt. Exits
 // when the run leaves RUNNING, the parent process (if given) dies, or after a
@@ -1159,7 +1667,12 @@ async function commandWatch(flags) {
       console.log(`watch: run is ${ledger.state.run.status}; done`);
       return;
     } else {
-      const liveness = describeLiveness({ repoRoot, runId: flags.run, ledger, stallAfterMs });
+      const liveness = describeLiveness({
+        repoRoot,
+        runId: flags.run,
+        ledger,
+        stallAfterMs,
+      });
       const live = liveness.inFlight;
       if (live?.stalled) {
         const key = `${live.step}#${live.attempt}`;
@@ -1183,14 +1696,20 @@ async function commandWatch(flags) {
                 command: live.command,
               },
             });
-            const results = await dispatchNotification(config, notification, { repoRoot });
+            const results = await dispatchNotification(config, notification, {
+              repoRoot,
+            });
             for (const row of results) {
-              console.log(`watch: notify -> ${row.channel}: ${row.ok ? "sent" : row.error}`);
+              console.log(
+                `watch: notify -> ${row.channel}: ${row.ok ? "sent" : row.error}`,
+              );
             }
           }
         }
       } else if (live) {
-        console.log(`watch: ${live.step} attempt ${live.attempt} elapsed ${formatMs(live.elapsedMs)}, last output ${formatMs(live.sinceOutputMs)} ago`);
+        console.log(
+          `watch: ${live.step} attempt ${live.attempt} elapsed ${formatMs(live.elapsedMs)}, last output ${formatMs(live.sinceOutputMs)} ago`,
+        );
       }
     }
     if (flags.once === "true") {
@@ -1204,66 +1723,14 @@ async function commandWatch(flags) {
   }
 }
 
-function commandObserve(rest) {
-  const [sub, ...args] = rest;
-  const flags = parseFlags(args);
-  if (sub === "run") {
-    if (!flags.config) {
-      throw new Error("observe run requires --config <observe.yaml>");
-    }
-    const result = runObserveCycle({ configPath: flags.config });
-    console.log(`observe cycle ${result.cycle} finished (ledger: ${result.ledgerRef})`);
-    for (const row of result.results) {
-      const bands = row.bands.length > 0 ? ` bands=${row.bands.join(",")}` : "";
-      const intent = row.intent ? ` intent=${row.intent.outcome}:${row.intent.intentRef}` : "";
-      console.log(
-        `  ${row.provider}: ${row.status}${row.severity ? ` severity=${row.severity}` : ""}${bands}${intent}`,
-      );
-    }
-  } else if (sub === "status") {
-    if (!flags.repo) {
-      throw new Error("observe status requires --repo");
-    }
-    const status = observeStatus({ repoRoot: flags.repo });
-    if (status.corruption) {
-      console.log(
-        `WARNING: observe ledger corrupted after seq=${status.corruption.afterSeq}: ${status.corruption.reason}`,
-      );
-    }
-    console.log(`cycles: ${status.cycles}`);
-    for (const [id, info] of Object.entries(status.providers)) {
-      console.log(`provider ${id}: ${info.lastStatus} (${info.lastKind} on ${info.lastSubject}) at ${info.lastTs}`);
-    }
-    if (status.intents.length === 0) {
-      console.log("intents: none");
-    }
-    for (const intent of status.intents) {
-      console.log(
-        `intent [${intent.status}] ${intent.file} (${intent.provider}, severity ${intent.severity})`,
-      );
-    }
-  } else if (sub === "triage") {
-    if (!flags.repo || !flags.intent || !flags.action) {
-      throw new Error("observe triage requires --repo, --intent and --action");
-    }
-    const result = triageIntent({
-      repoRoot: flags.repo,
-      intentRef: flags.intent,
-      action: flags.action,
-      by: flags.by,
-      note: flags.note,
-    });
-    console.log(`intent ${result.intentRef} -> ${result.status}`);
-    if (result.suggestion) {
-      console.log(result.suggestion);
-    }
-  } else {
-    throw new Error(`observe subcommand must be run|status|triage, got: ${sub ?? "(none)"}`);
-  }
-}
-
 function packageVersion() {
-  const packageJson = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "package.json");
+  const packageJson = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "..",
+    "package.json",
+  );
   return JSON.parse(readFileSync(packageJson, "utf8")).version;
 }
 
@@ -1273,9 +1740,16 @@ async function main() {
     process.stdout.write(`${packageVersion()}\n`);
     return;
   }
-  if (command === "observe" || command === "findings") {
+  if (command === "observe") {
+    console.error(
+      "error: observe execution is retired; existing records are preserved. See docs/MIGRATION.md",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  if (command === "findings") {
     try {
-      (command === "observe" ? commandObserve : commandFindings)(rest);
+      commandFindings(rest);
     } catch (error) {
       console.error(`error: ${error.message}`);
       process.exitCode = 1;
@@ -1284,7 +1758,15 @@ async function main() {
   }
   try {
     const flags = parseFlags(rest);
-    if (command === "start") {
+    if (command === "run") {
+      await commandRun(flags);
+    } else if (command === "decide") {
+      commandDecide(flags);
+    } else if (command === "check") {
+      flags.step ? commandPreflight(flags) : commandDoctor(flags);
+    } else if (command === "history") {
+      flags.verify === "true" ? commandReplay(flags) : commandEvents(flags);
+    } else if (command === "start") {
       await commandStart(flags);
     } else if (command === "resume") {
       await commandResume(flags);

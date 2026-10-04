@@ -104,7 +104,7 @@ test("a transition policy refuses the stamp until required evidence exists", () 
     appliesTo: "enter-review",
     enforcement: "LOCAL_ENFORCED",
     onFail: "WAIT_HUMAN",
-    rule: { "evidence.exists": { kind: "screenshot", minGrade: "L2" } },
+    kind: "evidence", evidenceKind: "screenshot", minGrade: "L2",
   };
   assert.throws(
     () =>

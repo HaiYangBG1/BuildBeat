@@ -1,0 +1,415 @@
+{
+  "run": "RUN-PR70-REVIEW-02",
+  "work": "WORK-PR70-REVIEW",
+  "workflow": "software-delivery",
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 92,
+    "lastDigest": "sha256:7a98dcba33803b53154c567960615b3bc708a6c4b2fb8ab4b763613aa6753862"
+  },
+  "startedAt": "2026-10-03T11:52:41.047Z",
+  "finishedAt": "2026-10-03T16:26:16.331Z",
+  "attempts": {
+    "verify": 5,
+    "review": 4
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 4,
+      "remaining": 0
+    }
+  },
+  "cost": {
+    "reviewRounds": 4,
+    "humanWaits": 7,
+    "infraFailures": 0,
+    "workerMs": 7093250
+  },
+  "workspaces": {
+    "RUN-PR70-REVIEW-02": {
+      "repo": ".",
+      "branch": "run/RUN-PR70-REVIEW-02",
+      "worktreePath": ".buildbeat/worktrees/RUN-PR70-REVIEW-02",
+      "base": "bea4f57154d65db82cfcf1a6d39cb16fc8a81940",
+      "candidate": "5cdc8b676e5fda24ce0abfd4c09ef9e8f8e0ca23"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PR70-REVIEW-02/logs/verify-1.log",
+      "kind": "command",
+      "subject": "bea4f57154d65db82cfcf1a6d39cb16fc8a81940",
+      "digest": "sha256:97da5a134f3022c5a0a12fffcc96941ec5744fb8572c8e43afeec4bdf1fd0b4d",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:7d63ce80dfb2b2ff96b5145fc13751345a53c0f4596024b717878f19fe23f8dd"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PR70-REVIEW-02/logs/review-1.log",
+      "kind": "command",
+      "subject": "bea4f57154d65db82cfcf1a6d39cb16fc8a81940",
+      "digest": "sha256:4d75db77726f4ed4b943419dcc1dc6b4c9c9c181497acf0db41f725c9b1d88df",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PR70-REVIEW-02/outputs/review-1.json",
+      "kind": "review",
+      "subject": "bea4f57154d65db82cfcf1a6d39cb16fc8a81940",
+      "digest": "sha256:2eacdb558526c8b2e0b5b6cbce85dd9db224ae97e5cbce6e7c4ac7c7de65787a",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "[runtime] src/v2/runtime/decisions.js:141 — Artifact binding checks the main checkout, not the candidate checkout. If a builder/fixer commits changes to work.md while the main copy remains accepted and unchanged, successful verification/review still permits final approval. An in-memory reproduction returned approved:true and SUCCEEDED for this state. Compare the candidate's bound artifact with the frozen planDigest before approving or adopting; add coverage for candidate-only artifact edits."
+        },
+        {
+          "severity": "P1",
+          "summary": "[runtime] src/v2/policy/policy.js:159 — The controlled legacy merge floor checks current intent acceptance without comparing it with run.intentDigest. Changing and reaccepting intent.md after creation, while retaining the original plan and candidate, therefore lets the old run reach SUCCEEDED under a different accepted intent; reproduced with in-memory approval. Validate required intent against its creation digest during approval, resume and adoption, and verify the candidate contains that version."
+        },
+        {
+          "severity": "P1",
+          "summary": "[cli-compat] src/v2/cli/run.js:1445 — Automatic run selection inherits legacy exact-id precedence; with terminal RUN-X and a unique unfinished RUN-X-01, `buildbeat run --config ...` selects RUN-X and never resumes RUN-X-01. If both are unfinished, it silently selects RUN-X instead of reporting ambiguity. This contradicts the documented unique-nonterminal-family behavior. Give the new run handler family-wide selection, retaining exact-id precedence for explicit --run and legacy resume."
+        },
+        {
+          "severity": "P1",
+          "summary": "[cli-compat] src/v2/cli/run.js:621 — The committed-artifact check applies attributes from the current checkout, not the selected base. When their .gitattributes differ, `git cat-file --filters <base>:<artifact>` can pass although createWorkspace checks out different bytes, or reject an artifact that the selected base would reproduce correctly. Subsequent acceptance checks read the main checkout, so they do not catch this mismatch. Evaluate checkout attributes from the selected base and cover differing-base attributes in a regression."
+        },
+        {
+          "severity": "P1",
+          "summary": "[cli-compat] src/v2/cli/run.js:628 — Startup validates a mutable base reference without pinning the inspected commit. If HEAD or another configured ref moves after cat-file succeeds, including while requires probes execute, createWorkspace resolves that ref again and can start workers from a commit containing a different or missing work artifact. The ledger still binds the previously checked digest. Resolve base to an immutable commit before checking the artifact, and pass that same commit to startRun."
+        },
+        {
+          "severity": "P1",
+          "summary": "[docs-surface] docs/v2/guide/10-recovery.en.md:5 — automatic recovery omits the retained exact-ID precedence rule (also 10-recovery.md:5). With config run: RUN-X, a terminal RUN-X ledger and one active RUN-X-01, `buildbeat run --config <config>` selects terminal RUN-X and does not resume RUN-X-01: src/v2/cli/run.js:770 returns the exact ID before scanning nonterminal siblings. Confirmed with the resolver using in-memory ledger fixtures. Restore the 3.3.1 caveat in both guides and document `--run RUN-X-01` for this case."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-release-lane.test.js:89 (deleted, baseline) — Removing this file also removes the only regression for general requires probes, which remain shipped in src/v2/runtime/env-contract.js:58. No remaining test supplies probe:. Successful probes, nonzero exits, output mismatches and invalid expect expressions therefore lose coverage despite the plan's preservation requirement. Move this non-release-specific case into tests/v2-env-contract.test.js."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-simplified-surface.test.js:66 — The frozen-approval test supplies valid evidence, so it cannot detect omission of ledger-derived approval checks. The artifact-edit rejection exits before policy evaluation, while existing evidence-refusal tests explicitly supply policies on runs without deliveryChecks. The promised refusal without --config consequently lacks a negative regression. Add a frozen P3 run with a P2 review finding, invoke decide --action approve without --config, and assert policy refusal with no approval or terminal decision recorded."
+        },
+        {
+          "severity": "P1",
+          "summary": "[change-intent] plugins/buildbeat/.claude-plugin/plugin.json:4 — Decide the plugin/runtime release sequence before merging. The default Git marketplace distributes the new 0.4.0 Skill independently of npm, but SKILL.md:14-21 immediately routes users to 4.x commands without checking the runtime version. An existing user refreshing the plugin while retaining 3.3.1 to finish active runs receives incompatible instructions: locally, `buildbeat --version` returned 3.3.1 and `buildbeat status --repo .` failed with 'status requires --repo and --run'; the baseline also lacks run/decide/check. Thus postponing npm publication does not isolate the breaking user surface. Keep the stable marketplace on compatible guidance or add explicit version-based routing and a legacy continuation path before merge; validate both supported plugin/runtime pairings before publication."
+        },
+        {
+          "severity": "P2",
+          "summary": "[runtime] src/v2/runtime/notify.js:93 — Legacy active runs without deliveryChecks receive a suggested 'decide --action approve' command, although commandApprove explicitly refuses those runs. Status/inbox/notifications consequently advertise an unusable next step; the original 3.3.1 runtime also lacks the new decide command. Detect legacy runs and direct approval/resume through their original runtime and compatible command spellings."
+        },
+        {
+          "severity": "P2",
+          "summary": "[docs-surface] docs/RELEASING.md:138 — the current release checklist still requires checking the SKILL.md §0.5 installation line and quickstart installation line, both removed by this PR. A maintainer following the checklist cannot perform those checks at the named locations. Update it to reference the installation instructions now in README.md/README.en.md and the current Skill/guide sections."
+        },
+        {
+          "severity": "P2",
+          "summary": "[tests-package] tests/v2-workflow.test.js:95 — The negative-test fixture uses name: t, which the new parser rejects before checking fields, entries, step IDs or transitions. Read-only calls confirmed that the unmodified fixture and its malformed variants all return the same fixed-workflow-name error. These assertions now pass without exercising their claimed checks. Base retained validation cases on accepted DELIVERY_TEXT, establish that the unmodified fixture parses, mutate one field per case, and assert the relevant rejection."
+        },
+        {
+          "severity": "P2",
+          "summary": "[tests-package] delivery/work/WORK-PRODUCT-SIMPLIFY/compare-baseline.mjs:44 — The outcome comparison omits candidate contents, evidence bindings/statuses, waiting kind and decision results. Read-only evaluation of this exact projection produced identical outcomes for a legitimate final decision and a policy-blocked request carrying failed evidence for another candidate. Thus validation.md:23's outcome-parity claim does not establish the planned candidate/evidence/decision comparison. Compare normalized candidate contents, evidence subjects/statuses and decision state, then regenerate the recorded results."
+        },
+        {
+          "severity": "P2",
+          "summary": "[change-intent] docs/MIGRATION.md:67 — Decide whether losing enforced visual evidence is acceptable, or require a demonstrated replacement. The UI gate addressed the costly static-design approval/rework incident in lessons.md:17-21; docs/v2/M4-EXTERNAL-PILOT-2026-08-28.md:21,34 records its use on a real candidate. After migrating away from policy files, the built-in merge check requires verification and review but no screenshot evidence (src/v2/policy/policy.js:152-161). Merely assigning screenshots to verifier commands and reviewer instructions does not show how the original approval safeguard survives. Provide a project-owned example that binds rendered evidence to the candidate and rejects missing evidence, or explicitly accept the weaker safeguard and corresponding recurrence risk."
+        },
+        {
+          "severity": "P2",
+          "summary": "[change-intent] docs/MIGRATION.md:65 — Decide the successor ownership and migration requirements for release readback and observation before publication. These features addressed recorded problems: roughly 40 manual release-readback commits (CHANGELOG.md:167), platform configuration drift (lessons.md:65-69), and persistent human triage with dismissal memory (docs/history/V2-ITERATION-07.md:9-15). The replacement currently names monitoring, scripts and CI without specifying where readbacks, unresolved intents, decisions and closeout evidence meet again. Users can finish old runs safely, but subsequent work can recreate the scattered records and manual coordination this PR seeks to reduce. Supply a worked handoff with preserved triage state and release evidence, or explicitly accept that transferred maintenance burden; a staged retirement would allow validating that handoff first."
+        },
+        {
+          "severity": "P2",
+          "summary": "[change-intent] delivery/work/WORK-PR70-REVIEW/pr-description.md:26 — Reconfirm whether the intended cut includes optional governance references, rather than only default scaffolding. The baseline bootstrap explicitly did not generate standards or ADRs by default; the preserved source states this at docs/history/retired-skill/06-bootstrap-and-takeover.md:48,84, and CHANGELOG-v1.md:61-63 records that deliberate opt-in design. Nevertheless, this change removes those optional templates from the distributed template set. The stated benefit of no longer installing an entire organizational framework therefore does not explain this portion of the removal. Retain optional references, or record their separate maintenance rationale and the broader scope decision; distinguish package inclusion from installation into a target project."
+        },
+        {
+          "severity": "P2",
+          "summary": "[change-intent] docs/MIGRATION.md:69-71 — Decide the future of protocol-only participation on the actual 3.3.1 baseline. The justification refers to avoiding an 'equivalent manual runtime' promise, but 9fc8454:docs/CAPABILITY-MATRIX.md:9,32-35 already explicitly denied automatic loops, isolation, approval enforcement, budgets and recovery without the runtime. The retained promise was protocol interoperability, deliberately separated from automation equivalence in docs/history/V2-PLAN.md:165-174. Archiving the manual route removes supported guidance for users who can exchange project files but cannot install the runtime; file readability alone does not define how they produce compatible decisions and handoffs. Preserve a concise manual interoperability contract, or explicitly withdraw that support with its own rationale instead of attributing a runtime-equivalence promise to 3.3.1."
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PR70-REVIEW-02/logs/verify-2.log",
+      "kind": "command",
+      "subject": "3bb30c42b71f6a1ec11237445fcc4518048f3846",
+      "digest": "sha256:0c7c37cd78e22796eff6426392404ad1526df3ea29e7979be8c75512786a7367",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:b80652be1e4daf926d2798bb671acddd3fc5f586def9d1f370f4502b951f0a60"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PR70-REVIEW-02/logs/review-2.log",
+      "kind": "command",
+      "subject": "3bb30c42b71f6a1ec11237445fcc4518048f3846",
+      "digest": "sha256:5a3b31006bc5f8cd1a979f69c6275cc0d9836e4a428b2676d82321b1fa3b877a",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PR70-REVIEW-02/outputs/review-2.json",
+      "kind": "review",
+      "subject": "3bb30c42b71f6a1ec11237445fcc4518048f3846",
+      "digest": "sha256:4806d350e19b8a08ee3f523f1e22ced2231a98e0cfd80a83a99475c84138aadf",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "[cli-compat] src/v2/cli/run.js:625 — git archive applies export rules that checkout does not. If a committed, accepted work.md or legacy plan.md has export-ignore, checkoutText returns null and run/start incorrectly demands that the already committed artifact be committed again. Read-only reproduction against the same tracked plan.md and attribute configuration passed the previous revision's check but failed this candidate's check. Read the blob with checkout filters and attributes sourced from the pinned commit (for example, git --attr-source=<commit> cat-file --filters), without archive export rules, and add an export-ignore regression."
+        },
+        {
+          "severity": "P1",
+          "summary": "[docs-surface] SKILL.md:15 — The new 3.x route recommends multi-artifact acceptance to versions that do not support it. On 3.2.1, `buildbeat accept --repo . --work WORK-X --artifact intent,plan` treats `intent,plan` as one filename and fails with `artifact file missing: .../intent,plan.md`; read-only evaluation of that version's handlers reproduced this. Multi-artifact acceptance arrived in 3.3.0. Use separate acceptance commands below 3.3.0, or explicitly restrict this route to supported versions."
+        },
+        {
+          "severity": "P1",
+          "summary": "[docs-surface] docs/MIGRATION.md:47 — The newly promised checkout-equivalent artifact check fails for export-ignore attributes. With a committed, accepted artifact marked export-ignore, src/v2/cli/run.js:625 uses git archive, which omits the file although normal checkout retains it. Consequently `run --config ...` incorrectly demands committing an already committed artifact and cannot start. Read-only reproduction returned the committed bytes through cat-file --filters but null through checkoutText. Validate the pinned base's checkout contents without archive-only exclusion or substitution semantics."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-simplified-surface.test.js:612 — Checkout-equivalence coverage misses archive-only attributes. With export-ignore applied to a committed, accepted work.md, the new checkoutText helper in src/v2/cli/run.js:620 returns null and startup incorrectly demands that the existing file be committed. A read-only reproduction using the exact helper confirmed this; cat-file --filters still returned the checked-out bytes. Add an export-ignore regression asserting successful startup and matching worktree contents, and replace the archive-based comparison with checkout-equivalent handling that ignores archive-only attributes."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-simplified-surface.test.js:621 — The base-pinning fix lacks the regression required by WORK-PR70-REVIEW/plan.md:33. This fixture supplies an already-resolved SHA, and no startup test moves a base reference during requires probes. Removing or delaying the pin in src/v2/cli/run.js:652 therefore goes undetected, allowing the previously identified race to return. Add a deterministic case with base: HEAD whose requires probe moves HEAD to a commit containing different work.md bytes; assert that RUN_CREATED.base and the worker checkout retain the originally validated commit."
+        },
+        {
+          "severity": "P2",
+          "summary": "[change-intent] docs/MIGRATION.md:70 — Decide whether losing enforced visual evidence is acceptable, or require a demonstrated replacement. The UI gate addressed the costly approval/rework incident in lessons.md:17-21; docs/v2/M4-EXTERNAL-PILOT-2026-08-28.md:21,34 records its use on a real candidate. After removing policy files, the built-in merge check requires verification and review but no screenshot evidence (src/v2/policy/policy.js:152-161). Assigning screenshots to verifier commands and reviewer instructions does not establish that the original safeguard survives. Provide a project-owned example that binds rendered evidence to the candidate and rejects missing evidence, or explicitly accept the weaker safeguard and recurrence risk."
+        },
+        {
+          "severity": "P2",
+          "summary": "[change-intent] docs/MIGRATION.md:68 — Decide successor ownership and migration requirements for release readback and observation before publication. These features addressed roughly 40 manual release-readback commits (CHANGELOG.md:169), platform configuration drift (lessons.md:65-69), and persistent human triage with dismissal memory (docs/history/V2-ITERATION-07.md:9-15). The replacement names monitoring, scripts and CI without specifying how readbacks, unresolved intents, decisions and closeout evidence stay connected. Users can finish old runs safely, but subsequent work can recreate the scattered records and manual coordination this PR seeks to reduce. Supply a worked handoff preserving triage state and release evidence, or explicitly accept the transferred maintenance burden; staged retirement would allow validating that handoff first."
+        },
+        {
+          "severity": "P2",
+          "summary": "[change-intent] delivery/work/WORK-PR70-REVIEW/pr-description.md:26 — Reconfirm whether the intended cut includes optional governance references, rather than only default scaffolding. The baseline bootstrap explicitly did not generate standards or ADRs by default (docs/history/retired-skill/06-bootstrap-and-takeover.md:48,84); CHANGELOG-v1.md:61-63 records that deliberate opt-in design. Nevertheless, this change removes those optional templates from distribution. The stated benefit of no longer installing an entire organizational framework does not explain this portion of the removal. Retain optional references, or record their separate maintenance rationale and the broader scope decision; distinguish package inclusion from installation into a target project."
+        },
+        {
+          "severity": "P2",
+          "summary": "[change-intent] docs/MIGRATION.md:72 — Decide the future of protocol-only participation against the actual 3.3.1 baseline. The justification refers to avoiding an 'equivalent manual runtime' promise, but 9fc8454:docs/CAPABILITY-MATRIX.md:9,32-35 already explicitly denied automatic loops, isolation, approval enforcement, budgets and recovery without the runtime. The retained promise was protocol interoperability, deliberately separated from automation equivalence in docs/history/V2-PLAN.md:165-174. Archiving the manual route removes supported guidance for users who exchange project files but cannot install the runtime; file readability alone does not define compatible decisions and handoffs. Preserve a concise manual interoperability contract, or explicitly withdraw that support with its own rationale instead of attributing a runtime-equivalence promise to 3.3.1."
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PR70-REVIEW-02/logs/verify-3.log",
+      "kind": "command",
+      "subject": "2a2626bbaee874b9cf9df4a2a3004ac43ecd4245",
+      "digest": "sha256:f4ffc47bae71963dd0daaaad25020c7f6633313b6f543b2ab7032a542e12946a",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:523a4aca45abd363e22a86c83b21b9602ce7d07be9574ea0fe939e06e464391a"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PR70-REVIEW-02/logs/review-3.log",
+      "kind": "command",
+      "subject": "2a2626bbaee874b9cf9df4a2a3004ac43ecd4245",
+      "digest": "sha256:3d235e7f99e7f504e2990516b3580a848db14ea5f66c7c3d1ae15aa60f679efe",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PR70-REVIEW-02/outputs/review-3.json",
+      "kind": "review",
+      "subject": "2a2626bbaee874b9cf9df4a2a3004ac43ecd4245",
+      "digest": "sha256:72132c856834444b713c82aaa889920fba01cead072610b4276b50769b57fd3c",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "[cli-compat] src/v2/cli/run.js:641 — The unsupported --attr-source fallback can reject a valid selected base. On older Git, if the accepted artifact and selected base contain LF but the current checkout's attributes specify CRLF, fallback cat-file applies those current attributes and commandStart rejects before verifyCheckout can inspect the correct checkout. Read-only in-memory reproduction confirmed this premature rejection. When --attr-source is unavailable, defer content comparison to the mandatory isolated-checkout validation instead of treating current-checkout filtering as authoritative."
+        },
+        {
+          "severity": "P1",
+          "summary": "[cli-compat] src/v2/cli/run.js:633 — Removing the explicit 256 MiB maxBuffer introduces Node's default 1 MiB output limit. A larger committed work.md, plan.md or intent.md now makes cat-file throw ENOBUFS; checkoutText returns null and run/start incorrectly demands that the existing artifact be committed again. A read-only reproduction using actual Git with 2 MiB filter output returned null, while the previous buffer allowance succeeded. Restore an adequate explicit limit or stream the output, and distinguish subprocess failures from missing files."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-simplified-surface.test.js:712 — The new checkout-refusal test bypasses the production CLI validator by supplying an unconditional throwing callback directly to startRun. On Git supporting --attr-source, the existing differing-attributes fixture rejects during the preliminary check; the other fixtures produce matching checkouts. Consequently, removing commandStart's verifyCheckout callback at src/v2/cli/run.js:694 would escape these assertions, leaving the promised final checkout safeguard without its required regression. Add a CLI fixture whose requires probe changes checkout attributes after preliminary validation, then assert that the resulting artifact mismatch rejects startup before workers or RUN_CREATED and removes the candidate branch/worktree."
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PR70-REVIEW-02/logs/verify-5.log",
+      "kind": "command",
+      "subject": "5cdc8b676e5fda24ce0abfd4c09ef9e8f8e0ca23",
+      "digest": "sha256:5a937e4067088dc692550c4e96751dc82a0c493a4fe01c6085a4065a72092aa6",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:a9ec6e36964e4eab283344ed8696b7529a94a302f9cc106d3720a6b96e24603c"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PR70-REVIEW-02/logs/review-4.log",
+      "kind": "command",
+      "subject": "5cdc8b676e5fda24ce0abfd4c09ef9e8f8e0ca23",
+      "digest": "sha256:ca8ad95008006085e14019c832104a816cec11657657db46e34135395edc55be",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PR70-REVIEW-02/outputs/review-4.json",
+      "kind": "review",
+      "subject": "5cdc8b676e5fda24ce0abfd4c09ef9e8f8e0ca23",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "bea4f57154d65db82cfcf1a6d39cb16fc8a81940",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-PR70-REVIEW-02-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "3bb30c42b71f6a1ec11237445fcc4518048f3846",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "sha256:2eacdb558526c8b2e0b5b6cbce85dd9db224ae97e5cbce6e7c4ac7c7de65787a"
+      },
+      "decisionRef": "D-RUN-PR70-REVIEW-02-2"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "3bb30c42b71f6a1ec11237445fcc4518048f3846",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "sha256:4806d350e19b8a08ee3f523f1e22ced2231a98e0cfd80a83a99475c84138aadf"
+      },
+      "decisionRef": "D-RUN-PR70-REVIEW-02-3"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "2a2626bbaee874b9cf9df4a2a3004ac43ecd4245",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "sha256:4806d350e19b8a08ee3f523f1e22ced2231a98e0cfd80a83a99475c84138aadf"
+      },
+      "decisionRef": "D-RUN-PR70-REVIEW-02-4"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "2a2626bbaee874b9cf9df4a2a3004ac43ecd4245",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "sha256:72132c856834444b713c82aaa889920fba01cead072610b4276b50769b57fd3c"
+      },
+      "decisionRef": "D-RUN-PR70-REVIEW-02-5"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "5cdc8b676e5fda24ce0abfd4c09ef9e8f8e0ca23",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "sha256:72132c856834444b713c82aaa889920fba01cead072610b4276b50769b57fd3c"
+      },
+      "decisionRef": "D-RUN-PR70-REVIEW-02-6"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "5cdc8b676e5fda24ce0abfd4c09ef9e8f8e0ca23",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-PR70-REVIEW-02-7"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-PR70-REVIEW-02-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "bea4f57154d65db82cfcf1a6d39cb16fc8a81940",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-PR70-REVIEW-02-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "3bb30c42b71f6a1ec11237445fcc4518048f3846",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "sha256:2eacdb558526c8b2e0b5b6cbce85dd9db224ae97e5cbce6e7c4ac7c7de65787a"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-PR70-REVIEW-02-3",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "3bb30c42b71f6a1ec11237445fcc4518048f3846",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "sha256:4806d350e19b8a08ee3f523f1e22ced2231a98e0cfd80a83a99475c84138aadf"
+      },
+      "stale": false
+    },
+    {
+      "decisionRef": "D-RUN-PR70-REVIEW-02-4",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "2a2626bbaee874b9cf9df4a2a3004ac43ecd4245",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "sha256:4806d350e19b8a08ee3f523f1e22ced2231a98e0cfd80a83a99475c84138aadf"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-PR70-REVIEW-02-5",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "2a2626bbaee874b9cf9df4a2a3004ac43ecd4245",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "sha256:72132c856834444b713c82aaa889920fba01cead072610b4276b50769b57fd3c"
+      },
+      "stale": false
+    },
+    {
+      "decisionRef": "D-RUN-PR70-REVIEW-02-6",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "5cdc8b676e5fda24ce0abfd4c09ef9e8f8e0ca23",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "sha256:72132c856834444b713c82aaa889920fba01cead072610b4276b50769b57fd3c"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-PR70-REVIEW-02-7",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "5cdc8b676e5fda24ce0abfd4c09ef9e8f8e0ca23",
+        "planDigest": "sha256:2fb88d33001d43c95b85d218d69d19feb29b77c13a0b2fe0b9576f654aa9c042",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

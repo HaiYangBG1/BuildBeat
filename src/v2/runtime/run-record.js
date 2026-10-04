@@ -42,6 +42,7 @@ export function writeRunRecord({ repoRoot, ledger, ts }) {
     run: first.run,
     work: first.work,
     workflow: state.run?.workflowRef ?? null,
+    ...(state.run?.deliveryChecks ? { deliveryChecks: state.run.deliveryChecks } : {}),
     terminal: state.terminal,
     events: { from: first.seq, to: last.seq, lastDigest: last.digest },
     startedAt: first.ts,

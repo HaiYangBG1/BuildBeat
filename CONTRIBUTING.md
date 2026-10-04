@@ -39,7 +39,9 @@ Shell changes should also pass `bash -n` and ShellCheck. Workflow changes should
 
 - Keep one reviewable failure mode per pull request.
 - Update `CHANGELOG.md` (under `## Unreleased`) for every user-visible, workflow, release, or governance change.
-- When workflow semantics change, update `SKILL.md`, the affected templates, both READMEs, and tests together. When a documented sample changes, make sure a test still parses or runs it (`tests/v2-templates-firstrun.test.js` covers the run-config samples).
+- The approved simplification is a breaking candidate; new operations, custom workflow languages, and mandatory governance templates are outside its scope. Legacy compatibility must fail closed.
+
+When workflow semantics change, update `SKILL.md`, the affected templates, both READMEs, and tests together. When a documented sample changes, make sure a test still parses or runs it (`tests/v2-templates-firstrun.test.js` covers the run-config samples).
 - Add regression evidence and call out compatibility, migration, security, and rollback boundaries.
 - `lessons.md` and `evals/` take real incidents only: an eval is added red first, then made green by the fix. Do not add lessons for hypothetical failures.
 - Never include credentials, private project source, personal data, company or internal-system names, or local paths.

@@ -374,6 +374,14 @@ export function pinCandidate(workspace) {
   return head;
 }
 
+// Undoes createWorkspace for a run that never started (nothing was written
+// to its ledger): the worktree and its branch both go, so the same run id
+// can be created again.
+export function discardWorkspace(workspace) {
+  git(workspace.repoRoot, ["worktree", "remove", "--force", workspace.worktreePath]);
+  git(workspace.repoRoot, ["branch", "-D", workspace.branch]);
+}
+
 export function removeWorkspace(workspace, { force = false } = {}) {
   const { dirty } = readback(workspace.worktreePath);
   if (dirty && !force) {

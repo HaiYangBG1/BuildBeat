@@ -37,11 +37,9 @@ test("the example's shipped artifacts are consistent with each other", () => {
   for (const relative of ["worker.sh", "prompts/builder.md", "prompts/reviewer.md", "prompts/fixer.md"]) {
     assert.ok(existsSync(join(EXAMPLE, "delivery", "envelope", relative)), `envelope is missing ${relative}`);
   }
-  assert.equal(
-    readFileSync(join(EXAMPLE, "delivery", "work", WORK, "workflow.yaml"), "utf8"),
-    readFileSync(join(ROOT, "src", "v2", "presets", "software-delivery.yaml"), "utf8"),
-    "the example's workflow.yaml must be a verbatim copy of the shipped preset",
-  );
+  const legacyWorkflow = parseYamlSubset(readFileSync(join(EXAMPLE, "delivery", "work", WORK, "workflow.yaml"), "utf8"));
+  assert.equal(legacyWorkflow.name, "software-delivery");
+  assert.equal(legacyWorkflow.entry, "intent", "the historical workflow stays pinned");
 
   const decisions = readFileSync(join(EXAMPLE, "delivery", "work", WORK, "decisions.jsonl"), "utf8")
     .trim()

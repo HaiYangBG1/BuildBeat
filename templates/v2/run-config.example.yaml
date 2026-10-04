@@ -5,11 +5,6 @@ repo: ../../..
 work: WORK-X
 # 家族名；--attempt new 自动编成 RUN-X-01/02…
 run: RUN-X
-# 从 $(npm root -g)/@haiyangbg/buildbeat/src/v2/presets/software-delivery.yaml 复制到本目录（digest 随项目进 Git）
-workflow: workflow.yaml
-# fast | standard | controlled | release（配 release-readback 预设）
-riskPreset: standard
-entry: build
 # builder / fixer 只能改这些目录；越界改动不成为候选
 allowedPaths:
   - src

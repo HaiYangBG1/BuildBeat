@@ -1,55 +1,54 @@
-# 快速开始：第一个 Run
+# 快速开始
 
-**简体中文** | [English](01-quickstart.en.md)
+本分支是未发布的 4.0.0-dev.0 候选。先使用本分支本地打包后的运行时；已发布的 3.3.1 不支持全部新入口。不要在有活动 Run 的项目中直接替换运行时。
 
-目标：在一个真实 Git 仓库里，让 v2 Runner 驱动 Build→Verify→Review 自动跑完，**停在合并决定**，由你带着证据拍板。下面的顺序是固定的：安装 → 准备工作项 → 写 run 配置 → 接受计划 → doctor → start → 看证据、拍板。每一步都写了"成功是什么样"。耗时取决于你的 worker 与任务，本文不给承诺数字。
-
-> 在 AI 会话里用 BuildBeat 的人不需要手敲这些命令：`SKILL.md` §0.5 是给会话读的驾驶手册，你说「开工 / 当前进度 / 批准」即可。本文给的是会话背后跑的东西，方便你核对。
-
-## 0. 安装
-
-```bash
-npm install --global @haiyangbg/buildbeat@latest
-buildbeat | head -3    # 打印 "BuildBeat runtime" 与用法即安装成功
-```
-
-稳定版走 `@latest`，可执行文件只有一个：`buildbeat`（本文用的运行时）。预发布才用 `@next`。要求 Node ≥ 20、Git、bash，零运行时依赖。
-
-> 继续之前确认 `$(npm root -g)/@haiyangbg/buildbeat/templates/v2/envelope/` 存在；不存在就重新 `npm install --global @haiyangbg/buildbeat@latest`。
-
-## 1. 准备工作项（Git 面）
-
-在目标仓库建工作项目录并写下意图与计划（它们的 digest 会绑进批准对象），把官方 workflow 预设复制到工作项旁边（复制而不是引用安装目录：workflow 文件的 digest 会记进 Run，随项目一起进 Git），再把信封模板（worker 包装脚本 + 三份 prompt）拷到仓级 `delivery/envelope/`：
+1. 检查 Node ≥20、Git、Bash 和已鉴权的 AI 工具；保留项目自己的规范。
+2. 将 templates/v2/AGENTS.md、CLAUDE.md 按工具装载方式放入项目；复制 gitignore.template 的运行时排除项。
+3. 建 delivery/work/WORK-X/work.md，使用 work.example.md 的目标、范围、验收、实施计划结构。
+4. 把 templates/v2/envelope/ 复制为 delivery/envelope/；配置真实工具和验证命令。新工作不用复制 workflow.yaml。
+5. 用户接受工作说明后运行下面命令。长运行使用宿主支持的脱离方式启动；根据 status 的待决定对象处理例外。
 
 ```bash
-BB="$(npm root -g)/@haiyangbg/buildbeat"
-mkdir -p delivery/work/WORK-DEMO-1
-printf "# 意图\n给 CSV 导出加日期筛选。\n止损线：最多 3 个 Run、4 轮 review。\n" > delivery/work/WORK-DEMO-1/intent.md
-printf "# 计划\n1. 在 src/export.js 加 from/to 参数；2. tests/ 补边界用例。\n" > delivery/work/WORK-DEMO-1/plan.md
-cp "$BB/src/v2/presets/software-delivery.yaml" delivery/work/WORK-DEMO-1/workflow.yaml
-cp -R "$BB/templates/v2/envelope" delivery/envelope
-git add delivery && git commit -qm "buildbeat: work WORK-DEMO-1 + envelope"
+buildbeat accept --repo . --work WORK-X --by owner
+buildbeat check --config delivery/work/WORK-X/run-config.yaml
+buildbeat run --config delivery/work/WORK-X/run-config.yaml
+buildbeat status --repo . --work WORK-X
 ```
-
-信封要进 Git：worker 在隔离 worktree 里运行，只看得到已提交的文件。`delivery/envelope/worker.sh <角色> -- <工具命令…>` 负责"工具不在 PATH 就 exit 75、把 prompt 追加为最后一个参数、写入步机械 commit、只读步把 stdout 落成信封"，三份 prompt 按项目补环境事实即可（[Worker 合同](05-worker-contract.md)）。
-
-## 2. 写 run 配置
-
-`delivery/work/WORK-DEMO-1/run-config.yaml`。路径相对**本文件**解析；YAML 是严格子集：只有块列表与块映射（列表项可与键同缩进），行内只允许空的 `[]` / `{}`，没有锚点，注释必须独占一行；含 `": "` 的列表项要加引号。下面这份可以原样解析（机器验证在 `tests/v2-templates-firstrun.test.js`）；完整样板与信封模板在 [`templates/v2/`](../../../templates/v2/run-config.example.yaml)。
 
 ```yaml
+# BuildBeat v2 run 配置样板。拷到 delivery/work/<WORK-ID>/run-config.yaml 后改 work / run / allowedPaths / workers。
+# 路径相对本文件解析。严格 YAML 子集：只有块列表与块映射（列表项可与键同缩进），行内只允许空的 [] / {}，无锚点，注释必须独占一行。
+# 起跑前：buildbeat doctor --config <本文件>；起跑：buildbeat start --config <本文件> --attempt new
 repo: ../../..
-work: WORK-DEMO-1
-run: RUN-DEMO
-workflow: workflow.yaml
-riskPreset: standard
-entry: build
+work: WORK-X
+# 家族名；--attempt new 自动编成 RUN-X-01/02…
+run: RUN-X
+# builder / fixer 只能改这些目录；越界改动不成为候选
 allowedPaths:
   - src
   - tests
+# off = P0/P1 finding 直接派 fixer；高风险项目改成 required，每轮先停人分诊再派 fixer
 reviewTriage: off
+# 非只读步成功不扣次数；review 按轮计费。review 不收敛（修过的 finding 又出现，或阻断数多于上一轮）才在 enter-fix 停人。
+# reviewRoundsPerWork 是 review 轮数唯一的上限（默认 6），跨本 Work 所有 Run 累计，对应 intent 的止损线；
+# 到顶的阻断 review 在 enter-fix 一次批准修复、重验、再审。总 attempt 超过（配置值 + 人批扩额）的 3 倍前仍兜底停人。
+budgets:
+  reviewRoundsPerWork: 6
+# 默认一个仓库同时只驱动一个 Run。确认本项目的测试不抢固定端口、不共用数据库后，
+# 可加 parallel: true，让本 Work 的 Run 与其他同样打开开关的 Work 并行（同一 Work 仍互斥）
+# 同树 + 同命令 + 同信封已通过就复用 verify 证据
+cache:
+  verify: tree
+# 内核把 prompts/<worker>.md 喂给 worker（$BUILDBEAT_PROMPT）；模板见 templates/v2/envelope/prompts/
 envelope:
   prompts: ../../envelope/prompts
+  vars:
+    component: app
+# worker 输出落成证据前按这些 JS 正则脱敏（不支持 (?i) 这类内联标志）
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+# worker 以隔离 worktree 为 cwd 运行；delivery/envelope/worker.sh 已随仓库进 worktree。
+# 换工具只改 `--` 后面的命令：codex exec … / claude -p … / 任意脚本。
 workers:
   builder:
     command: bash
@@ -61,6 +60,7 @@ workers:
       - exec
       - -s
       - workspace-write
+  # 真实测试命令；环境不满足就 exit 75（内核当基础设施故障停人）
   verifier:
     command: bash
     args:
@@ -76,6 +76,7 @@ workers:
       - exec
       - -s
       - read-only
+  # 不能省：没配它，verify 失败 / review 阻断时 Run 停人等手修
   fixer:
     command: bash
     args:
@@ -88,78 +89,6 @@ workers:
       - workspace-write
 ```
 
-- `workers.<角色>` 是任意 CLI：换工具只改 `--` 后面的命令（`claude -p`、任意脚本都行），见 [Adapter 指南](04-adapter-guide.md)；reviewer 的输出格式见 [Worker 合同](05-worker-contract.md)，prompt 模板已写明。
-- **`fixer` 不是可选项**：没配它，verify 失败或 review 阻断时 Run 会停 `WAITING_HUMAN`（理由 `no adapter configured for worker fixer`）等你手修，不会自动修。
-- worker 子进程默认只拿到 `PATH HOME LANG LC_ALL TMPDIR TERM USER SHELL`；需要别的变量用 `env:` 点名注入（[Adapter 指南](04-adapter-guide.md)）。
-- `reviewTriage: off`（默认）时 P0/P1 finding 直接派 fixer，review 轮数仍受 `budgets` 上限约束。想每轮都先过你的手，改成 `required`，适合高风险项目。
+[Migration](../../MIGRATION.md) · [Worker contract](05-worker-contract.md) · [Recovery](10-recovery.md)
 
-## 3. 接受计划
-
-`standard` 预设在 build 前要求 plan 是已接受工件（`controlled` 还要求 intent）。接受是 digest 绑定的：接受后改了 plan，接受自动过期，`doctor` 会报 `stale`。
-
-```bash
-buildbeat accept --repo . --work WORK-DEMO-1 --artifact plan --by <你的名字>
-```
-
-成功：打印 `accepted plan as A-WORK-DEMO-1-<n>` 与 `digest: sha256:…`。
-
-## 4. doctor：起跑前把 start 会读的事实读一遍
-
-```bash
-buildbeat doctor --config delivery/work/WORK-DEMO-1/run-config.yaml
-```
-
-逐段核对：`policies` 每条的 declared 与 actual 强制等级；`worker isolation` 每个 worker 是 `env allowlist` 还是 `WARNING inherit`；`push protection`；每步预算；`work artifacts` 里 intent / plan 是否存在、是否已接受、是否 stale，以及"start 会停在哪一步"的预告。有 `WARNING` 不代表不能跑，但要知道它意味着什么；退出码 0 不等于全部就绪。
-
-## 5. 起 Run，停在人批
-
-```bash
-buildbeat start --config delivery/work/WORK-DEMO-1/run-config.yaml --attempt new
-```
-
-`--attempt new` 自动编号 `RUN-DEMO-01/02…`，并作废同一 Work 下仍在等人的旧 Run。Runner 会：开隔离 worktree（分支 `run/RUN-DEMO-01`，对配置 remote 的 push 已被封禁）→ builder 产出提交并固定 candidate → verifier 真实跑测试（退出码回读为证据）→ reviewer 只读出结构化 findings → 到达 `WAITING_HUMAN`。
-
-从 AI 会话里启动时要脱离启动（`nohup` / `setsid`），否则宿主会话超时会把 Run 杀掉。
-
-**成功是什么样**：输出末尾 `status: WAITING_HUMAN`，`waiting on human:` 后面是 `enter-wait-merge`（合并决定）或 `enter-fix`（分诊）。**停在 `infra` 是环境问题不是代码问题**：超时、崩溃、非 JSON 信封、退出码 75 都算，修好 worker / 环境后 `approve --transition resume-<step>` 续跑，预算不扣。
-
-## 6. 看证据、拍板
-
-```bash
-buildbeat overview --repo .                       # 每个 Work 走到哪、下一步该谁、花了多少
-buildbeat inbox --repo .                          # 等你批的 Run，每条附可复制的下一句命令
-buildbeat status --repo . --run RUN-DEMO-01       # 步、耗时、证据、findings、待批理由
-```
-
-批之前先看：候选 SHA、verify 的退出码与日志、review 的每条 finding。然后按 `inbox` 给出的那一句执行，通常是：
-
-```bash
-buildbeat approve --repo . --run RUN-DEMO-01 --transition enter-wait-merge --by <你的名字> --config delivery/work/WORK-DEMO-1/run-config.yaml
-```
-
-**批的是哪一步要分清**（[Approval 指南](07-approval-guide.md)）：`enter-wait-merge` 是合并决定，Run 进终态 `SUCCEEDED`，表示候选具备合并条件——真正的合并、push、发布永远是你在 Runner 之外的动作；`enter-fix` / `resume-<step>` 是非终态转换，批准后要 `resume --config …` 让它续跑。被 findings 阻断时会自动路由 fix→verify→review 重走，超预算或失败指纹重复则停下交还给你（[Recovery](10-recovery.md)）。
-
-使用 `start --attempt new` 自动编号时，`resume --config <run-config.yaml>` 会续跑该家族唯一未终态的 Run，并打印选中的 ID；也可用 `--run <RUN-ID>` 显式指定配置中的 Run 本身或 `<家族>-NN`（数字至少两位）。配置本身已有台账时优先使用该精确 ID。多个未终态 Run 会列出候选并要求用 `--run` 选择；没有未终态 Run 会报告最新一次的 ID 和终态，没有台账则明确说明。
-
-## 7. 走一次失败分支
-
-想看自动修复闭环，把一条会失败的用例提交进 `tests/`，再 `start --attempt new`：verify 失败 → fixer 带着失败摘要修 → verify 重跑 → review。`status` 会显示 `step fix: SUCCEEDED` 与第二次 `verify`。想让 finding 先过你的手：`reviewTriage: required` 配套 `findings list` / `findings adjudicate` 逐指纹裁决，dismiss 后同指纹不再阻断。
-
-## 8. 恢复、通知、打扫
-
-- 进程被杀 / 机器重启：`resume --config <run-config.yaml>`，见 [故障恢复](10-recovery.md)。
-- 自己在 worktree 里把问题修好并提交了：`resume --config … --adopt <sha> --by <名字>` 跳过 fixer 从 verify 续跑。
-- 不想一直盯着：`.buildbeat/notify.yaml` 配一条钉钉 / webhook 通道（URL 只能来自环境变量），Run 停下会来找你（[Approval 指南](07-approval-guide.md)）。
-- 终态 Run 留下的工作树：`gc --repo .` 先出计划，`--apply true` 再清。
-- 正式起 Run 前想干跑单步：`preflight --step <id>`（主 checkout、分钟级、不产证据）；信封的环境依赖用 `requires:` 声明，启动前 fail-closed 核验（[Workflow 指南](02-workflow-guide.md)）。
-
-## 9. observe：让系统盯生产（v0）
-
-```bash
-cp "$(npm root -g)/@haiyangbg/buildbeat/src/v2/presets/observe.yaml" .buildbeat/observe.yaml   # 改成项目真实探针
-buildbeat observe run --config .buildbeat/observe.yaml            # 一次=一个周期；周期化交给 cron
-buildbeat observe status --repo .
-buildbeat observe triage --repo . --intent delivery/observe/intents/INTENT-<fp>.md --action fix_now --by <你>
-```
-
-探针失败/采不到 → 证据 `failed`/`unverified` → bands 分层（记录→只读诊断→Intent 草稿入队）。草稿**绝不自动执行**；`dismiss` 会回调阈值，同指纹在严重度升级前不再打扰。详见 [Evidence 指南](06-evidence-guide.md) §observe。
+启动前将 work.md 和 worker 脚本提交到所选 base，确保隔离工作树能读到同一份已确认范围；接受记录可以随后提交。

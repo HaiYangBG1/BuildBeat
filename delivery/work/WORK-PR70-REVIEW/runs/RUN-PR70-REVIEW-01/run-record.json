@@ -1,0 +1,78 @@
+{
+  "run": "RUN-PR70-REVIEW-01",
+  "work": "WORK-PR70-REVIEW",
+  "workflow": "software-delivery",
+  "terminal": {
+    "status": "CANCELLED",
+    "reason": "owner expanded scope: review the change intent as well as the code; restarting with updated intent/plan and a change-intent review pass"
+  },
+  "events": {
+    "from": 1,
+    "to": 16,
+    "lastDigest": "sha256:9bb122f4c75970b98ace151957de5736392a756f246842df67f85b5167bf19eb"
+  },
+  "startedAt": "2026-10-03T11:47:09.697Z",
+  "finishedAt": "2026-10-03T11:51:34.848Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 0,
+      "remaining": 4
+    }
+  },
+  "cost": {
+    "reviewRounds": 0,
+    "humanWaits": 1,
+    "infraFailures": 0,
+    "workerMs": 78353
+  },
+  "workspaces": {
+    "RUN-PR70-REVIEW-01": {
+      "repo": ".",
+      "branch": "run/RUN-PR70-REVIEW-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-PR70-REVIEW-01",
+      "base": "066891028f877e5bdb38d5e26e2093580f4b8935",
+      "candidate": "066891028f877e5bdb38d5e26e2093580f4b8935"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PR70-REVIEW-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "066891028f877e5bdb38d5e26e2093580f4b8935",
+      "digest": "sha256:6959148eff81529f9f619658c202d7966e3c254f75a70d5f1794e590cff2b342",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:8923c397e0b683376cee5431978ab96d6028e7f2e3b06b684d19a87d5aff2a96"
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "066891028f877e5bdb38d5e26e2093580f4b8935",
+        "planDigest": "sha256:b13c8d898a6368c7de6b66f71b70649330125bdab5e1dd76e713142f322d147f",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-PR70-REVIEW-01-1"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-PR70-REVIEW-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "066891028f877e5bdb38d5e26e2093580f4b8935",
+        "planDigest": "sha256:b13c8d898a6368c7de6b66f71b70649330125bdab5e1dd76e713142f322d147f",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    }
+  ],
+  "unverified": []
+}

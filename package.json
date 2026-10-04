@@ -1,6 +1,6 @@
 {
   "name": "@haiyangbg/buildbeat",
-  "version": "3.3.1",
+  "version": "4.0.0-dev.0",
   "description": "BuildBeat: Git-based AI delivery across models, tools, sessions, and people, with context in project files, build-test-review-fix loops, and human decisions.",
   "type": "module",
   "bin": {
@@ -11,6 +11,7 @@
     "docs/README.md",
     "docs/CAPABILITY-MATRIX.md",
     "docs/RELEASING.md",
+    "docs/MIGRATION.md",
     "docs/v2/",
     "!docs/v2/M[124]-*.md",
     "example/",

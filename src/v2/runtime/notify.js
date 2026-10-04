@@ -8,6 +8,7 @@
 // config), payloads carry identifiers and the next reply — never candidate
 // content, never logs.
 
+import { payloadFor } from "../adapters/notification-payload.js";
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -82,17 +83,34 @@ export function nextReply({ repoLabel, state }) {
   }
   const runId = state.run.id;
   const lines = [];
-  if (pending.kind === "finding-triage" || pending.kind === "review-not-converging") {
-    lines.push(`buildbeat findings list --repo ${repoLabel} --work ${state.run.work}`);
+  const triage = pending.kind === "finding-triage" || pending.kind === "review-not-converging";
+  // A ledger without frozen safeguards was written by 3.x: this runtime
+  // refuses to approve or resume it, so offer the spellings its original
+  // runtime understands (reject works on both).
+  if (!state.run.deliveryChecks) {
+    const legacy = "   # legacy 3.x run: use its original 3.3.1 runtime (docs/MIGRATION.md)";
+    if (triage) {
+      lines.push(
+        `buildbeat findings adjudicate --repo ${repoLabel} --work ${state.run.work} --fingerprint <fp> --action accept|dismiss --by <you>${legacy}`,
+      );
+    }
     lines.push(
-      `buildbeat findings adjudicate --repo ${repoLabel} --work ${state.run.work} --fingerprint <fp> --action accept|dismiss --by <you>`,
+      `buildbeat approve --repo ${repoLabel} --run ${runId} --transition ${pending.transition} --by <you>${legacy}`,
+    );
+    lines.push(`buildbeat reject --repo ${repoLabel} --run ${runId} --reason <why> --by <you>`);
+    return lines;
+  }
+  if (triage) {
+    lines.push(`buildbeat status --repo ${repoLabel} --work ${state.run.work}`);
+    lines.push(
+      `buildbeat decide --repo ${repoLabel} --work ${state.run.work} --fingerprint <fp> --action accept|dismiss --by <you>`,
     );
   }
   lines.push(
-    `buildbeat approve --repo ${repoLabel} --run ${runId} --transition ${pending.transition} --by <you>` +
-      (pending.kind === "final-decision" ? "   # merge-ready; merge/push stay yours" : "   # then: resume --config <run-config.yaml>"),
+    `buildbeat decide --action approve --repo ${repoLabel} --run ${runId} --transition ${pending.transition} --by <you>` +
+      (pending.kind === "final-decision" ? "   # merge-ready; merge/push stay yours" : "   # then: run --config <run-config.yaml>"),
   );
-  lines.push(`buildbeat reject --repo ${repoLabel} --run ${runId} --reason <why> --by <you>`);
+  lines.push(`buildbeat decide --action reject --repo ${repoLabel} --run ${runId} --reason <why> --by <you>`);
   return lines;
 }
 
@@ -139,36 +157,6 @@ export function buildNotification(kind, { repoLabel, state, detail = {} }) {
     };
   }
   throw new NotifyConfigError(`unknown notification kind: ${kind}`);
-}
-
-function renderText(notification) {
-  const lines = [notification.title, `work: ${notification.work}  status: ${notification.status}`];
-  for (const reason of notification.reasons ?? []) {
-    lines.push(`- ${reason}`);
-  }
-  if (notification.candidate) {
-    lines.push(`candidate: ${notification.candidate}`);
-  }
-  if (notification.nextReply?.length) {
-    lines.push("next:");
-    for (const line of notification.nextReply) {
-      lines.push(`  ${line}`);
-    }
-  }
-  return lines.join("\n");
-}
-
-function payloadFor(channel, notification) {
-  if (channel.type === "dingtalk") {
-    // DingTalk custom robots require a configured keyword in the text; the
-    // title carries it (default "BuildBeat").
-    const text = renderText(notification);
-    return {
-      msgtype: "text",
-      text: { content: text.includes(channel.keyword) ? text : `${channel.keyword}\n${text}` },
-    };
-  }
-  return { ...notification, text: renderText(notification) };
 }
 
 function logLine(repoRoot, runId, line) {

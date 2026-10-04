@@ -1,0 +1,78 @@
+{
+  "scope": "scripted workers; equal outcomes and invocation counts; not an AI performance benchmark",
+  "results": [
+    {
+      "scenario": "clean",
+      "outcome": {
+        "attempts": {
+          "build": 1,
+          "verify": 1,
+          "review": 1
+        },
+        "humanRequests": 1,
+        "lastTransition": "enter-wait-merge",
+        "staleApprovals": 0,
+        "changedPaths": [
+          "feature.txt"
+        ]
+      },
+      "baselineMs": 343,
+      "candidateMs": 324
+    },
+    {
+      "scenario": "repair",
+      "outcome": {
+        "attempts": {
+          "build": 1,
+          "verify": 2,
+          "fix": 1,
+          "review": 1
+        },
+        "humanRequests": 1,
+        "lastTransition": "enter-wait-merge",
+        "staleApprovals": 0,
+        "changedPaths": [
+          "feature.txt",
+          "fixed.txt"
+        ]
+      },
+      "baselineMs": 404,
+      "candidateMs": 400
+    },
+    {
+      "scenario": "resume",
+      "outcome": {
+        "attempts": {
+          "build": 1,
+          "verify": 1,
+          "review": 1
+        },
+        "humanRequests": 2,
+        "lastTransition": "enter-wait-merge",
+        "staleApprovals": 0,
+        "changedPaths": [
+          "feature.txt"
+        ]
+      },
+      "baselineMs": 545,
+      "candidateMs": 546
+    },
+    {
+      "scenario": "stale",
+      "outcome": {
+        "attempts": {
+          "build": 1,
+          "verify": 1
+        },
+        "humanRequests": 1,
+        "lastTransition": "enter-review",
+        "staleApprovals": 1,
+        "changedPaths": [
+          "feature.txt"
+        ]
+      },
+      "baselineMs": 526,
+      "candidateMs": 532
+    }
+  ]
+}

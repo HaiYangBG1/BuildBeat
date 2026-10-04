@@ -114,8 +114,7 @@ git -C "$PROJECT" config user.name "Pilot"
 mkdir -p "$PROJECT/src" "$PROJECT/tests" "$PROJECT/tools" "$PROJECT/delivery/work/WORK-PACK"
 : > "$PROJECT/src/.gitkeep"
 : > "$PROJECT/tests/.gitkeep"
-printf '# intent\nadd feature. stop-loss: 2 runs\n' > "$PROJECT/delivery/work/WORK-PACK/intent.md"
-printf '# plan\n1. write src/feature.txt\n' > "$PROJECT/delivery/work/WORK-PACK/plan.md"
+printf '# plan\n1. write src/feature.txt\n' > "$PROJECT/delivery/work/WORK-PACK/work.md"
 cp "$PKG_DIR/src/v2/presets/software-delivery.yaml" "$PROJECT/delivery/work/WORK-PACK/workflow.yaml"
 cp -R "$PKG_DIR/templates/v2/envelope" "$PROJECT/delivery/envelope"
 
@@ -123,6 +122,7 @@ cat > "$PROJECT/tools/fake-agent.sh" <<'AGENT'
 #!/usr/bin/env bash
 set -euo pipefail
 role=$1
+node -e 'const i=JSON.parse(process.env.BUILDBEAT_INPUT);const fs=require("node:fs");if(i.workArtifact?.ref!=="delivery/work/WORK-PACK/work.md"||!fs.existsSync(i.workArtifact.ref)||!fs.readFileSync(process.env.BUILDBEAT_PROMPT,"utf8").includes("work.md"))process.exit(9)'
 prompt=${@: -1}
 case "$role" in
   build) [ -n "$prompt" ] || exit 9; echo feature > src/feature.txt ;;
@@ -135,9 +135,6 @@ cat > "$PROJECT/delivery/work/WORK-PACK/run-config.yaml" <<'CONFIG'
 repo: ../../..
 work: WORK-PACK
 run: RUN-PACK
-workflow: workflow.yaml
-riskPreset: standard
-entry: build
 allowedPaths:
   - src
   - tests
@@ -183,17 +180,17 @@ git -C "$PROJECT" commit -q -m "baseline"
 
 # 3. The quickstart order: accept -> doctor -> start -> read evidence.
 export PATH="$BIN_DIR:$PATH"
-OUTPUT="$(cd "$PROJECT" && buildbeat accept --repo . --work WORK-PACK --artifact plan --by owner 2>&1)"
-expect_contains "accepted plan as A-WORK-PACK-" "accept records the plan digest"
+OUTPUT="$(cd "$PROJECT" && buildbeat accept --repo . --work WORK-PACK --artifact work --by owner 2>&1)"
+expect_contains "accepted work as A-WORK-PACK-" "accept records the work digest"
 
-OUTPUT="$(cd "$PROJECT" && buildbeat doctor --config delivery/work/WORK-PACK/run-config.yaml 2>&1)"
-expect_contains "plan.md: accepted" "doctor reads the accepted plan"
-expect_contains "fixer: env allowlist" "doctor reports the fixer's env posture"
+OUTPUT="$(cd "$PROJECT" && buildbeat check --config delivery/work/WORK-PACK/run-config.yaml 2>&1)"
+expect_contains "work.md: accepted" "check reads the accepted work"
+expect_contains "fixer: env allowlist" "check reports the fixer's env posture"
 
-OUTPUT="$(cd "$PROJECT" && buildbeat start --config delivery/work/WORK-PACK/run-config.yaml --attempt new 2>&1)"
-expect_contains "status: WAITING_HUMAN" "start stops for a human"
-expect_contains "waiting on human: enter-wait-merge" "start stops at the merge decision"
-expect_not_contains "$TMP_ROOT" "start output never prints the host absolute path"
+OUTPUT="$(cd "$PROJECT" && buildbeat run --config delivery/work/WORK-PACK/run-config.yaml 2>&1)"
+expect_contains "status: WAITING_HUMAN" "run stops for a human"
+expect_contains "waiting on human: enter-wait-merge" "run stops at the merge decision"
+expect_not_contains "$TMP_ROOT" "run output never prints the host absolute path"
 
 OUTPUT="$(cd "$PROJECT" && buildbeat status --repo . --run RUN-PACK-01 2>&1)"
 expect_contains "step verify: SUCCEEDED (attempts 2)" "verify failed once and passed after the fixer"
@@ -201,7 +198,7 @@ expect_contains "step fix: SUCCEEDED (attempts 1)" "the packaged wrapper drove t
 expect_contains "evidence [passed/L2] review" "the reviewer envelope became evidence"
 expect_not_contains "infra" "no step was misread as an infrastructure failure"
 
-OUTPUT="$(cd "$PROJECT" && buildbeat overview --repo . 2>&1)"
-expect_contains "WORK-PACK" "overview lists the work"
+OUTPUT="$(cd "$PROJECT" && buildbeat status --repo . 2>&1)"
+expect_contains "WORK-PACK" "status lists the work"
 
 printf 'PASS: packaged first run reached the merge decision from the installed artifact (%d assertions)\n' "$ASSERTIONS"

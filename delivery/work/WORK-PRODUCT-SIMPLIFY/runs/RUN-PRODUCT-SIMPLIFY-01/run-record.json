@@ -1,0 +1,139 @@
+{
+  "run": "RUN-PRODUCT-SIMPLIFY-01",
+  "work": "WORK-PRODUCT-SIMPLIFY",
+  "workflow": "software-delivery",
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-PRODUCT-SIMPLIFY-02 (same work WORK-PRODUCT-SIMPLIFY)"
+  },
+  "events": {
+    "from": 1,
+    "to": 39,
+    "lastDigest": "sha256:06a265a87ca8e7cf8ce932dc9a435a38324665ff9d8ec03dfb1f38b1f913c22d"
+  },
+  "startedAt": "2026-10-03T05:57:38.107Z",
+  "finishedAt": "2026-10-03T06:34:59.146Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 4
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 2,
+    "infraFailures": 0,
+    "workerMs": 1082510
+  },
+  "workspaces": {
+    "RUN-PRODUCT-SIMPLIFY-01": {
+      "repo": ".",
+      "branch": "run/RUN-PRODUCT-SIMPLIFY-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-PRODUCT-SIMPLIFY-01",
+      "base": "4f24f20393236243aa9b79004933455f516dfa3d",
+      "candidate": "e7284df8a15519aace4ad32b8f8203af5ef93282"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PRODUCT-SIMPLIFY-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "4f24f20393236243aa9b79004933455f516dfa3d",
+      "digest": "sha256:8a7cfcb206eaeb4ffee6d59a836e6bbba0d31c4f95f1bcafa10166b9335ef0fd",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:9f331089f5b51bb7eb899809e16014ebf09f97d379d799c1f7ae9b2056b03f92"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PRODUCT-SIMPLIFY-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "4f24f20393236243aa9b79004933455f516dfa3d",
+      "digest": "sha256:f5eb39d5dcaffbe3c91969ec94a302508f9b4cb09fa0aef9f1e5efa480e43f82",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PRODUCT-SIMPLIFY-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "4f24f20393236243aa9b79004933455f516dfa3d",
+      "digest": "sha256:16cab0356f8f2fea13d8ab0ddc904f6d8d55ea75d0587d9dadaf69691f7343a3",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "templates/v2/envelope/prompts/builder.md:3 — Static finding: the new quickstart creates only work.md, but the shipped builder prompt requires intent.md and plan.md; reviewer.md:5 also evaluates scope against plan.md. Following the packaged setup therefore directs workers to missing or obsolete acceptance criteria. Scripted first-run tests only check that prompts are nonempty, so their success does not establish this integration. Update both prompts to use work.md when present, retain explicit legacy fallback, and cover artifact selection in first-run tests."
+        },
+        {
+          "severity": "P2",
+          "summary": "src/v2/runtime/overview.js:171 — Reproduced with an in-memory filesystem: a new Work containing only work.md is excluded because the discovery guard recognizes only intent.md, plan.md, decisions.jsonl, or runs/. Both status and status --work consequently hide drafts before acceptance, breaking session handoff and pending-work discovery. Include work.md in the discovery guard and test an unaccepted Work without legacy files or decision records."
+        },
+        {
+          "severity": "P2",
+          "summary": "src/v2/cli/run.js:1326 — Reproduced through the CLI with in-memory ledgers: when WORK-A and WORK-B both await decisions, status --work WORK-A also prints WORK-B's approval/rejection commands. The text path discards the filtered pending rows and calls commandInbox(), which reloads every Work; JSON output remains filtered. Render the filtered rows or apply the Work filter inside commandInbox(), and test text/JSON consistency with two waiting Works."
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PRODUCT-SIMPLIFY-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "e7284df8a15519aace4ad32b8f8203af5ef93282",
+      "digest": "sha256:49f1cee1e39441cc6281b6dc59f08cae26f2b4234de68a20fd14aeb4eaca5aef",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:5c542e17f500a384218fcd564922df13318b7d55b58f64ffda6e8e76ccff0015"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PRODUCT-SIMPLIFY-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "e7284df8a15519aace4ad32b8f8203af5ef93282",
+      "digest": "sha256:c17dd4f87434502b5453ec09c3a11474fbb24541184b61679350ec13438e582a",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-PRODUCT-SIMPLIFY-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "e7284df8a15519aace4ad32b8f8203af5ef93282",
+      "digest": "sha256:2081121c9165daba60920862004058835807dde58dfc1b10e13c7e9b5ed884c5",
+      "status": "passed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P2",
+          "summary": "src/v2/cli/run.js:618 — The new startup guard compares raw Git blob bytes with the checkout-based artifact digest. With core.autocrlf=true, a committed, accepted work.md contains CRLF locally but LF in Git, so every start fails with 'commit the accepted work artifact'; recommitting cannot resolve it. Reproduced through the CLI using an in-memory filesystem and real Git-filtered checkout bytes, without writes. Compare equivalent checkout representations or consistently canonicalize artifact digests, and add a CRLF regression test."
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "e7284df8a15519aace4ad32b8f8203af5ef93282",
+        "planDigest": "sha256:47e646c403da745464d64bb4191d09ee1f1bff113709fb2c1fcebb93a94a2797",
+        "evidenceDigest": "sha256:16cab0356f8f2fea13d8ab0ddc904f6d8d55ea75d0587d9dadaf69691f7343a3"
+      },
+      "decisionRef": "D-RUN-PRODUCT-SIMPLIFY-01-1"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-PRODUCT-SIMPLIFY-01-1",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "e7284df8a15519aace4ad32b8f8203af5ef93282",
+        "planDigest": "sha256:47e646c403da745464d64bb4191d09ee1f1bff113709fb2c1fcebb93a94a2797",
+        "evidenceDigest": "sha256:16cab0356f8f2fea13d8ab0ddc904f6d8d55ea75d0587d9dadaf69691f7343a3"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    }
+  ],
+  "unverified": []
+}

@@ -29,10 +29,10 @@ function cli(args) {
 
 function yamlBlocks(markdown) {
   const out = [];
-  const re = /```yaml\n(repo: [\s\S]*?)```/g;
+  const re = /```yaml\n([\s\S]*?)```/g;
   let match;
   while ((match = re.exec(markdown))) {
-    out.push(match[1]);
+    if (/^repo:/m.test(match[1])) out.push(match[1]);
   }
   return out;
 }
@@ -68,8 +68,7 @@ test("templates/v2 envelope drives a run to the merge decision with a scripted a
   mkdirSync(work, { recursive: true });
   cpSync(join(TEMPLATES, "envelope"), join(root, "delivery", "envelope"), { recursive: true });
   cpSync(PRESET, join(work, "workflow.yaml"));
-  writeFileSync(join(work, "intent.md"), "# intent\nadd feature. stop-loss: 2 runs\n");
-  writeFileSync(join(work, "plan.md"), "# plan\n1. write src/feature.txt\n");
+  writeFileSync(join(work, "work.md"), "# plan\n1. write src/feature.txt\n");
   writeFileSync(join(root, "README.md"), "fixture\n");
 
   // Scripted agent: role comes from the wrapper's tool args, the prompt
@@ -80,6 +79,7 @@ test("templates/v2 envelope drives a run to the merge decision with a scripted a
       "#!/usr/bin/env bash",
       "set -euo pipefail",
       "role=$1",
+      `node -e 'const i=JSON.parse(process.env.BUILDBEAT_INPUT);const fs=require("node:fs");if(i.workArtifact?.ref!=="delivery/work/WORK-T/work.md"||!fs.existsSync(i.workArtifact.ref)||!fs.readFileSync(process.env.BUILDBEAT_PROMPT,"utf8").includes("work.md"))process.exit(9)'`,
       "prompt=${@: -1}",
       "case \"$role\" in",
       "  build) [ -n \"$prompt\" ] || exit 9; echo feature > src/feature.txt ;;",
@@ -104,13 +104,13 @@ test("templates/v2 envelope drives a run to the merge decision with a scripted a
   git(root, ["add", "."]);
   git(root, ["commit", "-q", "-m", "baseline"]);
 
-  const acceptOut = cli(["accept", "--repo", root, "--work", "WORK-T", "--artifact", "plan", "--by", "owner"]);
-  assert.match(acceptOut, /accepted plan as A-WORK-T-\d+/);
+  const acceptOut = cli(["accept", "--repo", root, "--work", "WORK-T", "--artifact", "work", "--by", "owner"]);
+  assert.match(acceptOut, /accepted work as A-WORK-T-\d+/);
 
   const doctorOut = cli(["doctor", "--config", join(work, "run-config.yaml")]);
   assert.match(doctorOut, /risk preset: standard/);
   assert.match(doctorOut, /builder: env allowlist/);
-  assert.match(doctorOut, /plan\.md: accepted/);
+  assert.match(doctorOut, /work\.md: accepted/);
 
   const startOut = cli(["start", "--config", join(work, "run-config.yaml"), "--attempt", "new"]);
   assert.match(startOut, /status: WAITING_HUMAN/);
