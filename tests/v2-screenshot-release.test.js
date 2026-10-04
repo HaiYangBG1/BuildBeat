@@ -39,33 +39,37 @@ function pngChunk(type, data) {
   tail.writeUInt32BE(crc(Buffer.concat([head.subarray(4), data])), 0);
   return Buffer.concat([head, data, tail]);
 }
-function makePng(width = 2, height = 2) {
+// Builds a PNG whose scanlines match its header, including Adam7 passes;
+// `filterByte` and `plte` let a test break exactly one rule.
+function makePng(width = 2, height = 2, { color = 2, depth = 8, interlace = 0, filterByte = 0, plte = color === 3 } = {}) {
   const header = Buffer.alloc(13);
   header.writeUInt32BE(width, 0);
   header.writeUInt32BE(height, 4);
-  header[8] = 8; // bit depth
-  header[9] = 2; // RGB
+  header[8] = depth;
+  header[9] = color;
+  header[12] = interlace;
+  const channels = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[color];
+  const passes = interlace
+    ? [[0, 0, 8, 8], [4, 0, 8, 8], [0, 4, 4, 8], [2, 0, 4, 4], [0, 2, 2, 4], [1, 0, 2, 2], [0, 1, 1, 2]].map(([x0, y0, dx, dy]) => [
+        width > x0 ? Math.ceil((width - x0) / dx) : 0,
+        height > y0 ? Math.ceil((height - y0) / dy) : 0,
+      ])
+    : [[width, height]];
   const rows = [];
-  for (let y = 0; y < height; y += 1) {
-    rows.push(Buffer.from([0]), Buffer.alloc(width * 3, 0x80 + y));
+  for (const [w, h] of passes) {
+    if (!w || !h) continue;
+    for (let y = 0; y < h; y += 1) {
+      rows.push(Buffer.from([filterByte]), Buffer.alloc(Math.ceil((w * depth * channels) / 8), 0x40 + y));
+    }
   }
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     pngChunk("IHDR", header),
+    ...(plte ? [pngChunk("PLTE", Buffer.from([0, 0, 0, 255, 255, 255]))] : []),
     pngChunk("IDAT", deflateSync(Buffer.concat(rows))),
     pngChunk("IEND", Buffer.alloc(0)),
   ]);
 }
-// A real 1x1 progressive JPEG (with its end-of-image marker) and a real
-// 1x1 lossless WebP.
-const JPEG_1X1 = Buffer.concat([
-  Buffer.from(
-    "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=",
-    "base64",
-  ),
-  Buffer.from([0xff, 0xd9]),
-]);
-const WEBP_1X1 = Buffer.from("UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==", "base64");
 const PNG_BYTES = makePng();
 
 function fixture({ verify, review = "", extra = "", workers = ["builder", "verifier", "reviewer", "fixer"] }) {
@@ -195,7 +199,7 @@ test("a verify that passes without leaving a screenshot fails as a candidate fai
   assert.equal(finished.data.status, "failed");
   assert.equal(finished.data.exitCode, 0);
   assert.equal(finished.data.infra, undefined);
-  assert.match(finished.data.reason, /requireScreenshot is on, but verify left no image/);
+  assert.match(finished.data.reason, /requireScreenshot is on, but verify left no PNG screenshot/);
   assert.match(
     readFileSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/logs/verify-1.log"), "utf8"),
     /requirement: requireScreenshot is on/,
@@ -396,6 +400,7 @@ test("images that are empty, mislabelled or symlinked are not screenshots", () =
       `printf '\\211PNG\\r\\n\\032\\nreal' > ${dir}/target.bin`,
       `ln -s ${dir}/target.bin ${dir}/link.png`,
       `head -c 40 shot.png > ${dir}/header.png`,
+      `cp shot.png ${dir}/photo.jpg`,
     ].join("; "),
     extra: `${SCREENSHOT}budgets:\n  maxAttempts:\n    verify: 1\n`,
   });
@@ -407,9 +412,10 @@ test("images that are empty, mislabelled or symlinked are not screenshots", () =
     .map((line) => JSON.parse(line))
     .find((event) => event.type === "STEP_FINISHED" && event.data.step === "verify");
   assert.equal(finished.data.status, "failed");
-  assert.match(finished.data.reason, /bad\.jpg \(not a complete jpeg image\)/);
-  assert.match(finished.data.reason, /empty\.png \(not a complete png image\)/);
-  assert.match(finished.data.reason, /header\.png \(not a complete png image\)/);
+  assert.match(finished.data.reason, /bad\.jpg \(only PNG screenshots are accepted\)/);
+  assert.match(finished.data.reason, /photo\.jpg \(only PNG screenshots are accepted\)/);
+  assert.match(finished.data.reason, /empty\.png \(not a decodable PNG\)/);
+  assert.match(finished.data.reason, /header\.png \(not a decodable PNG\)/);
   assert.match(finished.data.reason, /link\.png \(not a regular file\)/);
   assert.equal(f.state("RUN-S-01").evidence.filter((item) => item.kind === "screenshot").length, 0);
 });
@@ -471,6 +477,17 @@ test("release records the requested ref and the checkout it ran in, with unique 
   assert.equal(row.commit, f.git("rev-parse", "released"));
   assert.equal(row.checkout, f.git("rev-parse", "HEAD"));
 
+  // A log already named the way a row-count allocator would name the next
+  // one belongs to someone else and must survive.
+  const logDir = join(f.root, ".buildbeat", "runtime", "releases", "WORK-S");
+  const rowsBefore = readFileSync(join(f.dir, "releases.jsonl"), "utf8").split("\n").filter(Boolean).length;
+  const foreign = join(logDir, `release-${rowsBefore + 1}.log`);
+  writeFileSync(foreign, "someone else's log\n");
+  f.ok("release", "--config", f.config, "--ref", "released");
+  assert.equal(readFileSync(foreign, "utf8"), "someone else's log\n");
+  const latest = readFileSync(join(f.dir, "releases.jsonl"), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line)).at(-1);
+  assert.notEqual(join(f.root, latest.log), foreign);
+
   // Two readbacks at the same instant still get their own logs.
   const at = "2026-10-04T00:00:00.000Z";
   const spec = { command: "bash", args: ["readback.sh"] };
@@ -506,26 +523,34 @@ test("concurrent readbacks keep separate logs whose digests match their records"
   }
 });
 
-test("the image check accepts complete images and rejects partial ones", () => {
-  const png = screenshotFormat("home.png");
-  const jpeg = screenshotFormat("home.JPG");
-  const webp = screenshotFormat("home.webp");
+test("the screenshot check accepts decodable PNGs and nothing else", () => {
+  const png = screenshotFormat("home.PNG");
   assert.equal(screenshotFormat("notes.txt"), null);
+  for (const name of ["home.jpg", "home.jpeg", "home.webp", "home.gif"]) {
+    assert.equal(screenshotFormat(name).unsupported, true, name);
+  }
   assert.equal(png.valid(PNG_BYTES), true);
   assert.equal(png.valid(makePng(3, 1)), true);
+  assert.equal(png.valid(makePng(9, 5, { interlace: 1 })), true, "interlaced");
+  assert.equal(png.valid(makePng(3, 3, { color: 3, depth: 4 })), true, "palette");
+  assert.equal(png.valid(makePng(5, 2, { color: 0, depth: 1 })), true, "1-bit grey");
+  assert.equal(png.valid(makePng(4, 4, { color: 6, depth: 16 })), true, "16-bit RGBA");
   assert.equal(png.valid(PNG_BYTES.subarray(0, 8)), false, "signature only");
   assert.equal(png.valid(PNG_BYTES.subarray(0, PNG_BYTES.length - 12)), false, "no IEND");
   const flipped = Buffer.from(PNG_BYTES);
   flipped[flipped.length - 20] ^= 0xff;
   assert.equal(png.valid(flipped), false, "corrupt chunk CRC");
-  const zero = makePng(1, 1);
-  zero.writeUInt32BE(0, 16);
-  assert.equal(png.valid(zero), false, "zero width");
-  assert.equal(jpeg.valid(JPEG_1X1), true);
-  assert.equal(jpeg.valid(JPEG_1X1.subarray(0, JPEG_1X1.length - 2)), false, "no end marker");
-  assert.equal(jpeg.valid(Buffer.from([0xff, 0xd8, 0xff, 0xd9])), false, "no frame");
-  assert.equal(webp.valid(WEBP_1X1), true);
-  assert.equal(webp.valid(WEBP_1X1.subarray(0, WEBP_1X1.length - 2)), false, "length mismatch");
+  // Each of these is a well-formed file (valid CRCs) breaking one rule.
+  assert.equal(png.valid(makePng(0, 1)), false, "zero width");
+  assert.equal(png.valid(makePng(2, 2, { filterByte: 5 })), false, "unknown filter type");
+  assert.equal(png.valid(makePng(2, 2, { color: 2, depth: 4 })), false, "illegal depth for RGB");
+  assert.equal(png.valid(makePng(2, 2, { color: 3, depth: 8, plte: false })), false, "palette image without PLTE");
+  assert.equal(png.valid(makePng(9, 5, { interlace: 0 }).subarray(0, 8)), false);
+  const wrongSize = makePng(3, 3);
+  const short = makePng(3, 2);
+  // Header claims 3 rows; data holds 2.
+  const spliced = Buffer.concat([short.subarray(0, 8), wrongSize.subarray(8, 33), short.subarray(33)]);
+  assert.equal(png.valid(spliced), false, "scanlines shorter than the header");
 });
 
 test("re-verifying the same candidate replaces a screenshot lost in between", () => {

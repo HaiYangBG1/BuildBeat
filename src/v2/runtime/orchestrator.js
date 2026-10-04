@@ -808,8 +808,12 @@ function screenshotFiles(dir) {
       rejected.push(`${name} (not a regular file)`);
       continue;
     }
+    if (format.unsupported) {
+      rejected.push(`${name} (only PNG screenshots are accepted)`);
+      continue;
+    }
     if (!format.valid(readFileSync(path))) {
-      rejected.push(`${name} (not a complete ${format.label} image)`);
+      rejected.push(`${name} (not a decodable PNG)`);
       continue;
     }
     accepted.push({ file: path, digest: fileDigest(path) });
@@ -930,7 +934,7 @@ function executeOrReuse(
     exec = {
       ...exec,
       requirementFailure:
-        "requireScreenshot is on, but verify left no image (png, jpg, jpeg, webp) in BUILDBEAT_SCREENSHOT_DIR" +
+        "requireScreenshot is on, but verify left no PNG screenshot in BUILDBEAT_SCREENSHOT_DIR" +
         (found.rejected.length > 0
           ? `; rejected: ${found.rejected.join(", ")}`
           : ""),

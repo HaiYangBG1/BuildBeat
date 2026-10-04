@@ -42,7 +42,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 - Work review 预算默认 6 轮，跨所有 Run 累计；保留缓存、增量审查、人工修复接管和环境故障分类。
 - 长运行脱离宿主短超时启动。状态、最近输出、耗时和通知用于发现停顿；STALLED 不等于进程已终止。
 - 新会话先读项目入口、work.md、Git 与状态。旧的 intent/plan 和历史记录继续读取；活动运行不能随意删除或重复启动。
-- 既有项目规范由项目所有者维护，不覆盖；项目治理模板不在 BuildBeat 范围内。生产监控与部署放在项目工具中。有 UI 的交付在 run-config 写 `requireScreenshot: true`，verify 把真渲染截图写进 `BUILDBEAT_SCREENSHOT_DIR`。
+- 既有项目规范由项目所有者维护，不覆盖；项目治理模板不在 BuildBeat 范围内。生产监控与部署放在项目工具中。有 UI 的交付在 run-config 写 `requireScreenshot: true`，verify 把真渲染截图以 PNG 写进 `BUILDBEAT_SCREENSHOT_DIR`。
 - merge、push、发布、部署需要对应授权；最终批准只表示候选具备合并条件。不要用 `git add -A`，只提交本次具体文件。
 - 保留范围检查、环境变量白名单、批准绑定、台账校验。它们不替代宿主沙箱和服务端保护。
 - 新项目配置通知时确认用户希望使用的通道；已有决定直接沿用，URL 只来自环境变量。无通知时如实说明。
@@ -83,7 +83,7 @@ envelope:
 # worker 输出落成证据前按这些 JS 正则脱敏（不支持 (?i) 这类内联标志）
 redact:
   - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
-# 有 UI 的交付：verify 把真渲染截图（png/jpg/jpeg/webp）写进 $BUILDBEAT_SCREENSHOT_DIR，合并检查要求当前候选有截图
+# 有 UI 的交付：verify 把真渲染截图以 PNG 写进 $BUILDBEAT_SCREENSHOT_DIR（只收可解码的 PNG），合并检查要求当前候选有截图
 # requireScreenshot: true
 # 合并并上线后由 buildbeat release 在主检出运行的只读回读命令（形状同 worker）；回读通过后才能关窗
 # release:

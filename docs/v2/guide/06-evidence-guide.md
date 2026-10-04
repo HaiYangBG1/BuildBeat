@@ -6,7 +6,7 @@
 
 保留 L0–L4 历史等级，默认命令证据为 L2。等级标签不自动证明生产验收；项目必须提供实际运行环境的证据。生产探针已移出主产品；合并后的上线回读见[工作确认与决策](07-approval-guide.md)。
 
-UI 交付在 run-config 写 `requireScreenshot: true`。verify 运行时，环境变量 `BUILDBEAT_SCREENSHOT_DIR` 指向工作树外一个新的空目录；verify 把真渲染截图（png、jpg、jpeg、webp）写进去，每张记为绑定当前候选的截图证据（文件摘要）。只接受结构完整的普通文件：空文件、截断、格式与扩展名不符或符号链接会被拒并写明原因；这证明图片完整，不证明画面正确，画面由 reviewer 与决定人判断。verify 成功却没有截图按失败处理；合并检查以当前候选最近一次通过的 verify 留下的截图为准，并重新核对文件摘要；reviewer 输入、待决定卡和通知列出截图路径与摘要。开关随 Run 冻结，复用缓存的 verify 一并沿用来源截图。
+UI 交付在 run-config 写 `requireScreenshot: true`。verify 运行时，环境变量 `BUILDBEAT_SCREENSHOT_DIR` 指向工作树外一个新的空目录；verify 把真渲染截图以 PNG 写进去，每张记为绑定当前候选的截图证据（文件摘要）。只接受可解码的 PNG 普通文件：各块校验和、合法的尺寸与位深、调色板图的 PLTE、解压后的像素数据与每行滤波类型（含隔行图）都要符合；空文件、截断、符号链接与 jpg、webp 等其他格式会被拒并写明原因（JPEG/WebP 无法在不引入依赖的前提下校验到可解码，常用无头浏览器截图默认就是 PNG）。这证明图片可解码，不证明画面正确，画面由 reviewer 与决定人判断。verify 成功却没有截图按失败处理；合并检查以当前候选最近一次通过的 verify 留下的截图为准，并重新核对文件摘要；reviewer 输入、待决定卡和通知列出截图路径与摘要。开关随 Run 冻结，复用缓存的 verify 一并沿用来源截图。
 
 原始日志在 .buildbeat/runtime/；终态 run-record、工作决定和审查裁决在 delivery/work/。摘要不是原始日志备份，按项目要求保留后者。
 
