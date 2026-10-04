@@ -13,6 +13,8 @@ import { checkRunConfigShape } from "../src/v2/cli/run-config-check.js";
 import { payloadFor } from "../src/v2/adapters/notification-payload.js";
 import { deliveryChecks, evaluatePolicies } from "../src/v2/policy/policy.js";
 import { buildNotification } from "../src/v2/runtime/notify.js";
+import { runsFor } from "../src/v2/runtime/overview.js";
+import { runReadback } from "../src/v2/runtime/release.js";
 import { tempDir } from "./support/tmp.js";
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
@@ -45,7 +47,7 @@ esac
     `#!/usr/bin/env bash
 if [ -f .release-broken ]; then echo "health: down"; exit 3; fi
 echo "token=abc123"
-echo "health: ok"
+echo "health: ok flag=\${RELEASE_FLAG:-unset} sentinel=\${HOST_SENTINEL:-absent}"
 `,
   );
   const plain =
@@ -71,8 +73,13 @@ echo "health: ok"
   writeFileSync(config, plain + extra);
   git("add", ".");
   git("commit", "-qm", "fixture");
-  const call = (...args) =>
-    spawnSync(process.execPath, [CLI, ...args], { cwd: root, encoding: "utf8" });
+  const callWith = (env, ...args) =>
+    spawnSync(process.execPath, [CLI, ...args], {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, ...env },
+    });
+  const call = (...args) => callWith({}, ...args);
   const ok = (...args) => {
     const result = call(...args);
     assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
@@ -80,11 +87,15 @@ echo "health: ok"
   };
   const state = (run) =>
     JSON.parse(ok("status", "--repo", ".", "--run", run, "--json")).state;
-  return { root, dir, config, plain, git, call, ok, state };
+  return { root, dir, config, plain, git, call, callWith, ok, state };
 }
 
 const SCREENSHOT = "requireScreenshot: true\n";
-const RENDER = `printf 'png-bytes' > "$BUILDBEAT_SCREENSHOT_DIR/home.png"`;
+const RENDER = `printf '\\211PNG\\r\\n\\032\\nIHDR-bytes' > "$BUILDBEAT_SCREENSHOT_DIR/home.png"`;
+const PNG_BYTES = Buffer.concat([
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  Buffer.from("IHDR-bytes"),
+]);
 
 test("with requireScreenshot a rendering verify records screenshot evidence the reviewer and the decision card see", () => {
   const f = fixture({ verify: RENDER, review: `printf '%s' "$BUILDBEAT_INPUT" >&2;`, extra: SCREENSHOT });
@@ -100,7 +111,7 @@ test("with requireScreenshot a rendering verify records screenshot evidence the 
   assert.equal(shots[0].ref, ".buildbeat/runtime/runs/RUN-S-01/screenshots/verify-1/home.png");
   assert.equal(
     shots[0].digest,
-    `sha256:${createHash("sha256").update("png-bytes").digest("hex")}`,
+    `sha256:${createHash("sha256").update(PNG_BYTES).digest("hex")}`,
   );
   // Outside the candidate: the worktree stays clean.
   assert.equal(
@@ -110,6 +121,11 @@ test("with requireScreenshot a rendering verify records screenshot evidence the 
   const reviewLog = readFileSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/logs/review-1.log"), "utf8");
   assert.match(reviewLog, /"screenshots":\[\{"path":"[^"]+home\.png"/);
   assert.match(f.ok("status", "--repo", "."), /screenshot: \.buildbeat\/runtime\/runs\/RUN-S-01\/screenshots\/verify-1\/home\.png sha256:/);
+  // The single-run decision card names the same file and digest.
+  assert.match(
+    f.ok("status", "--repo", ".", "--run", "RUN-S-01"),
+    new RegExp(`evidence \\[passed/L2\\] screenshot \\.buildbeat/runtime/runs/RUN-S-01/screenshots/verify-1/home\\.png ${shots[0].digest}`),
+  );
   f.ok("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "approve", "--transition", "enter-wait-merge");
   assert.equal(f.state("RUN-S-01").terminal.status, "SUCCEEDED");
 });
@@ -216,7 +232,7 @@ test("run config validates the screenshot switch and the release command", () =>
 test("a merged work closes only after a passing release readback", () => {
   const f = fixture({
     verify: "true",
-    extra: "release:\n  command: bash\n  args:\n    - readback.sh\n",
+    extra: "release:\n  command: bash\n  args:\n    - readback.sh\n  env:\n    RELEASE_FLAG: on\n",
   });
   f.ok("accept", "--repo", ".", "--work", "WORK-S");
   const early = f.call("release", "--config", f.config);
@@ -233,6 +249,8 @@ test("a merged work closes only after a passing release readback", () => {
   const overview = () => JSON.parse(f.ok("status", "--repo", ".", "--work", "WORK-S", "--json")).works[0];
   assert.match(overview().next, /release it \(a human action\), then buildbeat release --config delivery\/work\/WORK-S\/run-config\.yaml/);
 
+  // A passing readback followed by a failing one: the latest one decides.
+  assert.match(f.ok("release", "--config", f.config, "--note", "first"), /readback passed/);
   writeFileSync(join(f.root, ".release-broken"), "");
   const failed = f.call("release", "--config", f.config, "--note", "after deploy");
   assert.equal(failed.status, 1);
@@ -241,18 +259,27 @@ test("a merged work closes only after a passing release readback", () => {
   const blocked = f.call("decide", "--repo", ".", "--work", "WORK-S", "--action", "close", "--result", "released");
   assert.notEqual(blocked.status, 0);
   assert.match(blocked.stderr, /latest readback failed/);
+  assert.equal(
+    readFileSync(join(f.dir, "decisions.jsonl"), "utf8").includes("close-work"),
+    false,
+  );
 
   rmSync(join(f.root, ".release-broken"));
-  assert.match(f.ok("release", "--config", f.config, "--note", "after fix"), /readback passed \(exit 0\)/);
+  assert.match(
+    f.callWith({ HOST_SENTINEL: "leak" }, "release", "--config", f.config, "--note", "after fix").stdout,
+    /readback passed \(exit 0\)/,
+  );
   const rows = readFileSync(join(f.dir, "releases.jsonl"), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
-  assert.equal(rows.length, 2);
-  const passed = rows[1];
+  assert.equal(rows.length, 3);
+  const passed = rows[2];
   assert.equal(passed.status, "passed");
   assert.equal(passed.commit, f.git("rev-parse", "HEAD"));
   assert.equal(passed.candidate, f.git("rev-parse", "run/RUN-S-01"));
   assert.equal(passed.note, "after fix");
   assert.equal(passed.grade, "L4");
-  assert.deepEqual(passed.tail, ["<REDACTED>", "health: ok"]);
+  // Worker environment rules: release.env reaches it, host variables do not.
+  assert.deepEqual(passed.tail, ["<REDACTED>", "health: ok flag=on sentinel=absent"]);
+  assert.equal(passed.checkout, passed.commit);
   assert.ok(existsSync(join(f.root, passed.log)));
   assert.match(overview().next, /readback passed/);
 
@@ -269,12 +296,15 @@ test("a merged work closes only after a passing release readback", () => {
 
 test("records written by hand under the without-runtime guide are honoured by the runtime", () => {
   const f = fixture({ verify: "true" });
-  // Acceptance line exactly as docs/v2/guide/12-without-runtime.md shows it.
-  const digest = `sha256:${createHash("sha256").update(readFileSync(join(f.dir, "work.md"))).digest("hex")}`;
-  writeFileSync(
-    join(f.dir, "decisions.jsonl"),
-    `${JSON.stringify({ ts: "2026-10-04T08:00:00.000Z", decisionRef: "A-WORK-S-1", decision: "approved", transition: "accept-work", subject: { artifact: "work", digest }, by: "owner" })}\n`,
-  );
+  // The acceptance line exactly as docs/v2/guide/12-without-runtime.md
+  // shows it, with only its placeholders filled in.
+  const guide = readFileSync(join(import.meta.dirname, "..", "docs", "v2", "guide", "12-without-runtime.md"), "utf8");
+  const example = JSON.parse(guide.match(/```json\n\s*(\{.*\})\n\s*```/)[1]);
+  assert.equal(example.transition, "accept-work");
+  example.decisionRef = "A-WORK-S-1";
+  example.by = "owner";
+  example.subject.digest = `sha256:${createHash("sha256").update(readFileSync(join(f.dir, "work.md"))).digest("hex")}`;
+  writeFileSync(join(f.dir, "decisions.jsonl"), `${JSON.stringify(example)}\n`);
   const ready = JSON.parse(f.ok("status", "--repo", ".", "--work", "WORK-S", "--json")).works[0];
   assert.equal(ready.stage, "READY_TO_RUN");
   f.ok("run", "--config", f.config);
@@ -288,4 +318,98 @@ test("records written by hand under the without-runtime guide are honoured by th
   const closed = JSON.parse(f.ok("status", "--repo", ".", "--work", "WORK-S", "--json")).works[0];
   assert.equal(closed.stage, "CLOSED");
   assert.match(closed.next, /docs only/);
+});
+
+test("images that are empty, mislabelled or symlinked are not screenshots", () => {
+  const dir = '"$BUILDBEAT_SCREENSHOT_DIR"';
+  const f = fixture({
+    verify: [
+      `: > ${dir}/empty.png`,
+      `printf 'not a jpeg' > ${dir}/bad.jpg`,
+      `printf '\\211PNG\\r\\n\\032\\nreal' > ${dir}/target.bin`,
+      `ln -s ${dir}/target.bin ${dir}/link.png`,
+    ].join("; "),
+    extra: `${SCREENSHOT}budgets:\n  maxAttempts:\n    verify: 1\n`,
+  });
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  const finished = readFileSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/events.jsonl"), "utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line))
+    .find((event) => event.type === "STEP_FINISHED" && event.data.step === "verify");
+  assert.equal(finished.data.status, "failed");
+  assert.match(finished.data.reason, /bad\.jpg \(not a jpeg image\)/);
+  assert.match(finished.data.reason, /empty\.png \(not a png image\)/);
+  assert.match(finished.data.reason, /link\.png \(not a regular file\)/);
+  assert.equal(f.state("RUN-S-01").evidence.filter((item) => item.kind === "screenshot").length, 0);
+});
+
+test("approval refuses a screenshot whose file no longer matches its digest", () => {
+  const f = fixture({ verify: RENDER, extra: SCREENSHOT });
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  rmSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/screenshots/verify-1/home.png"));
+  const decisions = readFileSync(join(f.dir, "decisions.jsonl"), "utf8");
+  const refused = f.call("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "approve", "--transition", "enter-wait-merge");
+  assert.notEqual(refused.status, 0);
+  assert.match(refused.stderr, /screenshot evidence no longer matches its file/);
+  assert.equal(readFileSync(join(f.dir, "decisions.jsonl"), "utf8"), decisions);
+  assert.equal(f.state("RUN-S-01").terminal, null);
+});
+
+test("a cached verify whose screenshots are gone runs again", () => {
+  const f = fixture({ verify: RENDER, extra: `${SCREENSHOT}cache:\n  verify: tree\n` });
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  rmSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/screenshots/verify-1/home.png"));
+  f.ok("run", "--config", f.config, "--new");
+  const state = f.state("RUN-S-02");
+  const verify = state.evidence.find((item) => item.kind === "command" && item.ref.endsWith("verify-1.log"));
+  assert.equal(verify.reused, undefined);
+  const shots = state.evidence.filter((item) => item.kind === "screenshot");
+  assert.equal(shots.length, 1);
+  assert.equal(shots[0].ref, ".buildbeat/runtime/runs/RUN-S-02/screenshots/verify-1/home.png");
+  assert.equal(shots[0].reused, undefined);
+});
+
+test("release records the requested ref and the checkout it ran in, with unique logs", () => {
+  const f = fixture({
+    verify: "true",
+    extra: "release:\n  command: bash\n  args:\n    - readback.sh\n",
+  });
+  const base = f.git("rev-parse", "HEAD");
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  f.ok("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "approve", "--transition", "enter-wait-merge");
+  f.git("merge", "-q", "--ff-only", "run/RUN-S-01");
+  f.git("branch", "before", base);
+  f.git("branch", "released", "HEAD");
+  // The main checkout moves on after the release.
+  writeFileSync(join(f.root, "later.txt"), "later\n");
+  f.git("add", "later.txt");
+  f.git("commit", "-qm", "later");
+
+  const before = f.call("release", "--config", f.config, "--ref", "before");
+  assert.notEqual(before.status, 0);
+  assert.match(before.stderr, /is not contained in before/);
+
+  const out = f.ok("release", "--config", f.config, "--ref", "released");
+  assert.match(out, /readback passed \(exit 0\) for released at/);
+  assert.match(out, /the command ran in the main checkout at \w{7}, not at released/);
+  const row = readFileSync(join(f.dir, "releases.jsonl"), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line)).at(-1);
+  assert.equal(row.ref, "released");
+  assert.equal(row.commit, f.git("rev-parse", "released"));
+  assert.equal(row.checkout, f.git("rev-parse", "HEAD"));
+
+  // Two readbacks at the same instant still get their own logs.
+  const at = "2026-10-04T00:00:00.000Z";
+  const spec = { command: "bash", args: ["readback.sh"] };
+  const first = runReadback({ repoRoot: f.root, workId: "WORK-S", spec, runs: runsFor(f.root, "WORK-S"), ts: at });
+  const second = runReadback({ repoRoot: f.root, workId: "WORK-S", spec, runs: runsFor(f.root, "WORK-S"), ts: at });
+  assert.notEqual(first.log, second.log);
+  for (const recorded of [first, second]) {
+    const body = readFileSync(join(f.root, recorded.log), "utf8");
+    assert.equal(recorded.digest, `sha256:${createHash("sha256").update(body, "utf8").digest("hex")}`);
+  }
 });

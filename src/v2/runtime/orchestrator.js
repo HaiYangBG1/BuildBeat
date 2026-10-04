@@ -13,11 +13,11 @@
 import { createHash } from "node:crypto";
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -285,6 +285,7 @@ function makeContext(options, ledger, workspace) {
   context.redact = options.redact ?? [];
   context.adapterConfigs = options.adapterConfigs ?? {};
   context.policyCtx = () => ({
+    repoRoot,
     state: ledger.state,
     candidate:
       ledger.state.workspaces[workspace.workspaceId]?.candidate ?? null,
@@ -792,16 +793,62 @@ function beginStep(context, step, stepDef, attempt) {
   return { before, outputPath, input, prompt };
 }
 
-const SCREENSHOT_FILE = /\.(png|jpe?g|webp)$/i;
+// An image counts only as a regular file (no symlink that could point at
+// something removed later) whose bytes start the way its format does: an
+// empty or mislabelled file is not a rendering.
+const IMAGE_FORMATS = [
+  {
+    name: /\.png$/i,
+    label: "png",
+    valid: (bytes) =>
+      bytes.length > 8 &&
+      bytes
+        .subarray(0, 8)
+        .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
+  },
+  {
+    name: /\.jpe?g$/i,
+    label: "jpeg",
+    valid: (bytes) =>
+      bytes.length > 3 &&
+      bytes[0] === 0xff &&
+      bytes[1] === 0xd8 &&
+      bytes[2] === 0xff,
+  },
+  {
+    name: /\.webp$/i,
+    label: "webp",
+    valid: (bytes) =>
+      bytes.length > 12 &&
+      bytes.toString("latin1", 0, 4) === "RIFF" &&
+      bytes.toString("latin1", 8, 12) === "WEBP",
+  },
+];
+
+function fileDigest(path) {
+  return `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
+}
 
 function screenshotFiles(dir) {
-  return readdirSync(dir)
-    .filter(
-      (name) =>
-        SCREENSHOT_FILE.test(name) && statSync(join(dir, name)).isFile(),
-    )
-    .sort()
-    .map((name) => join(dir, name));
+  const accepted = [];
+  const rejected = [];
+  for (const name of readdirSync(dir).sort()) {
+    const format = IMAGE_FORMATS.find((item) => item.name.test(name));
+    if (!format) {
+      continue;
+    }
+    const path = join(dir, name);
+    if (!lstatSync(path).isFile()) {
+      rejected.push(`${name} (not a regular file)`);
+      continue;
+    }
+    if (!format.valid(readFileSync(path))) {
+      rejected.push(`${name} (not a ${format.label} image)`);
+      continue;
+    }
+    accepted.push({ file: path, digest: fileDigest(path) });
+  }
+  return { accepted, rejected };
 }
 
 // Runs the worker, or references identical passed evidence (verification
@@ -847,8 +894,14 @@ function executeOrReuse(
       reused.run,
       reused.evidenceRef,
     );
-    if (reusedScreenshots.length === 0) {
+    // Only files still present with their recorded bytes carry over.
+    const intact = reusedScreenshots.every((item) => {
+      const path = resolveRepoRef(context.repoRoot, item.evidenceRef);
+      return existsSync(path) && fileDigest(path) === item.digest;
+    });
+    if (reusedScreenshots.length === 0 || !intact) {
       reused = null;
+      reusedScreenshots = [];
     }
   }
   let screenshotDir = null;
@@ -896,7 +949,10 @@ function executeOrReuse(
         : undefined,
     });
   }
-  const shots = screenshotDir ? screenshotFiles(screenshotDir) : [];
+  const found = screenshotDir
+    ? screenshotFiles(screenshotDir)
+    : { accepted: [], rejected: [] };
+  const shots = found.accepted;
   if (
     screenshotDir &&
     shots.length === 0 &&
@@ -908,7 +964,10 @@ function executeOrReuse(
     exec = {
       ...exec,
       requirementFailure:
-        "requireScreenshot is on, but verify left no image (png, jpg, jpeg, webp) in BUILDBEAT_SCREENSHOT_DIR",
+        "requireScreenshot is on, but verify left no image (png, jpg, jpeg, webp) in BUILDBEAT_SCREENSHOT_DIR" +
+        (found.rejected.length > 0
+          ? `; rejected: ${found.rejected.join(", ")}`
+          : ""),
     };
   }
   const tree = readback(workspace.worktreePath);
@@ -952,9 +1011,9 @@ function executeOrReuse(
           ref: item.evidenceRef,
           digest: item.digest,
         }))
-      : shots.map((file) => ({
-          ref: toRepoRef(context.repoRoot, file),
-          digest: `sha256:${createHash("sha256").update(readFileSync(file)).digest("hex")}`,
+      : shots.map((shot) => ({
+          ref: toRepoRef(context.repoRoot, shot.file),
+          digest: shot.digest,
         }));
     for (const shot of recorded) {
       ledger.append({

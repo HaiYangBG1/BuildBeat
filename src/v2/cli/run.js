@@ -275,8 +275,10 @@ function printState(state, ledger, view = {}) {
       ? "<legacy-absolute-evidence-ref>"
       : item.ref;
     const reused = item.reused ? ` (reused from ${item.reused.run})` : "";
+    // A screenshot is judged by the file its digest names.
+    const digest = item.kind === "screenshot" ? ` ${item.digest}` : "";
     console.log(
-      `evidence [${item.status}/${item.grade}] ${item.kind} ${ref}${reused}`,
+      `evidence [${item.status}/${item.grade}] ${item.kind} ${ref}${digest}${reused}`,
     );
   }
   if (state.pendingHuman) {
@@ -1557,8 +1559,13 @@ function commandRelease(flags) {
   });
   const repoLabel = repoLabelFor(options.repoRoot);
   console.log(
-    `readback ${row.status} (exit ${row.exitCode}) at ${row.commit.slice(0, 7)} for candidate ${row.candidate.slice(0, 7)} (${row.run})${row.note ? ` — ${row.note}` : ""}`,
+    `readback ${row.status} (exit ${row.exitCode}) for ${row.ref} at ${row.commit.slice(0, 7)}, candidate ${row.candidate.slice(0, 7)} (${row.run})${row.note ? ` — ${row.note}` : ""}`,
   );
+  if (row.checkout !== row.commit) {
+    console.log(
+      `  note: the command ran in the main checkout at ${row.checkout.slice(0, 7)}, not at ${row.ref}`,
+    );
+  }
   console.log(`  log: ${row.log}`);
   console.log(`  recorded: delivery/work/${options.workId}/releases.jsonl`);
   for (const line of row.tail.slice(-5)) {

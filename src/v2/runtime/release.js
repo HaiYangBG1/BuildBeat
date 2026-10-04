@@ -7,7 +7,7 @@
 // was recorded by hand as forty "step N readback" commits.
 
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   appendFileSync,
   existsSync,
@@ -80,16 +80,21 @@ export function runReadback({
   note = null,
   ts = new Date().toISOString(),
 }) {
-  let commit;
-  try {
-    commit = execFileSync(
+  const resolveCommit = (name) =>
+    execFileSync(
       "git",
-      ["-C", repoRoot, "rev-parse", "--verify", `${ref}^{commit}`],
+      ["-C", repoRoot, "rev-parse", "--verify", `${name}^{commit}`],
       { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
     ).trim();
+  let commit;
+  try {
+    commit = resolveCommit(ref);
   } catch {
     throw new ReleaseError(`--ref ${ref} does not name a commit`);
   }
+  // The command runs in the main checkout, which may sit elsewhere than the
+  // released ref; both are recorded so neither is claimed for the other.
+  const checkout = resolveCommit("HEAD");
   const succeeded = runs
     .filter((run) => run.status === "SUCCEEDED" && run.candidate)
     .sort((a, b) => String(a.lastAt).localeCompare(String(b.lastAt)));
@@ -143,11 +148,14 @@ export function runReadback({
     "--- stderr ---",
     scrub(exec.stderr),
   ].join("\n");
-  const existing = readReleases(repoRoot, workId);
   const logDir = join(repoRoot, ".buildbeat", "runtime", "releases", workId);
   mkdirSync(logDir, { recursive: true });
-  const logPath = join(logDir, `release-${existing.length + 1}.log`);
-  writeFileSync(logPath, body, "utf8");
+  // Unique per readback: concurrent readbacks never share a log file.
+  const logPath = join(
+    logDir,
+    `release-${ts.replace(/[^0-9A-Za-z]/g, "")}-${randomUUID().slice(0, 8)}.log`,
+  );
+  writeFileSync(logPath, body, { encoding: "utf8", flag: "wx" });
   const passed =
     exec.exitCode === 0 && !exec.timedOut && !exec.signal && !exec.spawnError;
   const row = {
@@ -157,6 +165,7 @@ export function runReadback({
     candidate: released.candidate,
     ref,
     commit,
+    checkout,
     ...(note ? { note } : {}),
     command: scrub(exec.command),
     exitCode: exec.exitCode,

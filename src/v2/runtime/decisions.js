@@ -194,6 +194,7 @@ export function approveRun(
       frozenChecks ? deliveryChecks(frozenChecks) : (policies ?? []),
       { type: "transition", appliesTo: pending.transition },
       {
+        repoRoot,
         state: ledger.state,
         candidate: pending.subject.candidate,
         workDir: join(repoRoot, "delivery", "work", ledger.state.run.work),

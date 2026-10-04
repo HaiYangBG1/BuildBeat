@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { resolveRepoRef } from "../runtime/repo-ref.js";
 import {
   fingerprintFinding,
   latestAdjudications,
@@ -61,6 +62,40 @@ export function evidencePresent(
     why: hit
       ? `evidence ${kind} present`
       : `no passed evidence of kind ${kind} at grade >= ${minGrade} for the current candidate`,
+  };
+}
+// Screenshots recorded for the current candidate; when the repository is
+// known, each file must still hold the bytes its digest names.
+export function screenshotsPresent(ctx) {
+  const shots = ctx.state.evidence.filter(
+    (e) =>
+      e.kind === "screenshot" &&
+      e.status === "passed" &&
+      (!ctx.candidate || e.subject === ctx.candidate),
+  );
+  if (!shots.length)
+    return {
+      ok: false,
+      why: "no screenshot evidence for the current candidate",
+    };
+  if (ctx.repoRoot) {
+    const changed = shots.filter((e) => {
+      const path = resolveRepoRef(ctx.repoRoot, e.ref);
+      return (
+        !existsSync(path) ||
+        `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}` !==
+          e.digest
+      );
+    });
+    if (changed.length)
+      return {
+        ok: false,
+        why: `screenshot evidence no longer matches its file: ${changed.map((e) => e.ref).join(", ")}`,
+      };
+  }
+  return {
+    ok: true,
+    why: `${shots.length} screenshot(s) for the current candidate`,
   };
 }
 export function reviewClear(atMost, ctx) {
@@ -163,8 +198,7 @@ export function evaluatePolicies(policies, { type, appliesTo }, ctx) {
           v = artifactAccepted("intent", ctx);
         // UI work proves its real render: screenshots the verify step left
         // for this candidate (lessons.md "静态稿拍板 → 返工螺旋").
-        if (v.ok === true && p.requireScreenshot)
-          v = evidencePresent({ kind: "screenshot", minGrade: "L2" }, ctx);
+        if (v.ok === true && p.requireScreenshot) v = screenshotsPresent(ctx);
         if (v.ok === true) v = reviewClear(p.maxSeverity ?? "P2", ctx);
       } else
         throw new PolicyError(
