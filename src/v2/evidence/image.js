@@ -29,8 +29,9 @@ const CRITICAL = new Set(["IHDR", "PLTE", "IDAT", "IEND"]);
 // Ancillary chunks that change how pixels decode or display, checked
 // against the specification's sizes, values and placement (at most once,
 // before the image data; `afterPalette` ones after PLTE, `beforePalette`
-// ones before it). Other ancillary chunks (text, time, metadata) are
-// ignored, as decoders ignore them.
+// ones before it). Other ancillary chunks (text, compressed text, time,
+// metadata) are not checked: some decoders parse them, and differences
+// between decoders are outside this check (owner decision, review round 6).
 function ancillaryValid(type, body, header, paletteSize, seenPalette) {
   const sizeFor = (byColor) => byColor[header.color];
   switch (type) {

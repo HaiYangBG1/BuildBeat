@@ -73,7 +73,9 @@ function makePng(
     : [[width, height]];
   const rows = [];
   for (const [w, h] of passes) {
-    if (!w || !h) continue;
+    // Adam7 skips empty passes; a plain image keeps its rows even at width
+    // 0, so a zero-width fixture still carries one filter byte per row.
+    if (interlace && (!w || !h)) continue;
     for (let y = 0; y < h; y += 1) {
       // Indexed images point at palette entry 0 unless a test says otherwise.
       const value = fill ?? (color === 3 ? 0x00 : 0x40 + y);
@@ -562,7 +564,9 @@ test("the screenshot check accepts decodable PNGs and nothing else", () => {
   flipped[flipped.length - 20] ^= 0xff;
   assert.equal(png.valid(flipped), false, "corrupt chunk CRC");
   // Each of these is a well-formed file (valid CRCs) breaking one rule.
+  // One row of just a filter byte: only the width guard rejects it.
   assert.equal(png.valid(makePng(0, 1)), false, "zero width");
+  assert.equal(png.valid(makePng(1, 0)), false, "zero height");
   assert.equal(png.valid(makePng(2, 2, { filterByte: 5 })), false, "unknown filter type");
   assert.equal(png.valid(makePng(2, 2, { color: 2, depth: 4 })), false, "illegal depth for RGB");
   assert.equal(png.valid(makePng(2, 2, { color: 3, depth: 8, plte: false })), false, "palette image without PLTE");
