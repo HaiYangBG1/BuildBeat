@@ -14,7 +14,7 @@
 | 项 | 提议 | 备选 |
 |---|---|---|
 | 截图开关 | run-config `requireScreenshot: true` | `checks:` 段下 `screenshot: required` |
-| 截图交付位置 | verify 运行时环境变量 `BUILDBEAT_SCREENSHOT_DIR` 指向的空目录，放 png / jpg / webp | 通用的 `BUILDBEAT_EVIDENCE_DIR` |
+| 截图交付位置 | verify 运行时环境变量 `BUILDBEAT_SCREENSHOT_DIR` 指向的空目录，只放 png（所有者 2026-10-04 于第 3 轮审查后决定） | 通用的 `BUILDBEAT_EVIDENCE_DIR` |
 | 回读命令配置 | run-config `release:` 段（command / args / timeoutMs / env，形状同 worker） | `workers.readback` |
 | 运行回读 | `buildbeat release --config <config> [--note <text>]` | `buildbeat run --config <config> --readback` |
 | 关窗 | `buildbeat decide --repo . --work <ID> --action close --result <text> --by <name>` | — |
@@ -33,6 +33,7 @@
 
 - 开关进入 Run 创建时冻结的检查条件；之后改配置不能关掉它（沿用"恢复时检查条件不得改变"）。
 - verify 运行时内核建一个空目录并设上述环境变量；目录在工作树外，不弄脏候选。verify 成功后，目录中的每张图片记为一条 `screenshot` 证据：文件摘要、绑定当前候选，副本存运行时目录。
+- 只接受 PNG，并校验到可解码：签名、各块校验和、尺寸与位深/颜色类型合法、调色板图有 PLTE、像素数据解压后的大小与每行滤波类型都要符合（含隔行图）。jpg / webp 等其他图片文件被拒并写明原因。（所有者决定：JPEG / WebP 无法在不引入依赖的前提下校验到可解码，第 1–3 轮审查一再指出；常用无头浏览器截图默认就是 PNG。）
 - 开关打开而 verify 成功却没有截图：本次 verify 记为失败，原因写明"没有截图证据"，按失败路由。复用缓存的 verify 时一并沿用来源的截图证据。
 - 合并检查：开关打开时，当前候选必须有截图证据。reviewer 的输入带截图路径；合并决定处的状态卡、待批列表和通知列出截图路径与摘要。
 
