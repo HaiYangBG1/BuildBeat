@@ -74,6 +74,7 @@ src/v2/engine/risk-preset.js
 src/v2/engine/workflow.js
 src/v2/engine/yaml-subset.js
 src/v2/evidence/collector.js
+src/v2/evidence/image.js
 src/v2/policy/policy.js
 src/v2/presets/software-delivery.yaml
 src/v2/runtime/cache.js

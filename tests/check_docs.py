@@ -776,12 +776,13 @@ def check_lesson_citations() -> list[str]:
 
 
 def _example_shape(value):
-    """Structure of a documented record: keys and fixed values; any string
-    holding a <placeholder> is free text that differs per language."""
+    """Structure of a documented record: keys and literal values. Only the
+    <placeholder> parts of a string differ per language; the literal text
+    around them (a `sha256:` prefix, say) must match."""
     if isinstance(value, dict):
         return {key: _example_shape(item) for key, item in value.items()}
-    if isinstance(value, str) and "<" in value:
-        return "<placeholder>"
+    if isinstance(value, str):
+        return re.sub(r"<[^<>]*>", "<>", value)
     return value
 
 
@@ -795,6 +796,7 @@ def check_without_runtime_guide() -> list[str]:
         relative = f"docs/v2/guide/12-without-runtime{suffix}"
         text = (ROOT / relative).read_text(encoding="utf-8")
         blocks = re.findall(r"```json\n(.*?)\n\s*```", text, re.DOTALL)
+        blocks += re.findall(r"`(\{[^`]*\})`", text)
         if not blocks:
             errors.append(f"{relative}: no json record examples")
         try:

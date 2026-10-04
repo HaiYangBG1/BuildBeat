@@ -24,7 +24,8 @@ import { join } from "node:path";
 
 import { nextStep } from "../engine/workflow.js";
 import { collectCommandEvidence } from "../evidence/collector.js";
-import { evaluatePolicies } from "../policy/policy.js";
+import { screenshotFormat } from "../evidence/image.js";
+import { currentScreenshots, evaluatePolicies } from "../policy/policy.js";
 import { EventLedger, canonicalJson } from "../storage/event-ledger.js";
 import {
   acquireLock,
@@ -777,12 +778,7 @@ function beginStep(context, step, stepDef, attempt) {
       input.lastReviewed = lastReviewed;
     }
     // The reviewer judges the real render it is shown, not a description.
-    const screenshots = ledger.state.evidence.filter(
-      (item) =>
-        item.kind === "screenshot" &&
-        item.status === "passed" &&
-        item.subject === head,
-    );
+    const screenshots = currentScreenshots(ledger.state.evidence, head);
     if (screenshots.length > 0) {
       input.screenshots = screenshots.map((item) => ({
         path: resolveRepoRef(context.repoRoot, item.ref),
@@ -794,37 +790,7 @@ function beginStep(context, step, stepDef, attempt) {
 }
 
 // An image counts only as a regular file (no symlink that could point at
-// something removed later) whose bytes start the way its format does: an
-// empty or mislabelled file is not a rendering.
-const IMAGE_FORMATS = [
-  {
-    name: /\.png$/i,
-    label: "png",
-    valid: (bytes) =>
-      bytes.length > 8 &&
-      bytes
-        .subarray(0, 8)
-        .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
-  },
-  {
-    name: /\.jpe?g$/i,
-    label: "jpeg",
-    valid: (bytes) =>
-      bytes.length > 3 &&
-      bytes[0] === 0xff &&
-      bytes[1] === 0xd8 &&
-      bytes[2] === 0xff,
-  },
-  {
-    name: /\.webp$/i,
-    label: "webp",
-    valid: (bytes) =>
-      bytes.length > 12 &&
-      bytes.toString("latin1", 0, 4) === "RIFF" &&
-      bytes.toString("latin1", 8, 12) === "WEBP",
-  },
-];
-
+// something removed later) that is structurally complete for its format.
 function fileDigest(path) {
   return `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
 }
@@ -833,7 +799,7 @@ function screenshotFiles(dir) {
   const accepted = [];
   const rejected = [];
   for (const name of readdirSync(dir).sort()) {
-    const format = IMAGE_FORMATS.find((item) => item.name.test(name));
+    const format = screenshotFormat(name);
     if (!format) {
       continue;
     }
@@ -843,7 +809,7 @@ function screenshotFiles(dir) {
       continue;
     }
     if (!format.valid(readFileSync(path))) {
-      rejected.push(`${name} (not a ${format.label} image)`);
+      rejected.push(`${name} (not a complete ${format.label} image)`);
       continue;
     }
     accepted.push({ file: path, digest: fileDigest(path) });

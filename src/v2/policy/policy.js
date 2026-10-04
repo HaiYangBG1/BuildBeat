@@ -64,15 +64,32 @@ export function evidencePresent(
       : `no passed evidence of kind ${kind} at grade >= ${minGrade} for the current candidate`,
   };
 }
-// Screenshots recorded for the current candidate; when the repository is
-// known, each file must still hold the bytes its digest names.
-export function screenshotsPresent(ctx) {
-  const shots = ctx.state.evidence.filter(
+// The screenshot set of a candidate is what its latest passed verify left
+// (screenshot evidence links to that verify through `source`); screenshots
+// of earlier verifies of the same candidate are history, not requirements.
+export function currentScreenshots(evidence, candidate) {
+  const verify = [...evidence]
+    .reverse()
+    .find(
+      (e) =>
+        e.kind === "command" &&
+        e.status === "passed" &&
+        (!candidate || e.subject === candidate) &&
+        /(?:^|\/)verify-[0-9]+\.log$/.test(e.ref ?? ""),
+    );
+  if (!verify) return [];
+  return evidence.filter(
     (e) =>
       e.kind === "screenshot" &&
       e.status === "passed" &&
-      (!ctx.candidate || e.subject === ctx.candidate),
+      e.source === verify.ref &&
+      (!candidate || e.subject === candidate),
   );
+}
+// Screenshots of the current candidate's latest verify; when the repository
+// is known, each file must still hold the bytes its digest names.
+export function screenshotsPresent(ctx) {
+  const shots = currentScreenshots(ctx.state.evidence, ctx.candidate);
   if (!shots.length)
     return {
       ok: false,

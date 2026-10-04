@@ -31,7 +31,7 @@
   {"ts":"2026-10-04T08:00:00.000Z","kind":"adjudication","fingerprint":"<指纹>","action":"dismiss","by":"<姓名>","note":"<理由>"}
   ```
 
-- **关闭不需要上线的 Work**（例如只改文档）：追加 `{"transition":"close-work","decision":"closed","subject":{"result":"<结论>"},"by":"<姓名>","ts":"..."}`。需要上线的 Work 用运行时的 `release` 与 `decide --action close` 关窗，关窗会绑定回读记录。
+- **关闭不需要上线的 Work**（例如只改文档）：追加 `{"ts":"2026-10-04T09:00:00.000Z","decision":"closed","transition":"close-work","subject":{"result":"<结论>"},"by":"<姓名>"}`。需要上线的 Work 用运行时的 `release` 与 `decide --action close` 关窗，关窗会绑定回读记录。
 
 每行必须是完整的一行 JSON，只追加不改旧行。写完后提交（commit），交给装有运行时的一方。
 

@@ -3,14 +3,16 @@
 // only after the project's own readback of the release has passed.
 
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { deflateSync } from "node:zlib";
 
 import { checkRunConfigShape } from "../src/v2/cli/run-config-check.js";
 import { payloadFor } from "../src/v2/adapters/notification-payload.js";
+import { screenshotFormat } from "../src/v2/evidence/image.js";
 import { deliveryChecks, evaluatePolicies } from "../src/v2/policy/policy.js";
 import { buildNotification } from "../src/v2/runtime/notify.js";
 import { runsFor } from "../src/v2/runtime/overview.js";
@@ -19,7 +21,54 @@ import { tempDir } from "./support/tmp.js";
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 
-function fixture({ verify, review = "", extra = "" }) {
+// A genuine RGB PNG, assembled here with its own CRC so the fixture does
+// not depend on the validator under test.
+function crc(bytes) {
+  let c = 0xffffffff;
+  for (const byte of bytes) {
+    c ^= byte;
+    for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  }
+  return (c ^ 0xffffffff) >>> 0;
+}
+function pngChunk(type, data) {
+  const head = Buffer.alloc(8);
+  head.writeUInt32BE(data.length, 0);
+  head.write(type, 4, "latin1");
+  const tail = Buffer.alloc(4);
+  tail.writeUInt32BE(crc(Buffer.concat([head.subarray(4), data])), 0);
+  return Buffer.concat([head, data, tail]);
+}
+function makePng(width = 2, height = 2) {
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8; // bit depth
+  header[9] = 2; // RGB
+  const rows = [];
+  for (let y = 0; y < height; y += 1) {
+    rows.push(Buffer.from([0]), Buffer.alloc(width * 3, 0x80 + y));
+  }
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk("IHDR", header),
+    pngChunk("IDAT", deflateSync(Buffer.concat(rows))),
+    pngChunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+// A real 1x1 progressive JPEG (with its end-of-image marker) and a real
+// 1x1 lossless WebP.
+const JPEG_1X1 = Buffer.concat([
+  Buffer.from(
+    "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=",
+    "base64",
+  ),
+  Buffer.from([0xff, 0xd9]),
+]);
+const WEBP_1X1 = Buffer.from("UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==", "base64");
+const PNG_BYTES = makePng();
+
+function fixture({ verify, review = "", extra = "", workers = ["builder", "verifier", "reviewer", "fixer"] }) {
   const root = tempDir("bb-shot-");
   const git = (...args) =>
     execFileSync("git", ["-C", root, ...args], { encoding: "utf8" }).trim();
@@ -30,6 +79,7 @@ function fixture({ verify, review = "", extra = "" }) {
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(root, ".gitignore"), ".buildbeat/\n.release-broken\n");
   writeFileSync(join(dir, "work.md"), "# Goal\nShip the page.\n");
+  writeFileSync(join(root, "shot.png"), PNG_BYTES);
   writeFileSync(
     join(root, "worker.sh"),
     `#!/usr/bin/env bash
@@ -61,13 +111,17 @@ echo "health: ok flag=\${RELEASE_FLAG:-unset} sentinel=\${HOST_SENTINEL:-absent}
       "redact:",
       '  - "token=\\\\S+"',
       "workers:",
-      ...["builder", "verifier", "reviewer", "fixer"].flatMap((name, i) => [
-        `  ${name}:`,
-        "    command: bash",
-        "    args:",
-        "      - worker.sh",
-        `      - ${["build", "verify", "review", "fix"][i]}`,
-      ]),
+      ...["builder", "verifier", "reviewer", "fixer"].flatMap((name, i) =>
+        workers.includes(name)
+          ? [
+              `  ${name}:`,
+              "    command: bash",
+              "    args:",
+              "      - worker.sh",
+              `      - ${["build", "verify", "review", "fix"][i]}`,
+            ]
+          : [],
+      ),
     ].join("\n") + "\n";
   const config = join(dir, "run-config.yaml");
   writeFileSync(config, plain + extra);
@@ -91,11 +145,7 @@ echo "health: ok flag=\${RELEASE_FLAG:-unset} sentinel=\${HOST_SENTINEL:-absent}
 }
 
 const SCREENSHOT = "requireScreenshot: true\n";
-const RENDER = `printf '\\211PNG\\r\\n\\032\\nIHDR-bytes' > "$BUILDBEAT_SCREENSHOT_DIR/home.png"`;
-const PNG_BYTES = Buffer.concat([
-  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-  Buffer.from("IHDR-bytes"),
-]);
+const RENDER = `cp shot.png "$BUILDBEAT_SCREENSHOT_DIR/home.png"`;
 
 test("with requireScreenshot a rendering verify records screenshot evidence the reviewer and the decision card see", () => {
   const f = fixture({ verify: RENDER, review: `printf '%s' "$BUILDBEAT_INPUT" >&2;`, extra: SCREENSHOT });
@@ -196,9 +246,17 @@ test("the merge floor requires screenshot evidence for the current candidate whe
   const missing = judge([command, review]);
   assert.notEqual(missing.result, "PASS");
   assert.match(missing.reason, /screenshot/);
-  const other = { kind: "screenshot", status: "passed", grade: "L2", subject: "c1", ref: "a.png" };
+  const other = { kind: "screenshot", status: "passed", grade: "L2", subject: "c1", ref: "a.png", source: command.ref };
   assert.notEqual(judge([command, review, other]).result, "PASS");
-  assert.equal(judge([command, review, { ...other, subject: "c2" }]).result, "PASS");
+  const current = { ...other, subject: "c2" };
+  assert.equal(judge([command, review, current]).result, "PASS");
+  // Only the latest passed verify's screenshots count for the candidate.
+  const later = { ...command, ref: "runs/R/logs/verify-2.log" };
+  assert.notEqual(judge([command, current, later, review]).result, "PASS");
+  assert.equal(
+    judge([command, current, later, { ...current, ref: "b.png", source: later.ref }, review]).result,
+    "PASS",
+  );
   assert.throws(() => deliveryChecks({ requireScreenshot: "yes" }), /invalid delivery safeguards/);
 });
 
@@ -207,17 +265,19 @@ test("decision notifications carry screenshot references, never the images", () 
     run: { id: "RUN-N", work: "WORK-N", status: "WAITING_HUMAN", deliveryChecks: { artifact: "work" } },
     pendingHuman: { transition: "enter-wait-merge", kind: "final-decision", reasons: [], subject: { candidate: "abc1234" } },
     evidence: [
-      { kind: "screenshot", status: "passed", subject: "abc1234", ref: ".buildbeat/runtime/runs/RUN-N/screenshots/verify-1/home.png", digest: "sha256:aa" },
-      { kind: "screenshot", status: "passed", subject: "old0000", ref: "old.png", digest: "sha256:bb" },
+      { kind: "command", status: "passed", subject: "old0000", ref: ".buildbeat/runtime/runs/RUN-N/logs/verify-1.log" },
+      { kind: "screenshot", status: "passed", subject: "old0000", ref: "old.png", digest: "sha256:bb", source: ".buildbeat/runtime/runs/RUN-N/logs/verify-1.log" },
+      { kind: "command", status: "passed", subject: "abc1234", ref: ".buildbeat/runtime/runs/RUN-N/logs/verify-2.log" },
+      { kind: "screenshot", status: "passed", subject: "abc1234", ref: ".buildbeat/runtime/runs/RUN-N/screenshots/verify-2/home.png", digest: "sha256:aa", source: ".buildbeat/runtime/runs/RUN-N/logs/verify-2.log" },
     ],
     workspaces: {},
   };
   const notification = buildNotification("HUMAN_REQUESTED", { repoLabel: ".", state });
   assert.deepEqual(notification.screenshots, [
-    { ref: ".buildbeat/runtime/runs/RUN-N/screenshots/verify-1/home.png", digest: "sha256:aa" },
+    { ref: ".buildbeat/runtime/runs/RUN-N/screenshots/verify-2/home.png", digest: "sha256:aa" },
   ]);
   const text = payloadFor({ type: "dingtalk", keyword: "BuildBeat" }, notification).text.content;
-  assert.match(text, /screenshot: \.buildbeat\/runtime\/runs\/RUN-N\/screenshots\/verify-1\/home\.png sha256:aa/);
+  assert.match(text, /screenshot: \.buildbeat\/runtime\/runs\/RUN-N\/screenshots\/verify-2\/home\.png sha256:aa/);
   assert.doesNotMatch(text, /old\.png/);
 });
 
@@ -301,19 +361,26 @@ test("records written by hand under the without-runtime guide are honoured by th
   const guide = readFileSync(join(import.meta.dirname, "..", "docs", "v2", "guide", "12-without-runtime.md"), "utf8");
   const example = JSON.parse(guide.match(/```json\n\s*(\{.*\})\n\s*```/)[1]);
   assert.equal(example.transition, "accept-work");
-  example.decisionRef = "A-WORK-S-1";
+  // Fill in only the placeholders; the literal parts stay as documented.
+  example.decisionRef = example.decisionRef.replace("WORK-X", "WORK-S");
   example.by = "owner";
-  example.subject.digest = `sha256:${createHash("sha256").update(readFileSync(join(f.dir, "work.md"))).digest("hex")}`;
+  example.subject.digest = example.subject.digest.replace(
+    /<[^<>]*>/,
+    createHash("sha256").update(readFileSync(join(f.dir, "work.md"))).digest("hex"),
+  );
   writeFileSync(join(f.dir, "decisions.jsonl"), `${JSON.stringify(example)}\n`);
   const ready = JSON.parse(f.ok("status", "--repo", ".", "--work", "WORK-S", "--json")).works[0];
   assert.equal(ready.stage, "READY_TO_RUN");
   f.ok("run", "--config", f.config);
   assert.equal(f.state("RUN-S-01").pendingHuman.transition, "enter-wait-merge");
   f.ok("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "reject", "--reason", "documentation only");
-  // A Work that needs no release closes with a hand-written close-work line.
+  // A Work that needs no release closes with the guide's close-work line.
+  const close = JSON.parse(guide.match(/`(\{[^`]*"close-work"[^`]*\})`/)[1]);
+  close.subject.result = "docs only";
+  close.by = "owner";
   writeFileSync(
     join(f.dir, "decisions.jsonl"),
-    `${readFileSync(join(f.dir, "decisions.jsonl"), "utf8")}${JSON.stringify({ transition: "close-work", decision: "closed", subject: { result: "docs only" }, by: "owner", ts: "2026-10-04T09:00:00.000Z" })}\n`,
+    `${readFileSync(join(f.dir, "decisions.jsonl"), "utf8")}${JSON.stringify(close)}\n`,
   );
   const closed = JSON.parse(f.ok("status", "--repo", ".", "--work", "WORK-S", "--json")).works[0];
   assert.equal(closed.stage, "CLOSED");
@@ -328,6 +395,7 @@ test("images that are empty, mislabelled or symlinked are not screenshots", () =
       `printf 'not a jpeg' > ${dir}/bad.jpg`,
       `printf '\\211PNG\\r\\n\\032\\nreal' > ${dir}/target.bin`,
       `ln -s ${dir}/target.bin ${dir}/link.png`,
+      `head -c 40 shot.png > ${dir}/header.png`,
     ].join("; "),
     extra: `${SCREENSHOT}budgets:\n  maxAttempts:\n    verify: 1\n`,
   });
@@ -339,8 +407,9 @@ test("images that are empty, mislabelled or symlinked are not screenshots", () =
     .map((line) => JSON.parse(line))
     .find((event) => event.type === "STEP_FINISHED" && event.data.step === "verify");
   assert.equal(finished.data.status, "failed");
-  assert.match(finished.data.reason, /bad\.jpg \(not a jpeg image\)/);
-  assert.match(finished.data.reason, /empty\.png \(not a png image\)/);
+  assert.match(finished.data.reason, /bad\.jpg \(not a complete jpeg image\)/);
+  assert.match(finished.data.reason, /empty\.png \(not a complete png image\)/);
+  assert.match(finished.data.reason, /header\.png \(not a complete png image\)/);
   assert.match(finished.data.reason, /link\.png \(not a regular file\)/);
   assert.equal(f.state("RUN-S-01").evidence.filter((item) => item.kind === "screenshot").length, 0);
 });
@@ -408,8 +477,79 @@ test("release records the requested ref and the checkout it ran in, with unique 
   const first = runReadback({ repoRoot: f.root, workId: "WORK-S", spec, runs: runsFor(f.root, "WORK-S"), ts: at });
   const second = runReadback({ repoRoot: f.root, workId: "WORK-S", spec, runs: runsFor(f.root, "WORK-S"), ts: at });
   assert.notEqual(first.log, second.log);
-  for (const recorded of [first, second]) {
-    const body = readFileSync(join(f.root, recorded.log), "utf8");
-    assert.equal(recorded.digest, `sha256:${createHash("sha256").update(body, "utf8").digest("hex")}`);
+});
+
+test("concurrent readbacks keep separate logs whose digests match their records", async () => {
+  const f = fixture({
+    verify: "true",
+    extra: "release:\n  command: bash\n  args:\n    - -c\n    - sleep 1; echo health ok\n",
+  });
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  f.ok("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "approve", "--transition", "enter-wait-merge");
+  f.git("merge", "-q", "--ff-only", "run/RUN-S-01");
+  // Both processes read the same (empty) releases.jsonl before either
+  // appends: an allocator keyed on its row count would hand out one log.
+  const launch = () =>
+    new Promise((done, fail) => {
+      const child = spawn(process.execPath, [CLI, "release", "--config", f.config], { cwd: f.root });
+      child.on("error", fail);
+      child.on("close", done);
+    });
+  assert.deepEqual(await Promise.all([launch(), launch()]), [0, 0]);
+  const rows = readFileSync(join(f.dir, "releases.jsonl"), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
+  assert.equal(rows.length, 2);
+  assert.notEqual(rows[0].log, rows[1].log);
+  for (const row of rows) {
+    const body = readFileSync(join(f.root, row.log), "utf8");
+    assert.equal(row.digest, `sha256:${createHash("sha256").update(body, "utf8").digest("hex")}`);
   }
+});
+
+test("the image check accepts complete images and rejects partial ones", () => {
+  const png = screenshotFormat("home.png");
+  const jpeg = screenshotFormat("home.JPG");
+  const webp = screenshotFormat("home.webp");
+  assert.equal(screenshotFormat("notes.txt"), null);
+  assert.equal(png.valid(PNG_BYTES), true);
+  assert.equal(png.valid(makePng(3, 1)), true);
+  assert.equal(png.valid(PNG_BYTES.subarray(0, 8)), false, "signature only");
+  assert.equal(png.valid(PNG_BYTES.subarray(0, PNG_BYTES.length - 12)), false, "no IEND");
+  const flipped = Buffer.from(PNG_BYTES);
+  flipped[flipped.length - 20] ^= 0xff;
+  assert.equal(png.valid(flipped), false, "corrupt chunk CRC");
+  const zero = makePng(1, 1);
+  zero.writeUInt32BE(0, 16);
+  assert.equal(png.valid(zero), false, "zero width");
+  assert.equal(jpeg.valid(JPEG_1X1), true);
+  assert.equal(jpeg.valid(JPEG_1X1.subarray(0, JPEG_1X1.length - 2)), false, "no end marker");
+  assert.equal(jpeg.valid(Buffer.from([0xff, 0xd8, 0xff, 0xd9])), false, "no frame");
+  assert.equal(webp.valid(WEBP_1X1), true);
+  assert.equal(webp.valid(WEBP_1X1.subarray(0, WEBP_1X1.length - 2)), false, "length mismatch");
+});
+
+test("re-verifying the same candidate replaces a screenshot lost in between", () => {
+  // The reviewer blocks the first round; with no fixer the run stops, the
+  // first screenshot disappears, and the same commit is handed back.
+  const f = fixture({
+    verify: RENDER,
+    review: `case "$BUILDBEAT_INPUT" in *'"attempt":1,'*) printf '%s\\n' '{"status":"succeeded","findings":[{"severity":"P1","summary":"page.txt:1 needs a second look before merging"}]}' > "$BUILDBEAT_OUTPUT"; exit 0 ;; esac;`,
+    extra: SCREENSHOT,
+    workers: ["builder", "verifier", "reviewer"],
+  });
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  const waiting = f.state("RUN-S-01");
+  assert.equal(waiting.pendingHuman.transition, "enter-fix");
+  const candidate = waiting.workspaces["RUN-S-01"].candidate;
+  rmSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/screenshots/verify-1/home.png"));
+  f.ok("run", "--config", f.config, "--run", "RUN-S-01", "--adopt", candidate, "--by", "driver");
+  const state = f.state("RUN-S-01");
+  assert.equal(state.pendingHuman.transition, "enter-wait-merge");
+  assert.equal(state.workspaces["RUN-S-01"].candidate, candidate);
+  // The owner kept the commit as is, so the round-1 finding is dismissed.
+  const finding = JSON.parse(f.ok("status", "--repo", ".", "--work", "WORK-S", "--json")).works[0].findings[0];
+  f.ok("decide", "--repo", ".", "--work", "WORK-S", "--action", "dismiss", "--fingerprint", finding.fingerprint, "--by", "owner");
+  f.ok("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "approve", "--transition", "enter-wait-merge");
+  assert.equal(f.state("RUN-S-01").terminal.status, "SUCCEEDED");
 });

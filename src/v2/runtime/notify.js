@@ -9,6 +9,7 @@
 // content, never logs.
 
 import { payloadFor } from "../adapters/notification-payload.js";
+import { currentScreenshots } from "../policy/policy.js";
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -80,14 +81,10 @@ export function candidateScreenshots(state, candidate) {
   if (!candidate) {
     return [];
   }
-  return (state.evidence ?? [])
-    .filter(
-      (item) =>
-        item.kind === "screenshot" &&
-        item.status === "passed" &&
-        item.subject === candidate,
-    )
-    .map((item) => ({ ref: item.ref, digest: item.digest }));
+  return currentScreenshots(state.evidence ?? [], candidate).map((item) => ({
+    ref: item.ref,
+    digest: item.digest,
+  }));
 }
 
 // The exact commands a human can copy to answer a pending request. Shared by

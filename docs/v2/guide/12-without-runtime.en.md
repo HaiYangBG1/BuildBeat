@@ -31,7 +31,7 @@ The ledger of a run in progress lives in `.buildbeat/runtime/` on the machine ru
   {"ts":"2026-10-04T08:00:00.000Z","kind":"adjudication","fingerprint":"<fingerprint>","action":"dismiss","by":"<name>","note":"<reason>"}
   ```
 
-- **Close a Work that needs no release** (for example a documentation change): append `{"transition":"close-work","decision":"closed","subject":{"result":"<outcome>"},"by":"<name>","ts":"..."}`. A Work that is released closes through the runtime's `release` and `decide --action close`, which bind the closure to a readback.
+- **Close a Work that needs no release** (for example a documentation change): append `{"ts":"2026-10-04T09:00:00.000Z","decision":"closed","transition":"close-work","subject":{"result":"<outcome>"},"by":"<name>"}`. A Work that is released closes through the runtime's `release` and `decide --action close`, which bind the closure to a readback.
 
 Each line must be one complete JSON object; only append, never edit earlier lines. Commit the files and hand them to someone with the runtime.
 
