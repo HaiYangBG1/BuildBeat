@@ -13,7 +13,6 @@
 import { createHash } from "node:crypto";
 import {
   existsSync,
-  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -24,7 +23,7 @@ import { join } from "node:path";
 
 import { nextStep } from "../engine/workflow.js";
 import { collectCommandEvidence } from "../evidence/collector.js";
-import { screenshotFormat } from "../evidence/image.js";
+import { checkScreenshotFile, screenshotFormat } from "../evidence/image.js";
 import { currentScreenshots, evaluatePolicies } from "../policy/policy.js";
 import { EventLedger, canonicalJson } from "../storage/event-ledger.js";
 import {
@@ -791,32 +790,20 @@ function beginStep(context, step, stepDef, attempt) {
 
 // An image counts only as a regular file (no symlink that could point at
 // something removed later) that is structurally complete for its format.
-function fileDigest(path) {
-  return `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
-}
-
 function screenshotFiles(dir) {
   const accepted = [];
   const rejected = [];
   for (const name of readdirSync(dir).sort()) {
-    const format = screenshotFormat(name);
-    if (!format) {
+    if (!screenshotFormat(name)) {
       continue;
     }
     const path = join(dir, name);
-    if (!lstatSync(path).isFile()) {
-      rejected.push(`${name} (not a regular file)`);
-      continue;
+    const checked = checkScreenshotFile(path);
+    if (checked.ok) {
+      accepted.push({ file: path, digest: checked.digest });
+    } else {
+      rejected.push(checked.reason);
     }
-    if (format.unsupported) {
-      rejected.push(`${name} (only PNG screenshots are accepted)`);
-      continue;
-    }
-    if (!format.valid(readFileSync(path))) {
-      rejected.push(`${name} (not a decodable PNG)`);
-      continue;
-    }
-    accepted.push({ file: path, digest: fileDigest(path) });
   }
   return { accepted, rejected };
 }
@@ -864,10 +851,13 @@ function executeOrReuse(
       reused.run,
       reused.evidenceRef,
     );
-    // Only files still present with their recorded bytes carry over.
+    // Only files that still pass today's screenshot check with their
+    // recorded bytes carry over; anything else means verify runs again.
     const intact = reusedScreenshots.every((item) => {
-      const path = resolveRepoRef(context.repoRoot, item.evidenceRef);
-      return existsSync(path) && fileDigest(path) === item.digest;
+      const checked = checkScreenshotFile(
+        resolveRepoRef(context.repoRoot, item.evidenceRef),
+      );
+      return checked.ok && checked.digest === item.digest;
     });
     if (reusedScreenshots.length === 0 || !intact) {
       reused = null;
@@ -923,6 +913,10 @@ function executeOrReuse(
     ? screenshotFiles(screenshotDir)
     : { accepted: [], rejected: [] };
   const shots = found.accepted;
+  // Rejections are reported whether or not another screenshot passed.
+  if (found.rejected.length > 0) {
+    exec = { ...exec, screenshotsRejected: found.rejected };
+  }
   if (
     screenshotDir &&
     shots.length === 0 &&
@@ -1107,6 +1101,9 @@ function recordStepResult(
       status: stepStatus,
       exitCode: exec.exitCode,
       ...(exec.requirementFailure ? { reason: exec.requirementFailure } : {}),
+      ...(exec.screenshotsRejected
+        ? { screenshotsRejected: exec.screenshotsRejected }
+        : {}),
       ...(infra ? { infra: true } : {}),
       ...(free ? { free: true } : {}),
     },

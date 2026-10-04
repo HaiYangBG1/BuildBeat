@@ -13,6 +13,7 @@ import { deflateSync } from "node:zlib";
 import { checkRunConfigShape } from "../src/v2/cli/run-config-check.js";
 import { payloadFor } from "../src/v2/adapters/notification-payload.js";
 import { screenshotFormat } from "../src/v2/evidence/image.js";
+import { EventLedger } from "../src/v2/storage/event-ledger.js";
 import { deliveryChecks, evaluatePolicies } from "../src/v2/policy/policy.js";
 import { buildNotification } from "../src/v2/runtime/notify.js";
 import { runsFor } from "../src/v2/runtime/overview.js";
@@ -41,7 +42,21 @@ function pngChunk(type, data) {
 }
 // Builds a PNG whose scanlines match its header, including Adam7 passes;
 // `filterByte` and `plte` let a test break exactly one rule.
-function makePng(width = 2, height = 2, { color = 2, depth = 8, interlace = 0, filterByte = 0, plte = color === 3 } = {}) {
+function makePng(
+  width = 2,
+  height = 2,
+  {
+    color = 2,
+    depth = 8,
+    interlace = 0,
+    filterByte = 0,
+    plte = color === 3,
+    paletteEntries = 2,
+    fill = null,
+    patchHeader = null,
+    extraChunks = [],
+  } = {},
+) {
   const header = Buffer.alloc(13);
   header.writeUInt32BE(width, 0);
   header.writeUInt32BE(height, 4);
@@ -59,14 +74,18 @@ function makePng(width = 2, height = 2, { color = 2, depth = 8, interlace = 0, f
   for (const [w, h] of passes) {
     if (!w || !h) continue;
     for (let y = 0; y < h; y += 1) {
-      rows.push(Buffer.from([filterByte]), Buffer.alloc(Math.ceil((w * depth * channels) / 8), 0x40 + y));
+      // Indexed images point at palette entry 0 unless a test says otherwise.
+      const value = fill ?? (color === 3 ? 0x00 : 0x40 + y);
+      rows.push(Buffer.from([filterByte]), Buffer.alloc(Math.ceil((w * depth * channels) / 8), value));
     }
   }
+  if (patchHeader) patchHeader(header);
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     pngChunk("IHDR", header),
-    ...(plte ? [pngChunk("PLTE", Buffer.from([0, 0, 0, 255, 255, 255]))] : []),
+    ...(plte ? [pngChunk("PLTE", Buffer.alloc(paletteEntries * 3, 0x7f))] : []),
     pngChunk("IDAT", deflateSync(Buffer.concat(rows))),
+    ...extraChunks,
     pngChunk("IEND", Buffer.alloc(0)),
   ]);
 }
@@ -546,11 +565,82 @@ test("the screenshot check accepts decodable PNGs and nothing else", () => {
   assert.equal(png.valid(makePng(2, 2, { color: 2, depth: 4 })), false, "illegal depth for RGB");
   assert.equal(png.valid(makePng(2, 2, { color: 3, depth: 8, plte: false })), false, "palette image without PLTE");
   assert.equal(png.valid(makePng(9, 5, { interlace: 0 }).subarray(0, 8)), false);
-  const wrongSize = makePng(3, 3);
-  const short = makePng(3, 2);
-  // Header claims 3 rows; data holds 2.
-  const spliced = Buffer.concat([short.subarray(0, 8), wrongSize.subarray(8, 33), short.subarray(33)]);
-  assert.equal(png.valid(spliced), false, "scanlines shorter than the header");
+  assert.equal(png.valid(makePng(3, 2, { patchHeader: (h) => h.writeUInt32BE(3, 4) })), false, "scanlines shorter than the header");
+  // Palette rules.
+  assert.equal(png.valid(makePng(3, 3, { color: 3, depth: 4, fill: 0x44 })), false, "index outside the palette");
+  assert.equal(png.valid(makePng(3, 3, { color: 3, depth: 4, fill: 0x11 })), true, "index inside the palette");
+  assert.equal(png.valid(makePng(1, 1, { color: 3, depth: 8, paletteEntries: 257 })), false, "more than 256 entries");
+  assert.equal(png.valid(makePng(4, 1, { color: 3, depth: 1, paletteEntries: 3 })), false, "more entries than the bit depth holds");
+  assert.equal(png.valid(makePng(2, 2, { color: 0, plte: true })), false, "palette on a greyscale image");
+  // Chunk layout a decoder relies on.
+  assert.equal(png.valid(makePng(1, 1, { extraChunks: [pngChunk("IHDR", Buffer.alloc(0))] })), false, "second IHDR");
+  assert.equal(png.valid(makePng(1, 1, { extraChunks: [pngChunk("ABCD", Buffer.alloc(1))] })), false, "unknown critical chunk");
+  assert.equal(png.valid(makePng(1, 1, { extraChunks: [pngChunk("tEXt", Buffer.from("k\0v"))] })), true, "ancillary chunk");
+  assert.equal(
+    png.valid(makePng(1, 1, { extraChunks: [pngChunk("tEXt", Buffer.from("k\0v")), pngChunk("IDAT", deflateSync(Buffer.alloc(0)))] })),
+    false,
+    "IDAT not consecutive",
+  );
+  assert.equal(png.valid(Buffer.concat([PNG_BYTES, Buffer.from("trailing")])), false, "data after IEND");
+  // Interlaced images break the same rules.
+  assert.equal(png.valid(makePng(9, 5, { interlace: 1, filterByte: 5 })), false, "interlaced, unknown filter");
+  assert.equal(png.valid(makePng(9, 5, { patchHeader: (h) => { h[12] = 1; } })), false, "interlaced header, plain data");
+  assert.equal(png.valid(makePng(9, 5, { interlace: 1, filterByte: 4 })), true, "interlaced, Paeth filter");
+});
+
+test("a screenshot recorded under looser rules carries neither a merge nor a cached verify", () => {
+  const f = fixture({ verify: RENDER, extra: `${SCREENSHOT}cache:\n  verify: tree\n` });
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  // A WebP file recorded by an earlier rule set, with a matching digest.
+  const ledgerPath = join(f.root, ".buildbeat/runtime/runs/RUN-S-01/events.jsonl");
+  const ledger = EventLedger.open(ledgerPath);
+  const state = f.state("RUN-S-01");
+  const verify = state.evidence.find((item) => item.kind === "command" && item.ref.endsWith("verify-1.log"));
+  const webpRef = ".buildbeat/runtime/runs/RUN-S-01/screenshots/verify-1/old.webp";
+  writeFileSync(join(f.root, webpRef), "RIFF-not-checked");
+  ledger.append({
+    type: "EVIDENCE_RECORDED",
+    actor: { kind: "kernel", id: "orchestrator" },
+    data: {
+      evidenceRef: webpRef,
+      kind: "screenshot",
+      subject: verify.subject,
+      digest: `sha256:${createHash("sha256").update("RIFF-not-checked").digest("hex")}`,
+      status: "passed",
+      grade: "L2",
+      source: verify.ref,
+      cacheKey: verify.cacheKey,
+    },
+  });
+  const refused = f.call("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "approve", "--transition", "enter-wait-merge");
+  assert.notEqual(refused.status, 0);
+  assert.match(refused.stderr, /no longer matches its file: .*old\.webp/);
+  f.ok("run", "--config", f.config, "--new");
+  const next = f.state("RUN-S-02");
+  const rerun = next.evidence.find((item) => item.kind === "command" && item.ref.endsWith("verify-1.log"));
+  assert.equal(rerun.reused, undefined);
+});
+
+test("rejected files are reported even when another screenshot passes", () => {
+  const f = fixture({
+    verify: `cp shot.png "$BUILDBEAT_SCREENSHOT_DIR/home.png"; cp shot.png "$BUILDBEAT_SCREENSHOT_DIR/photo.jpg"`,
+    extra: SCREENSHOT,
+  });
+  f.ok("accept", "--repo", ".", "--work", "WORK-S");
+  f.ok("run", "--config", f.config);
+  const finished = readFileSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/events.jsonl"), "utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line))
+    .find((event) => event.type === "STEP_FINISHED" && event.data.step === "verify");
+  assert.equal(finished.data.status, "succeeded");
+  assert.deepEqual(finished.data.screenshotsRejected, ["photo.jpg (only PNG screenshots are accepted)"]);
+  assert.match(
+    readFileSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/logs/verify-1.log"), "utf8"),
+    /screenshots rejected: photo\.jpg \(only PNG screenshots are accepted\)/,
+  );
+  assert.equal(f.state("RUN-S-01").evidence.filter((item) => item.kind === "screenshot").length, 1);
 });
 
 test("re-verifying the same candidate replaces a screenshot lost in between", () => {

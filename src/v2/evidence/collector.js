@@ -42,6 +42,9 @@ export function collectCommandEvidence({
     ...(execResult.requirementFailure
       ? [`requirement: ${execResult.requirementFailure}`]
       : []),
+    ...(execResult.screenshotsRejected?.length
+      ? [`screenshots rejected: ${execResult.screenshotsRejected.join(", ")}`]
+      : []),
     "--- stdout ---",
     scrub(execResult.stdout),
     "--- stderr ---",

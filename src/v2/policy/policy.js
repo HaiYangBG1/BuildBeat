@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { checkScreenshotFile } from "../evidence/image.js";
 import { resolveRepoRef } from "../runtime/repo-ref.js";
 import {
   fingerprintFinding,
@@ -96,13 +97,11 @@ export function screenshotsPresent(ctx) {
       why: "no screenshot evidence for the current candidate",
     };
   if (ctx.repoRoot) {
+    // Today's screenshot check, not only the digest: evidence recorded
+    // under looser rules cannot carry a merge.
     const changed = shots.filter((e) => {
-      const path = resolveRepoRef(ctx.repoRoot, e.ref);
-      return (
-        !existsSync(path) ||
-        `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}` !==
-          e.digest
-      );
+      const checked = checkScreenshotFile(resolveRepoRef(ctx.repoRoot, e.ref));
+      return !checked.ok || checked.digest !== e.digest;
     });
     if (changed.length)
       return {
