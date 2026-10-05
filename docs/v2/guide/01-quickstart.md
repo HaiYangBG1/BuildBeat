@@ -1,6 +1,6 @@
 # 快速开始
 
-本分支是未发布的 4.0.0-dev.0 候选。先使用本分支本地打包后的运行时；已发布的 3.3.1 不支持全部新入口。不要在有活动 Run 的项目中直接替换运行时。
+安装运行时：`npm install --global @haiyangbg/buildbeat@latest`（Node ≥ 20）。从 3.x 升级前，先用原来的 3.x 运行时完成或取消仍在进行的 Run，见[迁移说明](../../MIGRATION.md)；不要在 Run 进行中替换运行时。
 
 1. 检查 Node ≥20、Git、Bash 和已鉴权的 AI 工具；保留项目自己的规范。
 2. 将 templates/v2/AGENTS.md、CLAUDE.md 按工具装载方式放入项目；复制 gitignore.template 的运行时排除项。

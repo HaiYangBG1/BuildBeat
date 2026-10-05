@@ -1,7 +1,7 @@
 # Product simplification migration / 减法迁移
 
-Status: 4.0.0-dev.0 is an unpublished local candidate. No registry publication,
-installed-tool upgrade, target-project migration or production change is implied.
+Status: applies to 4.0.0 and later. Installing the runtime changes no project
+file; finish or cancel 3.x runs still in progress with their 3.x runtime first.
 
 ## Existing work / 存量工作
 

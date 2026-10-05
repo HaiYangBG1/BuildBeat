@@ -4,7 +4,7 @@
 
 ## Unreleased
 
-## v4.0.0-dev.0 — unreleased product simplification candidate
+## v4.0.0 — 2026-10-04（主版本：聚焦可恢复交付，精简产品范围与操作入口）
 
 - Owner decisions before 4.0 (WORK-4.0-INTENT-FOLLOWUPS): `requireScreenshot: true` makes verify write PNG screenshots of the real render to `BUILDBEAT_SCREENSHOT_DIR`, records them as candidate-bound evidence after checking each decodes, fails a verify that leaves none, requires them in the merge check and lists them for the reviewer, the decision card and notifications; `buildbeat release` runs the project's read-only readback after a merged release and records it in `delivery/work/<ID>/releases.jsonl`, and `decide --action close` closes the window only on a passing readback; a one-page guide states what people and tools without the runtime may read and write; the governance-template rationale is corrected.
 
