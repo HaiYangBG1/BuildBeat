@@ -6,6 +6,8 @@
 
 ## v4.0.0 — 2026-10-04（主版本：聚焦可恢复交付，精简产品范围与操作入口）
 
+> **发布状态**：`@haiyangbg/buildbeat@4.0.0` 已于 2026-10-05 从 `main`（PR #70、#71 内容，release PR #72，merge commit `c15fbe0`，tag `v4.0.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 37262387333，publish 与 verify 双 job 一次 success；所有者授权「合并并发 4.0」）。独立回读（直连 npmjs.org）：`latest` = 4.0.0、`dist.integrity` 与本地用 Node 24 + npm 11.19.0 打的候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 4.0.0、裸调用零写入、用法含 `release` 与 `decide --action close`、`npm audit signatures` 通过；GitHub Release v4.0.0 标 Latest；本机两份全局安装均为 4.0.0；`next` 仍为 3.3.1；证据见 [`docs/releases/V4.0.0-RELEASE-EVIDENCE-2026-10-05.md`](docs/releases/V4.0.0-RELEASE-EVIDENCE-2026-10-05.md)。
+
 - Owner decisions before 4.0 (WORK-4.0-INTENT-FOLLOWUPS): `requireScreenshot: true` makes verify write PNG screenshots of the real render to `BUILDBEAT_SCREENSHOT_DIR`, records them as candidate-bound evidence after checking each decodes, fails a verify that leaves none, requires them in the merge check and lists them for the reviewer, the decision card and notifications; `buildbeat release` runs the project's read-only readback after a merged release and records it in `delivery/work/<ID>/releases.jsonl`, and `decide --action close` closes the window only on a passing readback; a one-page guide states what people and tools without the runtime may read and write; the governance-template rationale is corrected.
 
 - Focus the product on portable work context, the recoverable delivery loop, and evidence-backed human decisions.
