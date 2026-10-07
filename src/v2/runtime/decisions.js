@@ -14,6 +14,8 @@ import {
   readdirSync,
 } from "node:fs";
 import { join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { adjudicateFinding, fingerprintFinding, recordReviewFindings } from "./findings.js";
 
 import {
   deliveryChecks,
@@ -23,6 +25,7 @@ import {
 import { EventLedger } from "../storage/event-ledger.js";
 import {
   acquireLock,
+  listChangedPaths,
   readback,
   releaseLock,
 } from "../workspace/workspace-manager.js";
@@ -105,7 +108,7 @@ function recordDecisionFile(repoRoot, work, line) {
 export function approveRun(
   repoRoot,
   runId,
-  { by = "human", transition, ts, policies } = {},
+  { by = "human", transition, ts, policies, candidate } = {},
 ) {
   // Read, check and write under the run lock: a ledger read before the
   // lock may be stale by the time it is written to.
@@ -113,6 +116,12 @@ export function approveRun(
   try {
     const ledger = openWaiting(repoRoot, runId);
     const pending = ledger.state.pendingHuman;
+    const repaired = ledger.events.some((event) => event.type === "DECISION_RECORDED" &&
+      event.data.transition === "enter-wait-merge" && (event.data.adopted || event.data.decision === "fix"));
+    if ((candidate && candidate !== pending.subject.candidate) ||
+        (pending.kind === "final-decision" && repaired && !candidate)) {
+      throw new DecisionError("approval stale: read the current decision card and bind approval to its candidate");
+    }
     if (!transition) {
       throw new DecisionError(
         `an approval must name its transition explicitly (pending: ${pending.transition})`,
@@ -291,7 +300,7 @@ export function approveRun(
 export function adoptCandidate(
   repoRoot,
   runId,
-  { sha, by = "human", resumeAt, ts } = {},
+  { sha, by = "human", resumeAt, ts, allowedPaths } = {},
 ) {
   acquireLock(repoRoot, runId);
   try {
@@ -307,10 +316,12 @@ export function adoptCandidate(
     }
     const ledger = openWaiting(repoRoot, runId);
     const pending = ledger.state.pendingHuman;
-    if (pending.kind === "final-decision") {
-      throw new DecisionError(
-        "adopt is for a run waiting before fix/verify, not at the merge decision",
-      );
+    const final = pending.kind === "final-decision" && pending.transition === "enter-wait-merge";
+    if (pending.kind === "final-decision" && (!final || !ledger.state.run.deliveryChecks)) {
+      throw new DecisionError("legacy active run: use its original 3.3.1 runtime (docs/MIGRATION.md)");
+    }
+    if (final && resumeAt !== "verify") {
+      throw new DecisionError("a final-decision repair must resume at verify");
     }
     const bound = ledger.state.workspaces[runId];
     const worktreePath = bound
@@ -331,6 +342,19 @@ export function adoptCandidate(
       throw new DecisionError(
         `worktree HEAD is ${tree.head}, not ${sha}; adopt what git reads back`,
       );
+    }
+    if (final) {
+      const candidate = bound.candidate ?? bound.base;
+      const ancestor = spawnSync("git", ["-C", worktreePath, "merge-base", "--is-ancestor", candidate, tree.head]);
+      if (tree.head === candidate || ancestor.status !== 0) {
+        throw new DecisionError("adopt requires a new descendant of the current candidate; history rewrites are refused");
+      }
+    }
+    const scope = ledger.state.run.repair?.allowedPaths ?? allowedPaths;
+    if (scope) {
+      const violations = listChangedPaths(worktreePath, bound.base).filter((path) =>
+        !scope.some((prefix) => path === prefix || path.startsWith(prefix.endsWith("/") ? prefix : `${prefix}/`)));
+      if (violations.length) throw new DecisionError(`out-of-scope changes: ${violations.join(", ")}`);
     }
     const when = ts ?? new Date().toISOString();
     const lastEvidence =
@@ -385,6 +409,51 @@ export function adoptCandidate(
       resumeAt,
       state: ledger.state,
     };
+  } finally {
+    releaseLock(repoRoot, runId);
+  }
+}
+
+// Queue a human-requested repair without fabricating a review or a budget
+// grant. The ordinary resume loop consumes this decision at the fix step.
+export function requestFix(repoRoot, runId, { by = "human", reason, ts, hasFixer } = {}) {
+  acquireLock(repoRoot, runId);
+  try {
+    const ledger = openWaiting(repoRoot, runId);
+    const pending = ledger.state.pendingHuman;
+    if (!ledger.state.run.deliveryChecks)
+      throw new DecisionError("legacy active run: use its original 3.3.1 runtime (docs/MIGRATION.md)");
+    if (pending.kind !== "final-decision" || pending.transition !== "enter-wait-merge")
+      throw new DecisionError("fix is only available at the merge decision");
+    if (!(ledger.state.run.repair?.hasFixer ?? hasFixer))
+      throw new DecisionError("no fixer configured; commit a manual repair and use run --adopt <sha> --by <name>");
+    if (typeof reason !== "string" || !reason.trim())
+      throw new DecisionError("fix requires a non-empty reason describing what to repair");
+    const bound = ledger.state.workspaces[runId];
+    const worktreePath = bound && resolveRepoRef(repoRoot, bound.worktreePath);
+    if (!worktreePath || !existsSync(worktreePath))
+      throw new DecisionError(`worktree missing for ${runId}`);
+    const tree = readback(worktreePath);
+    if (tree.dirty || tree.head !== (bound.candidate ?? bound.base) || tree.head !== pending.subject.candidate)
+      throw new DecisionError("worktree changed since the request; commit the manual repair and use run --adopt");
+    const when = ts ?? new Date().toISOString();
+    const decisionRef = `D-${runId}-${ledger.state.decisions.length + 1}`;
+    const finding = { severity: "P1", summary: reason.trim() };
+    recordReviewFindings(repoRoot, ledger.state.run.work, {
+      run: runId, step: "enter-wait-merge", attempt: ledger.state.decisions.length + 1,
+      findings: [finding], ts: when,
+    });
+    adjudicateFinding(repoRoot, ledger.state.run.work, {
+      fingerprint: fingerprintFinding(finding), action: "accept", by,
+      note: decisionRef, ts: when,
+    });
+    const data = {
+      decision: "fix", transition: pending.transition, subject: pending.subject,
+      decisionRef, reason: finding.summary, resumeAt: "fix",
+    };
+    ledger.append({ type: "DECISION_RECORDED", actor: { kind: "human", id: by }, ts: when, data });
+    recordDecisionFile(repoRoot, ledger.state.run.work, { ts: when, run: runId, ...data, by });
+    return { decisionRef, state: ledger.state };
   } finally {
     releaseLock(repoRoot, runId);
   }

@@ -11,10 +11,12 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 
 先跑 `buildbeat --version`，按结果选命令：
 
-- 4.x：按下文操作。
+- 4.x：按下文操作，但合并决定点的两种修复入口有下述版本限制。
 - 3.x：下文的 `run`、`status --work`、`decide`、`check`、`history` 和 `work.md` 在 3.x 不存在，沿用项目现有的 3.x 写法：`intent.md` + `plan.md`，分别 `accept --artifact intent` 与 `accept --artifact plan`；`start --config <config> --attempt new` 开工，`resume --config <config> [--run <RUN>] [--adopt <sha> --by <name>]` 续跑；`overview`、`inbox`、`status --run <RUN>` 看进度；`approve --transition <t>` / `reject --reason <why>` 决定；`findings adjudicate` 裁决问题；`doctor` 检查配置；run-config 保留 `workflow:` 与 `riskPreset:`。
 - 3.x 的活动 Run 只能用 3.x 运行时完成或取消。升级到 4.x 前先问用户，并按[迁移说明](docs/MIGRATION.md)处理。
 - 没有运行时：按[不装运行时也能参与](docs/v2/guide/12-without-runtime.md)只读状态、写 `work.md` 和规定格式的决定行；不得代批 Run，不得声称验证、审查或回读已通过。
+
+合并决定点的 `run --adopt`、`decide --action fix` 与批准命令的 `--candidate` 候选绑定要求运行时 4.2 或更高版本。
 
 ## 会话操作
 
@@ -24,9 +26,10 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 | 准备一项工作 | 写 `delivery/work/<ID>/work.md`，包含目标、范围、验收、实施计划；复制 run-config 样板并填真实命令 |
 | 接受工作说明 | `buildbeat accept --repo . --work <ID> --by <owner>`；用户已有明确授权时直接记录，不重复问同一个决定 |
 | 开工、继续 | `buildbeat run --config <config>`；首次编号，已有运行则恢复；明确新一轮时加 `--new` |
-| 批准、拒绝 | 读取状态卡，再 `buildbeat decide --repo . --run <RUN> --action approve|reject --transition <t> --by <owner>`；非终态决定后续跑 |
+| 批准、拒绝 | 读取状态卡并复制批准或拒绝命令；合并批准为 `buildbeat decide --repo . --run <RUN> --action approve --transition enter-wait-merge --candidate <完整 SHA> --by <owner>`，使用卡片候选；修复后旧候选或未绑定候选的批准失效；非终态决定后续跑 |
+| 合并决定退回修复 | `buildbeat decide --repo . --run <RUN> --action fix --reason <要修什么> --by <owner>`；仅合并决定点且有 fixer 时可用，再 `buildbeat run --config <config> --run <RUN>` 续跑；原因记为已接受 P1，重验、再审，review 预算照常累计 |
 | 问题接受、驳回 | `buildbeat decide --repo . --work <ID> --action accept|dismiss --fingerprint <fp> --by <owner> --note <reason>` |
-| 已手修并提交 | `buildbeat run --config <config> --run <RUN> --adopt <sha> --by <name>`；检查干净工作树与实际 HEAD 后从 verify 继续 |
+| 已手修并提交 | `buildbeat run --config <config> --run <RUN> --adopt <sha> --by <name>`；检查干净工作树与实际 HEAD 后从 verify 继续；合并决定点也可用，此时须为当前候选的新后代且改动不越界 |
 | 配置或环境有问题 | `buildbeat check --config <config>`；显式 `--step <step>` 会在主检出执行 worker，只有用户任务需要才调用，结果不是正式证据 |
 | 上线后回读、关窗 | 人完成上线后 `buildbeat release --config <config> [--note <text>]`；最近一次回读通过再 `buildbeat decide --repo . --work <ID> --action close --result <text> --by <owner>`。回读失败不能关窗 |
 | 结束一轮 | `buildbeat stop --repo . --run <RUN> --reason <reason>`；活动驱动持锁时先处理进程，不能把 stop 当作进程杀手 |

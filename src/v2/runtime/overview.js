@@ -324,7 +324,7 @@ export function computeOverview(
           ? "MERGE_DECISION"
           : "WAITING_HUMAN";
       const replies = latest.state
-        ? nextReply({ repoLabel, state: latest.state })
+        ? nextReply({ repoLabel, state: latest.state, repoRoot })
         : [];
       next = replies[0] ?? `buildbeat status --repo ${repoLabel} --work ${workId}`;
     } else if (latest.status === "SUCCEEDED" && isReleaseLane(latest)) {

@@ -2,6 +2,12 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## v4.2.0 — 2026-10-07（次版本：合并决定点能接修复；合并批准绑定候选）
+
+- Bind merge approval replies to `--candidate <sha>` and forward the binding through the CLI; reject old or unbound replies after repair. Support both repair paths when the current candidate is still the base commit. Isolate repair regression fixtures from host Git configuration, signing and hooks. The owner confirmed the public name `--candidate <sha>` and runtime 4.2 as the next minor on 2026-10-07; merge-decision `run --adopt`, `decide --action fix` and candidate binding require runtime 4.2 or later.
+- Allow manual repair adoption at the merge decision: require clean actual HEAD, a new descendant of the candidate and changes within `allowedPaths`; resume at verify, review incrementally and return to the merge decision while preserving evidence and review accounting.
+- Add `decide --action fix --reason <text>` at the merge decision when a fixer is configured. Record an accepted P1 with the human's reason, feed it to the fixer and continue through verify/review without spending a review round for the decision or changing budgets. Status, inbox and notifications offer manual repair and the configured fixer path. SUCCEEDED and legacy 3.x Runs retain their existing boundaries.
+
 ## v4.1.0 — 2026-10-07（次版本：跨仓总览；提示里的命令与路径都能照做）
 
 > **发布状态**：`@haiyangbg/buildbeat@4.1.0` 已于 2026-10-07 从 `main`（release PR #74，merge commit `9259ac9`，tag `v4.1.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 37590027989，publish 与 verify 双 job 一次 success；所有者授权「推送并发 4.1.0」）。独立回读（直连 npmjs.org）：`latest` = 4.1.0、`dist.integrity` 与本地用 Node 24 + npm 11.19.0 打的候选逐字一致、注册表 tarball 解压后与候选逐字节相同、SLSA v1 provenance、隔离安装 `--version` = 4.1.0、裸调用零写入、用法含 `--all-repos`、`npm audit signatures` 通过；GitHub Release v4.1.0 标 Latest；本机两份全局安装均为 4.1.0；证据见 [`docs/releases/V4.1.0-RELEASE-EVIDENCE-2026-10-07.md`](docs/releases/V4.1.0-RELEASE-EVIDENCE-2026-10-07.md)。`next` 仍为 4.0.0。

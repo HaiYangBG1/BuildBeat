@@ -79,7 +79,7 @@ test("nextReply spells out the copyable commands for every kind of wait", () => 
   assert.match(boundary[0], /then: run/);
   assert.match(boundary[1], /^buildbeat decide --action reject --repo \. --run RUN-N/);
   const final = nextReply({ repoLabel: "sub", state: waitingState("final-decision") });
-  assert.match(final[0], /enter-wait-merge --by <you>   # merge-ready; merge\/push stay yours/);
+  assert.match(final[0], /enter-wait-merge --candidate abc1234 --by <you>   # merge-ready; merge\/push stay yours/);
   const triage = nextReply({ repoLabel: ".", state: waitingState("finding-triage") });
   assert.equal(triage.length, 4);
   assert.match(triage[0], /status --repo \. --work WORK-N/);

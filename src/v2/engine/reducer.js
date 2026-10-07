@@ -71,6 +71,7 @@ export function applyEvent(state, event) {
         planDigest: data.planDigest ?? "UNVERIFIED",
         intentDigest: data.intentDigest ?? "UNVERIFIED",
         ...(data.deliveryChecks ? { deliveryChecks: data.deliveryChecks } : {}),
+        ...(data.repair ? { repair: data.repair } : {}),
       };
       break;
     }
@@ -221,7 +222,7 @@ export function applyEvent(state, event) {
         subject: data.subject,
         decisionRef: data.decisionRef,
       });
-      if (data.decision === "approved") {
+      if (data.decision === "approved" || data.decision === "fix") {
         next.approvals.push({
           decisionRef: data.decisionRef,
           transition: data.transition,
