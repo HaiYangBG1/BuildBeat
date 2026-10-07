@@ -2,7 +2,7 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
-## Unreleased
+## v4.2.1 — 2026-10-07（补丁：审查没交报告当场停；成本按去向分开等待）
 
 - A review step that exits 0 without writing a report to `$BUILDBEAT_OUTPUT` now stops as `invalid-output` (an infrastructure failure: no fixer, no charge, `resume-review` waits for a person) instead of passing with no evidence until the merge approval refused it. The stop reason says where the report belongs and, when the reviewer printed something, how many bytes went to stdout. Found in a replay of real runs, where a reviewer's 3 P1, 6 P2 and 4 P3 findings reached stdout only.
 - The cost line splits human waits by how they ended: `human waits N (decided … · superseded … · stopped … · open …)`, listing only kinds that occurred; a request repeated before any decision continues the same wait, so overlapping time is not counted twice; JSON carries `cost.waits` with `{count, ms}` per kind and run-records keep it. In the same replay one work showed 32 minutes of decided waits while 11 hours passed on a request a new run superseded.
