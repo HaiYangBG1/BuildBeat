@@ -1,0 +1,233 @@
+{
+  "run": "RUN-FINAL-DECISION-FIX-01",
+  "work": "WORK-FINAL-DECISION-FIX",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 80,
+    "lastDigest": "sha256:b42e5587a2d18ecc9ceb35200c7dc71b2d72b2b54b293b43167195c40b05a33c"
+  },
+  "startedAt": "2026-10-07T07:51:30.969Z",
+  "finishedAt": "2026-10-07T08:47:31.347Z",
+  "attempts": {
+    "build": 1,
+    "verify": 3,
+    "review": 3,
+    "fix": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 3,
+      "remaining": 3
+    }
+  },
+  "cost": {
+    "reviewRounds": 3,
+    "humanWaits": 2,
+    "infraFailures": 0,
+    "workerMs": 1723313
+  },
+  "workspaces": {
+    "RUN-FINAL-DECISION-FIX-01": {
+      "repo": ".",
+      "branch": "run/RUN-FINAL-DECISION-FIX-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-FINAL-DECISION-FIX-01",
+      "base": "b8f9f9fcec9d98b51cda88a7baa6f79c262aab6e",
+      "candidate": "a51b71877f3f3cb9afabd6345d13163a7a6f5fab"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FINAL-DECISION-FIX-01/logs/build-1.log",
+      "kind": "command",
+      "subject": "fa886daa07f819a19f33b272949d67924b373684",
+      "digest": "sha256:3ac04111c3a033aa0cc7c80c4c9436f13b4bee783ce077f27a218dd1d8ec992b",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FINAL-DECISION-FIX-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "fa886daa07f819a19f33b272949d67924b373684",
+      "digest": "sha256:f84c934779c65aac7717d53ed27122050748560291873a38f796962ba3c4f355",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:5eccdb24f5114373b309011235bbc85d02332c8ff4bfea55bde5f75645846120"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FINAL-DECISION-FIX-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "fa886daa07f819a19f33b272949d67924b373684",
+      "digest": "sha256:4b920c31a53cdbc3dee32b9d68c7df114c2e478201cb33cdb83fad6e88d87d91",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FINAL-DECISION-FIX-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "fa886daa07f819a19f33b272949d67924b373684",
+      "digest": "sha256:154397c3e3d9e6709c8b72eb69a4cd62cc39ba871f9278286a109f0472b4f990",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/runtime/decisions.js:121 — Every repaired run becomes impossible to approve through the CLI. After either repair path returns to enter-wait-merge, approveRun requires an explicit candidate, but commandApprove (src/v2/cli/run.js:1037) never passes one and nextReply still prints an unbound approval command. Running buildbeat decide --repo <repo> --run <run> --action approve --transition enter-wait-merge therefore always fails with 'approval stale', even from the refreshed card. Wire an explicit expected-candidate binding through the public command and generated replies, retaining rejection of old bindings; test successful final approval through the CLI instead of bypassing it with approveRun as tests/v2-final-decision-fix.test.js:252 does."
+        },
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/runtime/decisions.js:347 — Both repair paths reject a valid merge-decision run whose candidate is still its base commit. With entry: verify, or a successful builder that makes no commit, workspace.candidate remains null (reducer.js:97; orchestrator.js:1241), while the pending decision correctly uses workspace.base (orchestrator.js:300). Adopt then checks ancestry against null and rejects a real descendant; requestFix at decisions.js:436 also incorrectly reports a changed worktree because HEAD !== null. A read-only invocation of these functions with that state reproduces both refusals. Resolve the effective current candidate as bound.candidate ?? bound.base in both checks, preserve the pending-subject check, and cover base-only runs for both repair routes."
+        },
+        {
+          "severity": "P1",
+          "summary": "[docs-surface] docs/v2/guide/07-approval-guide.md:11 — The documented repair flow returns to a merge decision that cannot be approved through the advertised command. After either repair path, src/v2/runtime/decisions.js:119-123 requires candidate-bound approval, but src/v2/cli/run.js:1037-1041 never passes a candidate and src/v2/runtime/notify.js:139 still emits an unbound approval command. Running that freshly copied command always fails with 'approval stale'. Complete the candidate-binding CLI and generated replies, document the working approval procedure in both languages, and test that the new reply succeeds while the old reply fails."
+        },
+        {
+          "severity": "P1",
+          "summary": "[docs-surface] SKILL.md:28 — The new repair instructions lack the required runtime-version qualification: line 14 still directs every 4.x installation to follow them. A session using released 4.1.0 (9259ac9) will invoke unsupported behaviour: that revision rejects final-decision adoption and has no decide --action fix branch. State that these two replies require the runtime containing this change, explicitly excluding released 4.0/4.1.0 until a supporting release is identified, and add a documentation check for this boundary."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-final-decision-fix.test.js:250 — The CLI regression bypasses final approval by calling approveRun directly. After repair, commandApprove never forwards a candidate (src/v2/cli/run.js:1037), while approveRun requires one, so every public approval command fails as stale. The test therefore passes with the required user workflow broken. Replace this bypass with assertions that the old displayed approval command fails and the newly displayed command succeeds, then verify the ledger approval binds to the new SHA."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-final-decision-fix.test.js:17 — Both fixtures inherit host Git configuration and override only user.name/email. With global commit.gpgSign=true and an unavailable signing key, the initial commits fail before exercising any acceptance behavior; global hooks can also execute during fixture and worker commits. Isolate Git configuration for fixture, runtime and CLI subprocesses, including shell workers, and disable signing/hooks in fixture repositories. Add a hostile-config regression to ensure these tests remain deterministic without host credentials or tooling."
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FINAL-DECISION-FIX-01/logs/fix-1.log",
+      "kind": "command",
+      "subject": "7e215f2e72bb378ad35b0ee52e510e3b61e37f2c",
+      "digest": "sha256:3b384ccd0b637ffc2abbee6d657974f040e54f7d78c81de4e06b59a64d85fdb1",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FINAL-DECISION-FIX-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "7e215f2e72bb378ad35b0ee52e510e3b61e37f2c",
+      "digest": "sha256:27d63d733e8b5efc6a1837e03167f53a451756014ea6c164abd284e11f1b26e4",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:93c8a01b079110d41de50433fe1b011de9d0cb381c561792addff7e19549df89"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FINAL-DECISION-FIX-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "7e215f2e72bb378ad35b0ee52e510e3b61e37f2c",
+      "digest": "sha256:ce497ad1190a5272df1f771949f3acd4eb0d2e6eb9e9190ebae70a020d07c547",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FINAL-DECISION-FIX-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "7e215f2e72bb378ad35b0ee52e510e3b61e37f2c",
+      "digest": "sha256:2c9d1888e8a5180af7e381605accc03ad019a2d54e85bb3dadd0581869f00eed",
+      "status": "passed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P2",
+          "summary": "[runtime-cli] src/v2/cli/run.js:101 — The delta exposes a new public flag, --candidate, absent from work.md’s owner-confirmed names table. Reproduce with node bin/buildbeat.js --help; src/v2/runtime/notify.js:140 also inserts it into every final-approval reply, and repaired runs require it. The implementation therefore expands the accepted public interface without recording that naming decision. Obtain owner confirmation and include --candidate <sha> and its post-repair requirement in the accepted naming contract."
+        },
+        {
+          "severity": "P2",
+          "summary": "[docs-surface] docs/v2/guide/07-approval-guide.md:16 — The refreshed approval command introduces the public --candidate flag, which is absent from work.md’s owner-confirmed names table. After either repair path, users must use this new spelling; SKILL.md:29 and the English guide also prescribe it, and src/v2/cli/run.js:1040 implements it. The command works, but the public naming contract has drifted. Obtain owner confirmation and add the candidate-binding flag to the accepted names table, then keep the documentation and CLI aligned."
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FINAL-DECISION-FIX-01/logs/fix-2.log",
+      "kind": "command",
+      "subject": "a51b71877f3f3cb9afabd6345d13163a7a6f5fab",
+      "digest": "sha256:e2de977b406f1e0dc88f764b32b34aed6f88eebd21c8837a4b189b1bc634a188",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FINAL-DECISION-FIX-01/logs/verify-3.log",
+      "kind": "command",
+      "subject": "a51b71877f3f3cb9afabd6345d13163a7a6f5fab",
+      "digest": "sha256:a57b999b07ce7e86d4b25cce67457cbabb49ec034f1c513027490a51a926278a",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:fed4caa25f30e60a9d5d9e979e1cd130485341ca7e4eb463cb61044916a7d26b"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FINAL-DECISION-FIX-01/logs/review-3.log",
+      "kind": "command",
+      "subject": "a51b71877f3f3cb9afabd6345d13163a7a6f5fab",
+      "digest": "sha256:7b8c019c4d0709479ce13d88ca415d722028dd5561ec62e51c60a4383de625d0",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FINAL-DECISION-FIX-01/outputs/review-3.json",
+      "kind": "review",
+      "subject": "a51b71877f3f3cb9afabd6345d13163a7a6f5fab",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "fix",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "7e215f2e72bb378ad35b0ee52e510e3b61e37f2c",
+        "planDigest": "sha256:bea5002b3c7c9c626edd7eca3756c398a009f5233c0342d0974f197c15cc18a0",
+        "evidenceDigest": "sha256:2c9d1888e8a5180af7e381605accc03ad019a2d54e85bb3dadd0581869f00eed"
+      },
+      "decisionRef": "D-RUN-FINAL-DECISION-FIX-01-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "a51b71877f3f3cb9afabd6345d13163a7a6f5fab",
+        "planDigest": "sha256:bea5002b3c7c9c626edd7eca3756c398a009f5233c0342d0974f197c15cc18a0",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-FINAL-DECISION-FIX-01-2"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-FINAL-DECISION-FIX-01-1",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "7e215f2e72bb378ad35b0ee52e510e3b61e37f2c",
+        "planDigest": "sha256:bea5002b3c7c9c626edd7eca3756c398a009f5233c0342d0974f197c15cc18a0",
+        "evidenceDigest": "sha256:2c9d1888e8a5180af7e381605accc03ad019a2d54e85bb3dadd0581869f00eed"
+      },
+      "stale": false,
+      "resumeAt": "fix"
+    },
+    {
+      "decisionRef": "D-RUN-FINAL-DECISION-FIX-01-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "a51b71877f3f3cb9afabd6345d13163a7a6f5fab",
+        "planDigest": "sha256:bea5002b3c7c9c626edd7eca3756c398a009f5233c0342d0974f197c15cc18a0",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
