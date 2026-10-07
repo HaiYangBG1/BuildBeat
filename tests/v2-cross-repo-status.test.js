@@ -14,9 +14,14 @@ const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const actor = { kind: "kernel", id: "test" };
 function fixtureEnv() {
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+  // No background maintenance either: after a fixture commit git may start
+  // a detached `maintenance run --auto` whose objects/maintenance.lock lands
+  // between the before/after snapshots (seen on CI after 4.2.0 was tagged).
   return { ...env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null",
-    GIT_CONFIG_COUNT: "2", GIT_CONFIG_KEY_0: "core.hooksPath", GIT_CONFIG_VALUE_0: "/dev/null",
-    GIT_CONFIG_KEY_1: "commit.gpgSign", GIT_CONFIG_VALUE_1: "false" };
+    GIT_CONFIG_COUNT: "4", GIT_CONFIG_KEY_0: "core.hooksPath", GIT_CONFIG_VALUE_0: "/dev/null",
+    GIT_CONFIG_KEY_1: "commit.gpgSign", GIT_CONFIG_VALUE_1: "false",
+    GIT_CONFIG_KEY_2: "maintenance.auto", GIT_CONFIG_VALUE_2: "false",
+    GIT_CONFIG_KEY_3: "gc.auto", GIT_CONFIG_VALUE_3: "0" };
 }
 const git = (root, ...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", env: fixtureEnv() }).trim();
 function repo(root) {
