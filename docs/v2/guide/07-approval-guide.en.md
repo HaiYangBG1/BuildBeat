@@ -6,7 +6,7 @@ New work has one work.md. accept binds its current digest but does not start exe
 
 Status presents the transition, candidate, plan digest, evidence, reasons and next action. decide --action approve|reject must name the run and transition. Approval re-reads the candidate and frozen safeguards; changed subjects, dirty trees, missing evidence or unacceptable reviews cannot be stamped. Continue nonterminal decisions with run. Final approval means merge-ready only.
 
-These two merge-decision repair paths require a runtime containing this change (CHANGELOG `Unreleased`). Released 4.0 / 4.1.0 do not support them; a supporting release has not yet been identified. The package version alone does not establish support.
+At the merge decision, `run --adopt`, `decide --action fix` and the approval command’s `--candidate` binding require runtime 4.2 or later.
 
 When a problem is found at the merge decision (`enter-wait-merge`), repair it within the same Run and verify and review again:
 

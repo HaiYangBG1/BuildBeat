@@ -16,7 +16,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 - 3.x 的活动 Run 只能用 3.x 运行时完成或取消。升级到 4.x 前先问用户，并按[迁移说明](docs/MIGRATION.md)处理。
 - 没有运行时：按[不装运行时也能参与](docs/v2/guide/12-without-runtime.md)只读状态、写 `work.md` 和规定格式的决定行；不得代批 Run，不得声称验证、审查或回读已通过。
 
-合并决定点的 `run --adopt` 与 `decide --action fix` 要求包含本次变更的运行时（见 CHANGELOG `Unreleased`）；已发布的 4.0 / 4.1.0 不支持这两种操作。支持它们的正式发布版本尚未确定，不能仅凭 4.x 或包内 4.1.0 版本号判断可用。
+合并决定点的 `run --adopt`、`decide --action fix` 与批准命令的 `--candidate` 候选绑定要求运行时 4.2 或更高版本。
 
 ## 会话操作
 

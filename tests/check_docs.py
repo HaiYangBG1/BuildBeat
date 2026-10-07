@@ -825,13 +825,11 @@ def check_final_repair_contract() -> list[str]:
         "docs/v2/guide/10-recovery.en.md",
     ):
         text = (ROOT / relative).read_text(encoding="utf-8")
-        for token in ("4.0 / 4.1.0", "Unreleased", "--candidate"):
+        for token in ("run --adopt", "decide --action fix", "--candidate"):
             if token not in text:
                 errors.append(f"{relative}: final repair contract must mention {token}")
-        if not re.search(r"不支持|do not support|not supported", text):
-            errors.append(f"{relative}: explicitly exclude released runtimes without final repair support")
-        if not re.search(r"尚未确定|not yet been identified", text):
-            errors.append(f"{relative}: do not invent a supporting release version")
+        if not re.search(r"运行时 4\.2 或更高版本|runtime 4\.2 or later", text):
+            errors.append(f"{relative}: final repair contract must require runtime 4.2 or later")
     return errors
 
 

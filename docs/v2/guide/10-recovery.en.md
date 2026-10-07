@@ -2,7 +2,7 @@
 
 [简体中文](10-recovery.md)
 
-These two merge-decision repair paths require a runtime containing this change (CHANGELOG `Unreleased`). Released 4.0 / 4.1.0 do not support them; a supporting release has not yet been identified. The package version alone does not establish support.
+At the merge decision, `run --adopt`, `decide --action fix` and the approval command’s `--candidate` binding require runtime 4.2 or later.
 
 - run resumes the unique nonterminal run in its family; choose --run when ambiguous. Archived work needs explicit --new to start another attempt.
 - An interrupted step reruns itself from the ledger. Handle a dirty worktree first. After committing a manual fix, --adopt checks the actual HEAD and continues at verify.

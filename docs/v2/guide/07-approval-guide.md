@@ -6,7 +6,7 @@
 
 status 的决定卡包含 transition、候选、计划摘要、证据、原因和下一步。decide --action approve|reject 必须指向该 Run 与转换。批准前重新回读候选与冻结校验；变化、脏树、缺证据或不合格审查不能盖章。非终态批准后用 run 续跑，最终批准只表示具备合并条件。
 
-以下两种合并决定修复入口要求包含本次变更的运行时（CHANGELOG `Unreleased`）。已发布的 4.0 / 4.1.0 不支持，支持它们的正式发布版本尚未确定，不能只看包版本号判断。
+合并决定点的 `run --adopt`、`decide --action fix` 与批准命令的 `--candidate` 候选绑定要求运行时 4.2 或更高版本。
 
 合并决定点（`enter-wait-merge`）发现问题时，可以在本 Run 中修复并重新验证、审查：
 

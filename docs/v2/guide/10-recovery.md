@@ -2,7 +2,7 @@
 
 [English](10-recovery.en.md)
 
-以下两种合并决定修复入口要求包含本次变更的运行时（CHANGELOG `Unreleased`）。已发布的 4.0 / 4.1.0 不支持，支持它们的正式发布版本尚未确定，不能只看包版本号判断。
+合并决定点的 `run --adopt`、`decide --action fix` 与批准命令的 `--candidate` 候选绑定要求运行时 4.2 或更高版本。
 
 - run 自动续接已有家族的唯一未终态 Run；多个候选时必须 --run 指定。历史工作需明确 --new 才会重新启动。
 - 中断步按台账重跑自身；脏工作树先处理。手修并提交后用 --adopt 指定实际 HEAD，从 verify 继续。
