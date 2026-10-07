@@ -147,6 +147,34 @@ test("all-repos merges authoritative work facts, keeps drafts and counts settled
   assert.deepEqual(snapshot(base), before, "every file and directory in every repo is unchanged");
 });
 
+for (const repoArgument of ["absolute", "relative"]) {
+  test(`single-repo status quotes the owning repo for an unstarted cross-repo work (${repoArgument} --repo)`, () => {
+    const base = realpathSync(tempDir("bb-cross-draft-"));
+    const main = repo(join(base, "main repo"));
+    const target = repo(join(base, "code"));
+    const caller = join(base, "caller");
+    mkdirSync(caller);
+    work(main, "FUTURE", target);
+    const before = snapshot(base);
+    const args = ["--repo", repoArgument === "absolute" ? main : relative(caller, main), "--work", "FUTURE"];
+    const row = JSON.parse(cli(caller, ...args, "--json")).works[0];
+    const command = "buildbeat accept --repo '../main repo' --work FUTURE --artifact work --by <you>";
+    assert.equal(row.stage, "WORK_DRAFT");
+    assert.equal(row.repo, main);
+    assert.equal(row.targetRepo, target);
+    assert.equal(row.next, command);
+    assert.ok(cli(caller, ...args).includes(`next: ${command}`));
+    assert.deepEqual(snapshot(base), before, "status leaves both repositories unchanged");
+    const targetBefore = snapshot(target);
+    const result = spawnSync("sh", ["-c", `buildbeat() { "$BB_NODE" "$BB_CLI" "$@"; }; ${row.next.replaceAll("<you>", "owner")}`], {
+      cwd: caller, encoding: "utf8", env: { ...fixtureEnv(), BB_NODE: process.execPath, BB_CLI: CLI },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(cli(caller, ...args, "--json")).works[0].plan.accepted, true);
+    assert.deepEqual(snapshot(target), targetBefore, "acceptance is recorded only in the main repository");
+  });
+}
+
 test("discovery is one-level, deduplicates real paths, warns without failing and supports ledger-only targets", () => {
   const { base, main, a, b } = fixture();
   symlinkSync(a, join(main, "alias"));

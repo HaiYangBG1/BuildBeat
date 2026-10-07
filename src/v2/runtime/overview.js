@@ -173,7 +173,7 @@ function overviewContext(repoRoot) {
 
 export function computeOverview(
   repoRoot,
-  { work = null, repoLabel = ".", cwd = null, followTargets = true, warnings = [], configsOverride = null, context = overviewContext(repoRoot), skipWorks = new Set(), localCompatibility = false } = {},
+  { work = null, repoLabel: defaultRepoLabel = ".", cwd = null, followTargets = true, warnings = [], configsOverride = null, context = overviewContext(repoRoot), skipWorks = new Set(), localCompatibility = false } = {},
 ) {
   const workRoot = join(repoRoot, "delivery", "work");
   const rows = [];
@@ -214,6 +214,10 @@ export function computeOverview(
         continue;
       }
     }
+    // Cross-repo work still belongs here until the target has records.
+    // Its commands need a copyable owner path, not the legacy local label.
+    const repoLabel = followTargets && config?.target && config.repo !== currentRoot
+      ? shellArg(pathLabel(cwd ?? process.cwd(), repoRoot)) : defaultRepoLabel;
     const configPath = config
       ? shellArg(cwd && !local ? pathLabel(cwd, config.path) : `delivery/work/${workId}/${config.path.split("/").at(-1)}`)
       : "<run-config.yaml>";
