@@ -1,0 +1,47 @@
+# Run config for WORK-README-REDESIGN. Paths resolve relative to this file.
+# Builder and fixer are deliberately absent: the driving session writes the
+# README and its pictures (the hero illustration comes from codex image
+# generation) and hands each commit over with --adopt. Verify runs the full
+# local gate and renders both READMEs to PNG screenshots; review is a
+# README-focused read-only codex pass.
+repo: ../../..
+work: WORK-README-REDESIGN
+run: RUN-README-REDESIGN
+allowedPaths:
+  - README.md
+  - README.en.md
+  - docs/assets
+  - tests
+  - CHANGELOG.md
+reviewTriage: off
+budgets:
+  reviewRoundsPerWork: 6
+requireScreenshot: true
+envelope:
+  prompts: ./prompts
+  vars:
+    component: buildbeat
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+requires:
+  - command: node
+    min: "20"
+  - command: codex
+  - command: gh
+workers:
+  verifier:
+    command: bash
+    timeoutMs: 2400000
+    args:
+      - delivery/work/WORK-README-REDESIGN/verify.sh
+  reviewer:
+    command: bash
+    timeoutMs: 3600000
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only
