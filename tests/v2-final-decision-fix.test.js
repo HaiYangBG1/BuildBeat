@@ -245,11 +245,41 @@ esac
     worktree: join(root, ".buildbeat/worktrees/RUN-C-01") };
 }
 
-// Execute the displayed command through a shell, substituting only the CLI
-// executable and the documented human-name placeholder.
+// Split a displayed reply the way sh does for the forms the CLI prints (bare
+// words, single-quoted words, backslash escapes, a trailing # comment), then
+// run it without a shell, substituting only the CLI executable and the
+// documented human-name placeholder.
+function replyArgv(reply) {
+  const args = [];
+  let word = null;
+  let quoted = false;
+  for (let i = 0; i < reply.length; i++) {
+    const c = reply[i];
+    if (quoted) {
+      if (c === "'") quoted = false;
+      else word += c;
+    } else if (c === "'") {
+      quoted = true;
+      word ??= "";
+    } else if (c === "\\" && i + 1 < reply.length) {
+      word = (word ?? "") + reply[++i];
+    } else if (c === "#" && word === null) {
+      break;
+    } else if (/\s/.test(c)) {
+      if (word !== null) args.push(word);
+      word = null;
+    } else {
+      word = (word ?? "") + c;
+    }
+  }
+  assert.equal(quoted, false, `unterminated quote in ${reply}`);
+  if (word !== null) args.push(word);
+  return args;
+}
 function runReply(f, reply) {
-  return spawnSync("sh", ["-c", reply.replace(/^buildbeat /, '"$1" "$2" ').replaceAll("<you>", "owner"),
-    "approval", process.execPath, CLI], { cwd: f.root, encoding: "utf8" });
+  const [command, ...args] = replyArgv(reply.replaceAll("<you>", "owner"));
+  assert.equal(command, "buildbeat", reply);
+  return spawnSync(process.execPath, [CLI, ...args], { cwd: f.root, encoding: "utf8" });
 }
 function displayedApproval(f) {
   const output = f.ok("status", "--repo", ".", "--run", "RUN-C-01");
