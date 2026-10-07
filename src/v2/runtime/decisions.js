@@ -344,8 +344,9 @@ export function adoptCandidate(
       );
     }
     if (final) {
-      const ancestor = spawnSync("git", ["-C", worktreePath, "merge-base", "--is-ancestor", bound.candidate, tree.head]);
-      if (tree.head === bound.candidate || ancestor.status !== 0) {
+      const candidate = bound.candidate ?? bound.base;
+      const ancestor = spawnSync("git", ["-C", worktreePath, "merge-base", "--is-ancestor", candidate, tree.head]);
+      if (tree.head === candidate || ancestor.status !== 0) {
         throw new DecisionError("adopt requires a new descendant of the current candidate; history rewrites are refused");
       }
     }
@@ -433,7 +434,7 @@ export function requestFix(repoRoot, runId, { by = "human", reason, ts, hasFixer
     if (!worktreePath || !existsSync(worktreePath))
       throw new DecisionError(`worktree missing for ${runId}`);
     const tree = readback(worktreePath);
-    if (tree.dirty || tree.head !== bound.candidate || tree.head !== pending.subject.candidate)
+    if (tree.dirty || tree.head !== (bound.candidate ?? bound.base) || tree.head !== pending.subject.candidate)
       throw new DecisionError("worktree changed since the request; commit the manual repair and use run --adopt");
     const when = ts ?? new Date().toISOString();
     const decisionRef = `D-${runId}-${ledger.state.decisions.length + 1}`;

@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Bind merge approval replies to `--candidate <sha>` and forward the binding through the CLI; reject old or unbound replies after repair. Support both repair paths when the current candidate is still the base commit. Isolate repair regression fixtures from host Git configuration, signing and hooks. These repair paths require this change and are not supported by released 4.0 / 4.1.0.
+
 - Allow manual repair adoption at the merge decision: require clean actual HEAD, a new descendant of the candidate and changes within `allowedPaths`; resume at verify, review incrementally and return to the merge decision while preserving evidence and review accounting.
 - Add `decide --action fix --reason <text>` at the merge decision when a fixer is configured. Record an accepted P1 with the human's reason, feed it to the fixer and continue through verify/review without spending a review round for the decision or changing budgets. Status, inbox and notifications offer manual repair and the configured fixer path. SUCCEEDED and legacy 3.x Runs retain their existing boundaries.
 

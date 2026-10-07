@@ -98,7 +98,7 @@ Usage:
   buildbeat accept --repo <path> --work <WORK-ID> [--by <name>]
   buildbeat run --config <run-config.yaml> [--run <RUN-ID>] [--new] [--adopt <sha> --by <name>]
   buildbeat status --repo <path> [--work <WORK-ID> | --run <RUN-ID>] [--all-repos] [--json]
-  buildbeat decide --repo <path> --run <RUN-ID> --action approve|reject --transition <t> [--by <name>] [--reason <text>]
+  buildbeat decide --repo <path> --run <RUN-ID> --action approve|reject --transition <t> [--candidate <sha>] [--by <name>] [--reason <text>]
   buildbeat decide --repo <path> --run <RUN-ID> --action fix --reason <text> [--by <name>]
   buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--note <text>]
   buildbeat release --config <run-config.yaml> [--ref <ref>] [--note <text>]
@@ -1037,6 +1037,7 @@ function commandApprove(flags) {
   const result = approveRun(resolve(flags.repo), flags.run, {
     by: flags.by ?? "human",
     transition: flags.transition,
+    candidate: flags.candidate,
     policies,
   });
   if (!result.approved) {

@@ -136,7 +136,8 @@ export function nextReply({ repoLabel, state, repoRoot }) {
     );
   }
   lines.push(
-    `buildbeat decide --action approve --repo ${repoLabel} --run ${runId} --transition ${pending.transition} --by <you>` +
+    `buildbeat decide --action approve --repo ${repoLabel} --run ${runId} --transition ${pending.transition}` +
+      (pending.kind === "final-decision" ? ` --candidate ${pending.subject.candidate}` : "") + " --by <you>" +
       (pending.kind === "final-decision" ? "   # merge-ready; merge/push stay yours" : "   # then: run --config <run-config.yaml>"),
   );
   lines.push(`buildbeat decide --action reject --repo ${repoLabel} --run ${runId} --reason <why> --by <you>`);

@@ -817,6 +817,24 @@ def check_without_runtime_guide() -> list[str]:
     return errors
 
 
+def check_final_repair_contract() -> list[str]:
+    errors = []
+    for relative in (
+        "SKILL.md", "docs/v2/guide/07-approval-guide.md",
+        "docs/v2/guide/07-approval-guide.en.md", "docs/v2/guide/10-recovery.md",
+        "docs/v2/guide/10-recovery.en.md",
+    ):
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        for token in ("4.0 / 4.1.0", "Unreleased", "--candidate"):
+            if token not in text:
+                errors.append(f"{relative}: final repair contract must mention {token}")
+        if not re.search(r"不支持|do not support|not supported", text):
+            errors.append(f"{relative}: explicitly exclude released runtimes without final repair support")
+        if not re.search(r"尚未确定|not yet been identified", text):
+            errors.append(f"{relative}: do not invent a supporting release version")
+    return errors
+
+
 def main() -> int:
     paths = markdown_files()
     errors = []
@@ -833,6 +851,7 @@ def main() -> int:
     errors.extend(check_active_docs_currency())
     errors.extend(check_lesson_citations())
     errors.extend(check_without_runtime_guide())
+    errors.extend(check_final_repair_contract())
 
     if errors:
         print("Documentation checks failed:", file=sys.stderr)

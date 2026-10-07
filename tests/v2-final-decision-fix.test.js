@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import test from "node:test";
+import test, { beforeEach, afterEach } from "node:test";
 import { createMockAdapter } from "../src/v2/adapters/mock.js";
 import { deliveryWorkflow, DELIVERY_TEXT } from "../src/v2/engine/workflow.js";
 import { sha256Text } from "../src/v2/policy/policy.js";
@@ -13,15 +13,33 @@ import { resumeRun, startRun } from "../src/v2/runtime/orchestrator.js";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
 import { tempDir } from "./support/tmp.js";
 
+// Runtime Git calls inherit this process; CLI children inherit it too. Workers
+// use an allowlist, so their fixture config explicitly carries these overrides.
+const gitEnvironment = {
+  GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_SYSTEM: "/dev/null", GIT_CONFIG_GLOBAL: "/dev/null",
+};
+let savedGitEnvironment;
+beforeEach(() => {
+  savedGitEnvironment = Object.fromEntries(Object.entries(process.env).filter(([key]) => key.startsWith("GIT_")));
+  for (const key of Object.keys(savedGitEnvironment)) delete process.env[key];
+  Object.assign(process.env, gitEnvironment);
+});
+afterEach(() => {
+  for (const key of Object.keys(process.env)) if (key.startsWith("GIT_")) delete process.env[key];
+  Object.assign(process.env, savedGitEnvironment);
+});
+
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const git = (cwd, ...args) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
 const clean = () => ({ behavior: "succeed", envelope: { status: "succeeded", findings: [] } });
 
-function fixture({ fixer = true, legacy = false, rounds = 6 } = {}) {
+function fixture({ fixer = true, legacy = false, rounds = 6, entry = "build", buildCommit = true } = {}) {
   const root = tempDir("bb-final-fix-");
   git(root, "init", "-q", "-b", "main");
   git(root, "config", "user.name", "Test");
   git(root, "config", "user.email", "test@example.com");
+  git(root, "config", "commit.gpgSign", "false");
+  git(root, "config", "core.hooksPath", "/dev/null");
   writeFileSync(join(root, "feature.txt"), "baseline\n");
   git(root, "add", ".");
   git(root, "commit", "-qm", "baseline");
@@ -32,7 +50,7 @@ function fixture({ fixer = true, legacy = false, rounds = 6 } = {}) {
     name: "fixture",
     execute(context) {
       inputs.push(structuredClone(context.input));
-      if (["build", "fix"].includes(context.step)) commit(`${context.step} ${inputs.length}\n`);
+      if (context.step === "fix" || (context.step === "build" && buildCommit)) commit(`${context.step} ${inputs.length}\n`);
       return scripted.execute(context);
     },
   };
@@ -43,7 +61,7 @@ function fixture({ fixer = true, legacy = false, rounds = 6 } = {}) {
     return git(worktree, "rev-parse", "HEAD");
   }
   const options = {
-    repoRoot: root, workId: "WORK-F", runId: "RUN-F", workflow: deliveryWorkflow(),
+    repoRoot: root, workId: "WORK-F", runId: "RUN-F", entry, workflow: deliveryWorkflow(),
     workflowDigest: sha256Text(DELIVERY_TEXT), allowedPaths: ["feature.txt"],
     budgets: { reviewRoundsPerWork: rounds },
     ...(!legacy ? { deliveryChecks: { artifact: "work", requireAcceptance: false } } : {}),
@@ -183,6 +201,8 @@ function cliFixture({ old = false } = {}) {
   git(root, "init", "-q", "-b", "main");
   git(root, "config", "user.name", "Test");
   git(root, "config", "user.email", "test@example.com");
+  git(root, "config", "commit.gpgSign", "false");
+  git(root, "config", "core.hooksPath", "/dev/null");
   const dir = join(root, "delivery/work/WORK-C");
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "work.md"), "# Confirmed work\nRepair feature.txt.\n");
@@ -197,7 +217,8 @@ esac
   const config = join(dir, "run-config.yaml");
   writeFileSync(config, ["repo: ../../..", "work: WORK-C", "run: RUN-C", "allowedPaths:", "  - feature.txt", "workers:",
     ...["builder", "verifier", "reviewer", "fixer"].flatMap((worker, index) => [
-      `  ${worker}:`, "    command: sh", "    args:", "      - worker.sh", `      - ${["build", "verify", "review", "fix"][index]}`,
+      `  ${worker}:`, "    command: sh", "    env:",
+      ...Object.entries(gitEnvironment).map(([key, value]) => `      ${key}: "${value}"`), "    args:", "      - worker.sh", `      - ${["build", "verify", "review", "fix"][index]}`,
     ]), ""].join("\n"));
   git(root, "add", ".");
   git(root, "commit", "-qm", "fixture");
@@ -224,33 +245,110 @@ esac
     worktree: join(root, ".buildbeat/worktrees/RUN-C-01") };
 }
 
-for (const old of [false, true]) {
-  test(`CLI final adopt and repair decision work on ${old ? "existing 4.x" : "new"} runs`, () => {
-    const f = cliFixture({ old });
-    assert.match(f.ok("status", "--repo", ".", "--run", "RUN-C-01"), /--action fix --reason/);
-    assert.match(f.ok("inbox", "--repo", "."), /--action fix --reason/);
-    f.ok("decide", "--repo", ".", "--run", "RUN-C-01", "--action", "fix", "--reason", "Repair feature", "--by", "owner");
-    f.ok("run", "--config", f.config, "--run", "RUN-C-01");
-    assert.equal(f.state().steps.fix.attempts, 1);
-    assert.equal(f.state().pendingHuman.kind, "final-decision");
-    writeFileSync(join(f.worktree, "feature.txt"), "manual\n");
-    git(f.worktree, "add", "feature.txt");
-    git(f.worktree, "commit", "-qm", "manual");
-    const sha = git(f.worktree, "rev-parse", "HEAD");
-    f.ok("run", "--config", f.config, "--run", "RUN-C-01", "--adopt", sha, "--by", "owner");
-    const state = f.state();
-    assert.equal(state.steps.build.attempts, 1);
-    assert.equal(state.steps.fix.attempts, 1);
-    assert.equal(state.steps.verify.attempts, 3);
-    assert.equal(state.steps.review.attempts, 3);
-    assert.equal(state.pendingHuman.subject.candidate, sha);
-    const stale = f.call("decide", "--repo", ".", "--run", "RUN-C-01", "--action", "approve", "--transition", "enter-wait-merge");
-    assert.notEqual(stale.status, 0);
-    assert.match(stale.stderr, /approval stale/);
-    // The public candidate-binding parameter awaits the owner's naming
-    // decision (notes.md); exercise the already-bound runtime approval.
-    assert.equal(approveRun(f.root, "RUN-C-01", {
-      transition: "enter-wait-merge", candidate: sha, by: "owner",
-    }).terminal, true);
-  });
+// Execute the displayed command through a shell, substituting only the CLI
+// executable and the documented human-name placeholder.
+function runReply(f, reply) {
+  return spawnSync("sh", ["-c", reply.replace(/^buildbeat /, '"$1" "$2" ').replaceAll("<you>", "owner"),
+    "approval", process.execPath, CLI], { cwd: f.root, encoding: "utf8" });
 }
+function displayedApproval(f) {
+  const output = f.ok("status", "--repo", ".", "--run", "RUN-C-01");
+  const reply = output.split("\n").find((line) => line.includes("buildbeat decide --action approve"));
+  assert.ok(reply, output);
+  return reply.slice(reply.indexOf("buildbeat"));
+}
+
+for (const old of [false, true]) {
+  for (const route of ["fix", "adopt"]) {
+    test(`CLI ${route} approves the refreshed reply on ${old ? "existing 4.x" : "new"} runs`, () => {
+      const f = cliFixture({ old });
+      const oldReply = displayedApproval(f);
+      assert.match(f.ok("inbox", "--repo", "."), /--action fix --reason/);
+      if (route === "fix") {
+        f.ok("decide", "--repo", ".", "--run", "RUN-C-01", "--action", "fix", "--reason", "Repair feature", "--by", "owner");
+        f.ok("run", "--config", f.config, "--run", "RUN-C-01");
+      } else {
+        writeFileSync(join(f.worktree, "feature.txt"), "manual\n");
+        git(f.worktree, "add", "feature.txt");
+        git(f.worktree, "commit", "-qm", "manual");
+        f.ok("run", "--config", f.config, "--run", "RUN-C-01", "--adopt", git(f.worktree, "rev-parse", "HEAD"), "--by", "owner");
+      }
+      const state = f.state();
+      const sha = git(f.worktree, "rev-parse", "HEAD");
+      assert.equal(state.steps.build.attempts, 1);
+      assert.equal(state.steps.fix?.attempts ?? 0, route === "fix" ? 1 : 0);
+      assert.equal(state.steps.verify.attempts, 2);
+      assert.equal(state.steps.review.attempts, 2);
+      assert.equal(state.pendingHuman.subject.candidate, sha);
+      const reply = displayedApproval(f);
+      assert.ok(reply.includes(`--candidate ${sha}`));
+      assert.ok(f.ok("inbox", "--repo", ".").includes(`--candidate ${sha}`));
+      const notification = buildNotification("HUMAN_REQUESTED", { repoLabel: ".", state, repoRoot: f.root });
+      assert.ok(notification.nextReply.includes(reply));
+      const stale = runReply(f, oldReply);
+      assert.notEqual(stale.status, 0);
+      assert.match(stale.stderr, /approval stale/);
+      const unbound = runReply(f, reply.replace(` --candidate ${sha}`, ""));
+      assert.notEqual(unbound.status, 0);
+      assert.match(unbound.stderr, /approval stale/);
+      assert.equal(f.state().terminal, null);
+      const approved = runReply(f, reply);
+      assert.equal(approved.status, 0, approved.stderr + approved.stdout);
+      assert.equal(f.state().terminal.status, "SUCCEEDED");
+      assert.equal(f.state().decisions.at(-1).subject.candidate, sha);
+      const decisions = readFileSync(join(f.root, "delivery/work/WORK-C/decisions.jsonl"), "utf8").trim().split("\n").map(JSON.parse);
+      assert.equal(decisions.at(-1).subject.candidate, sha);
+    });
+  }
+}
+
+for (const setup of [{ entry: "verify" }, { buildCommit: false }]) {
+  for (const route of ["adopt", "fix"]) {
+    test(`base-only ${JSON.stringify(setup)} accepts ${route} and rechecks the candidate`, () => {
+      const f = fixture(setup);
+      const initial = f.ledger().state;
+      assert.equal(initial.workspaces["RUN-F"].candidate, null);
+      assert.equal(initial.pendingHuman.subject.candidate, initial.workspaces["RUN-F"].base);
+      if (route === "adopt") f.adopt(f.commit("manual base repair\n"));
+      else requestFix(f.root, "RUN-F", { reason: "repair base" });
+      const state = resumeRun(f.options).state;
+      assert.equal(state.pendingHuman.kind, "final-decision");
+      assert.equal(state.steps.verify.attempts, 2);
+      assert.equal(state.steps.review.attempts, 2);
+      assert.notEqual(state.pendingHuman.subject.candidate, initial.pendingHuman.subject.candidate);
+      assert.equal(f.approve(state.pendingHuman.subject.candidate).terminal, true);
+    });
+  }
+}
+
+test("base-only fix still rejects a mismatched pending subject", () => {
+  const f = fixture({ entry: "verify" });
+  const ledger = f.ledger();
+  const pending = ledger.state.pendingHuman;
+  ledger.append({ type: "HUMAN_REQUESTED", actor: { kind: "kernel", id: "test" }, data: {
+    ...pending, subject: { ...pending.subject, candidate: "0".repeat(40) },
+  } });
+  const before = f.ledger().events.length;
+  assert.throws(() => requestFix(f.root, "RUN-F", { reason: "repair" }), /worktree changed/);
+  assert.equal(f.ledger().events.length, before);
+});
+
+test("fixtures, runtime and shell workers ignore hostile host Git configuration", () => {
+  const root = tempDir("bb-hostile-git-");
+  const hooks = join(root, "hooks");
+  const marker = join(root, "hook-ran");
+  mkdirSync(hooks);
+  writeFileSync(join(hooks, "pre-commit"), `#!/bin/sh\ntouch '${marker}'\nexit 1\n`, { mode: 0o755 });
+  const config = join(root, "host.gitconfig");
+  writeFileSync(config, `[commit]\n  gpgSign = true\n[gpg]\n  program = /unavailable-buildbeat-test-signer\n[core]\n  hooksPath = ${hooks}\n`);
+  // A nested test runner must not inherit Node's child-runner protocol.
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  const result = spawnSync(process.execPath, ["--test", "--test-reporter=tap", "--test-name-pattern", "^(final adopt keeps|CLI fix approves the refreshed reply on new runs)", import.meta.filename], {
+    encoding: "utf8", env: { ...env, GIT_CONFIG_GLOBAL: config, GIT_CONFIG_SYSTEM: config,
+      GIT_CONFIG_NOSYSTEM: "0", GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "commit.gpgSign", GIT_CONFIG_VALUE_0: "true" },
+  });
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+  assert.match(result.stdout, /# pass 2\b/, "both runtime and CLI fixture regressions must actually run");
+  assert.equal(existsSync(marker), false, "host hooks must never execute");
+});
