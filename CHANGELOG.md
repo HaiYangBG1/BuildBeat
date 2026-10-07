@@ -6,6 +6,7 @@
 
 - A review step that exits 0 without writing a report to `$BUILDBEAT_OUTPUT` now stops as `invalid-output` (an infrastructure failure: no fixer, no charge, `resume-review` waits for a person) instead of passing with no evidence until the merge approval refused it. The stop reason says where the report belongs and, when the reviewer printed something, how many bytes went to stdout. Found in a replay of real runs, where a reviewer's 3 P1, 6 P2 and 4 P3 findings reached stdout only.
 - The cost line splits human waits by how they ended: `human waits N (decided … · superseded … · stopped … · open …)`, listing only kinds that occurred; a request repeated before any decision continues the same wait, so overlapping time is not counted twice; JSON carries `cost.waits` with `{count, ms}` per kind and run-records keep it. In the same replay one work showed 32 minutes of decided waits while 11 hours passed on a request a new run superseded.
+- README (zh/en) describes the 4.x product: the three promises now name the mechanisms behind them (one `work.md` driven by `buildbeat run` and `status --all-repos`; evidence read back from Git and infrastructure stops instead of code fixes; merge approvals bound to the candidate and repairs at the merge decision), the cost line's waits, taking part without the runtime and the release readback.
 
 ## v4.2.0 — 2026-10-07（次版本：合并决定点能接修复；合并批准绑定候选）
 
