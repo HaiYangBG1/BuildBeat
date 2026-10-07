@@ -1,6 +1,6 @@
 # BuildBeat capability matrix / 能力矩阵
 
-Current release: 4.1.0. One product path: Skill → local runtime →
+Current release: 4.2.0. One product path: Skill → local runtime →
 project records. The Claude Code plugin distributes the Skill and references;
 install the runtime separately. Files remain readable without the runtime, but
 manual work has no automatic loop, isolation, budget or approval enforcement;
@@ -13,7 +13,7 @@ may be written by hand.
 | Delivery loop | Fixed build/verify/review/fix flow | External CLI tools do the actual work |
 | Recovery | Run/step ledger, resume, manual candidate adoption, stale locks | Active runtime is not transferred by Git clone |
 | Trusted result | Real command evidence, current candidate, read-only review | Script tests do not prove real AI business capability |
-| Decisions | Acceptance, exact approval, frozen checks, budget/convergence stops | No automatic merge, push or deployment |
+| Decisions | Acceptance, exact approval bound to the candidate, frozen checks, budget/convergence stops, repairs at the merge decision (adopt a hand fix or send it back to the fixer) | No automatic merge, push or deployment |
 | Efficiency | Verify cache, review range hints, parallel Work isolation | External test state must be isolated and stable |
 | Feedback | Unified status/cost/decisions, also across a main repository and its code repositories (`--all-repos`), liveness, webhook/DingTalk | Notifications do not approve |
 | UI evidence | `requireScreenshot`: screenshots from verify, bound to the candidate and required at merge | The project's verify renders and captures |
