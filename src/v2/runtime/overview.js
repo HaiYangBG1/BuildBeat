@@ -13,7 +13,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { listInbox } from "./decisions.js";
-import { configTargets, directory, discoverRepos, pathLabel, repositoryRoot, shellArg, workConfigs } from "./overview-repos.js";
+import { configTargets, directory, discoverRepos, pathLabel, shellArg, workConfigs } from "./overview-repos.js";
 
 import { EventLedger } from "../storage/event-ledger.js";
 import { latestAdjudications, readFindingsAccount } from "./findings.js";
@@ -67,27 +67,35 @@ export function artifactStatus(workDir, decisions, artifact) {
   };
 }
 
-function isAncestor(repoRoot, sha, ref) {
+function isAncestor(repoRoot, sha, ref, context) {
+  const key = JSON.stringify([repoRoot, sha, ref]);
+  if (context.ancestry.has(key)) return context.ancestry.get(key);
   try {
     execFileSync(
       "git",
       ["-C", repoRoot, "merge-base", "--is-ancestor", sha, ref],
       { stdio: "ignore" },
     );
+    context.ancestry.set(key, true);
     return true;
   } catch {
+    context.ancestry.set(key, false);
     return false;
   }
 }
 
-function headRef(repoRoot) {
+function headRef(repoRoot, context) {
+  if (context.heads.has(repoRoot)) return context.heads.get(repoRoot);
   try {
-    return execFileSync(
+    const ref = execFileSync(
       "git",
       ["-C", repoRoot, "rev-parse", "--abbrev-ref", "HEAD"],
       { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
     ).trim();
+    context.heads.set(repoRoot, ref);
+    return ref;
   } catch {
+    context.heads.set(repoRoot, "HEAD");
     return "HEAD";
   }
 }
@@ -157,9 +165,15 @@ export function runsFor(repoRoot, workId) {
   );
 }
 
+// Per status invocation: known local roots need no validation subprocess,
+// and forwarded works share repository facts with the later target scan.
+function overviewContext(repoRoot) {
+  return { roots: new Map([[realpathSync(repoRoot), realpathSync(repoRoot)]]), heads: new Map(), ancestry: new Map() };
+}
+
 export function computeOverview(
   repoRoot,
-  { work = null, repoLabel = ".", cwd = null, followTargets = true, warnings = [], configOverride = null } = {},
+  { work = null, repoLabel = ".", cwd = null, followTargets = true, warnings = [], configsOverride = null, context = overviewContext(repoRoot), skipWorks = new Set(), localCompatibility = false } = {},
 ) {
   const workRoot = join(repoRoot, "delivery", "work");
   const rows = [];
@@ -173,22 +187,27 @@ export function computeOverview(
       if (run?.work) workIds.add(run.work);
     }
   }
-  const mainRef = headRef(repoRoot);
+  const mainRef = headRef(repoRoot, context);
   // Resolve once; do not spawn another Git process for each local work.
   const currentRoot = realpathSync(repoRoot);
   for (const workId of [...workIds].sort()) {
-    if (work && workId !== work) {
+    if ((work && workId !== work) || skipWorks.has(workId)) {
       continue;
     }
     const workDir = join(workRoot, workId);
-    const configs = configOverride ? [configOverride] : workConfigs(repoRoot, workId, warnings);
-    const resolved = followTargets ? configTargets(configs, warnings) : configs;
-    const config = resolved[0] ?? null;
-    if (followTargets && config?.repo && config.repo !== currentRoot &&
-        (directory(join(config.repo, "delivery", "work", workId)) || runsFor(config.repo, workId).length)) {
+    const configs = configsOverride ?? workConfigs(repoRoot, workId, warnings);
+    const resolved = followTargets ? configTargets(configs, warnings, context.roots) : configs;
+    const owner = followTargets ? resolved.find((item) => item.repo && item.repo !== currentRoot &&
+      (directory(join(item.repo, "delivery", "work", workId)) || runsFor(item.repo, workId).length)) : null;
+    const usable = resolved.filter((item) => !item.error);
+    const selected = owner ?? usable[0] ?? resolved[0] ?? null;
+    const applicable = selected?.repo ? resolved.filter((item) => item.repo === selected.repo) : usable;
+    const local = localCompatibility && (!selected?.target || selected.repo === currentRoot);
+    const config = (local ? null : applicable.find((item) => item.release)) ?? selected;
+    if (owner) {
       const targetRows = computeOverview(config.repo, {
         work: workId, repoLabel: shellArg(pathLabel(cwd ?? process.cwd(), config.repo)),
-        cwd: cwd ?? process.cwd(), followTargets: false, warnings, configOverride: config,
+        cwd: cwd ?? process.cwd(), followTargets: false, warnings, configsOverride: applicable, context,
       });
       if (targetRows.length) {
         rows.push({ ...targetRows[0], repo: config.repo, repoLabel: pathLabel(cwd ?? process.cwd(), config.repo) });
@@ -196,7 +215,7 @@ export function computeOverview(
       }
     }
     const configPath = config
-      ? shellArg(cwd ? pathLabel(cwd, config.path) : `delivery/work/${workId}/${config.path.split("/").at(-1)}`)
+      ? shellArg(cwd && !local ? pathLabel(cwd, config.path) : `delivery/work/${workId}/${config.path.split("/").at(-1)}`)
       : "<run-config.yaml>";
     const runs = runsFor(repoRoot, workId);
     if (!configs.length && !runs.length && !["work.md", "intent.md", "plan.md", "decisions.jsonl", "runs"].some((name) => existsSync(join(workDir, name)))) continue;
@@ -228,7 +247,7 @@ export function computeOverview(
         .reverse()
         .find(
           (run) =>
-            run.candidate && isAncestor(repoRoot, run.candidate, mainRef),
+            run.candidate && isAncestor(repoRoot, run.candidate, mainRef, context),
         ) ?? null;
     const merged = Boolean(mergedRun);
     const RELEASE_STEPS = ["preflight", "apply-readback", "observe"];
@@ -372,7 +391,7 @@ export function computeOverview(
             },
           }
         : {}),
-      next: next.replaceAll("--config <run-config.yaml>", `--config ${configPath}`),
+      next: local ? next : next.replaceAll("--config <run-config.yaml>", `--config ${configPath}`),
     });
   }
   return rows;
@@ -449,11 +468,12 @@ export function renderOverview(rows) {
 // The main repo's configuration remains the command source; all state and
 // decisions come from the checkout that owns the work. Only the main repo's
 // pointers are followed, so targets cannot recursively expand this view.
-export function computeRepositoryOverview(repoRoot, { work = null, allRepos = false, cwd = process.cwd() } = {}) {
-  repoRoot = repositoryRoot(repoRoot);
+export function computeRepositoryOverview(repoRoot, { work = null, allRepos = false, cwd = process.cwd(), localRepoLabel = shellArg(pathLabel(cwd, repoRoot)) } = {}) {
+  repoRoot = realpathSync(repoRoot);
+  const context = overviewContext(repoRoot);
   const warnings = [];
-  const roots = allRepos ? discoverRepos(repoRoot, warnings) : [repoRoot];
-  const primary = computeOverview(repoRoot, { work, cwd, repoLabel: shellArg(pathLabel(cwd, repoRoot)), warnings });
+  const roots = allRepos ? discoverRepos(repoRoot, warnings, context.roots) : [repoRoot];
+  const primary = computeOverview(repoRoot, { work, cwd, repoLabel: allRepos ? shellArg(pathLabel(cwd, repoRoot)) : localRepoLabel, warnings, context, localCompatibility: !allRepos });
   const groups = new Map(roots.map((repo) => [repo, new Map()]));
   for (const row of primary) {
     const owner = row.repo ?? repoRoot;
@@ -462,7 +482,7 @@ export function computeRepositoryOverview(repoRoot, { work = null, allRepos = fa
   }
   if (allRepos) {
     for (const root of roots.filter((root) => root !== repoRoot)) {
-      for (const row of computeOverview(root, { work, cwd, followTargets: false, warnings, repoLabel: shellArg(pathLabel(cwd, root)) })) {
+      for (const row of computeOverview(root, { work, cwd, followTargets: false, warnings, context, skipWorks: new Set(groups.get(root).keys()), repoLabel: shellArg(pathLabel(cwd, root)) })) {
         if (!groups.get(root).has(row.work)) groups.get(root).set(row.work, row);
       }
     }

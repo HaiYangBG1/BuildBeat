@@ -1464,11 +1464,20 @@ function commandStatus(flags) {
     throw new Error("status: choose --run or --work");
   if (!flags.run) {
     const allRepos = flags["all-repos"] === "true";
-    const result = computeRepositoryOverview(repoRoot, { work: flags.work ?? null, allRepos });
+    const result = computeRepositoryOverview(repoRoot, { work: flags.work ?? null, allRepos, localRepoLabel: repoLabelFor(repoRoot, flags.repo) });
     const rows = result.repos.flatMap((group) => group.works);
     if (flags.json === "true") {
       console.log(JSON.stringify(allRepos ? result : {
-        works: rows, pending: result.pending,
+        works: rows.map((row) => {
+          if (row.repo !== result.repos[0].repo || row.targetRepo) return row;
+          const { config, hasRelease, repo, repoLabel, settled, ...local } = row;
+          return local;
+        }),
+        pending: result.pending.map((row) => {
+          if (row.repo !== result.repos[0].repo) return row;
+          const { repo, config, ...local } = row;
+          return local;
+        }),
         metrics: flags.work ? null : computeMetrics(repoRoot),
         ...(result.warnings.length ? { warnings: result.warnings } : {}),
       }, null, 2));
