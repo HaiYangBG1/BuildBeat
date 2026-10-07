@@ -10,9 +10,10 @@
 
 import { payloadFor } from "../adapters/notification-payload.js";
 import { currentScreenshots } from "../policy/policy.js";
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 
+import { configTargets, workConfigs } from "./overview-repos.js";
 import { parseYamlSubset } from "../engine/yaml-subset.js";
 
 export const NOTIFY_CONFIG = join(".buildbeat", "notify.yaml");
@@ -89,7 +90,22 @@ export function candidateScreenshots(state, candidate) {
 
 // The exact commands a human can copy to answer a pending request. Shared by
 // status, inbox and notifications so "what do I say now" has one answer.
-export function nextReply({ repoLabel, state }) {
+function configuredFixer(repoRoot, state) {
+  if (state.run.repair) return state.run.repair.hasFixer;
+  if (!repoRoot) return false;
+  // Existing 4.x runs have no repair snapshot. Hints are conservative when
+  // their configuration is missing, ambiguous or unreadable.
+  try {
+    const configs = configTargets(workConfigs(repoRoot, state.run.work), [])
+      .filter((item) => item.repo === realpathSync(repoRoot))
+      .map((item) => parseYamlSubset(readFileSync(item.path, "utf8")))
+      .filter((doc) => doc.run === state.run.id || (typeof doc.run === "string" &&
+        state.run.id.startsWith(`${doc.run}-`) && /^\d+$/.test(state.run.id.slice(doc.run.length + 1))));
+    return configs.length === 1 && Boolean(configs[0].workers?.fixer?.command);
+  } catch { return false; }
+}
+
+export function nextReply({ repoLabel, state, repoRoot }) {
   const pending = state.pendingHuman;
   if (!pending || !state.run) {
     return [];
@@ -124,10 +140,16 @@ export function nextReply({ repoLabel, state }) {
       (pending.kind === "final-decision" ? "   # merge-ready; merge/push stay yours" : "   # then: run --config <run-config.yaml>"),
   );
   lines.push(`buildbeat decide --action reject --repo ${repoLabel} --run ${runId} --reason <why> --by <you>`);
+  if (pending.kind === "final-decision") {
+    lines.push(`buildbeat run --config <run-config.yaml> --run ${runId} --adopt <sha> --by <you>   # commit a manual repair in the run worktree; verify and review again`);
+    if (configuredFixer(repoRoot, state)) {
+      lines.push(`buildbeat decide --repo ${repoLabel} --run ${runId} --action fix --reason <what to repair> --by <you>   # then: run --config <run-config.yaml> --run ${runId}`);
+    }
+  }
   return lines;
 }
 
-export function buildNotification(kind, { repoLabel, state, detail = {} }) {
+export function buildNotification(kind, { repoLabel, state, repoRoot, detail = {} }) {
   const run = state.run;
   const base = {
     kind,
@@ -149,7 +171,7 @@ export function buildNotification(kind, { repoLabel, state, detail = {} }) {
       reasons: pending?.reasons ?? [],
       candidate: pending?.subject?.candidate ?? null,
       ...(screenshots.length > 0 ? { screenshots } : {}),
-      nextReply: nextReply({ repoLabel, state }),
+      nextReply: nextReply({ repoLabel, state, repoRoot }),
     };
   }
   if (kind === "RUN_TERMINAL") {

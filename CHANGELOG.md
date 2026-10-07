@@ -2,6 +2,11 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- Allow manual repair adoption at the merge decision: require clean actual HEAD, a new descendant of the candidate and changes within `allowedPaths`; resume at verify, review incrementally and return to the merge decision while preserving evidence and review accounting.
+- Add `decide --action fix --reason <text>` at the merge decision when a fixer is configured. Record an accepted P1 with the human's reason, feed it to the fixer and continue through verify/review without spending a review round for the decision or changing budgets. Status, inbox and notifications offer manual repair and the configured fixer path. SUCCEEDED and legacy 3.x Runs retain their existing boundaries.
+
 ## v4.1.0 — 2026-10-07（次版本：跨仓总览；提示里的命令与路径都能照做）
 
 - Add read-only `status --all-repos`: discover the main repository, configured target checkouts and immediate child repositories, deduplicate real paths, show pending decisions first and count settled work. JSON retains all work; `--work` filters across repositories, while `--run` requires single-repository status.

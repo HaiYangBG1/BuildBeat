@@ -744,6 +744,21 @@ function beginStep(context, step, stepDef, attempt) {
       }));
     }
   }
+  // A human's final-decision repair is separate from reviewer evidence: it
+  // must not spend a review round or pretend that a reviewer reported it.
+  if (step === "fix") {
+    const decision = [...ledger.events].reverse().find((event) =>
+      event.type === "DECISION_RECORDED" && event.data.decision === "fix");
+    const priorFix = [...ledger.events].reverse().find((event) =>
+      event.type === "STEP_FINISHED" && event.data.step === "fix" && event.data.status === "succeeded");
+    if (decision && (!priorFix || decision.seq > priorFix.seq)) {
+      const finding = { severity: "P1", summary: decision.data.reason };
+      input.findings = [...(input.findings ?? []).filter((item) =>
+        item.fingerprint !== fingerprintFinding(finding)), {
+        ...finding, fingerprint: fingerprintFinding(finding), adjudication: "accept",
+      }];
+    }
+  }
   // Envelope (C6): the worker's prompt, materialised into the run
   // directory and handed over as BUILDBEAT_PROMPT / input.envelope.
   const prompt = materialisePrompt({
@@ -1506,6 +1521,9 @@ export function startRun(options) {
         run: runId,
         work: workId,
         data: {
+          ...(options.deliveryChecks ? {
+            repair: { hasFixer: Boolean(options.adapters?.fixer), allowedPaths: options.allowedPaths ?? null },
+          } : {}),
           workflowRef: workflow.name,
           workflowDigest,
           base: workspace.base,
@@ -1574,6 +1592,10 @@ export function assertRunConfiguration(state, options) {
   if (!state.run) throw new OrchestratorError("run has no creation record");
   if (options.workId && options.workId !== state.run.work)
     throw new OrchestratorError("run belongs to a different work");
+  if (state.run.repair && (
+    canonicalJson(state.run.repair.allowedPaths) !== canonicalJson(options.allowedPaths ?? null) ||
+    state.run.repair.hasFixer !== Boolean(options.adapters?.fixer)
+  )) throw new OrchestratorError("repair configuration changed since the run was created; refusing to resume");
   const { workflowDigest } = options;
   if (
     state.run.deliveryChecks &&

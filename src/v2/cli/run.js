@@ -11,7 +11,7 @@
 
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -32,6 +32,7 @@ import {
   approveRun,
   listInbox,
   rejectRun,
+  requestFix,
 } from "../runtime/decisions.js";
 import { checkRequires } from "../runtime/env-contract.js";
 import {
@@ -50,7 +51,7 @@ import {
   renderOverview,
   runsFor,
 } from "../runtime/overview.js";
-import { pathLabel, shellArg } from "../runtime/overview-repos.js";
+import { configTargets, workConfigs, pathLabel, shellArg } from "../runtime/overview-repos.js";
 import { closeWork, runReadback } from "../runtime/release.js";
 import {
   DEFAULT_STALL_AFTER_MS,
@@ -98,6 +99,7 @@ Usage:
   buildbeat run --config <run-config.yaml> [--run <RUN-ID>] [--new] [--adopt <sha> --by <name>]
   buildbeat status --repo <path> [--work <WORK-ID> | --run <RUN-ID>] [--all-repos] [--json]
   buildbeat decide --repo <path> --run <RUN-ID> --action approve|reject --transition <t> [--by <name>] [--reason <text>]
+  buildbeat decide --repo <path> --run <RUN-ID> --action fix --reason <text> [--by <name>]
   buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--note <text>]
   buildbeat release --config <run-config.yaml> [--ref <ref>] [--note <text>]
   buildbeat decide --repo <path> --work <WORK-ID> --action close --result <text> [--by <name>]
@@ -179,8 +181,8 @@ function repoLabelFor(repoRoot, typed) {
   return rel;
 }
 
-function printNextReply(repoLabel, state) {
-  const lines = nextReply({ repoLabel, state });
+function printNextReply(repoLabel, state, repoRoot) {
+  const lines = nextReply({ repoLabel, state, repoRoot });
   if (lines.length === 0) {
     return;
   }
@@ -289,7 +291,7 @@ function printState(state, ledger, view = {}) {
       console.log(`  reason: ${reason}`);
     }
     if (view.repoLabel) {
-      printNextReply(view.repoLabel, state);
+      printNextReply(view.repoLabel, state, view.repoRoot);
     }
   }
   if (state.terminal) {
@@ -590,7 +592,7 @@ async function notifyForState(repoRoot, repoLabel, state) {
     }
     const results = await dispatchNotification(
       config,
-      buildNotification(kind, { repoLabel, state }),
+      buildNotification(kind, { repoLabel, state, repoRoot }),
       { repoRoot },
     );
     for (const row of results) {
@@ -915,6 +917,7 @@ async function commandResume(
       sha: flags.adopt,
       by: flags.by ?? "human",
       resumeAt,
+      allowedPaths: options.allowedPaths,
     });
     console.log(
       `adopted ${adopted.adopted} as candidate (${adopted.decisionRef}, answers ${adopted.transition}); resuming at ${adopted.resumeAt}`,
@@ -1009,6 +1012,7 @@ function commandInbox(flags, rows = null) {
     for (const line of nextReply({
       repoLabel: row.repo ? shellArg(pathLabel(process.cwd(), rowRepo)) : repoLabelFor(repoRoot, flags.repo),
       state: ledger.state,
+      repoRoot: rowRepo,
     })) {
       console.log(`    next: ${row.config ? line.replaceAll("--config <run-config.yaml>", `--config ${shellArg(pathLabel(process.cwd(), row.config))}`) : line}`);
     }
@@ -1628,6 +1632,28 @@ function commandDecide(flags) {
   }
   if (flags.action === "approve") return commandApprove(flags);
   if (flags.action === "reject") return commandReject(flags);
+  if (flags.action === "fix") {
+    if (!flags.repo || !flags.run) throw new Error("fix requires --repo and --run");
+    const repoRoot = resolve(flags.repo);
+    const prior = EventLedger.open(ledgerPathFor(repoRoot, flags.run));
+    let hasFixer;
+    // Older 4.x ledgers did not freeze repair capabilities. Discover a
+    // single matching configuration; never guess between several configs.
+    if (prior.state.run?.deliveryChecks && !prior.state.run.repair) {
+      const configs = configTargets(workConfigs(repoRoot, prior.state.run.work), []);
+      const candidates = configs.filter((item) => item.repo === realpathSync(repoRoot)).map((item) =>
+        loadRunConfig({ config: item.path }, "resume")).filter((options) =>
+        inRunFamily(options.runId, flags.run));
+      if (candidates.length !== 1) throw new Error("cannot identify the run configuration; use manual repair and run --adopt");
+      assertRunConfiguration(prior.state, candidates[0]);
+      hasFixer = Boolean(candidates[0].adapters.fixer);
+    }
+    const result = requestFix(repoRoot, flags.run, {
+      by: flags.by ?? "human", reason: flags.reason, hasFixer,
+    });
+    console.log(`repair requested as ${result.decisionRef}; continue with: buildbeat run --config <run-config.yaml> --run ${flags.run}`);
+    return;
+  }
   if (["accept", "dismiss"].includes(flags.action) && flags.fingerprint) {
     if (!flags.repo || !flags.work)
       throw new Error("finding decisions require --repo and --work");
@@ -1641,7 +1667,7 @@ function commandDecide(flags) {
     return;
   }
   throw new Error(
-    "decide requires --action approve|reject, accept|dismiss with --work and --fingerprint, or close with --work and --result",
+    "decide requires --action approve|reject|fix, accept|dismiss with --work and --fingerprint, or close with --work and --result",
   );
 }
 
