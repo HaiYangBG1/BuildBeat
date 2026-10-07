@@ -2,7 +2,7 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
-## Unreleased
+## v4.2.2 — 2026-10-07（补丁：README 重新设计）
 
 - README (zh/en) redesigned for reading: a hero picture, the name's meaning (every step is a note the agent plays; the played score stays in Git), a delivery-loop diagram in light and dark with a stacked layout for phones, the three promises as short sections, a real `status` excerpt at the merge decision, and which records travel with Git and which stay on this machine. Pictures live in `docs/assets/readme/` (the loop diagram is drawn by `diagrams.mjs`) and are linked through raw URLs so the npm page shows them too; `check:docs` now requires every README picture to exist, carry alt text and stay under 600 KB.
 
