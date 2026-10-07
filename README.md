@@ -84,11 +84,9 @@ work WORK-CSV-EXPORT:
 
 端到端工作包把一项工作的来龙去脉留在仓库里：
 
-| 位置 | 内容 | 随 Git 走 |
-|---|---|---|
-| `delivery/work/<ID>/` | work.md、run 配置、决定、审查问题、每轮终态记录（结果、成本、证据摘要与引用） | 是 |
-| `.buildbeat/runtime/` | 运行台账、日志、截图等原始证据 | 否，只在本机 |
-| `.buildbeat/worktrees/` | 候选所在的隔离工作树 | 否，只在本机 |
+- `delivery/work/<ID>/` **随 Git 走**：work.md、run 配置、决定、审查问题、每轮终态记录（结果、成本、证据摘要与引用）
+- `.buildbeat/runtime/` **只在本机**：运行台账、日志、截图等原始证据
+- `.buildbeat/worktrees/` **只在本机**：候选所在的隔离工作树
 
 换会话前补齐未落盘事实；Git clone 不迁移活动进程和现场。没装运行时的人和工具也能读状态、写工作说明。
 

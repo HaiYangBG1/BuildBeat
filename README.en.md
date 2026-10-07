@@ -84,11 +84,9 @@ The cost line shows how many review rounds ran, how many problems were found, ho
 
 End-to-end work packages keep the whole story of a work in the repository:
 
-| Where | What | Travels with Git |
-|---|---|---|
-| `delivery/work/<ID>/` | work.md, run config, decisions, review findings, each run's terminal record (outcome, cost, evidence digests and references) | Yes |
-| `.buildbeat/runtime/` | The run ledger, logs, screenshots and other raw evidence | No, this machine only |
-| `.buildbeat/worktrees/` | The isolated worktrees that hold candidates | No, this machine only |
+- `delivery/work/<ID>/` **travels with Git**: work.md, run config, decisions, review findings, each run's terminal record (outcome, cost, evidence digests and references)
+- `.buildbeat/runtime/` **stays on this machine**: the run ledger, logs, screenshots and other raw evidence
+- `.buildbeat/worktrees/` **stays on this machine**: the isolated worktrees that hold candidates
 
 Save missing facts before switching sessions; active runs do not migrate through Git clone. People and tools without the runtime can still read status and write work descriptions.
 
