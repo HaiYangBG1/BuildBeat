@@ -37,28 +37,31 @@ const css = {
 };
 
 function render(file) {
-  const text = readFileSync(join(root, file), "utf8").replaceAll(RAW, pathToFileURL(`${root}/`).href);
+  // GitHub drops file:// sources and keeps the main-branch URLs, so the
+  // pictures are mapped to this checkout after rendering.
   const input = join(scratch, "input.md");
-  writeFileSync(input, text);
+  writeFileSync(input, readFileSync(join(root, file), "utf8"));
   const res = spawnSync("gh", ["api", "-X", "POST", "/markdown", "-f", "mode=gfm",
     "-f", "context=HaiYangBG1/BuildBeat", "-F", `text=@${input}`], { encoding: "utf8" });
   if (res.status !== 0) infra(`GitHub markdown API failed: ${res.stderr.trim()}`);
-  return res.stdout;
+  return res.stdout.replaceAll(RAW, pathToFileURL(`${root}/`).href);
 }
 
+// Headless Chrome keeps a minimum window width of about 500px, so the page is
+// pinned to the requested width from the left edge instead of centered.
 function page(html, scheme, width) {
   const background = scheme === "dark" ? "#0d1117" : "#ffffff";
   return `<!doctype html><html><head><meta charset="utf-8">
 <style>${css[scheme]}</style>
 <style>html,body{margin:0;background:${background}}
-.markdown-body{box-sizing:border-box;max-width:${width}px;margin:0 auto;padding:${width < 600 ? 16 : 45}px}</style>
+.markdown-body{box-sizing:border-box;width:${width}px;margin:0;padding:${width < 600 ? 16 : 45}px}</style>
 </head><body><article class="markdown-body">${html}</article>
 <script>addEventListener("load", () => document.documentElement.setAttribute("data-height",
   String(Math.ceil(document.documentElement.scrollHeight))));</script>
 </body></html>`;
 }
 
-function chrome(args, { file = null } = {}) {
+function chromeOnce(args, { file = null } = {}) {
   return new Promise((done) => {
     const child = spawn(CHROME, ["--headless=new", "--use-mock-keychain", "--disable-gpu",
       "--no-first-run", "--no-default-browser-check", "--hide-scrollbars",
@@ -79,14 +82,23 @@ function chrome(args, { file = null } = {}) {
       } else {
         finished = stdout.includes("</html>");
       }
-      if (finished || Date.now() - started > 90000) {
+      if (finished || Date.now() - started > 45000) {
         clearInterval(timer);
         stop();
-        if (!finished) infra(`Chrome produced no output for ${args.at(-1)}`);
-        done(stdout);
+        done(finished ? stdout : null);
       }
     }, 500);
   });
+}
+
+// External pictures (badges) can stall a page load; one retry, then infra.
+async function chrome(args, options) {
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    if (options?.file) rmSync(options.file, { force: true });
+    const output = await chromeOnce(args, options);
+    if (output !== null) return output;
+  }
+  return infra(`Chrome produced no output for ${args.at(-1)}`);
 }
 
 const html = { "README.md": render("README.md"), "README.en.md": render("README.en.md") };
