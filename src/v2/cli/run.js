@@ -45,10 +45,12 @@ import { applyGc, planGc } from "../runtime/gc.js";
 import {
   artifactStatus,
   computeOverview,
+  computeRepositoryOverview,
   readJsonl,
   renderOverview,
   runsFor,
 } from "../runtime/overview.js";
+import { pathLabel, shellArg } from "../runtime/overview-repos.js";
 import { closeWork, runReadback } from "../runtime/release.js";
 import {
   DEFAULT_STALL_AFTER_MS,
@@ -94,7 +96,7 @@ Usage:
   buildbeat --version
   buildbeat accept --repo <path> --work <WORK-ID> [--by <name>]
   buildbeat run --config <run-config.yaml> [--run <RUN-ID>] [--new] [--adopt <sha> --by <name>]
-  buildbeat status --repo <path> [--work <WORK-ID> | --run <RUN-ID>] [--json]
+  buildbeat status --repo <path> [--work <WORK-ID> | --run <RUN-ID>] [--all-repos] [--json]
   buildbeat decide --repo <path> --run <RUN-ID> --action approve|reject --transition <t> [--by <name>] [--reason <text>]
   buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--note <text>]
   buildbeat release --config <run-config.yaml> [--ref <ref>] [--note <text>]
@@ -110,7 +112,7 @@ check --step executes that worker in the main checkout, outside the evidence led
 
 // Switches may stand alone (`--json`) or take an explicit true/false
 // (`--json true`, the older spelling); every other flag needs a value.
-const SWITCHES = new Set(["json", "apply", "force", "once", "new", "verify"]);
+const SWITCHES = new Set(["json", "apply", "force", "once", "new", "verify", "all-repos"]);
 
 function parseFlags(argv) {
   const flags = {};
@@ -971,6 +973,7 @@ function commandInbox(flags, rows = null) {
   );
   let lastWork = null;
   for (const row of sorted) {
+    const rowRepo = row.repo ?? repoRoot;
     if (row.corrupted) {
       console.log(
         `${row.run}: LEDGER CORRUPTED after seq=${row.corrupted.afterSeq} (${row.corrupted.reason})`,
@@ -981,7 +984,7 @@ function commandInbox(flags, rows = null) {
       console.log(`work ${row.work}:`);
       lastWork = row.work;
     }
-    const ledger = EventLedger.open(ledgerPathFor(repoRoot, row.run));
+    const ledger = EventLedger.open(ledgerPathFor(rowRepo, row.run));
     const requested = [...ledger.events]
       .reverse()
       .find((event) => event.type === "HUMAN_REQUESTED");
@@ -1004,10 +1007,10 @@ function commandInbox(flags, rows = null) {
       console.log(`    reason: ${reason}`);
     }
     for (const line of nextReply({
-      repoLabel: repoLabelFor(repoRoot, flags.repo),
+      repoLabel: row.repo ? shellArg(pathLabel(process.cwd(), rowRepo)) : repoLabelFor(repoRoot, flags.repo),
       state: ledger.state,
     })) {
-      console.log(`    next: ${line}`);
+      console.log(`    next: ${row.config ? line.replaceAll("--config <run-config.yaml>", `--config ${shellArg(pathLabel(process.cwd(), row.config))}`) : line}`);
     }
   }
 }
@@ -1455,30 +1458,48 @@ function commandMetrics(flags) {
 function commandStatus(flags) {
   if (!flags.repo) throw new Error("status requires --repo");
   const repoRoot = resolve(flags.repo);
+  if (flags["all-repos"] === "true" && flags.run)
+    throw new Error("status: --all-repos cannot be used with --run; use --work instead");
   if (flags.run && flags.work)
     throw new Error("status: choose --run or --work");
   if (!flags.run) {
-    const rows = computeOverview(repoRoot, {
-      work: flags.work ?? null,
-      repoLabel: repoLabelFor(repoRoot, flags.repo),
-    });
-    const pending = pendingFor(repoRoot, flags.work);
-    if (flags.json === "true")
-      console.log(
-        JSON.stringify(
-          {
-            works: rows,
-            pending,
-            metrics: flags.work ? null : computeMetrics(repoRoot),
-          },
-          null,
-          2,
-        ),
-      );
-    else {
-      console.log(renderOverview(rows));
-      if (pending.length) commandInbox(flags, pending);
-      if (!flags.work) console.log(renderMetrics(computeMetrics(repoRoot)));
+    const allRepos = flags["all-repos"] === "true";
+    const result = computeRepositoryOverview(repoRoot, { work: flags.work ?? null, allRepos });
+    const rows = result.repos.flatMap((group) => group.works);
+    if (flags.json === "true") {
+      console.log(JSON.stringify(allRepos ? result : {
+        works: rows, pending: result.pending,
+        metrics: flags.work ? null : computeMetrics(repoRoot),
+        ...(result.warnings.length ? { warnings: result.warnings } : {}),
+      }, null, 2));
+    } else {
+      for (const warning of result.warnings) console.log(`warning: ${warning}`);
+      if (allRepos) {
+        for (const group of result.repos) {
+          const pending = result.pending.filter((row) => row.repo === group.repo);
+          if (pending.length) {
+            console.log(`待人决定 · ${pathLabel(process.cwd(), group.repo)}`);
+            commandInbox(flags, pending);
+          }
+        }
+        for (const group of result.repos) {
+          const open = group.works.filter((row) => !row.settled);
+          if (open.length) {
+            console.log(`仓库：${pathLabel(process.cwd(), group.repo)}`);
+            console.log(renderOverview(open));
+          }
+        }
+        for (const group of result.repos) {
+          const count = group.settled;
+          console.log(`${pathLabel(process.cwd(), group.repo)}：已了结 ${count.total} 项（CLOSED ${count.closed} / CANCELLED ${count.cancelled} / 已合并无收尾步骤 ${count.merged}）`);
+        }
+      } else {
+        // Keep the single-repo surface while forwarding work facts and waits.
+        console.log(renderOverview(rows.map((row) => row.repo === result.repos[0].repo
+          ? { ...row, repo: undefined } : row)));
+        if (result.pending.length) commandInbox(flags, result.pending);
+        if (!flags.work) console.log(renderMetrics(computeMetrics(repoRoot)));
+      }
     }
     return;
   }

@@ -92,3 +92,5 @@ workers:
 [Migration](../../MIGRATION.md) · [Worker contract](05-worker-contract.en.md) · [Recovery](10-recovery.en.md)
 
 Before starting, commit work.md and worker scripts into the selected base so the isolated checkout sees the accepted scope. Acceptance records may be committed afterward.
+
+For a main repository with code repositories, use `buildbeat status --repo . --all-repos` for pending decisions and open work across repositories; add `--work <ID>` or `--json` as needed. See [Session handoff](11-session-handoff.en.md).

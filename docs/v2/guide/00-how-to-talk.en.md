@@ -13,3 +13,5 @@
 | Switch sessions | Save missing facts and retain active runtime files; continue from project records |
 
 The loop ends at the merge decision. Merge, push, deployment and publication each require their corresponding authorization.
+
+For a main repository with code repositories, inspect them together with `buildbeat status --repo . --all-repos`. See [Session handoff](11-session-handoff.en.md) for discovery, filters and settled counts.

@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+- Add read-only `status --all-repos`: discover the main repository, configured target checkouts and immediate child repositories, deduplicate real paths, show pending decisions first and count settled work. JSON retains all work; `--work` filters across repositories, while `--run` requires single-repository status.
+- Fix main-repository status/overview reporting target-repository work as ready to start: read state, findings and decisions from the target, retain the main run configuration for commands, and quote paths relative to the caller. Missing/invalid targets warn without hiding other work. Ship `src/v2/runtime/overview-repos.js` and update the package-file inventory for this runtime helper.
+
 ## v4.0.0 — 2026-10-04（主版本：聚焦可恢复交付，精简产品范围与操作入口）
 
 > **发布状态**：`@haiyangbg/buildbeat@4.0.0` 已于 2026-10-05 从 `main`（PR #70、#71 内容，release PR #72，merge commit `c15fbe0`，tag `v4.0.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 37262387333，publish 与 verify 双 job 一次 success；所有者授权「合并并发 4.0」）。独立回读（直连 npmjs.org）：`latest` = 4.0.0、`dist.integrity` 与本地用 Node 24 + npm 11.19.0 打的候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 4.0.0、裸调用零写入、用法含 `release` 与 `decide --action close`、`npm audit signatures` 通过；GitHub Release v4.0.0 标 Latest；本机两份全局安装均为 4.0.0；证据见 [`docs/releases/V4.0.0-RELEASE-EVIDENCE-2026-10-05.md`](docs/releases/V4.0.0-RELEASE-EVIDENCE-2026-10-05.md)。同日所有者本人经 npm 两步验证把 dist-tag `next` 从 3.3.1 挪到 4.0.0；直连 npmjs.org 回读 `next` = `latest` = 4.0.0。
