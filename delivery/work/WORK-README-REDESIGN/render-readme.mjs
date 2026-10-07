@@ -108,6 +108,7 @@ const shots = [
   ["README.md", "zh", "light", 390],
   ["README.en.md", "en", "light", 1012],
   ["README.en.md", "en", "dark", 1012],
+  ["README.en.md", "en", "light", 390],
 ];
 for (const [file, lang, scheme, width] of shots) {
   const htmlPath = join(scratch, `${lang}-${scheme}-${width}.html`);
