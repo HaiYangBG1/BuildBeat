@@ -117,7 +117,9 @@ test("waits are split by how they ended", () => {
   const open = ledgerCost(ledgerOf(["HUMAN_REQUESTED", 0]), { now: START + 4 * 60000 });
   assert.deepEqual(open.waits.open, { count: 1, ms: 4 * 60000 });
 
-  // A repeated request while still waiting keeps the earliest start.
+  // A request repeated before any decision (a resumed run asking again for
+  // the same decision) continues the same wait: one wait of 10 minutes,
+  // not two overlapping ones of 15.
   const repeated = ledgerCost(ledgerOf(["HUMAN_REQUESTED", 0], ["HUMAN_REQUESTED", 5], ["DECISION_RECORDED", 10]));
   assert.equal(repeated.humanWaits, 2);
   assert.deepEqual(repeated.waits.decided, { count: 1, ms: 10 * 60000 });

@@ -46,7 +46,10 @@ function emptyCost() {
 // infra failures and worker wall time (STEP_STARTED → STEP_FINISHED per
 // attempt). A wait runs from HUMAN_REQUESTED to the next DECISION_RECORDED
 // (decided) or to a RUN_TERMINAL without a decision (superseded or
-// stopped); a run still waiting counts up to `now` (open).
+// stopped); a run still waiting counts up to `now` (open). A request
+// repeated before any decision (a resumed run asks again for the same
+// decision) continues the same wait from the first request: counting it
+// again would count the overlapping time twice.
 export function ledgerCost(ledger, { now = Date.now() } = {}) {
   const cost = {
     reviewRounds: 0,

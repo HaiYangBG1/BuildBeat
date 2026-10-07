@@ -5,7 +5,7 @@
 ## Unreleased
 
 - A review step that exits 0 without writing a report to `$BUILDBEAT_OUTPUT` now stops as `invalid-output` (an infrastructure failure: no fixer, no charge, `resume-review` waits for a person) instead of passing with no evidence until the merge approval refused it. The stop reason says where the report belongs and, when the reviewer printed something, how many bytes went to stdout. Found in a replay of real runs, where a reviewer's 3 P1, 6 P2 and 4 P3 findings reached stdout only.
-- The cost line splits human waits by how they ended: `human waits N (decided … · superseded … · stopped … · open …)`, listing only kinds that occurred; JSON carries `cost.waits` with `{count, ms}` per kind and run-records keep it. In the same replay one work showed 32 minutes of decided waits while 11 hours passed on a request a new run superseded.
+- The cost line splits human waits by how they ended: `human waits N (decided … · superseded … · stopped … · open …)`, listing only kinds that occurred; a request repeated before any decision continues the same wait, so overlapping time is not counted twice; JSON carries `cost.waits` with `{count, ms}` per kind and run-records keep it. In the same replay one work showed 32 minutes of decided waits while 11 hours passed on a request a new run superseded.
 
 ## v4.2.0 — 2026-10-07（次版本：合并决定点能接修复；合并批准绑定候选）
 
