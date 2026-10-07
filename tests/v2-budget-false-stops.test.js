@@ -28,8 +28,12 @@ function fixture(extra = {}, script = {}) {
       const input = JSON.parse(process.env.BUILDBEAT_INPUT);
       const script = ${JSON.stringify(script)};
       const row = script[input.step]?.[input.attempt - 1] ?? {};
+      // A clean review still hands in a report: a review that exits 0
+      // without one stops as invalid-output.
       if (row.finding) require('node:fs').writeFileSync(process.env.BUILDBEAT_OUTPUT,
         JSON.stringify({findings: [{severity: 'P1', summary: row.finding}]}));
+      else if (input.step === 'review' && !row.code) require('node:fs').writeFileSync(
+        process.env.BUILDBEAT_OUTPUT, JSON.stringify({findings: []}));
       if (row.error) process.stderr.write(row.error);
       process.exit(row.code ?? 0);
     `],

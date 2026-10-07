@@ -358,15 +358,23 @@ test("ordinary local status JSON exactly preserves the pre-cross-repo serializat
   assert.equal(cli(root, "--work", "LOCAL", "--json"), JSON.stringify(expected, null, 2) + "\n");
   const log = ledger(root, "LOCAL");
   const firstAt = log.events[0].ts, lastAt = log.events.at(-1).ts;
+  const waiting = cli(root, "--work", "LOCAL", "--json");
+  // Since WORK-REPLAY-FOLLOWUPS the cost also splits waits by how they
+  // ended; the open wait grows with the clock, everything else stays exact.
+  const { waits } = JSON.parse(waiting).works[0].cost;
+  assert.deepEqual(Object.keys(waits), ["decided", "superseded", "stopped", "open"]);
+  assert.deepEqual({ ...waits, open: { count: waits.open.count } },
+    { decided: { count: 0, ms: 0 }, superseded: { count: 0, ms: 0 }, stopped: { count: 0, ms: 0 }, open: { count: 1 } });
+  assert.ok(waits.open.ms >= 0);
   Object.assign(expected.works[0], {
     stage: "WAITING_HUMAN", runs: 1,
-    cost: { runs: 1, reviewRounds: 0, findings: 0, humanWaits: 1, infraFailures: 0, workerMs: 0, firstAt, lastAt },
+    cost: { runs: 1, reviewRounds: 0, findings: 0, humanWaits: 1, waits, infraFailures: 0, workerMs: 0, firstAt, lastAt },
     latest: { id: "RUN-LOCAL", status: "WAITING_HUMAN", candidate: null, at: lastAt, source: "runtime", terminalReason: null, waiting: "enter-fix" },
     next: "buildbeat decide --action approve --repo . --run RUN-LOCAL --transition enter-fix --by <you>   # then: run --config <run-config.yaml>",
   });
   expected.pending = [{ run: "RUN-LOCAL", work: "LOCAL", transition: "enter-fix", kind: "approval",
     reasons: ["test decision"], subject: { candidate: git(root, "rev-parse", "HEAD"), planDigest: "UNVERIFIED", evidenceDigest: "sha256:evidence" } }];
-  assert.equal(cli(root, "--work", "LOCAL", "--json"), JSON.stringify(expected, null, 2) + "\n");
+  assert.equal(waiting, JSON.stringify(expected, null, 2) + "\n");
 });
 
 test("fixture Git and CLI children ignore hostile inherited config and Git environment", () => {

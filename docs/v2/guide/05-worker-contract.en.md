@@ -10,4 +10,6 @@ Review input includes adjudication anchors and an available lastReviewed increme
 
 Use exit 75 for missing tools, unavailable backends or an unusable execution environment. Do not change business code to hide an environment failure. Do not print credentials. The runner reads candidate, exit status and evidence itself.
 
+An invalid envelope is `invalid-output`, an environment failure, never a reason to change business code. A review step that exits 0 without writing its report to `$BUILDBEAT_OUTPUT` (printing it to stdout is not enough) is `invalid-output` too and stops for a person; a clean review hands in `{"findings": []}`.
+
 `BUILDBEAT_INPUT.workArtifact` carries the selected repository-relative `ref` and accepted `digest`. Read that artifact; use work.md first and legacy intent/plan only when work.md is absent.

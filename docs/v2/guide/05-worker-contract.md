@@ -10,6 +10,6 @@ reviewer 输入包含历史裁决 anchor 和可用的 lastReviewed 增量范围�
 
 环境缺工具、后端不可用、沙箱禁止必要操作等用 exit 75；不要通过修改业务代码掩盖环境问题。日志不得主动输出凭据。实际候选、退出码和证据都由内核回读，自述不能替代事实。
 
-无效信封记为 `invalid-output`，属于环境故障，不能据此要求修改业务代码。
+无效信封记为 `invalid-output`，属于环境故障，不能据此要求修改业务代码。审查步骤退出 0 却没有把报告写进 `$BUILDBEAT_OUTPUT`（只打印在 stdout 不算）同样记为 `invalid-output` 并停人；没有问题也要交 `{"findings": []}`。
 
 `BUILDBEAT_INPUT.workArtifact` carries the selected repository-relative `ref` and accepted `digest`. Read that artifact; use work.md first and legacy intent/plan only when work.md is absent.

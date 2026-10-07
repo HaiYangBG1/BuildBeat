@@ -1073,6 +1073,13 @@ function recordStepResult(
     envelopeRaw = readFileSync(outputPath, "utf8");
   }
   const { envelope, error: envelopeError } = parseEnvelope(envelopeRaw);
+  // A review that exits cleanly without a report reviewed nothing the
+  // kernel can check: no evidence, no findings. Real incident: a reviewer
+  // printed 3 P1, 6 P2 and 4 P3 findings to stdout only; the step counted
+  // as passed and the gap surfaced only at the merge approval.
+  const reportMissing =
+    isReviewStep(step, stepDef) &&
+    (envelopeRaw === undefined || envelopeRaw === null);
 
   let stepStatus;
   if (exec.spawnError) {
@@ -1087,10 +1094,19 @@ function recordStepResult(
     // The command passed but a requirement the runner checks did not
     // (no screenshots): a candidate failure, routed like any other.
     stepStatus = "failed";
-  } else if (envelopeError) {
+  } else if (envelopeError || reportMissing) {
     stepStatus = "invalid-output";
   } else {
     stepStatus = "succeeded";
+  }
+  let outputProblem = null;
+  if (stepStatus === "invalid-output" && !envelopeError) {
+    const stdoutBytes = Buffer.byteLength(String(exec.stdout ?? "").trim());
+    outputProblem =
+      "the reviewer exited 0 without writing a report to $BUILDBEAT_OUTPUT (stdout is not read)" +
+      (stdoutBytes > 0
+        ? `; stdout has ${stdoutBytes} bytes; write the JSON report to $BUILDBEAT_OUTPUT`
+        : "");
   }
   // Infrastructure failure vs candidate failure. A timeout, a crash,
   // garbage output or the worker's own "environment unavailable" signal
@@ -1116,6 +1132,7 @@ function recordStepResult(
       status: stepStatus,
       exitCode: exec.exitCode,
       ...(exec.requirementFailure ? { reason: exec.requirementFailure } : {}),
+      ...(outputProblem ? { reason: outputProblem } : {}),
       ...(exec.screenshotsRejected
         ? { screenshotsRejected: exec.screenshotsRejected }
         : {}),
@@ -1138,7 +1155,7 @@ function recordStepResult(
       stepStatus === "failed"
         ? "exit 75 (worker reports its environment unavailable)"
         : stepStatus === "invalid-output"
-          ? "output is not a worker envelope"
+          ? (outputProblem ?? "output is not a worker envelope")
           : stepStatus;
     context.waitHuman(
       `resume-${step}`,

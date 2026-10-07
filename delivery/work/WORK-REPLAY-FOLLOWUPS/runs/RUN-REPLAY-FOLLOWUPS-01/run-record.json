@@ -1,0 +1,173 @@
+{
+  "run": "RUN-REPLAY-FOLLOWUPS-01",
+  "work": "WORK-REPLAY-FOLLOWUPS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 45,
+    "lastDigest": "sha256:c9924389154596acf2c624ddd55df22e65bb5492618e1393faae41c738bc41d3"
+  },
+  "startedAt": "2026-10-07T12:32:46.583Z",
+  "finishedAt": "2026-10-07T12:58:49.793Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 4
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "infraFailures": 0,
+    "workerMs": 311388
+  },
+  "workspaces": {
+    "RUN-REPLAY-FOLLOWUPS-01": {
+      "repo": ".",
+      "branch": "run/RUN-REPLAY-FOLLOWUPS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-REPLAY-FOLLOWUPS-01",
+      "base": "37367019b8303a5e583ba310c5ca96fc06149444",
+      "candidate": "1cd1ecd2663a9de7e507c8c15331e1432c169be9"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REPLAY-FOLLOWUPS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "f543da17258eaa4e4eaeb871718f4dbe403a7b8f",
+      "digest": "sha256:d3975c67f50268ebdca2f98cc8971eff76ef5f3ee4289aad0dbf2c5582179763",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:bddb1019fc27d8622167d8c3465b90d1097530b5c3296945cb2bca01a64d15e6"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REPLAY-FOLLOWUPS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "f543da17258eaa4e4eaeb871718f4dbe403a7b8f",
+      "digest": "sha256:5f1b12caa6543114139b9a5bd6f8c001de5c29a8eec394ddb50143fffec3d54d",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REPLAY-FOLLOWUPS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "f543da17258eaa4e4eaeb871718f4dbe403a7b8f",
+      "digest": "sha256:8291928c144eba365d86880954c459e45ae146f8d09eda61b9a9af25977016fc",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/work-cost.js:82 将连续 HUMAN_REQUESTED 合并为一段等待，违反 work.md 每次请求单独计段的要求：第 0、5 分钟请求、第 10 分钟决定时，实际得到 humanWaits=2、decided.count=1、时长 10 分钟，应为 2 段共 15 分钟；tests/v2-replay-followups.test.js:120–123 也错误地固化了合并口径。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REPLAY-FOLLOWUPS-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "1cd1ecd2663a9de7e507c8c15331e1432c169be9",
+      "digest": "sha256:8d64e7df4375d4569a1e44577ab1911b45084be3878ee2811ac18bf9ec2f4bce",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:d81d8d3b5f348b5f630b5b1e94d93d4a6e4896059e97af97729e70845188e060"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REPLAY-FOLLOWUPS-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "1cd1ecd2663a9de7e507c8c15331e1432c169be9",
+      "digest": "sha256:85b3b6549c77111df6a7e0563ff9e9bb57e93d587bacdda723ea721fccacc852",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REPLAY-FOLLOWUPS-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "1cd1ecd2663a9de7e507c8c15331e1432c169be9",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "f543da17258eaa4e4eaeb871718f4dbe403a7b8f",
+        "planDigest": "sha256:f93c131e39cdc649a66ce64497f8e3f87757bc94f0667b8bb7ad6db452adf305",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-REPLAY-FOLLOWUPS-01-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "1cd1ecd2663a9de7e507c8c15331e1432c169be9",
+        "planDigest": "sha256:f93c131e39cdc649a66ce64497f8e3f87757bc94f0667b8bb7ad6db452adf305",
+        "evidenceDigest": "sha256:8291928c144eba365d86880954c459e45ae146f8d09eda61b9a9af25977016fc"
+      },
+      "decisionRef": "D-RUN-REPLAY-FOLLOWUPS-01-2"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "1cd1ecd2663a9de7e507c8c15331e1432c169be9",
+        "planDigest": "sha256:f93c131e39cdc649a66ce64497f8e3f87757bc94f0667b8bb7ad6db452adf305",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-REPLAY-FOLLOWUPS-01-3"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-REPLAY-FOLLOWUPS-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "f543da17258eaa4e4eaeb871718f4dbe403a7b8f",
+        "planDigest": "sha256:f93c131e39cdc649a66ce64497f8e3f87757bc94f0667b8bb7ad6db452adf305",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-REPLAY-FOLLOWUPS-01-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "1cd1ecd2663a9de7e507c8c15331e1432c169be9",
+        "planDigest": "sha256:f93c131e39cdc649a66ce64497f8e3f87757bc94f0667b8bb7ad6db452adf305",
+        "evidenceDigest": "sha256:8291928c144eba365d86880954c459e45ae146f8d09eda61b9a9af25977016fc"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-REPLAY-FOLLOWUPS-01-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "1cd1ecd2663a9de7e507c8c15331e1432c169be9",
+        "planDigest": "sha256:f93c131e39cdc649a66ce64497f8e3f87757bc94f0667b8bb7ad6db452adf305",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

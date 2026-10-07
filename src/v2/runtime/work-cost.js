@@ -12,12 +12,29 @@ import { join } from "node:path";
 import { EventLedger } from "../storage/event-ledger.js";
 import { readFindingsAccount } from "./findings.js";
 
+// How each human wait ended. Counting waits alone hid where the time went:
+// one work showed 32 minutes of decided waits while 11 hours had passed on
+// a request nobody answered before a new run superseded it.
+export const WAIT_KINDS = ["decided", "superseded", "stopped", "open"];
+
+function emptyWaits() {
+  return Object.fromEntries(WAIT_KINDS.map((kind) => [kind, { count: 0, ms: 0 }]));
+}
+
+function addWait(bucket, ms) {
+  bucket.count += 1;
+  if (Number.isFinite(ms) && ms > 0) {
+    bucket.ms += ms;
+  }
+}
+
 function emptyCost() {
   return {
     runs: 0,
     reviewRounds: 0,
     findings: 0,
     humanWaits: 0,
+    waits: emptyWaits(),
     infraFailures: 0,
     workerMs: 0,
     firstAt: null,
@@ -25,11 +42,25 @@ function emptyCost() {
   };
 }
 
-// Cost facts of one ledger: review rounds, human waits, infra failures and
-// worker wall time (STEP_STARTED → STEP_FINISHED per attempt).
-export function ledgerCost(ledger) {
-  const cost = { reviewRounds: 0, humanWaits: 0, infraFailures: 0, workerMs: 0 };
+// Cost facts of one ledger: review rounds, human waits and how each ended,
+// infra failures and worker wall time (STEP_STARTED → STEP_FINISHED per
+// attempt). A wait runs from HUMAN_REQUESTED to the next DECISION_RECORDED
+// (decided) or to a RUN_TERMINAL without a decision (superseded or
+// stopped); a run still waiting counts up to `now` (open). A request
+// repeated before any decision (a resumed run asks again for the same
+// decision) continues the same wait from the first request: counting it
+// again would count the overlapping time twice.
+export function ledgerCost(ledger, { now = Date.now() } = {}) {
+  const cost = {
+    reviewRounds: 0,
+    humanWaits: 0,
+    waits: emptyWaits(),
+    infraFailures: 0,
+    workerMs: 0,
+  };
   const open = new Map();
+  let waitingSince = null;
+  let terminal = false;
   for (const event of ledger.events) {
     if (event.type === "STEP_STARTED") {
       open.set(`${event.data.step}#${event.data.attempt}`, Date.parse(event.ts));
@@ -51,12 +82,38 @@ export function ledgerCost(ledger) {
       }
     } else if (event.type === "HUMAN_REQUESTED") {
       cost.humanWaits += 1;
+      waitingSince ??= Date.parse(event.ts);
+    } else if (event.type === "DECISION_RECORDED") {
+      if (waitingSince !== null) {
+        addWait(cost.waits.decided, Date.parse(event.ts) - waitingSince);
+        waitingSince = null;
+      }
+    } else if (event.type === "RUN_TERMINAL") {
+      terminal = true;
+      if (waitingSince !== null) {
+        const kind = event.data?.status === "SUPERSEDED" ? "superseded" : "stopped";
+        addWait(cost.waits[kind], Date.parse(event.ts) - waitingSince);
+        waitingSince = null;
+      }
     }
+  }
+  if (waitingSince !== null && !terminal) {
+    addWait(cost.waits.open, now - waitingSince);
   }
   return cost;
 }
 
-export function computeWorkCost(repoRoot, workId, { excludeRun = null } = {}) {
+function addWaits(total, waits) {
+  for (const kind of WAIT_KINDS) {
+    const row = waits?.[kind];
+    if (row && Number.isFinite(row.count) && Number.isFinite(row.ms)) {
+      total[kind].count += row.count;
+      total[kind].ms += row.ms;
+    }
+  }
+}
+
+export function computeWorkCost(repoRoot, workId, { excludeRun = null, now = Date.now() } = {}) {
   const cost = emptyCost();
   const seen = new Set();
   const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
@@ -75,10 +132,11 @@ export function computeWorkCost(repoRoot, workId, { excludeRun = null } = {}) {
       if (state.run.id === excludeRun) {
         continue;
       }
-      const row = ledgerCost(ledger);
+      const row = ledgerCost(ledger, { now });
       cost.runs += 1;
       cost.reviewRounds += row.reviewRounds;
       cost.humanWaits += row.humanWaits;
+      addWaits(cost.waits, row.waits);
       cost.infraFailures += row.infraFailures;
       cost.workerMs += row.workerMs;
       track(cost, ledger.events[0]?.ts, ledger.events[ledger.events.length - 1]?.ts);
@@ -105,6 +163,8 @@ export function computeWorkCost(repoRoot, workId, { excludeRun = null } = {}) {
       // only; the cost block is preferred when present.
       cost.reviewRounds += record.cost?.reviewRounds ?? record.attempts?.review ?? 0;
       cost.humanWaits += record.cost?.humanWaits ?? record.decisions?.length ?? 0;
+      // Records written before wait kinds existed add no durations.
+      addWaits(cost.waits, record.cost?.waits);
       cost.infraFailures += record.cost?.infraFailures ?? 0;
       cost.workerMs += record.cost?.workerMs ?? 0;
       track(cost, record.startedAt, record.finishedAt);
@@ -137,10 +197,13 @@ export function formatWorkerMs(ms) {
 }
 
 export function renderWorkCost(cost) {
+  const waits = WAIT_KINDS.filter((kind) => cost.waits?.[kind]?.count > 0).map(
+    (kind) => `${kind} ${formatWorkerMs(cost.waits[kind].ms)}`,
+  );
   return [
     `review rounds ${cost.reviewRounds}`,
     `findings ${cost.findings}`,
-    `human waits ${cost.humanWaits}`,
+    `human waits ${cost.humanWaits}${waits.length > 0 ? ` (${waits.join(" · ")})` : ""}`,
     ...(cost.infraFailures > 0 ? [`infra failures ${cost.infraFailures}`] : []),
     `worker ${formatWorkerMs(cost.workerMs)}`,
   ].join(" · ");
