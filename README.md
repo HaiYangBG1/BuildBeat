@@ -29,11 +29,17 @@ BuildBeat 面向人和 AI 会话：工作说明和全部记录留在项目文件
 
 ## 三个承诺
 
-| 承诺 | 靠什么做到 |
-|---|---|
-| **走得开**<br>关掉会话、换 AI 工具、换人，工作照样接着干 | 工作说明和运行台账都在项目里，`buildbeat run` 从记录恢复；主仓带多个代码仓时，`buildbeat status --repo . --all-repos` 一条命令看全所有仓的待办 |
-| **回来能信**<br>回来看到的是事实，不是 AI 的自述 | 验证跑项目真实命令，结果由运行时从 Git 和台账回读；审查独立、只读；缺工具、后端不可用、审查没交报告都按环境故障停下，不会当成代码问题去修 |
-| **敢拍板**<br>你批准的就是你看过的那一版 | 合并批准绑定候选（`--candidate`）；合并决定点发现小问题，可以自己修好交回（`run --adopt`），或一句话退回给修复者（`decide --action fix`）；合并、推送、发布、部署始终由人决定 |
+### 走得开
+
+**关掉会话、换 AI 工具、换人，工作照样接着干。** 工作说明和运行台账都在项目里，`buildbeat run` 从记录恢复；主仓带多个代码仓时，`buildbeat status --repo . --all-repos` 一条命令看全所有仓的待办。
+
+### 回来能信
+
+**回来看到的是事实，不是 AI 的自述。** 验证跑项目真实命令，结果由运行时从 Git 和台账回读；审查独立、只读；缺工具、后端不可用、审查没交报告都按环境故障停下，不会当成代码问题去修。
+
+### 敢拍板
+
+**你批准的就是你看过的那一版。** 合并批准绑定候选（`--candidate`）；合并决定点发现小问题，可以自己修好交回（`run --adopt`），或一句话退回给修复者（`decide --action fix`）；合并、推送、发布、部署始终由人决定。
 
 ## 五分钟开始
 
@@ -66,7 +72,7 @@ work WORK-CSV-EXPORT:
     candidate: ede20b668cb04ae30cba1676b5e031930e711c8d
     next: buildbeat decide --action approve … --candidate ede20b6… --by <you>
     next: buildbeat decide --action reject … --reason <why> --by <you>
-    next: buildbeat run … --adopt <sha> --by <you>   # commit a manual repair in the run worktree; verify and review again
+    next: buildbeat run … --adopt <sha> --by <you>   # commit a manual repair in the run worktree …
     next: buildbeat decide … --action fix --reason <what to repair> --by <you>
 ```
 
@@ -74,7 +80,15 @@ work WORK-CSV-EXPORT:
 
 ## 记录与接续
 
-端到端工作包在 delivery/work/ 保存 work.md、配置、决定、审查问题与终态记录；本机在途事件和日志在 .buildbeat/runtime/，候选在 .buildbeat/worktrees/。换会话前补齐未落盘事实；Git clone 不迁移活动进程和现场。没装运行时的人和工具也能读状态、写工作说明。
+端到端工作包把一项工作的来龙去脉留在仓库里：
+
+| 位置 | 内容 | 随 Git 走 |
+|---|---|---|
+| `delivery/work/<ID>/` | work.md、run 配置、决定、审查问题、终态记录 | 是 |
+| `.buildbeat/runtime/` | 本机在途事件和日志 | 否，只在本机 |
+| `.buildbeat/worktrees/` | 候选所在的隔离工作树 | 否，只在本机 |
+
+换会话前补齐未落盘事实；Git clone 不迁移活动进程和现场。没装运行时的人和工具也能读状态、写工作说明。
 
 [跨会话接续](docs/v2/guide/11-session-handoff.md) · [中断恢复](docs/v2/guide/10-recovery.md) · [没有运行时也能参与](docs/v2/guide/12-without-runtime.md)
 

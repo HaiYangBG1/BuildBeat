@@ -25,12 +25,12 @@ const THEMES = {
 
 const COPY = {
   zh: {
-    nodes: [["work.md", "目标 · 范围 · 验收"], ["实现", "build"], ["验证", "跑项目真实命令"], ["审查", "独立 · 只读"], ["你来拍板", "批准绑定候选"]],
+    nodes: [["work.md", "目标 · 范围 · 验收"], ["实现", "写代码 · 提交"], ["验证", "跑项目真实命令"], ["审查", "独立 · 只读"], ["你来拍板", "批准绑定候选"]],
     fix: ["修复", "有问题：修复 → 重验 → 再审"],
     band: "演奏过的乐谱留在 Git：work.md · 决定 · 审查问题 · 运行台账 · 证据",
   },
   en: {
-    nodes: [["work.md", "goal · scope · acceptance"], ["Build", "builder"], ["Verify", "real commands"], ["Review", "independent, read-only"], ["You decide", "bound to the candidate"]],
+    nodes: [["work.md", "goal · scope · acceptance"], ["Build", "code · commit"], ["Verify", "real commands"], ["Review", "independent, read-only"], ["You decide", "bound to the candidate"]],
     fix: ["Fix", "findings: fix → verify → review"],
     band: "The played score stays in Git: work.md · decisions · findings · run ledger · evidence",
   },
@@ -107,6 +107,8 @@ ${parts.join("\n")}
 function chromeScreenshot(htmlPath, png) {
   const chromeBin = process.env.CHROME_BIN || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
   return new Promise((done, fail) => {
+    // An old PNG would look like a finished screenshot.
+    rmSync(png, { force: true });
     const profile = mkdtempSync(join(tmpdir(), "bb-diagram-chrome-"));
     const child = spawn(chromeBin, ["--headless=new", "--use-mock-keychain", "--disable-gpu", "--no-first-run",
       "--hide-scrollbars", "--force-device-scale-factor=2", "--default-background-color=00000000",

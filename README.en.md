@@ -29,11 +29,17 @@ Each work gets one `work.md`. Once you accept it, `buildbeat run` moves it forwa
 
 ## Three promises
 
-| Promise | What backs it |
-|---|---|
-| **Walk away**<br>Close the session, switch AI tools or hand over, and the work carries on | The work description and the run ledger live in the project, and `buildbeat run` resumes from them; in a main repository with several code repositories, `buildbeat status --repo . --all-repos` shows what is pending everywhere |
-| **Come back to facts**<br>What you find is evidence, not what an AI says about itself | Verification runs the project's real commands and the runtime reads results back from Git and the ledger; review is independent and read-only; missing tools, an unavailable backend or a review that hands in no report stop as infrastructure failures instead of being "fixed" as code |
-| **Decide with confidence**<br>What you approve is the version you reviewed | A merge approval is bound to the candidate (`--candidate`); a small problem spotted at the merge decision can be fixed and handed over (`run --adopt`) or sent back to the fixer in one line (`decide --action fix`); merge, push, release and deployment stay with people |
+### Walk away
+
+**Close the session, switch AI tools or hand over, and the work carries on.** The work description and the run ledger live in the project, and `buildbeat run` resumes from them; in a main repository with several code repositories, `buildbeat status --repo . --all-repos` shows what is pending everywhere.
+
+### Come back to facts
+
+**What you find is evidence, not what an AI says about itself.** Verification runs the project's real commands and the runtime reads results back from Git and the ledger; review is independent and read-only; missing tools, an unavailable backend or a review that hands in no report stop as infrastructure failures instead of being "fixed" as code.
+
+### Decide with confidence
+
+**What you approve is the version you reviewed.** A merge approval is bound to the candidate (`--candidate`); a small problem spotted at the merge decision can be fixed and handed over (`run --adopt`) or sent back to the fixer in one line (`decide --action fix`); merge, push, release and deployment stay with people.
 
 ## Start in five minutes
 
@@ -66,7 +72,7 @@ work WORK-CSV-EXPORT:
     candidate: ede20b668cb04ae30cba1676b5e031930e711c8d
     next: buildbeat decide --action approve … --candidate ede20b6… --by <you>
     next: buildbeat decide --action reject … --reason <why> --by <you>
-    next: buildbeat run … --adopt <sha> --by <you>   # commit a manual repair in the run worktree; verify and review again
+    next: buildbeat run … --adopt <sha> --by <you>   # commit a manual repair in the run worktree …
     next: buildbeat decide … --action fix --reason <what to repair> --by <you>
 ```
 
@@ -74,7 +80,15 @@ The cost line shows how many review rounds ran, how many problems were found, ho
 
 ## Records and handoffs
 
-End-to-end work packages contain work.md, configuration, decisions, review findings and terminal records under delivery/work/. Local in-flight events and logs live in .buildbeat/runtime/; candidates live in .buildbeat/worktrees/. Save missing facts before switching sessions; active runs do not migrate through Git clone. People and tools without the runtime can still read status and write work descriptions.
+End-to-end work packages keep the whole story of a work in the repository:
+
+| Where | What | Travels with Git |
+|---|---|---|
+| `delivery/work/<ID>/` | work.md, run config, decisions, review findings, terminal records | Yes |
+| `.buildbeat/runtime/` | Local in-flight events and logs | No, this machine only |
+| `.buildbeat/worktrees/` | The isolated worktrees that hold candidates | No, this machine only |
+
+Save missing facts before switching sessions; active runs do not migrate through Git clone. People and tools without the runtime can still read status and write work descriptions.
 
 [Session handoff](docs/v2/guide/11-session-handoff.en.md) · [Recovery](docs/v2/guide/10-recovery.en.md) · [Without the runtime](docs/v2/guide/12-without-runtime.en.md)
 

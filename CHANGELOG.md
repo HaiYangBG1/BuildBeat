@@ -2,6 +2,10 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- README (zh/en) redesigned for reading: a hero picture, the name's meaning (every step is a note the agent plays; the played score stays in Git), a delivery-loop diagram in light and dark, the three promises as short sections, a real `status` excerpt at the merge decision, and where records live as a table. Pictures live in `docs/assets/readme/` (the loop diagram is drawn by `diagrams.mjs`) and are linked through raw URLs so the npm page shows them too; `check:docs` now requires every README picture to exist, carry alt text and stay under 600 KB.
+
 ## v4.2.1 — 2026-10-07（补丁：审查没交报告当场停；成本按去向分开等待）
 
 > **发布状态**：`@haiyangbg/buildbeat@4.2.1` 已于 2026-10-07 从 `main`（release PR #79，merge commit `8d2625b`，tag `v4.2.1`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 37626818833，publish 与 verify 双 job 一次 success；所有者授权「推送并发 4.2.1」）。独立回读（直连 npmjs.org）：`latest` = 4.2.1、`dist.integrity` 与本地用 Node 24 + npm 11.19.0 打的候选逐字一致、注册表 tarball 解压后与候选逐字节相同、SLSA v1 provenance、隔离安装 `--version` = 4.2.1、裸调用零写入、`npm audit signatures` 通过；GitHub Release v4.2.1 标 Latest，仓库 About 同日更新；证据见 [`docs/releases/V4.2.1-RELEASE-EVIDENCE-2026-10-07.md`](docs/releases/V4.2.1-RELEASE-EVIDENCE-2026-10-07.md)。`next` 仍为 4.2.0。

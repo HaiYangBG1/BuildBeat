@@ -24,7 +24,7 @@
 <line x1="334" y1="110" x2="334" y2="84" stroke="#e0a43a" stroke-width="2"/>
 <path d="M 334 84 q 10 4 12 14" fill="none" stroke="#e0a43a" stroke-width="2"/>
 <text x="286" y="137" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="16" font-weight="600" fill="#1f2328">Build</text>
-<text x="286" y="157" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">builder</text>
+<text x="286" y="157" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">code · commit</text>
 <line x1="286" y1="172" x2="286" y2="226" stroke="#59636e" stroke-width="1.2" stroke-dasharray="2 4"/>
 <rect x="376" y="110" width="150" height="60" rx="14" fill="#fff8ee" stroke="#e0a43a" stroke-width="1.5"/>
 <line x1="512" y1="110" x2="512" y2="84" stroke="#e0a43a" stroke-width="2"/>
