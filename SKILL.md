@@ -20,7 +20,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 
 | 用户意图 | 操作 |
 |---|---|
-| 接手、查看进度、有什么待批 | `buildbeat status --repo .`；主仓的 run 配置中 `repo:` 指向其他仓时，查看全部代码仓加 `--all-repos`（可加 `--work`、`--json`）；单仓指定 `--work` 或 `--run` 查看细节 |
+| 接手、查看进度、有什么待批 | `buildbeat status --repo .`；主仓的 run 配置中 `repo:` 指向其他仓时，查看全部代码仓加 `--all-repos`（运行时 4.1 起；可加 `--work`、`--json`）；单仓指定 `--work` 或 `--run` 查看细节 |
 | 准备一项工作 | 写 `delivery/work/<ID>/work.md`，包含目标、范围、验收、实施计划；复制 run-config 样板并填真实命令 |
 | 接受工作说明 | `buildbeat accept --repo . --work <ID> --by <owner>`；用户已有明确授权时直接记录，不重复问同一个决定 |
 | 开工、继续 | `buildbeat run --config <config>`；首次编号，已有运行则恢复；明确新一轮时加 `--new` |

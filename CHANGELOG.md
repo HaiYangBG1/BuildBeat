@@ -2,7 +2,7 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
-## Unreleased
+## v4.1.0 — 2026-10-07（次版本：跨仓总览；提示里的命令与路径都能照做）
 
 - Add read-only `status --all-repos`: discover the main repository, configured target checkouts and immediate child repositories, deduplicate real paths, show pending decisions first and count settled work. JSON retains all work; `--work` filters across repositories, while `--run` requires single-repository status.
 - Fix main-repository status/overview reporting target-repository work as ready to start: read state, findings and decisions from the target, retain the main run configuration for commands, and quote paths relative to the caller. Missing/invalid targets warn without hiding other work. Ship `src/v2/runtime/overview-repos.js` and update the package-file inventory for this runtime helper.
