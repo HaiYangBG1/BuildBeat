@@ -14,18 +14,20 @@
 
 <p align="center"><a href="README.md">中文</a> · English</p>
 
-> **Why the name**: every step is a note, and the agent plays them beat by beat; the score it has played (context, decisions and evidence) stays in Git, ready to read again.
+> **Why the name**: every step is a note, and the agent plays them beat by beat; the score it has played (context, decisions and outcomes) stays in Git, ready to read again.
 
-BuildBeat is for humans and AI sessions: the work description and every record stay in project files and Git; implementation, verification, review and repair move forward outside the session and can always resume; the candidate waits with its evidence for your merge decision.
+BuildBeat is for humans and AI sessions: the work description, decisions and each run's outcome stay in project files and Git; implementation, verification, review and repair move forward outside the session and can always resume; the candidate waits with its evidence for your merge decision.
 
 ## At a glance
 
 <picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-dark-narrow.png">
+  <source media="(max-width: 600px)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-light-narrow.png">
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-dark.png">
-  <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-light.png" width="100%" alt="The delivery loop: after work.md come build, verify and review; findings go to fix, verify and review again; then the run stops for you to decide. Every step is written to records in Git: work.md, decisions, findings, the run ledger and evidence">
+  <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-light.png" width="100%" alt="The delivery loop: after work.md come build, verify and review; findings go to fix, verify and review again; then the run stops for you to decide; work.md, decisions, findings and each run's final record stay in Git">
 </picture>
 
-Each work gets one `work.md`. Once you accept it, `buildbeat run` moves it forward beat by beat in an isolated worktree: build, run the project's own verification commands, an independent read-only review, and on findings fix, verify and review again. It stops when a person is really needed: the merge decision, an infrastructure failure, an exhausted budget, a review that does not converge. Every step is written to Git, so a new session, another tool or another person continues from the same record.
+Each work gets one `work.md`. Once you accept it, `buildbeat run` moves it forward beat by beat in an isolated worktree: build, run the project's own verification commands, an independent read-only review, and on findings fix, verify and review again. It stops when a person is really needed: the merge decision, an infrastructure failure, an exhausted budget, a review that does not converge. The work description, decisions, review findings and each run's final record go into Git, so a new session, another tool or another person continues from the same record; the live ledger and raw logs stay on this machine (see Records and handoffs below).
 
 ## Three promises
 
@@ -84,8 +86,8 @@ End-to-end work packages keep the whole story of a work in the repository:
 
 | Where | What | Travels with Git |
 |---|---|---|
-| `delivery/work/<ID>/` | work.md, run config, decisions, review findings, terminal records | Yes |
-| `.buildbeat/runtime/` | Local in-flight events and logs | No, this machine only |
+| `delivery/work/<ID>/` | work.md, run config, decisions, review findings, each run's terminal record (outcome, cost, evidence digests and references) | Yes |
+| `.buildbeat/runtime/` | The run ledger, logs, screenshots and other raw evidence | No, this machine only |
 | `.buildbeat/worktrees/` | The isolated worktrees that hold candidates | No, this machine only |
 
 Save missing facts before switching sessions; active runs do not migrate through Git clone. People and tools without the runtime can still read status and write work descriptions.

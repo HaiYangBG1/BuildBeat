@@ -45,5 +45,5 @@
 <text x="849" y="157" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">bound to the candidate</text>
 <line x1="849" y1="172" x2="849" y2="226" stroke="#9198a1" stroke-width="1.2" stroke-dasharray="2 4"/>
 <rect x="18" y="228" width="924" height="48" rx="12" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
-<text x="480" y="258" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="14" fill="#e6edf3">The played score stays in Git: work.md · decisions · findings · run ledger · evidence</text>
+<text x="480" y="258" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="14" fill="#e6edf3">The played score stays in Git: work.md · decisions · findings · each run's final record</text>
 </svg>

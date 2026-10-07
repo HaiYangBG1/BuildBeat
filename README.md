@@ -14,18 +14,20 @@
 
 <p align="center">中文 · <a href="README.en.md">English</a></p>
 
-> **名字的由来**：每一步是一个音符，Agent 按节拍把它们演奏出来；演奏过的乐谱——上下文、决定和证据——留在 Git 里，随时翻阅。
+> **名字的由来**：每一步是一个音符，Agent 按节拍把它们演奏出来；演奏过的乐谱——上下文、决定和结论——留在 Git 里，随时翻阅。
 
-BuildBeat 面向人和 AI 会话：工作说明和全部记录留在项目文件与 Git 里，实现、验证、审查和修复在会话之外自动推进、随时可恢复，候选带着证据停在你的合并决定前。
+BuildBeat 面向人和 AI 会话：工作说明、决定和每轮结论留在项目文件与 Git 里，实现、验证、审查和修复在会话之外自动推进、随时可恢复，候选带着证据停在你的合并决定前。
 
 ## 一眼看懂
 
 <picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-zh-dark-narrow.png">
+  <source media="(max-width: 600px)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-zh-light-narrow.png">
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-zh-dark.png">
-  <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-zh-light.png" width="100%" alt="交付循环：work.md 之后依次是实现、验证、审查，审查有问题就修复、重验、再审，最后停下等你拍板；每一步都写进 Git 里的记录：work.md、决定、审查问题、运行台账、证据">
+  <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-zh-light.png" width="100%" alt="交付循环：work.md 之后依次是实现、验证、审查，审查有问题就修复、重验、再审，最后停下等你拍板；work.md、决定、审查问题和每轮运行的终态记录留在 Git 里">
 </picture>
 
-一项工作写一份 `work.md`。你接受之后，`buildbeat run` 在隔离的工作树里按节拍推进：实现、跑项目自己的验证命令、独立只读审查，有问题就修复、重验、再审。真正需要人的时候它会停下：合并拍板、环境故障、预算到顶、审查不收敛。每一步都写进 Git，换会话、换工具、换人都从同一份记录接着干。
+一项工作写一份 `work.md`。你接受之后，`buildbeat run` 在隔离的工作树里按节拍推进：实现、跑项目自己的验证命令、独立只读审查，有问题就修复、重验、再审。真正需要人的时候它会停下：合并拍板、环境故障、预算到顶、审查不收敛。工作说明、决定、审查问题和每轮运行的终态记录都进 Git，换会话、换工具、换人都从同一份记录接着干；运行中的台账和原始日志留在本机（见下文「记录与接续」）。
 
 ## 三个承诺
 
@@ -84,8 +86,8 @@ work WORK-CSV-EXPORT:
 
 | 位置 | 内容 | 随 Git 走 |
 |---|---|---|
-| `delivery/work/<ID>/` | work.md、run 配置、决定、审查问题、终态记录 | 是 |
-| `.buildbeat/runtime/` | 本机在途事件和日志 | 否，只在本机 |
+| `delivery/work/<ID>/` | work.md、run 配置、决定、审查问题、每轮终态记录（结果、成本、证据摘要与引用） | 是 |
+| `.buildbeat/runtime/` | 运行台账、日志、截图等原始证据 | 否，只在本机 |
 | `.buildbeat/worktrees/` | 候选所在的隔离工作树 | 否，只在本机 |
 
 换会话前补齐未落盘事实；Git clone 不迁移活动进程和现场。没装运行时的人和工具也能读状态、写工作说明。

@@ -45,5 +45,5 @@
 <text x="849" y="157" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">批准绑定候选</text>
 <line x1="849" y1="172" x2="849" y2="226" stroke="#59636e" stroke-width="1.2" stroke-dasharray="2 4"/>
 <rect x="18" y="228" width="924" height="48" rx="12" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
-<text x="480" y="258" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="14" fill="#1f2328">演奏过的乐谱留在 Git：work.md · 决定 · 审查问题 · 运行台账 · 证据</text>
+<text x="480" y="258" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="14" fill="#1f2328">演奏过的乐谱留在 Git：work.md · 决定 · 审查问题 · 每轮运行的终态记录</text>
 </svg>
