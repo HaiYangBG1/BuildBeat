@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" role="img">
+<defs><marker id="arrow-dark" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#f0a537"/></marker></defs>
+<line x1="10" y1="124" x2="950" y2="124" stroke="#3d444d" stroke-width="1" opacity="0.7"/>
+<line x1="10" y1="132" x2="950" y2="132" stroke="#3d444d" stroke-width="1" opacity="0.7"/>
+<line x1="10" y1="140" x2="950" y2="140" stroke="#3d444d" stroke-width="1" opacity="0.7"/>
+<line x1="10" y1="148" x2="950" y2="148" stroke="#3d444d" stroke-width="1" opacity="0.7"/>
+<line x1="10" y1="156" x2="950" y2="156" stroke="#3d444d" stroke-width="1" opacity="0.7"/>
+<line x1="202" y1="140" x2="216" y2="140" stroke="#f0a537" stroke-width="2.5" marker-end="url(#arrow-dark)"/>
+<line x1="354" y1="140" x2="368" y2="140" stroke="#f0a537" stroke-width="2.5" marker-end="url(#arrow-dark)"/>
+<line x1="532" y1="140" x2="546" y2="140" stroke="#f0a537" stroke-width="2.5" marker-end="url(#arrow-dark)"/>
+<line x1="734" y1="140" x2="748" y2="140" stroke="#f0a537" stroke-width="2.5" marker-end="url(#arrow-dark)"/>
+<path d="M 641 110 C 641 52, 636 46, 608 46" fill="none" stroke="#f0a537" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrow-dark)"/>
+<path d="M 484 46 C 456 46, 451 52, 451 108" fill="none" stroke="#f0a537" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrow-dark)"/>
+<rect x="488" y="28" width="116" height="36" rx="18" fill="#1d1810" stroke="#d99a2b" stroke-width="1.5"/>
+<text x="546" y="51" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="15" font-weight="600" fill="#e6edf3">Fix</text>
+<text x="546" y="20" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">findings: fix → verify → review</text>
+<rect x="18" y="110" width="178" height="60" rx="14" fill="#1d1810" stroke="#d99a2b" stroke-width="1.5"/>
+<line x1="182" y1="110" x2="182" y2="84" stroke="#d99a2b" stroke-width="2"/>
+<path d="M 182 84 q 10 4 12 14" fill="none" stroke="#d99a2b" stroke-width="2"/>
+<text x="107" y="137" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#e6edf3">work.md</text>
+<text x="107" y="157" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">goal · scope · acceptance</text>
+<line x1="107" y1="172" x2="107" y2="226" stroke="#9198a1" stroke-width="1.2" stroke-dasharray="2 4"/>
+<rect x="224" y="110" width="124" height="60" rx="14" fill="#1d1810" stroke="#d99a2b" stroke-width="1.5"/>
+<line x1="334" y1="110" x2="334" y2="84" stroke="#d99a2b" stroke-width="2"/>
+<path d="M 334 84 q 10 4 12 14" fill="none" stroke="#d99a2b" stroke-width="2"/>
+<text x="286" y="137" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="16" font-weight="600" fill="#e6edf3">Build</text>
+<text x="286" y="157" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">code · commit</text>
+<line x1="286" y1="172" x2="286" y2="226" stroke="#9198a1" stroke-width="1.2" stroke-dasharray="2 4"/>
+<rect x="376" y="110" width="150" height="60" rx="14" fill="#1d1810" stroke="#d99a2b" stroke-width="1.5"/>
+<line x1="512" y1="110" x2="512" y2="84" stroke="#d99a2b" stroke-width="2"/>
+<path d="M 512 84 q 10 4 12 14" fill="none" stroke="#d99a2b" stroke-width="2"/>
+<text x="451" y="137" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="16" font-weight="600" fill="#e6edf3">Verify</text>
+<text x="451" y="157" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">real commands</text>
+<line x1="451" y1="172" x2="451" y2="226" stroke="#9198a1" stroke-width="1.2" stroke-dasharray="2 4"/>
+<rect x="554" y="110" width="174" height="60" rx="14" fill="#1d1810" stroke="#d99a2b" stroke-width="1.5"/>
+<line x1="714" y1="110" x2="714" y2="84" stroke="#d99a2b" stroke-width="2"/>
+<path d="M 714 84 q 10 4 12 14" fill="none" stroke="#d99a2b" stroke-width="2"/>
+<text x="641" y="137" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="16" font-weight="600" fill="#e6edf3">Review</text>
+<text x="641" y="157" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">independent, read-only</text>
+<line x1="641" y1="172" x2="641" y2="226" stroke="#9198a1" stroke-width="1.2" stroke-dasharray="2 4"/>
+<rect x="756" y="110" width="186" height="60" rx="14" fill="#2a1614" stroke="#ff7b72" stroke-width="2"/>
+<line x1="928" y1="110" x2="928" y2="84" stroke="#ff7b72" stroke-width="2"/>
+<path d="M 928 84 q 10 4 12 14" fill="none" stroke="#ff7b72" stroke-width="2"/>
+<text x="849" y="137" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="16" font-weight="600" fill="#e6edf3">You decide</text>
+<text x="849" y="157" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">bound to the candidate</text>
+<line x1="849" y1="172" x2="849" y2="226" stroke="#9198a1" stroke-width="1.2" stroke-dasharray="2 4"/>
+<rect x="18" y="228" width="924" height="48" rx="12" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+<text x="480" y="258" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="14" fill="#e6edf3">The played score stays in Git: work.md · decisions · findings · each run's final record</text>
+</svg>

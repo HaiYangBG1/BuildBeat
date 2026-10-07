@@ -313,6 +313,22 @@ def check_readme_shape() -> list[str]:
             errors.append(
                 f"README.en.md: missing scale-independent positioning {en_positioning}"
             )
+    # README pictures point at main through raw URLs (npm cannot resolve
+    # relative ones), so each must exist here, carry alt text and stay small.
+    raw_prefix = "https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/"
+    for filename, content in (("README.md", zh), ("README.en.md", en)):
+        for tag in re.findall(r"<img\b[^>]*>", content):
+            alt = re.search(r'\balt="([^"]*)"', tag)
+            if alt is None or not alt.group(1).strip():
+                errors.append(f"{filename}: image without alt text: {tag[:80]}")
+        for url in re.findall(r'\b(?:src|srcset)="([^"]+)"', content):
+            if not url.startswith(raw_prefix):
+                continue
+            picture = ROOT / url[len(raw_prefix):]
+            if not picture.is_file():
+                errors.append(f"{filename}: image missing from the repository: {url}")
+            elif picture.stat().st_size > 600 * 1024:
+                errors.append(f"{filename}: image larger than 600 KB: {url}")
     if "面向 Solo Builder" in zh:
         errors.append("README.md: stale solo-only audience positioning remains")
     if "for solo builders" in en:

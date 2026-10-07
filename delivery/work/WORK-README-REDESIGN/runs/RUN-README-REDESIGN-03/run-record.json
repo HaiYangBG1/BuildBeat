@@ -1,0 +1,280 @@
+{
+  "run": "RUN-README-REDESIGN-03",
+  "work": "WORK-README-REDESIGN",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2",
+    "requireScreenshot": true
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 57,
+    "lastDigest": "sha256:78ac3842c56a0f3c517d4cfa6910aba5f06d967b4b88acfa0e409d2ee4e97c73"
+  },
+  "startedAt": "2026-10-07T14:08:44.600Z",
+  "finishedAt": "2026-10-07T14:18:27.739Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 4
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "infraFailures": 0,
+    "workerMs": 441374
+  },
+  "workspaces": {
+    "RUN-README-REDESIGN-03": {
+      "repo": ".",
+      "branch": "run/RUN-README-REDESIGN-03",
+      "worktreePath": ".buildbeat/worktrees/RUN-README-REDESIGN-03",
+      "base": "328f15d06c3932fb3fce2a745d970d8a95264489",
+      "candidate": "6131d9872f69350e35c84045688477a37ed2e14f"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-1.log",
+      "kind": "command",
+      "subject": "2ed233ea2b01f309b7aec297e3753c1ed7abf8d0",
+      "digest": "sha256:3e4c4cbbf5d54cc7c99258548e4ab5d747f683a71fa71cb5c882821fb2a9594e",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/screenshots/verify-1/readme-en-dark-1012.png",
+      "kind": "screenshot",
+      "subject": "2ed233ea2b01f309b7aec297e3753c1ed7abf8d0",
+      "digest": "sha256:6beb98f2933f0068277ebb143428a10325081151a0acdd3cf5ded768fc2addbd",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-1.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/screenshots/verify-1/readme-en-light-1012.png",
+      "kind": "screenshot",
+      "subject": "2ed233ea2b01f309b7aec297e3753c1ed7abf8d0",
+      "digest": "sha256:6321e9e744e6eed4cd666e7cf77cc57da8959835f45a73388c9aaf41d5841c4c",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-1.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/screenshots/verify-1/readme-en-light-390.png",
+      "kind": "screenshot",
+      "subject": "2ed233ea2b01f309b7aec297e3753c1ed7abf8d0",
+      "digest": "sha256:ab13f9c03ab5b604804bad97253c2ade758ea46b7d4f919471936597c3c30d0f",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-1.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/screenshots/verify-1/readme-zh-dark-1012.png",
+      "kind": "screenshot",
+      "subject": "2ed233ea2b01f309b7aec297e3753c1ed7abf8d0",
+      "digest": "sha256:fa3fae97fe72251f47a8614bee037be48519a9f71ee3ba6e9cb23a7008136bd3",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-1.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/screenshots/verify-1/readme-zh-light-1012.png",
+      "kind": "screenshot",
+      "subject": "2ed233ea2b01f309b7aec297e3753c1ed7abf8d0",
+      "digest": "sha256:2d36a1dc23dd23619fed7aec1ae8e50ffacb4922d541e8d4dd1708672589071f",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-1.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/screenshots/verify-1/readme-zh-light-390.png",
+      "kind": "screenshot",
+      "subject": "2ed233ea2b01f309b7aec297e3753c1ed7abf8d0",
+      "digest": "sha256:bd22647ab02bc317cea8a4acd95e815d8a522b02a32a86ab37f5154f6638ca0e",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-1.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/review-1.log",
+      "kind": "command",
+      "subject": "2ed233ea2b01f309b7aec297e3753c1ed7abf8d0",
+      "digest": "sha256:e9b6ca783f91e1a4fb8e2494df3a7dbfa48112adabdaa2cd023f014895d5bc68",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/outputs/review-1.json",
+      "kind": "review",
+      "subject": "2ed233ea2b01f309b7aec297e3753c1ed7abf8d0",
+      "digest": "sha256:d90ad08575d5034f875be13d2ada61ba86debd8fbeff859220aaf262c0f0ed29",
+      "status": "passed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P2",
+          "summary": "中英 README 的“记录与接续”表格在 390px 手机截图中被不可换行的路径撑宽，内容列频繁折行，英文末列显示不全；建议缩短路径展示或改为逐项列表。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-2.log",
+      "kind": "command",
+      "subject": "6131d9872f69350e35c84045688477a37ed2e14f",
+      "digest": "sha256:3618e839fcc21a52cb2750faf8b942fe3c1dbaff0247370c375e25ae9a503ccc",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/screenshots/verify-2/readme-en-dark-1012.png",
+      "kind": "screenshot",
+      "subject": "6131d9872f69350e35c84045688477a37ed2e14f",
+      "digest": "sha256:c27f7215713c59d6ce97e33042477e659e1abf11f031db1d3373b6ee55687995",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-2.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/screenshots/verify-2/readme-en-light-1012.png",
+      "kind": "screenshot",
+      "subject": "6131d9872f69350e35c84045688477a37ed2e14f",
+      "digest": "sha256:24ea7b8c638fccd29279a1f160a6adee93cf59ae14b2276559dcf3d5eef5669f",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-2.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/screenshots/verify-2/readme-en-light-390.png",
+      "kind": "screenshot",
+      "subject": "6131d9872f69350e35c84045688477a37ed2e14f",
+      "digest": "sha256:dbfe0a3bbd44a02f85395704c407035ddfbeb0a53e14254677a244771b0489ae",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-2.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/screenshots/verify-2/readme-zh-dark-1012.png",
+      "kind": "screenshot",
+      "subject": "6131d9872f69350e35c84045688477a37ed2e14f",
+      "digest": "sha256:47aa55b06c7c93534a5b68dc9b3fcdf62d494ef5cf0d395c191efb4aae9a6a5b",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-2.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/screenshots/verify-2/readme-zh-light-1012.png",
+      "kind": "screenshot",
+      "subject": "6131d9872f69350e35c84045688477a37ed2e14f",
+      "digest": "sha256:81c1548345f832ec36b787cc73916f810a181fc623f9d0db96d458ed68bbaac4",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-2.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/screenshots/verify-2/readme-zh-light-390.png",
+      "kind": "screenshot",
+      "subject": "6131d9872f69350e35c84045688477a37ed2e14f",
+      "digest": "sha256:139e8b835b3777e5ccc25ce13f9e8b1c82b27431b174bdb08693f0ee1ba3937b",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/verify-2.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/logs/review-2.log",
+      "kind": "command",
+      "subject": "6131d9872f69350e35c84045688477a37ed2e14f",
+      "digest": "sha256:534d19ff0d4f6f02627405bbf1a4ecb80a25fe756f148ad1ad1f5a46601c1a99",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-03/outputs/review-2.json",
+      "kind": "review",
+      "subject": "6131d9872f69350e35c84045688477a37ed2e14f",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "2ed233ea2b01f309b7aec297e3753c1ed7abf8d0",
+        "planDigest": "sha256:b4084062c56cf94340403a50e7826986e6772a7cd5d5e0900bf0d2067724d186",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-README-REDESIGN-03-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "6131d9872f69350e35c84045688477a37ed2e14f",
+        "planDigest": "sha256:b4084062c56cf94340403a50e7826986e6772a7cd5d5e0900bf0d2067724d186",
+        "evidenceDigest": "sha256:d90ad08575d5034f875be13d2ada61ba86debd8fbeff859220aaf262c0f0ed29"
+      },
+      "decisionRef": "D-RUN-README-REDESIGN-03-2"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "6131d9872f69350e35c84045688477a37ed2e14f",
+        "planDigest": "sha256:b4084062c56cf94340403a50e7826986e6772a7cd5d5e0900bf0d2067724d186",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-README-REDESIGN-03-3"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-README-REDESIGN-03-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "2ed233ea2b01f309b7aec297e3753c1ed7abf8d0",
+        "planDigest": "sha256:b4084062c56cf94340403a50e7826986e6772a7cd5d5e0900bf0d2067724d186",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-README-REDESIGN-03-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "6131d9872f69350e35c84045688477a37ed2e14f",
+        "planDigest": "sha256:b4084062c56cf94340403a50e7826986e6772a7cd5d5e0900bf0d2067724d186",
+        "evidenceDigest": "sha256:d90ad08575d5034f875be13d2ada61ba86debd8fbeff859220aaf262c0f0ed29"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-README-REDESIGN-03-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "6131d9872f69350e35c84045688477a37ed2e14f",
+        "planDigest": "sha256:b4084062c56cf94340403a50e7826986e6772a7cd5d5e0900bf0d2067724d186",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

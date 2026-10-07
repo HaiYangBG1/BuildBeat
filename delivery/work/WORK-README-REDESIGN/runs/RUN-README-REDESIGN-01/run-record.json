@@ -1,0 +1,44 @@
+{
+  "run": "RUN-README-REDESIGN-01",
+  "work": "WORK-README-REDESIGN",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2",
+    "requireScreenshot": true
+  },
+  "terminal": {
+    "status": "CANCELLED",
+    "reason": "renderer fixed on v2; README work moves to a new run"
+  },
+  "events": {
+    "from": 1,
+    "to": 5,
+    "lastDigest": "sha256:05ac755ae0f46febd47aba73207974842d95009956e619a1c136a091446ff35d"
+  },
+  "startedAt": "2026-10-07T13:45:50.624Z",
+  "finishedAt": "2026-10-07T14:01:41.838Z",
+  "attempts": {},
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 0,
+    "humanWaits": 1,
+    "infraFailures": 0,
+    "workerMs": 0
+  },
+  "workspaces": {
+    "RUN-README-REDESIGN-01": {
+      "repo": ".",
+      "branch": "run/RUN-README-REDESIGN-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-README-REDESIGN-01",
+      "base": "4dd7978fa2dfb5f9b7424352ec2f41444b8f196a",
+      "candidate": null
+    }
+  },
+  "evidence": [],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

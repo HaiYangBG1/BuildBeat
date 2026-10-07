@@ -1,0 +1,159 @@
+{
+  "run": "RUN-README-REDESIGN-02",
+  "work": "WORK-README-REDESIGN",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2",
+    "requireScreenshot": true
+  },
+  "terminal": {
+    "status": "CANCELLED",
+    "reason": "renderer gains the English phone screenshot on v2; fixes move to a new run"
+  },
+  "events": {
+    "from": 1,
+    "to": 29,
+    "lastDigest": "sha256:b08bf881a49ec628a23cb14759cfbf50196591f58dc7b63b10980a71ae920022"
+  },
+  "startedAt": "2026-10-07T14:01:42.456Z",
+  "finishedAt": "2026-10-07T14:08:44.110Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 1,
+      "remaining": 5
+    }
+  },
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 2,
+    "infraFailures": 0,
+    "workerMs": 241696
+  },
+  "workspaces": {
+    "RUN-README-REDESIGN-02": {
+      "repo": ".",
+      "branch": "run/RUN-README-REDESIGN-02",
+      "worktreePath": ".buildbeat/worktrees/RUN-README-REDESIGN-02",
+      "base": "af12ecaf5c3aed41527894e2d9b784c829f9efbb",
+      "candidate": "f031e385eb27fa702e29da5c98085757dc1558c2"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-02/logs/verify-1.log",
+      "kind": "command",
+      "subject": "f031e385eb27fa702e29da5c98085757dc1558c2",
+      "digest": "sha256:91469b7a04396780be371e60a353b9ee169b462600090ce38917b6bcfd424251",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-02/screenshots/verify-1/readme-en-dark-1012.png",
+      "kind": "screenshot",
+      "subject": "f031e385eb27fa702e29da5c98085757dc1558c2",
+      "digest": "sha256:e3c2d63af64f513be0b28ec4c853549a000351545bfe32f281e7f623204b7ab0",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-02/logs/verify-1.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-02/screenshots/verify-1/readme-en-light-1012.png",
+      "kind": "screenshot",
+      "subject": "f031e385eb27fa702e29da5c98085757dc1558c2",
+      "digest": "sha256:7fb7d901a3729dc6ebf8e97804463727443f8bfe2174e149465ad5f5641ded35",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-02/logs/verify-1.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-02/screenshots/verify-1/readme-zh-dark-1012.png",
+      "kind": "screenshot",
+      "subject": "f031e385eb27fa702e29da5c98085757dc1558c2",
+      "digest": "sha256:c9d81459642b9ee4b2f0813fd17dd737db6034ccdc1891fbba3aca0b4e6718ae",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-02/logs/verify-1.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-02/screenshots/verify-1/readme-zh-light-1012.png",
+      "kind": "screenshot",
+      "subject": "f031e385eb27fa702e29da5c98085757dc1558c2",
+      "digest": "sha256:b9060c6135c4462a10faeb78721014ac1b75f40ccfa97d4d3d5e4f64d19893ed",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-02/logs/verify-1.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-02/screenshots/verify-1/readme-zh-light-390.png",
+      "kind": "screenshot",
+      "subject": "f031e385eb27fa702e29da5c98085757dc1558c2",
+      "digest": "sha256:d9fbfbf7681ddbaae37eb6b06fc82dda8b4fa52648fa67d89f40475d61e92a93",
+      "status": "passed",
+      "grade": "L2",
+      "source": ".buildbeat/runtime/runs/RUN-README-REDESIGN-02/logs/verify-1.log"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-02/logs/review-1.log",
+      "kind": "command",
+      "subject": "f031e385eb27fa702e29da5c98085757dc1558c2",
+      "digest": "sha256:f37fd7644ad26af04b26344bfd4d87662550610bde81e0ccffa2a8ab515dbfc9",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-REDESIGN-02/outputs/review-1.json",
+      "kind": "review",
+      "subject": "f031e385eb27fa702e29da5c98085757dc1558c2",
+      "digest": "sha256:a6a33a882718782fbf04dfac8f5c21e00602423be1184a4bd1e1b10f624c609c",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "中英 README 的“一眼看懂”正文及流程图声称运行台账、证据每一步都写进 Git，但运行时将活动台账和原始证据保存在被忽略的 .buildbeat/runtime/，终态仅归档摘要与引用，需明确长期记录与本机现场的区别。"
+        },
+        {
+          "severity": "P1",
+          "summary": "work.md 要求中英 README 的手机宽度截图，但本次证据仅有中文手机截图，缺少英文手机版验收证据。"
+        },
+        {
+          "severity": "P2",
+          "summary": "流程图按整图缩放到手机宽度后，步骤标题约为 6px、说明约为 4.5px，现有手机截图难以阅读，建议提供窄屏布局或可读的文字流程。"
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "f031e385eb27fa702e29da5c98085757dc1558c2",
+        "planDigest": "sha256:b4084062c56cf94340403a50e7826986e6772a7cd5d5e0900bf0d2067724d186",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-README-REDESIGN-02-1"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-README-REDESIGN-02-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "f031e385eb27fa702e29da5c98085757dc1558c2",
+        "planDigest": "sha256:b4084062c56cf94340403a50e7826986e6772a7cd5d5e0900bf0d2067724d186",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    }
+  ],
+  "unverified": []
+}

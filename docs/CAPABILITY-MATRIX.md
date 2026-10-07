@@ -1,6 +1,6 @@
 # BuildBeat capability matrix / 能力矩阵
 
-Current release: 4.2.1. One product path: Skill → local runtime →
+Current release: 4.2.2. One product path: Skill → local runtime →
 project records. The Claude Code plugin distributes the Skill and references;
 install the runtime separately. Files remain readable without the runtime, but
 manual work has no automatic loop, isolation, budget or approval enforcement;
