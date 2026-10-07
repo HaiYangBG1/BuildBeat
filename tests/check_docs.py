@@ -83,6 +83,7 @@ STALE_ACTIVE_CLAIMS = (
     (r"pm/NOW\.md|当期看板|pm/status/|pm/changes/|bus-check|verify-status\.sh|drift-check\.sh|design-preview\.sh|pre-commit\.sh", "refers to the removed file bus"),
     (r"legacy-four-gates|四 Gate|四个 Gate|Gate[1-4]\b|三轨", "refers to the removed fixed-gate cadence"),
     (r"buildbeat (?:init|adopt|upgrade)\b|`init/adopt|schema 2 manifest|SCAFFOLD_VERSION", "refers to the removed lifecycle CLI"),
+    (r"起跑前：buildbeat doctor|起跑：buildbeat start --config|--attempt new 自动编成", "the run config template comment names the 3.x doctor/start spelling (4.0: check / run)"),
 )
 
 CRITICAL_TEMPLATE_FILES = (

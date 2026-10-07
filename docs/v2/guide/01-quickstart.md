@@ -3,7 +3,7 @@
 安装运行时：`npm install --global @haiyangbg/buildbeat@latest`（Node ≥ 20）。从 3.x 升级前，先用原来的 3.x 运行时完成或取消仍在进行的 Run，见[迁移说明](../../MIGRATION.md)；不要在 Run 进行中替换运行时。
 
 1. 检查 Node ≥20、Git、Bash 和已鉴权的 AI 工具；保留项目自己的规范。
-2. 将 templates/v2/AGENTS.md、CLAUDE.md 按工具装载方式放入项目；复制 gitignore.template 的运行时排除项。
+2. 模板随 npm 包安装在 `$(npm root -g)/@haiyangbg/buildbeat/templates/`。将其中 `v2/AGENTS.md`、`v2/CLAUDE.md` 按工具装载方式放入项目；从 `gitignore.template`（在 `templates/` 下，不在 `v2/` 里）复制运行时排除项。
 3. 建 delivery/work/WORK-X/work.md，使用 work.example.md 的目标、范围、验收、实施计划结构。
 4. 把 templates/v2/envelope/ 复制为 delivery/envelope/；配置真实工具和验证命令。新工作不用复制 workflow.yaml。
 5. 用户接受工作说明后运行下面命令。长运行使用宿主支持的脱离方式启动；根据 status 的待决定对象处理例外。
@@ -18,10 +18,10 @@ buildbeat status --repo . --work WORK-X
 ```yaml
 # BuildBeat v2 run 配置样板。拷到 delivery/work/<WORK-ID>/run-config.yaml 后改 work / run / allowedPaths / workers。
 # 路径相对本文件解析。严格 YAML 子集：只有块列表与块映射（列表项可与键同缩进），行内只允许空的 [] / {}，无锚点，注释必须独占一行。
-# 起跑前：buildbeat doctor --config <本文件>；起跑：buildbeat start --config <本文件> --attempt new
+# 起跑前：buildbeat check --config <本文件>；起跑：buildbeat run --config <本文件>
 repo: ../../..
 work: WORK-X
-# 家族名；--attempt new 自动编成 RUN-X-01/02…
+# 家族名；run 自动编成 RUN-X-01/02…，--new 开新一轮
 run: RUN-X
 # builder / fixer 只能改这些目录；越界改动不成为候选
 allowedPaths:

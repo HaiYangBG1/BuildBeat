@@ -218,9 +218,9 @@ export function computeOverview(
     // Its commands need a copyable owner path, not the legacy local label.
     const repoLabel = followTargets && config?.target && config.repo !== currentRoot
       ? shellArg(pathLabel(cwd ?? process.cwd(), repoRoot)) : defaultRepoLabel;
-    const configPath = config
-      ? shellArg(cwd && !local ? pathLabel(cwd, config.path) : `delivery/work/${workId}/${config.path.split("/").at(-1)}`)
-      : "<run-config.yaml>";
+    const pathFor = (item) =>
+      shellArg(cwd && !local ? pathLabel(cwd, item.path) : `delivery/work/${workId}/${item.path.split("/").at(-1)}`);
+    const configPath = config ? pathFor(config) : "<run-config.yaml>";
     const runs = runsFor(repoRoot, workId);
     if (!configs.length && !runs.length && !["work.md", "intent.md", "plan.md", "decisions.jsonl", "runs"].some((name) => existsSync(join(workDir, name)))) continue;
     const decisions = readJsonl(join(workDir, "decisions.jsonl"));
@@ -282,7 +282,10 @@ export function computeOverview(
           ? closure.subject.result
           : "see decisions.jsonl";
       next = `${stage.toLowerCase()} @ ${closure.ts ?? "?"}: ${result.slice(0, 160)}`;
-    } else if (!intent.exists && !latest) {
+    } else if (!intent.exists && (!latest || directory(workDir))) {
+      // A work directory without a work description stays NO_INTENT even
+      // when it has runs, as in 4.0.0; only a work known solely from
+      // runtime ledgers (no directory here) shows its run state.
       stage = "NO_INTENT";
       next = `write delivery/work/${workId}/work.md (goal, scope, acceptance, implementation plan)`;
     } else if (!latest) {
@@ -323,7 +326,7 @@ export function computeOverview(
       const replies = latest.state
         ? nextReply({ repoLabel, state: latest.state })
         : [];
-      next = replies[0] ?? `buildbeat inbox --repo ${repoLabel}`;
+      next = replies[0] ?? `buildbeat status --repo ${repoLabel} --work ${workId}`;
     } else if (latest.status === "SUCCEEDED" && isReleaseLane(latest)) {
       // A release-readback lane that reached wait-close and was approved is
       // a closed release window, not "nothing to merge".
@@ -332,13 +335,23 @@ export function computeOverview(
     } else if (merged) {
       stage = "MERGED";
       // After the merge: the person releases, the project's readback proves
-      // it, and the window closes on a passing readback.
+      // it, and the window closes on a passing readback. The readback lives
+      // in whichever run config has a release: section; when every config
+      // was read and none has one, `buildbeat release` could only fail, so
+      // the merge is the end of the work. Unreadable or absent configs keep
+      // the generic hint.
+      const releaseConfig = configs.find((item) => item.release) ?? null;
+      const releasePath = releaseConfig ? pathFor(releaseConfig) : configPath;
+      const noReleaseStep =
+        configs.length > 0 && !releaseConfig && !configs.some((item) => item.error);
       const close = `buildbeat decide --repo ${repoLabel} --work ${workId} --action close --result <what was released> --by <you>`;
       next = !readback
-        ? `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release it (a human action), then buildbeat release --config ${configPath}; then ${close}`
+        ? noReleaseStep
+          ? "merged; no release readback configured, nothing left to do (add a release: section to the run config to record a readback and close the window)"
+          : `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release it (a human action), then buildbeat release --config ${releasePath}; then ${close}`
         : readback.status === "passed"
           ? `readback passed @ ${readback.ts} (${readback.commit.slice(0, 7)}); close the window: ${close}`
-          : `latest readback failed @ ${readback.ts} (exit ${readback.exitCode}); fix the release, then buildbeat release --config ${configPath} again`;
+          : `latest readback failed @ ${readback.ts} (exit ${readback.exitCode}); fix the release, then buildbeat release --config ${releasePath} again`;
       if (latest.status !== "SUCCEEDED") {
         next += `   # latest run ${latest.id} ended ${latest.status} after the merge`;
       }
@@ -418,8 +431,8 @@ export function renderOverview(rows) {
   const lines = [];
   for (const row of rows) {
     lines.push(`${row.work}  ${row.stage}`);
-    if (row.repo) lines.push(`  所在仓：${row.repoLabel ?? row.repo}`);
-    if (row.targetRepo) lines.push(`  运行目标：${row.targetLabel ?? row.targetRepo}`);
+    if (row.repo) lines.push(`  repo: ${row.repoLabel ?? row.repo}`);
+    if (row.targetRepo) lines.push(`  runs in: ${row.targetLabel ?? row.targetRepo}`);
     const parts =
       row.workArtifact === "work"
         ? [`work.md ${mark(row.plan)}`, `runs ${row.runs}`]

@@ -1260,7 +1260,7 @@ function commandDoctor(flags) {
     console.log(`notify: PROBLEM ${notifyError}`);
   } else if (!notify) {
     console.log(
-      `notify: none (${NOTIFY_CONFIG} absent; a waiting run reaches nobody until someone runs inbox)`,
+      `notify: none (${NOTIFY_CONFIG} absent; a waiting run reaches nobody until someone runs status)`,
     );
   } else {
     console.log("notify channels:");
@@ -1487,20 +1487,20 @@ function commandStatus(flags) {
         for (const group of result.repos) {
           const pending = result.pending.filter((row) => row.repo === group.repo);
           if (pending.length) {
-            console.log(`待人决定 · ${pathLabel(process.cwd(), group.repo)}`);
+            console.log(`pending decisions · ${pathLabel(process.cwd(), group.repo)}`);
             commandInbox(flags, pending);
           }
         }
         for (const group of result.repos) {
           const open = group.works.filter((row) => !row.settled);
           if (open.length) {
-            console.log(`仓库：${pathLabel(process.cwd(), group.repo)}`);
+            console.log(`repo ${pathLabel(process.cwd(), group.repo)}:`);
             console.log(renderOverview(open));
           }
         }
         for (const group of result.repos) {
           const count = group.settled;
-          console.log(`${pathLabel(process.cwd(), group.repo)}：已了结 ${count.total} 项（CLOSED ${count.closed} / CANCELLED ${count.cancelled} / 已合并无收尾步骤 ${count.merged}）`);
+          console.log(`${pathLabel(process.cwd(), group.repo)}: settled ${count.total} (closed ${count.closed} · cancelled ${count.cancelled} · merged, no release step ${count.merged})`);
         }
       } else {
         // Keep the single-repo surface while forwarding work facts and waits.
