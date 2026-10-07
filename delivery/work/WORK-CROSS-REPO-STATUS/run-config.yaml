@@ -1,0 +1,69 @@
+# Run config for WORK-CROSS-REPO-STATUS. Paths resolve relative to this file.
+# Builder and fixer are codex workers using the shipped 4.0 prompts (owner
+# authorization 2026-10-07); verify and the three-area review stay
+# independent. This Work's own tooling is outside allowedPaths, so the
+# builder cannot change what verifies or reviews it.
+repo: ../../..
+work: WORK-CROSS-REPO-STATUS
+run: RUN-CROSS-REPO-STATUS
+allowedPaths:
+  - src
+  - bin
+  - tests
+  - docs
+  - templates
+  - plugins
+  - README.md
+  - README.en.md
+  - SKILL.md
+  - CHANGELOG.md
+  - delivery/work/WORK-CROSS-REPO-STATUS/notes.md
+reviewTriage: off
+budgets:
+  reviewRoundsPerWork: 6
+parallel: true
+cache:
+  verify: tree
+envelope:
+  prompts: ../../../templates/v2/envelope/prompts
+  vars:
+    component: buildbeat
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+requires:
+  - command: node
+    min: "20"
+  - command: codex
+workers:
+  builder:
+    command: bash
+    timeoutMs: 3600000
+    args:
+      - delivery/envelope/worker.sh
+      - builder
+      - --
+      - codex
+      - exec
+      - -s
+      - workspace-write
+  verifier:
+    command: bash
+    timeoutMs: 1800000
+    args:
+      - delivery/work/WORK-CROSS-REPO-STATUS/verify.sh
+  reviewer:
+    command: bash
+    timeoutMs: 5400000
+    args:
+      - delivery/work/WORK-CROSS-REPO-STATUS/review.sh
+  fixer:
+    command: bash
+    timeoutMs: 3600000
+    args:
+      - delivery/envelope/worker.sh
+      - fixer
+      - --
+      - codex
+      - exec
+      - -s
+      - workspace-write
