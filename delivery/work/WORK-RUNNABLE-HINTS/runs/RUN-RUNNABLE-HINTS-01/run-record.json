@@ -1,0 +1,121 @@
+{
+  "run": "RUN-RUNNABLE-HINTS-01",
+  "work": "WORK-RUNNABLE-HINTS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 26,
+    "lastDigest": "sha256:3f7d51cd159bf0419b916c38e0e2769d8990454d68440919c2e66341ffeab6c2"
+  },
+  "startedAt": "2026-10-07T07:22:07.429Z",
+  "finishedAt": "2026-10-07T07:42:38.903Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 1,
+      "remaining": 5
+    }
+  },
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 2,
+    "infraFailures": 0,
+    "workerMs": 181604
+  },
+  "workspaces": {
+    "RUN-RUNNABLE-HINTS-01": {
+      "repo": ".",
+      "branch": "run/RUN-RUNNABLE-HINTS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-RUNNABLE-HINTS-01",
+      "base": "5701c1c56adabffb699e691e9938531f3cab930f",
+      "candidate": "194abbea9c660207202968b5bbe4ba29a5d353c4"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-RUNNABLE-HINTS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "194abbea9c660207202968b5bbe4ba29a5d353c4",
+      "digest": "sha256:7fcae4a859db3cb2d8896006565030d8fc7f4e57ce6d7958035df4223f2abef3",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:0feb214a6742ed4a5f3362e037eb06194f356cd51f46a62e4e8db6ce95e72ab5"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-RUNNABLE-HINTS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "194abbea9c660207202968b5bbe4ba29a5d353c4",
+      "digest": "sha256:ec0b02319d5803db07aeada952f891a2f542e36993f5a6640caf3f48967cb702",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-RUNNABLE-HINTS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "194abbea9c660207202968b5bbe4ba29a5d353c4",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "194abbea9c660207202968b5bbe4ba29a5d353c4",
+        "planDigest": "sha256:ca0b64433990a2dd7a9eb2c9baff14724ffcc210f1b34f2e08246d6dc1b29877",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-RUNNABLE-HINTS-01-1"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "194abbea9c660207202968b5bbe4ba29a5d353c4",
+        "planDigest": "sha256:ca0b64433990a2dd7a9eb2c9baff14724ffcc210f1b34f2e08246d6dc1b29877",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-RUNNABLE-HINTS-01-2"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-RUNNABLE-HINTS-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "194abbea9c660207202968b5bbe4ba29a5d353c4",
+        "planDigest": "sha256:ca0b64433990a2dd7a9eb2c9baff14724ffcc210f1b34f2e08246d6dc1b29877",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-RUNNABLE-HINTS-01-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "194abbea9c660207202968b5bbe4ba29a5d353c4",
+        "planDigest": "sha256:ca0b64433990a2dd7a9eb2c9baff14724ffcc210f1b34f2e08246d6dc1b29877",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

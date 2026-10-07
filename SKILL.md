@@ -20,7 +20,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 
 | 用户意图 | 操作 |
 |---|---|
-| 接手、查看进度、有什么待批 | `buildbeat status --repo .`；指定 `--work` 或 `--run` 查看细节 |
+| 接手、查看进度、有什么待批 | `buildbeat status --repo .`；主仓的 run 配置中 `repo:` 指向其他仓时，查看全部代码仓加 `--all-repos`（运行时 4.1 起；可加 `--work`、`--json`）；单仓指定 `--work` 或 `--run` 查看细节 |
 | 准备一项工作 | 写 `delivery/work/<ID>/work.md`，包含目标、范围、验收、实施计划；复制 run-config 样板并填真实命令 |
 | 接受工作说明 | `buildbeat accept --repo . --work <ID> --by <owner>`；用户已有明确授权时直接记录，不重复问同一个决定 |
 | 开工、继续 | `buildbeat run --config <config>`；首次编号，已有运行则恢复；明确新一轮时加 `--new` |
@@ -54,10 +54,10 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 ```yaml
 # BuildBeat v2 run 配置样板。拷到 delivery/work/<WORK-ID>/run-config.yaml 后改 work / run / allowedPaths / workers。
 # 路径相对本文件解析。严格 YAML 子集：只有块列表与块映射（列表项可与键同缩进），行内只允许空的 [] / {}，无锚点，注释必须独占一行。
-# 起跑前：buildbeat doctor --config <本文件>；起跑：buildbeat start --config <本文件> --attempt new
+# 起跑前：buildbeat check --config <本文件>；起跑：buildbeat run --config <本文件>
 repo: ../../..
 work: WORK-X
-# 家族名；--attempt new 自动编成 RUN-X-01/02…
+# 家族名；run 自动编成 RUN-X-01/02…，--new 开新一轮
 run: RUN-X
 # builder / fixer 只能改这些目录；越界改动不成为候选
 allowedPaths:

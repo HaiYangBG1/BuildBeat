@@ -1,0 +1,49 @@
+# Run config for WORK-RUNNABLE-HINTS. Paths resolve relative to this file.
+# Builder and fixer are deliberately absent: the driving session writes the
+# change and hands each commit over with --adopt. Verify runs the full local
+# gate; review is the shipped 4.0 reviewer prompt on codex, read-only.
+repo: ../../..
+work: WORK-RUNNABLE-HINTS
+run: RUN-RUNNABLE-HINTS
+allowedPaths:
+  - src
+  - tests
+  - docs
+  - templates
+  - example
+  - plugins
+  - SKILL.md
+  - CHANGELOG.md
+reviewTriage: off
+budgets:
+  reviewRoundsPerWork: 6
+parallel: true
+cache:
+  verify: tree
+envelope:
+  prompts: ../../../templates/v2/envelope/prompts
+  vars:
+    component: buildbeat
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+requires:
+  - command: node
+    min: "20"
+  - command: codex
+workers:
+  verifier:
+    command: bash
+    timeoutMs: 1800000
+    args:
+      - delivery/work/WORK-RUNNABLE-HINTS/verify.sh
+  reviewer:
+    command: bash
+    timeoutMs: 3600000
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only

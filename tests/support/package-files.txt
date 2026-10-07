@@ -87,6 +87,7 @@ src/v2/runtime/liveness.js
 src/v2/runtime/metrics.js
 src/v2/runtime/notify.js
 src/v2/runtime/orchestrator.js
+src/v2/runtime/overview-repos.js
 src/v2/runtime/overview.js
 src/v2/runtime/release.js
 src/v2/runtime/repo-ref.js

@@ -10,13 +10,16 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
+import { listInbox } from "./decisions.js";
+import { configTargets, directory, discoverRepos, pathLabel, shellArg, workConfigs } from "./overview-repos.js";
 
 import { EventLedger } from "../storage/event-ledger.js";
 import { latestAdjudications, readFindingsAccount } from "./findings.js";
 import { nextReply } from "./notify.js";
 import { readReleases } from "./release.js";
+import { describeLiveness } from "./liveness.js";
 import { computeWorkCost, renderWorkCost } from "./work-cost.js";
 
 function sha256File(path) {
@@ -64,27 +67,35 @@ export function artifactStatus(workDir, decisions, artifact) {
   };
 }
 
-function isAncestor(repoRoot, sha, ref) {
+function isAncestor(repoRoot, sha, ref, context) {
+  const key = JSON.stringify([repoRoot, sha, ref]);
+  if (context.ancestry.has(key)) return context.ancestry.get(key);
   try {
     execFileSync(
       "git",
       ["-C", repoRoot, "merge-base", "--is-ancestor", sha, ref],
       { stdio: "ignore" },
     );
+    context.ancestry.set(key, true);
     return true;
   } catch {
+    context.ancestry.set(key, false);
     return false;
   }
 }
 
-function headRef(repoRoot) {
+function headRef(repoRoot, context) {
+  if (context.heads.has(repoRoot)) return context.heads.get(repoRoot);
   try {
-    return execFileSync(
+    const ref = execFileSync(
       "git",
       ["-C", repoRoot, "rev-parse", "--abbrev-ref", "HEAD"],
       { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
     ).trim();
+    context.heads.set(repoRoot, ref);
+    return ref;
   } catch {
+    context.heads.set(repoRoot, "HEAD");
     return "HEAD";
   }
 }
@@ -154,30 +165,64 @@ export function runsFor(repoRoot, workId) {
   );
 }
 
+// Per status invocation: known local roots need no validation subprocess,
+// and forwarded works share repository facts with the later target scan.
+function overviewContext(repoRoot) {
+  return { roots: new Map([[realpathSync(repoRoot), realpathSync(repoRoot)]]), heads: new Map(), ancestry: new Map() };
+}
+
 export function computeOverview(
   repoRoot,
-  { work = null, repoLabel = "." } = {},
+  { work = null, repoLabel: defaultRepoLabel = ".", cwd = null, followTargets = true, warnings = [], configsOverride = null, context = overviewContext(repoRoot), skipWorks = new Set(), localCompatibility = false } = {},
 ) {
   const workRoot = join(repoRoot, "delivery", "work");
   const rows = [];
-  if (!existsSync(workRoot)) {
-    return rows;
+  const workIds = new Set(directory(workRoot) ? readdirSync(workRoot).filter((id) => directory(join(workRoot, id))) : []);
+  const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
+  if (directory(runsDir)) {
+    for (const id of readdirSync(runsDir)) {
+      const file = join(runsDir, id, "events.jsonl");
+      if (!existsSync(file)) continue;
+      const run = EventLedger.open(file).state.run;
+      if (run?.work) workIds.add(run.work);
+    }
   }
-  const mainRef = headRef(repoRoot);
-  for (const workId of readdirSync(workRoot).sort()) {
-    if (work && workId !== work) {
+  const mainRef = headRef(repoRoot, context);
+  // Resolve once; do not spawn another Git process for each local work.
+  const currentRoot = realpathSync(repoRoot);
+  for (const workId of [...workIds].sort()) {
+    if ((work && workId !== work) || skipWorks.has(workId)) {
       continue;
     }
     const workDir = join(workRoot, workId);
-    if (
-      !existsSync(join(workDir, "work.md")) &&
-      !existsSync(join(workDir, "intent.md")) &&
-      !existsSync(join(workDir, "plan.md")) &&
-      !existsSync(join(workDir, "decisions.jsonl")) &&
-      !existsSync(join(workDir, "runs"))
-    ) {
-      continue;
+    const configs = configsOverride ?? workConfigs(repoRoot, workId, warnings);
+    const resolved = followTargets ? configTargets(configs, warnings, context.roots) : configs;
+    const owner = followTargets ? resolved.find((item) => item.repo && item.repo !== currentRoot &&
+      (directory(join(item.repo, "delivery", "work", workId)) || runsFor(item.repo, workId).length)) : null;
+    const usable = resolved.filter((item) => !item.error);
+    const selected = owner ?? usable[0] ?? resolved[0] ?? null;
+    const applicable = selected?.repo ? resolved.filter((item) => item.repo === selected.repo) : usable;
+    const local = localCompatibility && (!selected?.target || selected.repo === currentRoot);
+    const config = (local ? null : applicable.find((item) => item.release)) ?? selected;
+    if (owner) {
+      const targetRows = computeOverview(config.repo, {
+        work: workId, repoLabel: shellArg(pathLabel(cwd ?? process.cwd(), config.repo)),
+        cwd: cwd ?? process.cwd(), followTargets: false, warnings, configsOverride: applicable, context,
+      });
+      if (targetRows.length) {
+        rows.push({ ...targetRows[0], repo: config.repo, repoLabel: pathLabel(cwd ?? process.cwd(), config.repo) });
+        continue;
+      }
     }
+    // Cross-repo work still belongs here until the target has records.
+    // Its commands need a copyable owner path, not the legacy local label.
+    const repoLabel = followTargets && config?.target && config.repo !== currentRoot
+      ? shellArg(pathLabel(cwd ?? process.cwd(), repoRoot)) : defaultRepoLabel;
+    const pathFor = (item) =>
+      shellArg(cwd && !local ? pathLabel(cwd, item.path) : `delivery/work/${workId}/${item.path.split("/").at(-1)}`);
+    const configPath = config ? pathFor(config) : "<run-config.yaml>";
+    const runs = runsFor(repoRoot, workId);
+    if (!configs.length && !runs.length && !["work.md", "intent.md", "plan.md", "decisions.jsonl", "runs"].some((name) => existsSync(join(workDir, name)))) continue;
     const decisions = readJsonl(join(workDir, "decisions.jsonl"));
     const unified = existsSync(join(workDir, "work.md"));
     const intent = artifactStatus(
@@ -195,7 +240,6 @@ export function computeOverview(
         (row.severity === "P0" || row.severity === "P1") &&
         !adjudicated.has(row.fingerprint),
     ).length;
-    const runs = runsFor(repoRoot, workId);
     const live = runs.filter((run) => run.status !== "SUPERSEDED");
     const latest = live[live.length - 1] ?? null;
     // "Merged" is a fact about any candidate of the work, not only the
@@ -207,7 +251,7 @@ export function computeOverview(
         .reverse()
         .find(
           (run) =>
-            run.candidate && isAncestor(repoRoot, run.candidate, mainRef),
+            run.candidate && isAncestor(repoRoot, run.candidate, mainRef, context),
         ) ?? null;
     const merged = Boolean(mergedRun);
     const RELEASE_STEPS = ["preflight", "apply-readback", "observe"];
@@ -238,7 +282,10 @@ export function computeOverview(
           ? closure.subject.result
           : "see decisions.jsonl";
       next = `${stage.toLowerCase()} @ ${closure.ts ?? "?"}: ${result.slice(0, 160)}`;
-    } else if (!intent.exists) {
+    } else if (!intent.exists && (!latest || directory(workDir))) {
+      // A work directory without a work description stays NO_INTENT even
+      // when it has runs, as in 4.0.0; only a work known solely from
+      // runtime ledgers (no directory here) shows its run state.
       stage = "NO_INTENT";
       next = `write delivery/work/${workId}/work.md (goal, scope, acceptance, implementation plan)`;
     } else if (!latest) {
@@ -263,12 +310,9 @@ export function computeOverview(
         next = `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact ${artifacts} --by <you>${plan.stale ? `   # ${unified ? "work.md" : "plan"} changed since acceptance` : ""}`;
       } else {
         stage = "READY_TO_RUN";
-        const configs = readdirSync(workDir).filter((name) =>
-          /^run-config.*\.ya?ml$/.test(name),
-        );
         next =
           configs.length > 0
-            ? `buildbeat run --config delivery/work/${workId}/${configs[0]}`
+            ? `buildbeat run --config ${configPath}`
             : `no run-config in delivery/work/${workId}: write one, or close it with a decisions.jsonl row {"transition":"close-work","decision":"closed","subject":{"result":"..."}} if it was doc-only`;
       }
     } else if (latest.status === "RUNNING") {
@@ -282,7 +326,7 @@ export function computeOverview(
       const replies = latest.state
         ? nextReply({ repoLabel, state: latest.state })
         : [];
-      next = replies[0] ?? `buildbeat inbox --repo ${repoLabel}`;
+      next = replies[0] ?? `buildbeat status --repo ${repoLabel} --work ${workId}`;
     } else if (latest.status === "SUCCEEDED" && isReleaseLane(latest)) {
       // A release-readback lane that reached wait-close and was approved is
       // a closed release window, not "nothing to merge".
@@ -291,19 +335,23 @@ export function computeOverview(
     } else if (merged) {
       stage = "MERGED";
       // After the merge: the person releases, the project's readback proves
-      // it, and the window closes on a passing readback.
-      const configs = readdirSync(workDir).filter((name) =>
-        /^run-config.*\.ya?ml$/.test(name),
-      );
-      const config = configs.length
-        ? `delivery/work/${workId}/${configs[0]}`
-        : "<run-config.yaml>";
+      // it, and the window closes on a passing readback. The readback lives
+      // in whichever run config has a release: section; when every config
+      // was read and none has one, `buildbeat release` could only fail, so
+      // the merge is the end of the work. Unreadable or absent configs keep
+      // the generic hint.
+      const releaseConfig = configs.find((item) => item.release) ?? null;
+      const releasePath = releaseConfig ? pathFor(releaseConfig) : configPath;
+      const noReleaseStep =
+        configs.length > 0 && !releaseConfig && !configs.some((item) => item.error);
       const close = `buildbeat decide --repo ${repoLabel} --work ${workId} --action close --result <what was released> --by <you>`;
       next = !readback
-        ? `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release it (a human action), then buildbeat release --config ${config}; then ${close}`
+        ? noReleaseStep
+          ? "merged; no release readback configured, nothing left to do (add a release: section to the run config to record a readback and close the window)"
+          : `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release it (a human action), then buildbeat release --config ${releasePath}; then ${close}`
         : readback.status === "passed"
           ? `readback passed @ ${readback.ts} (${readback.commit.slice(0, 7)}); close the window: ${close}`
-          : `latest readback failed @ ${readback.ts} (exit ${readback.exitCode}); fix the release, then buildbeat release --config ${config} again`;
+          : `latest readback failed @ ${readback.ts} (exit ${readback.exitCode}); fix the release, then buildbeat release --config ${releasePath} again`;
       if (latest.status !== "SUCCEEDED") {
         next += `   # latest run ${latest.id} ended ${latest.status} after the merge`;
       }
@@ -315,11 +363,13 @@ export function computeOverview(
     } else {
       stage = `STOPPED_${latest.status}`;
       next = plan.accepted
-        ? `decide: retry (buildbeat run --config <run-config.yaml> --new) or close the work`
+        ? `decide: retry (buildbeat run --config ${configPath} --new) or close the work`
         : `${unified ? "work.md" : "plan"} not accepted (${plan.exists ? "draft" : "missing"}); fix that before another run`;
     }
     rows.push({
       work: workId,
+      ...(config ? { config: config.path, hasRelease: configs.some((item) => item.release) ? true : configs.some((item) => item.error) ? null : false } : { hasRelease: false }),
+      ...(config?.target && (!config.repo || config.repo !== currentRoot) && followTargets ? { targetRepo: config.repo ?? config.target, targetLabel: pathLabel(cwd ?? process.cwd(), config.repo ?? config.target) } : {}),
       stage,
       intent,
       plan,
@@ -358,7 +408,7 @@ export function computeOverview(
             },
           }
         : {}),
-      next,
+      next: local ? next : next.replaceAll("--config <run-config.yaml>", `--config ${configPath}`),
     });
   }
   return rows;
@@ -381,6 +431,8 @@ export function renderOverview(rows) {
   const lines = [];
   for (const row of rows) {
     lines.push(`${row.work}  ${row.stage}`);
+    if (row.repo) lines.push(`  repo: ${row.repoLabel ?? row.repo}`);
+    if (row.targetRepo) lines.push(`  runs in: ${row.targetLabel ?? row.targetRepo}`);
     const parts =
       row.workArtifact === "work"
         ? [`work.md ${mark(row.plan)}`, `runs ${row.runs}`]
@@ -428,4 +480,55 @@ export function renderOverview(rows) {
     lines.push(`  next: ${row.next}`);
   }
   return lines.join("\n");
+}
+
+// The main repo's configuration remains the command source; all state and
+// decisions come from the checkout that owns the work. Only the main repo's
+// pointers are followed, so targets cannot recursively expand this view.
+export function computeRepositoryOverview(repoRoot, { work = null, allRepos = false, cwd = process.cwd(), localRepoLabel = shellArg(pathLabel(cwd, repoRoot)) } = {}) {
+  repoRoot = realpathSync(repoRoot);
+  const context = overviewContext(repoRoot);
+  const warnings = [];
+  const roots = allRepos ? discoverRepos(repoRoot, warnings, context.roots) : [repoRoot];
+  const primary = computeOverview(repoRoot, { work, cwd, repoLabel: allRepos ? shellArg(pathLabel(cwd, repoRoot)) : localRepoLabel, warnings, context, localCompatibility: !allRepos });
+  const groups = new Map(roots.map((repo) => [repo, new Map()]));
+  for (const row of primary) {
+    const owner = row.repo ?? repoRoot;
+    if (!groups.has(owner)) groups.set(owner, new Map());
+    groups.get(owner).set(row.work, row);
+  }
+  if (allRepos) {
+    for (const root of roots.filter((root) => root !== repoRoot)) {
+      for (const row of computeOverview(root, { work, cwd, followTargets: false, warnings, context, skipWorks: new Set(groups.get(root).keys()), repoLabel: shellArg(pathLabel(cwd, root)) })) {
+        if (!groups.get(root).has(row.work)) groups.get(root).set(row.work, row);
+      }
+    }
+  }
+  const pending = [];
+  const repos = [];
+  for (const [repo, byWork] of groups) {
+    const works = [...byWork.values()].sort((a, b) => a.work.localeCompare(b.work)).map((row) => ({
+      ...row, repo, repoLabel: pathLabel(cwd, repo),
+      ...(row.targetRepo ? { targetLabel: pathLabel(cwd, row.targetRepo) } : {}),
+    }));
+    const settled = { total: 0, closed: 0, cancelled: 0, merged: 0 };
+    for (const row of works) {
+      if (allRepos && row.stage === "RUNNING" && row.latest?.source === "runtime") {
+        const ledger = EventLedger.open(join(repo, ".buildbeat", "runtime", "runs", row.latest.id, "events.jsonl"));
+        const live = describeLiveness({ repoRoot: repo, runId: row.latest.id, ledger });
+        if (live.inFlight?.stalled) row.stage = "STALLED";
+      }
+      const kind = row.stage === "CLOSED" ? "closed" : row.stage === "CANCELLED" ? "cancelled" : row.stage === "MERGED" && row.hasRelease === false ? "merged" : null;
+      row.settled = Boolean(kind);
+      if (kind) { settled[kind]++; settled.total++; }
+    }
+    repos.push({ repo, works, settled });
+    for (const row of listInbox(repo)) {
+      if (work && row.work !== work && !row.corrupted) continue;
+      if (!allRepos && repo !== repoRoot && !byWork.has(row.work) && !row.corrupted) continue;
+      if (repo === repoRoot && primary.some((item) => item.work === row.work && item.repo && item.repo !== repoRoot)) continue;
+      pending.push({ ...row, repo, ...(byWork.get(row.work)?.config ? { config: byWork.get(row.work).config } : {}) });
+    }
+  }
+  return { repos, pending, warnings: [...new Set(warnings)] };
 }

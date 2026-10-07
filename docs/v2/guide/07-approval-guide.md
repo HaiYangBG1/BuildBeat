@@ -10,6 +10,6 @@ status 的决定卡包含 transition、候选、计划摘要、证据、原因�
 
 正常修复自动继续；重复问题、阻断数增加、环境故障或预算耗尽才形成例外决定。预算批准一次放行对应修复、重验和再审；扩额记录可以重放，驾驶会话不能自行冒充用户批准。
 
-合并和上线仍由人完成。上线后运行 `buildbeat release --config <config> [--note <text>]`：它确认该 Work 已成功 Run 的候选包含在 `--ref`（默认当前 HEAD）中，在主检出执行 run-config `release:` 段配置的只读回读命令（形状、环境白名单与脱敏同 worker），把结果、退出码、提交、输出摘要和末尾若干行追加到 `delivery/work/<ID>/releases.jsonl`。最近一次回读通过后，用 `decide --repo . --work <ID> --action close --result <text>` 关窗，写入绑定该回读的 close-work 决定；回读失败时不能关窗。
+合并和上线仍由人完成。上线后运行 `buildbeat release --config <config> [--note <text>]`：它确认该 Work 已成功 Run 的候选包含在 `--ref`（默认当前 HEAD）中，在主检出执行 run-config `release:` 段配置的只读回读命令（形状、环境白名单与脱敏同 worker），把结果、退出码、提交、输出摘要和末尾若干行追加到 `delivery/work/<ID>/releases.jsonl`。最近一次回读通过后，用 `decide --repo . --work <ID> --action close --result <text>` 关窗，写入绑定该回读的 close-work 决定；回读失败时不能关窗。run 配置都没有 `release:` 段的 Work 到合并为止，status 提示没有剩余必做步骤。
 
 通知只报告待批、结束或疑似卡顿，不能接收审批；webhook/钉钉 URL 仅从环境变量读取，发送失败不影响 Run。看门进程是运行反馈的内部实现。

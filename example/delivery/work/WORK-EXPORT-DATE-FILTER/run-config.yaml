@@ -1,5 +1,5 @@
 # 简账 · WORK-EXPORT-DATE-FILTER 的 run 配置。路径相对本文件解析。
-# 起跑前：buildbeat doctor --config <本文件>；起跑：buildbeat start --config <本文件> --attempt new
+# 起跑前：buildbeat check --config <本文件>；起跑：buildbeat run --config <本文件>
 repo: ../../..
 work: WORK-EXPORT-DATE-FILTER
 run: RUN-EXPORT

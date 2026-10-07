@@ -1,0 +1,220 @@
+{
+  "run": "RUN-CROSS-REPO-STATUS-01",
+  "work": "WORK-CROSS-REPO-STATUS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 77,
+    "lastDigest": "sha256:3580c7f01033eae00fef02ecd6cb5c1a145144071857f01709fa383dbbf17801"
+  },
+  "startedAt": "2026-10-07T06:45:34.939Z",
+  "finishedAt": "2026-10-07T07:20:44.404Z",
+  "attempts": {
+    "build": 1,
+    "verify": 3,
+    "review": 3,
+    "fix": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 3,
+      "remaining": 3
+    }
+  },
+  "cost": {
+    "reviewRounds": 3,
+    "humanWaits": 1,
+    "infraFailures": 0,
+    "workerMs": 1768664
+  },
+  "workspaces": {
+    "RUN-CROSS-REPO-STATUS-01": {
+      "repo": ".",
+      "branch": "run/RUN-CROSS-REPO-STATUS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-CROSS-REPO-STATUS-01",
+      "base": "948bc82bdf163ffc9aaa2abc458085b81d94202d",
+      "candidate": "14cee4ef71eb9fb8a5196a4c86e5ec4c3b6b7093"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CROSS-REPO-STATUS-01/logs/build-1.log",
+      "kind": "command",
+      "subject": "e88b8ff2283223c6b0fc2e81bdc14154ae2f1ebb",
+      "digest": "sha256:596689dc59b8ba1ebcf04dd79c47850e01f89ece2078cb30cc23ad3641878036",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CROSS-REPO-STATUS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "e88b8ff2283223c6b0fc2e81bdc14154ae2f1ebb",
+      "digest": "sha256:759182a869f4876c7524317b62f98d2d4b68a707d41cb41ecb7b08125e856bbe",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:11cdda8da514c0ba23222771c0eead61e08f5d6d04d6eabee18b5eeea9a83f95"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CROSS-REPO-STATUS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "e88b8ff2283223c6b0fc2e81bdc14154ae2f1ebb",
+      "digest": "sha256:4cc8b3850b71963c49c54017bd919d7a41258f4ba8cbe0fca2aa7d63097d4aaa",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CROSS-REPO-STATUS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "e88b8ff2283223c6b0fc2e81bdc14154ae2f1ebb",
+      "digest": "sha256:d516d692ec4a5aa5433197d73233e2988e8e3a5644fffd9037055a807ecafe62",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/runtime/overview.js:186 — An unreadable first config prevents ownership resolution through subsequent valid configs. With run-config-00.yaml malformed and run-config.yaml targeting a code repository containing this Work, discovery finds that repository but overview follows only resolved[0]. --all-repos consequently lists the Work twice, and single-repository status retains the main repository's state. Reproduced using read-only, in-memory config substitutions. Resolve ownership using usable configs rather than the first filename, retain the valid main config for hints, and add a regression covering this case."
+        },
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/runtime/overview.js:191 — Forwarding configOverride: config discards release metadata from other main-repository configs. When two configs target the same code repository, the first lacks release:, and the second contains release:, a MERGED Work receives hasRelease:false and settled:true and disappears from text output despite requiring release follow-up. Reproduced with in-memory substitutions against existing merged records. Preserve the complete applicable config set when forwarding, aggregate release presence, and select the release-bearing main config for release hints; add a regression."
+        },
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/cli/run.js:1471 — Ordinary single-repository JSON now exposes cross-repository enrichment unconditionally, violating the required unchanged output for local Works. Reproduction: node bin/buildbeat.js status --repo . --work WORK-YAML-SUBSET --json. Its config targets this checkout, yet its row gains config, hasRelease, repo, repoLabel and settled compared with 8ef9c29; pending rows are likewise enriched at overview.js:493. Preserve the baseline serialization for unaffected local Works and pending entries when --all-repos is absent, and add an exact compatibility regression."
+        },
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/runtime/overview-repos.js:44 — Repository validation spawns git rev-parse for every config without caching. Discovery and primary overview repeat these validations; forwarded Works additionally recompute target HEAD and ancestry before the target repository is scanned again. Read-only instrumentation on this checkout measured 17 rev-parse calls for ordinary single-repository overview versus 1 at 8ef9c29, with the same 15 ancestry checks. This violates the explicit Git-call constraint. Cache target validation by real path, compute repository facts once, reuse forwarded rows, and add a call-count regression."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-cross-repo-status.test.js:124 — Acceptance item 1 substitutes printf for BuildBeat, so approval/rejection never exercise the actual decision path. The SHARED fixture has no WORKSPACE_BOUND event; executing its approval would fail at src/v2/runtime/decisions.js:126-133 with 'worktree missing'. Create a valid waiting Run with a bound worktree, execute each rendered command through the actual CLI from the main directory using separate fixtures, and assert the target ledger records the decision. Keep these mutations outside the status read-only snapshot check."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-cross-repo-status.test.js:96 — Acceptance item 4 does not verify that JSON retains settled works. Assertions inspect open rows and settled counts, but never require DONE, CANCEL or MERGED in repos[].works. Filtering settled rows out of JSON after calculating counts would leave these tests passing. Assert the complete expected work IDs and the three settled rows' stages in JSON, alongside their absence from text output."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-cross-repo-status.test.js:75 — Immediate-child repository discovery has no effective regression test. Both child repositories are already referenced by main-repository configs (SHARED points to a; FUTURE and RELEASE point to b), so ONLY-CODE remains discoverable even if the entire child-discovery loop in src/v2/runtime/overview-repos.js:62-66 is removed. Add a real immediate-child Git repository containing delivery/work but no main-repository config pointing to it, then assert its work appears through --all-repos."
+        },
+        {
+          "severity": "P1",
+          "summary": "[tests-package] tests/v2-cross-repo-status.test.js:14 — Fixture Git commands inherit host configuration; overriding user.name/email does not disable commit signing or global hooks. With commit.gpgSign=true and an unavailable signing executable, line 18 fails before any status assertion; configured hooks can also run unrelated host commands. Isolate system/global Git configuration and inherited Git environment for fixture creation and CLI children, and disable hooks/signing explicitly so these regressions run deterministically without host tooling."
+        },
+        {
+          "severity": "P2",
+          "summary": "[docs-surface] SKILL.md:23 — The takeover/progress row says to add --all-repos in a “main repository” without explaining how to identify that setup. A session encountering run configurations whose repo: points to sibling or external repositories lacks the requested explicit routing condition and may select single-repository status, omitting target-only work. Specify in this same row that --all-repos applies when the main repository’s run configurations point at other repositories; leave the other rows unchanged."
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CROSS-REPO-STATUS-01/logs/fix-1.log",
+      "kind": "command",
+      "subject": "6d6b2060e20c2de93b4b932a2e7deab6007554e1",
+      "digest": "sha256:c77ec05c206463d01eb56efab361d016043a8c4766dbd3a974f64aa0ad997834",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CROSS-REPO-STATUS-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "6d6b2060e20c2de93b4b932a2e7deab6007554e1",
+      "digest": "sha256:44ae4f5db841c84c59f3ed59a7d24375dd2375df8fc9768ffd6c61be1dabfb4a",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:b6af7803bf384228b1b29b7f50a69d517947e1541de3aae775f62370f7bcc2db"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CROSS-REPO-STATUS-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "6d6b2060e20c2de93b4b932a2e7deab6007554e1",
+      "digest": "sha256:7c4a5adc1b8ab9c9363be8bac55a5e9c27270744917de580eaa6980dd8fa7803",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CROSS-REPO-STATUS-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "6d6b2060e20c2de93b4b932a2e7deab6007554e1",
+      "digest": "sha256:749c61646b73a704f3352a9c8ae2950cabdb3bc552dabb55905e3280c2f57f4f",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "[runtime-cli] src/v2/runtime/overview.js:477 — Single-repository status now applies the legacy repository label to cross-repository Works whose target has no records. With a draft FUTURE in '/workspace/main repo' targeting /workspace/code, run `buildbeat status --repo '/workspace/main repo' --work FUTURE` from /workspace/caller: the suggested acceptance command contains `--repo <repo-path>`, rather than the required copyable `--repo '../main repo'`. Using a relative --repo containing spaces instead produces an unquoted path. The new localRepoLabel passed at src/v2/cli/run.js:1467 causes both cases; reproduced through computeRepositoryOverview with an in-memory filesystem. Preserve the legacy label only for ordinary local Works, and use shellArg(pathLabel(cwd, repoRoot)) for Works targeting another repository even when ownership is not forwarded. Add coverage for this no-target-records case from another directory."
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CROSS-REPO-STATUS-01/logs/fix-2.log",
+      "kind": "command",
+      "subject": "14cee4ef71eb9fb8a5196a4c86e5ec4c3b6b7093",
+      "digest": "sha256:4ea0f4aaf5d663f7058d77c68491faef21dcd7b7120fdcc827f55b43e361adc2",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CROSS-REPO-STATUS-01/logs/verify-3.log",
+      "kind": "command",
+      "subject": "14cee4ef71eb9fb8a5196a4c86e5ec4c3b6b7093",
+      "digest": "sha256:e1ed6bb4ac953d5f1b1bdfede671ff3454983201eace9d80c425c59a86897959",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:eb895fcd941c3357cfd9486e04cd68d54da4b30a548e13ef8f0092d360d13aae"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CROSS-REPO-STATUS-01/logs/review-3.log",
+      "kind": "command",
+      "subject": "14cee4ef71eb9fb8a5196a4c86e5ec4c3b6b7093",
+      "digest": "sha256:58c07697b73c44b5be5b74cb0e23c2cd47e66667ee631d2c5b65bff810155a23",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CROSS-REPO-STATUS-01/outputs/review-3.json",
+      "kind": "review",
+      "subject": "14cee4ef71eb9fb8a5196a4c86e5ec4c3b6b7093",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "14cee4ef71eb9fb8a5196a4c86e5ec4c3b6b7093",
+        "planDigest": "sha256:2c33ef20853d798732cb27d528bd238696f94eb50e1584ce4acd43af71b6e3e3",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-CROSS-REPO-STATUS-01-1"
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-CROSS-REPO-STATUS-01-1",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "14cee4ef71eb9fb8a5196a4c86e5ec4c3b6b7093",
+        "planDigest": "sha256:2c33ef20853d798732cb27d528bd238696f94eb50e1584ce4acd43af71b6e3e3",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

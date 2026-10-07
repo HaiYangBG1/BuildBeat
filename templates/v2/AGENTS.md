@@ -6,7 +6,8 @@ One Work owns one user-visible result. Continue safe authorized work to its
 acceptance condition; intermediate commits are progress, not completion.
 
 Use accept once the user has accepted the scope, run to execute/continue, status
-to inspect, decide for a real human decision, and check for diagnostics. Keep
+to inspect (add --all-repos in a main repository to include its code repositories),
+decide for a real human decision, and check for diagnostics. Keep
 candidate/evidence/approval binding, allowedPaths, read-only review, and failure
 budgets. Do not impersonate a human approval or silently weaken requirements.
 

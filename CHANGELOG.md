@@ -2,7 +2,12 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
-## Unreleased
+## v4.1.0 — 2026-10-07（次版本：跨仓总览；提示里的命令与路径都能照做）
+
+- Add read-only `status --all-repos`: discover the main repository, configured target checkouts and immediate child repositories, deduplicate real paths, show pending decisions first and count settled work. JSON retains all work; `--work` filters across repositories, while `--run` requires single-repository status.
+- Fix main-repository status/overview reporting target-repository work as ready to start: read state, findings and decisions from the target, retain the main run configuration for commands, and quote paths relative to the caller. Missing/invalid targets warn without hiding other work. Ship `src/v2/runtime/overview-repos.js` and update the package-file inventory for this runtime helper.
+- Hints give commands that work as written. A merged work whose run configs were all read and none has a `release:` section is told there is nothing left to do, instead of being sent to `buildbeat release`, which fails without that section and left the work unable to close; with a `release:` section the hint names the config that has it. A waiting run with no reply commands points to `status --work`, and `check` names `status` instead of the 3.x `inbox`. The run config template comment (and its copies in the Skill, both quickstarts and the example) names `check` / `run` / `--new`, and the quickstart says where the npm package installs the templates. Found by a first run of a fresh project on 4.0.0 with real codex workers.
+- `status --all-repos` prints English labels like the rest of the CLI (`pending decisions · <repo>`, `repo <repo>:`, `<repo>: settled N (closed a · cancelled b · merged, no release step c)`, `repo:` / `runs in:` under a work), and single-repository status again shows `NO_INTENT` for a work directory without a work description even when it has runs, as 4.0.0 did; a work known only from runtime ledgers still shows its run.
 
 ## v4.0.0 — 2026-10-04（主版本：聚焦可恢复交付，精简产品范围与操作入口）
 
