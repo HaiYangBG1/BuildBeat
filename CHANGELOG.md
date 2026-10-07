@@ -2,6 +2,11 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- A review step that exits 0 without writing a report to `$BUILDBEAT_OUTPUT` now stops as `invalid-output` (an infrastructure failure: no fixer, no charge, `resume-review` waits for a person) instead of passing with no evidence until the merge approval refused it. The stop reason says where the report belongs and, when the reviewer printed something, how many bytes went to stdout. Found in a replay of real runs, where a reviewer's 3 P1, 6 P2 and 4 P3 findings reached stdout only.
+- The cost line splits human waits by how they ended: `human waits N (decided … · superseded … · stopped … · open …)`, listing only kinds that occurred; JSON carries `cost.waits` with `{count, ms}` per kind and run-records keep it. In the same replay one work showed 32 minutes of decided waits while 11 hours passed on a request a new run superseded.
+
 ## v4.2.0 — 2026-10-07（次版本：合并决定点能接修复；合并批准绑定候选）
 
 > **发布状态**：`@haiyangbg/buildbeat@4.2.0` 已于 2026-10-07 从 `main`（release PR #76，merge commit `cc52ad3`，tag `v4.2.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 37597691057，publish 与 verify 双 job 一次 success；所有者授权「推送并发 4.2.0」）。独立回读（直连 npmjs.org）：`latest` = 4.2.0、`dist.integrity` 与本地用 Node 24 + npm 11.19.0 打的候选逐字一致、注册表 tarball 解压后与候选逐字节相同、SLSA v1 provenance、隔离安装 `--version` = 4.2.0、裸调用零写入、用法含 `--candidate <sha>` 与 `--action fix`、`npm audit signatures` 通过；GitHub Release v4.2.0 标 Latest；证据见 [`docs/releases/V4.2.0-RELEASE-EVIDENCE-2026-10-07.md`](docs/releases/V4.2.0-RELEASE-EVIDENCE-2026-10-07.md)。合并后 `main` CI 第 1 次尝试因跨仓测试快照混入 git 后台维护的锁文件失败、重跑转绿后才批准发布，测试修复随收尾合入。同日所有者本人经 npm 两步验证把 dist-tag `next` 从 4.0.0 挪到 4.2.0；直连 npmjs.org 回读 `next` = `latest` = 4.2.0。

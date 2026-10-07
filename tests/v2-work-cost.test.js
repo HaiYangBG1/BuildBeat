@@ -73,6 +73,12 @@ test("work cost accumulates review rounds, findings, waits and worker time acros
   assert.equal(cost.reviewRounds, 3);
   assert.equal(cost.findings, 1);
   assert.equal(cost.humanWaits, 2, "one merge decision per run");
+  // The first run's merge decision ended unanswered when the second run
+  // superseded it; the second run is still waiting.
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(cost.waits).map(([kind, row]) => [kind, row.count])),
+    { decided: 0, superseded: 1, stopped: 0, open: 1 },
+  );
   assert.ok(cost.workerMs >= 0);
   assert.ok(cost.firstAt && cost.lastAt && cost.firstAt <= cost.lastAt);
 
@@ -80,13 +86,14 @@ test("work cost accumulates review rounds, findings, waits and worker time acros
   assert.equal(rows[0].runs, 2);
   assert.equal(rows[0].cost.reviewRounds, 3);
   const text = renderOverview(rows);
-  assert.match(text, /cost: review rounds 3 · findings 1 · human waits 2 · worker/);
+  assert.match(text, /cost: review rounds 3 · findings 1 · human waits 2 \(superseded \S+ · open \S+\) · worker/);
 
   // The superseded run's record carries the cost block for when the
   // runtime directory is gone.
   const record = JSON.parse(readFileSync(join(root, "delivery", "work", work, "runs", "RUN-COST-01", "run-record.json"), "utf8"));
   assert.equal(record.cost.reviewRounds, 2);
   assert.equal(record.cost.humanWaits, 1);
+  assert.equal(record.cost.waits.superseded.count, 1);
 });
 
 test("budgets.reviewRoundsPerWork stops a new run before its review once the work has spent the rounds", () => {
