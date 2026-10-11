@@ -14,9 +14,9 @@
 
 <p align="center"><a href="README.md">中文</a> · English</p>
 
-Coding with AI tends to go wrong in the same few ways: switch sessions, switch tools, switch computers or hand it to a colleague, and you explain everything again; the AI says it did the work and you can't tell whether it really did; the AI merges its changes before you've even looked.
+When you code with AI, every switch of session, tool, computer or person means explaining everything from the start.
 
-BuildBeat is for humans and AI sessions. It keeps what needs doing, how far it got and what was decided in project files and Git, lets the AI work through building, testing, review and repair outside the session, and then puts the result and its evidence in front of you to decide whether it merges.
+BuildBeat is for humans and AI sessions. It keeps what needs doing, how far it got and what was decided in the project and Git, so whoever picks it up can carry on. The AI writes, tests and reviews the code outside the session and fixes what it finds; when it's done it comes back to you with the test results, and you decide whether it merges.
 
 ## At a glance
 
