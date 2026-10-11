@@ -14,13 +14,9 @@
 
 <p align="center"><a href="README.md">中文</a> · English</p>
 
-BuildBeat is for humans and AI sessions. It fixes the three things that stall coding with AI most often:
+Coding with AI tends to go wrong in the same few ways: open a new session and you have to explain everything again; the AI says it ran the tests and you can't tell if that's true; after a few rounds of changes you're no longer sure which version you're approving.
 
-- **A new session forgets everything**, so you explain the work all over again;
-- **The AI says "done and tested"**, and you cannot tell whether that is true;
-- **After several rounds of changes**, you are not sure which version you are approving.
-
-The work description, decisions and each run's outcome go into project files and Git; implementation, verification, review and repair move forward outside the session and pick up again after an interruption; the candidate then waits with its evidence for your decision.
+BuildBeat is for humans and AI sessions. It keeps what needs doing, how far it got and what was decided in project files and Git, lets the AI work through building, testing, review and repair outside the session, and then puts the result and its evidence in front of you to decide whether it merges.
 
 ## At a glance
 
@@ -31,21 +27,9 @@ The work description, decisions and each run's outcome go into project files and
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-light.png" width="100%" alt="The delivery loop: after work.md come build, verify and review; findings go to fix, verify and review again; then the run stops for you to decide; work.md, decisions, findings and each run's final record stay in Git">
 </picture>
 
-Each work gets one `work.md`. Once you accept it, `buildbeat run` moves it forward in an isolated worktree: build → run the project's own verification commands → an independent read-only review, and on findings fix, verify and review again. It stops only when a person is really needed: the merge decision, an infrastructure failure, an exhausted budget, a review that does not converge.
+Each work gets one `work.md`. Once you say yes, `buildbeat run` starts in a separate worktree: build first, then run your project's own tests, then hand it to another read-only session for review; findings get fixed, then tested and reviewed again. BuildBeat reads the test results itself instead of relying on the AI's report. If it stops halfway, run `buildbeat run` again and it carries on.
 
-## How it works
-
-### No re-explaining after a new session
-
-What to do, how far it got and what was decided live in the project's `delivery/work/` and travel with Git. A new session, another AI tool or a teammate reads that record and carries on. If a run stops halfway, running `buildbeat run` again picks up where it stopped. With several repositories, `buildbeat status --repo . --all-repos` shows every pending item at once.
-
-### Test results come from running tests, not from the AI
-
-Verification runs your project's own test commands, and BuildBeat reads the results itself instead of trusting the AI's summary. Review goes to a separate read-only session that cannot change the code. A missing tool, an unreachable service or a review with no report stops the run and tells you, instead of being "fixed" as a code bug.
-
-### What you approve is what gets merged
-
-An approval carries the candidate's commit; if the code changes after you reviewed it, the old approval no longer counts. If you spot a small problem before merging, fix it yourself and hand it back (`run --adopt`), or ask for another repair round in one line (`decide --action fix`). Merging, pushing and releasing stay with you.
+It only stops when it needs a person: your merge decision, a used-up budget, a review that keeps finding new problems, or a broken environment (a missing tool, an unreachable service and the like, which never get "fixed" as code bugs).
 
 ## Start in five minutes
 
@@ -99,7 +83,7 @@ work WORK-CSV-EXPORT:
     next: buildbeat decide … --action fix --reason <what to repair> --by <you>
 ```
 
-The cost line shows how many review rounds ran, how many problems were found, how long people waited and where those waits went. The decision card offers four choices: approve (bound to this candidate), reject, hand over your own fix, or send it back to the fixer.
+The `cost` line says how many review rounds ran, how many problems were found and how long people waited. The four `next` lines are your choices: approve this version, reject it, hand back your own fix, or ask for another repair round. An approval is tied to the candidate's commit; if the code changes after you reviewed it, the old approval no longer counts.
 
 ## Records and handoffs
 
@@ -109,7 +93,7 @@ End-to-end work packages keep the whole story of a work in the repository:
 - `.buildbeat/runtime/` **stays on this machine**: the run ledger, logs, screenshots and other raw evidence
 - `.buildbeat/worktrees/` **stays on this machine**: the isolated worktrees that hold candidates
 
-Save missing facts before switching sessions; active runs do not migrate through Git clone. People and tools without the runtime can still read status and write work descriptions.
+Save missing facts before switching sessions; active runs do not migrate through Git clone. People and tools without the runtime can still read status and write work descriptions. With several repositories, `buildbeat status --repo . --all-repos` shows every pending item at once.
 
 [Session handoff](docs/v2/guide/11-session-handoff.en.md) · [Recovery](docs/v2/guide/10-recovery.en.md) · [Without the runtime](docs/v2/guide/12-without-runtime.en.md)
 
