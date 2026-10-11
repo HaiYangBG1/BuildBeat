@@ -2,6 +2,12 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## v4.2.3 — 2026-10-11（补丁：README 改成「装好后跟 AI 说话」）
+
+- README (zh/en) rewritten in plain words for people who hand the work to an AI (PRs #84–#87). The opening states the one pain (switch session, tool, computer or person and you explain everything again) and what BuildBeat keeps in the project and Git. Get started is a single prompt to paste into the AI coding tool: it checks the environment, installs or upgrades the runtime (with the 3.x rule), reads `SKILL.md` and the quickstart from the npm package and puts the templates in place; the Claude Code plugin sits in a collapsed block. Examples are short "you / AI" exchanges by situation (first time, starting a work, new session/computer/person, one more change, your own fix, stuck on the environment, several repositories), with the real `status` output collapsed. New sections explain what a work is (the smallest unit BuildBeat keeps records in) and the project's folder layout, including which folders travel with Git. The three promises, the boundaries section and most links to guides are gone; the facts that mattered are written into the page.
+- `check:docs` requires only the quickstart, contributing and license links from the README and no longer requires the product-boundary or "end-to-end work package" phrases there; the facts stay in the capability matrix.
+- GitHub About is bilingual and plain, with the npm page as homepage and `claude-code-plugin` / `code-review` topics.
+
 ## v4.2.2 — 2026-10-07（补丁：README 重新设计）
 
 > **发布状态**：`@haiyangbg/buildbeat@4.2.2` 已于 2026-10-07 从 `main`（release PR #81，merge commit `3a43ae3`，tag `v4.2.2`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 37637179739，publish 与 verify 双 job 一次 success；所有者授权「合并并发 4.2.2」）。独立回读（直连 npmjs.org）：`latest` = 4.2.2、`dist.integrity` 与本地用 Node 24 + npm 11.19.0 打的候选逐字一致、注册表 tarball 解压后与候选逐字节相同、SLSA v1 provenance、隔离安装 `--version` = 4.2.2、裸调用零写入、`npm audit signatures` 通过；GitHub Release v4.2.2 标 Latest；证据见 [`docs/releases/V4.2.2-RELEASE-EVIDENCE-2026-10-07.md`](docs/releases/V4.2.2-RELEASE-EVIDENCE-2026-10-07.md)。同日所有者本人经 npm 两步验证把 dist-tag `next` 从 4.2.0 挪到 4.2.2；直连 npmjs.org 回读 `next` = `latest` = 4.2.2。
