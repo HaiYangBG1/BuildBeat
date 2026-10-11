@@ -43,7 +43,7 @@ npm install --global @haiyangbg/buildbeat@latest
 buildbeat --version
 ```
 
-**2. 跟会话说（推荐）**：在 Claude Code 里装上插件，插件里的 Skill（[SKILL.md](SKILL.md)）会教会话怎么用运行时。
+**2. 跟会话说（推荐）**：在 Claude Code 里装上插件，会话就知道怎么用 BuildBeat。
 
 ```text
 /plugin marketplace add HaiYangBG1/BuildBeat
@@ -51,9 +51,17 @@ buildbeat --version
 /buildbeat:buildbeat
 ```
 
-之后用平常的话推进：「准备这项功能」→ 会话写好 `work.md`；「接受，开工」→ 开始跑；「到哪了、需要我决定什么」→ 列出候选、证据和待决定事项。更多说法见[怎么和会话说话](docs/v2/guide/00-how-to-talk.md)。
+之后用平常的话推进：
 
-**3. 或者直接用命令行**：按[快速开始](docs/v2/guide/01-quickstart.md)放好模板、写好 `work.md` 和 run 配置，然后：
+| 你说 | 会话做什么 |
+|---|---|
+| 准备这项功能 | 写好 `work.md`：目标、范围、做到什么算完 |
+| 接受，开工 | 记下你的同意，开始跑 |
+| 到哪了、需要我决定什么 | 列出当前结果、测试和审查的证据、等你拍板的事 |
+| 我已经修好了 | 核对你的提交，接着重新测、重新审 |
+| 换会话 | 把还没记下的事写进项目，新会话从记录接着干 |
+
+**3. 或者直接用命令行**：把模板放进项目（见下面「项目里的文件」），写好 `work.md` 和 run 配置，然后：
 
 ```bash
 buildbeat accept --repo . --work WORK-X --by owner
@@ -62,11 +70,13 @@ buildbeat run --config delivery/work/WORK-X/run-config.yaml
 buildbeat status --repo . --work WORK-X
 ```
 
-从 3.x 升级：先用原来的 3.x 运行时完成或取消进行中的 Run，见[迁移说明](docs/MIGRATION.md)。
+`check` 先检查配置和环境有没有问题；`run` 开跑，中途断了再执行一次就接着来。每一步的细节见[快速开始](docs/v2/guide/01-quickstart.md)。
+
+从 3.x 升级：先用原来的 3.x 运行时把进行中的 Run 跑完或取消，再换新版本。
 
 ## 跑起来是什么样
 
-一项工作在第 1 轮审查里被挑出一个问题，修复者修好、重验，第 2 轮审查通过，然后停在你的合并决定前。下面是真实输出的节选（`…` 处有省略）：
+一项工作在第 1 轮审查里被挑出一个问题，修好、重测，第 2 轮审查通过，然后停下来等你拍板。下面是真实输出的节选（`…` 处有省略）：
 
 ```text
 $ buildbeat status --repo . --work WORK-CSV-EXPORT
@@ -83,35 +93,44 @@ work WORK-CSV-EXPORT:
     next: buildbeat decide … --action fix --reason <what to repair> --by <you>
 ```
 
-`cost` 那行写着审了几轮、发现几个问题、人等了多久。下面四个 `next` 是你能做的选择：批准这一版、拒绝、自己改好交回、让它再修一轮。批准会绑定候选的提交号，审完之后代码要是又变了，原来的批准就不作数。
 
-## 记录与接续
+`cost` 那行写着审了几轮、发现几个问题、人等了多久。下面四个 `next` 是你能做的选择：批准这一版、拒绝、自己改好交回、让它再修一轮。批准会绑定这一版的提交号，审完之后代码要是又变了，原来的批准就不作数。
 
-端到端工作包把一项工作的来龙去脉留在仓库里：
+## 项目里的文件
 
-- `delivery/work/<ID>/` **随 Git 走**：work.md、run 配置、决定、审查问题、每轮终态记录（结果、成本、证据摘要与引用）
-- `.buildbeat/runtime/` **只在本机**：运行台账、日志、截图等原始证据
-- `.buildbeat/worktrees/` **只在本机**：候选所在的隔离工作树
+```
+你的项目/
+├── AGENTS.md、CLAUDE.md            告诉 AI 工具：这个项目用 BuildBeat
+├── .gitignore                      加上下面两行 .buildbeat/ 目录
+├── delivery/                       跟着 Git 走
+│   ├── envelope/
+│   │   ├── worker.sh               把 AI 工具包成 BuildBeat 能调用的一步
+│   │   └── prompts/                实现、审查、修复各自的提示词
+│   └── work/
+│       └── WORK-X/                 一项工作一个文件夹
+│           ├── work.md             要做什么、做到什么算完
+│           ├── run-config.yaml     用哪个 AI、跑什么测试、能改哪些目录
+│           ├── decisions.jsonl     接受、批准、关闭这些决定
+│           ├── review-findings.jsonl  审查挑出的问题和你的裁决
+│           ├── releases.jsonl      上线后的检查记录（用到才有）
+│           └── runs/RUN-X-01/
+│               └── run-record.json 这一轮的结果、证据和成本
+└── .buildbeat/
+    ├── notify.yaml                 可选：等你拍板时发 webhook 或钉钉通知
+    ├── runtime/                    只在本机：正在跑的台账、日志、截图
+    └── worktrees/                  只在本机：AI 干活用的隔离副本
+```
 
-换会话前补齐未落盘事实；Git clone 不迁移活动进程和现场。没装运行时的人和工具也能读状态、写工作说明。手上有好几个仓库，`buildbeat status --repo . --all-repos` 一次看完所有待办。
+`delivery/` 里的东西都进 Git，换会话、换软件、换电脑、换人，拉下代码就能接着干。`.buildbeat/runtime/` 和 `.buildbeat/worktrees/` 只在本机，正在跑的那一轮不会跟着 Git 走，要在原来那台机器上跑完或停掉。
 
-[跨会话接续](docs/v2/guide/11-session-handoff.md) · [中断恢复](docs/v2/guide/10-recovery.md) · [没有运行时也能参与](docs/v2/guide/12-without-runtime.md)
+模板随 npm 包一起装好，在 `$(npm root -g)/@haiyangbg/buildbeat/templates/`。没装 BuildBeat 的人和 AI 也能读这些文件、起草 `work.md`。手上有好几个仓库，`buildbeat status --repo . --all-repos` 一次看完所有待办。
 
 ## 能力边界
 
-BuildBeat 不提供多人账号、角色/权限系统，不采集或上传项目使用数据，没有遥测采集。模型和鉴权由配置的 AI 工具提供。合并、推送、部署、发布分别由获授权的外部操作完成；上线后可用 `buildbeat release` 记录项目自己的回读，回读通过才关窗。生产巡检和任意工作流/规则语言不在产品范围内。
+- **AI 只能动它该动的**：实现和修复只能改 run 配置里允许的目录，审查是只读的；日志里的密钥按配置的规则打码。
+- **它不替你做决定**：合并、推送、部署、发布都要你自己授权去做。上线之后可以用 `buildbeat release` 跑一遍项目自己的检查并记下来，检查通过这项工作才算结束。
+- **它不管的事**：不做多人账号、角色/权限管理，不采集或上传项目使用数据，没有遥测采集。用哪个模型、怎么登录，由你配置的 AI 工具决定。
 
-[能力矩阵](docs/CAPABILITY-MATRIX.md) · [安全边界](docs/v2/guide/09-security-boundaries.md) · [迁移说明](docs/MIGRATION.md)
-
-## 继续阅读
-
-| 想做什么 | 看哪里 |
-|---|---|
-| 第一次接入一个项目 | [快速开始](docs/v2/guide/01-quickstart.md) |
-| 平时怎么和会话说 | [怎么和会话说话](docs/v2/guide/00-how-to-talk.md) |
-| 理解固定流程和 run 配置 | [流程与配置](docs/v2/guide/02-workflow-guide.md) |
-| 批准、拒绝、证据 | [决定与证据](docs/v2/guide/07-approval-guide.md) |
-| 换会话、换人接手 | [跨会话接续](docs/v2/guide/11-session-handoff.md) |
-| 参与贡献 | [贡献指南](CONTRIBUTING.md) · [MIT 许可证](LICENSE) |
+参与贡献看[贡献指南](CONTRIBUTING.md)，代码以 [MIT 许可证](LICENSE)开源。
 
 > **名字的由来**：每一步是一个音符，Agent 按节拍把它们演奏出来；演奏过的乐谱——上下文、决定和结论——留在 Git 里，随时翻阅。
