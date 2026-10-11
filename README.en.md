@@ -36,17 +36,26 @@ BuildBeat reads the test results itself instead of relying on the AI's report. I
 
 ## Get started
 
-You need Node ≥ 20, Git and an AI coding tool you are signed in to. The config says which AI builds, reviews and fixes: Codex, Claude Code or any script.
+Copy the text below into your AI coding tool (Claude Code, Codex or Cursor) and it installs and sets everything up itself:
 
-**1. Install the runtime once** (or just ask the AI to install it)
+```
+Please set up BuildBeat (https://github.com/HaiYangBG1/BuildBeat) in this project:
 
-```bash
-npm view @haiyangbg/buildbeat@latest version
-npm install --global @haiyangbg/buildbeat@latest
-buildbeat --version
+1. Check that this machine has Node 20 or later and Git; if anything is missing, tell me how to install it.
+2. Install or upgrade the BuildBeat runtime:
+   npm view @haiyangbg/buildbeat@latest version
+   npm install --global @haiyangbg/buildbeat@latest
+   buildbeat --version
+   If a 3.x version is installed and still has unfinished work, finish or cancel it with the old version before upgrading.
+3. Read SKILL.md and docs/v2/guide/01-quickstart.en.md from the npm package (under $(npm root -g)/@haiyangbg/buildbeat/) and work the way SKILL.md describes from now on.
+4. Following the quickstart, put the templates into this project and update .gitignore. By default, use the AI command-line tool already signed in on this machine for building, reviewing and fixing; ask me if unsure.
+5. When you're done, tell me in a sentence or two that we can start. From then on I'll just tell you in plain words what I want, and you run the commands.
 ```
 
-**2. Install the plugin in Claude Code** so the AI knows how to use BuildBeat. With another AI tool, have it read `SKILL.md` from the npm package first.
+Once it's set up, just talk to it; common situations are under "What it looks like" below.
+
+<details>
+<summary>Using Claude Code? You can also install the plugin</summary>
 
 ```text
 /plugin marketplace add HaiYangBG1/BuildBeat
@@ -54,15 +63,15 @@ buildbeat --version
 /buildbeat:buildbeat
 ```
 
-**3. From then on, just talk to the AI**; it runs the commands. Common situations are under "What it looks like" below.
+</details>
 
-To type the commands yourself, see the [quickstart](docs/v2/guide/01-quickstart.en.md). Upgrading from 3.x: let the old version finish or cancel work in progress before switching versions.
+To install step by step yourself, see the [quickstart](docs/v2/guide/01-quickstart.en.md).
 
 ## What it looks like
 
 | Situation | You say | The AI |
 |---|---|---|
-| First time | Use BuildBeat in this project | Puts the files in place from the templates, fills in the config, checks that it runs |
+| First time | (paste the text above) | Installs the runtime, puts the templates in place, tells you it is ready |
 | Starting a work | Add CSV export to the ledger | Writes `work.md` for you to read: export the filtered entries, quote fields with commas, done when all tests pass |
 | | Yes, go | Starts, and calls you when it's done or needs you |
 | New session, computer or person | Where are we? | "CSV export" is done and waits for you: the first review found unquoted commas, fixed and retested, the second review passed |

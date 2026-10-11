@@ -36,17 +36,26 @@ BuildBeat 面向人和 AI 会话，把要做的事、做到哪、定过什么都
 
 ## 开始用
 
-需要 Node ≥ 20、Git，以及一个已登录的 AI 编程工具。实现、审查、修复各交给哪个 AI，在配置里写：Codex、Claude Code 或任意脚本都行。
+把下面这段复制给你的 AI 编程工具（Claude Code、Codex、Cursor 都行），它会自己装好、配好：
 
-**1. 装一次运行时**（也可以直接让 AI 帮你装）
+```
+请帮我在这个项目里用上 BuildBeat（https://github.com/HaiYangBG1/BuildBeat）：
 
-```bash
-npm view @haiyangbg/buildbeat@latest version
-npm install --global @haiyangbg/buildbeat@latest
-buildbeat --version
+1. 检查本机有没有 Node 20 以上和 Git，缺了就告诉我怎么装。
+2. 安装或升级 BuildBeat 运行时：
+   npm view @haiyangbg/buildbeat@latest version
+   npm install --global @haiyangbg/buildbeat@latest
+   buildbeat --version
+   如果本机已经装了 3.x，并且还有没跑完的工作，先用旧版跑完或取消，再升级。
+3. 读一遍 npm 包里的 SKILL.md 和 docs/v2/guide/01-quickstart.md（在 $(npm root -g)/@haiyangbg/buildbeat/ 下），之后都按 SKILL.md 的方式干活。
+4. 按快速开始把模板放进这个项目、补好 .gitignore。实现、审查、修复默认用本机已登录的 AI 命令行工具，拿不准就问我。
+5. 弄好后用一两句话告诉我可以开始了。之后我只用平常的话跟你说要做什么，命令都由你来跑。
 ```
 
-**2. 在 Claude Code 里装插件**，AI 就知道怎么用 BuildBeat。用别的 AI 工具，就让它先读 npm 包里的 `SKILL.md`。
+装好之后，就用平常的话跟它说，常见场景见下面「用起来是什么样」。
+
+<details>
+<summary>用 Claude Code？也可以装插件</summary>
 
 ```text
 /plugin marketplace add HaiYangBG1/BuildBeat
@@ -54,15 +63,15 @@ buildbeat --version
 /buildbeat:buildbeat
 ```
 
-**3. 之后就跟 AI 说话**，命令都由它来跑，常见场景见下面「用起来是什么样」。
+</details>
 
-想自己敲命令，见[快速开始](docs/v2/guide/01-quickstart.md)。从 3.x 升级：先让旧版把进行中的工作跑完或取消，再换新版本。
+想自己动手一步步装，见[快速开始](docs/v2/guide/01-quickstart.md)。
 
 ## 用起来是什么样
 
 | 场景 | 你说 | AI |
 |---|---|---|
-| 第一次用 | 在这个项目里用 BuildBeat | 照模板放好文件、填好配置，检查一遍能跑 |
+| 第一次用 | （复制上面那段） | 装好运行时、放好模板，告诉你可以开始了 |
 | 开始一项工作 | 给账本加个导出 CSV 的功能 | 写好 `work.md` 给你看：导出当前筛选的账目，带逗号的字段加引号，测试全过才算完 |
 | | 行，开工 | 开工，做完或需要你的时候再叫你 |
 | 换会话、换电脑、换人 | 到哪了？ | 「导出 CSV」做完了，等你拍板：第一轮审查发现带逗号没加引号，已修好重测，第二轮通过 |
