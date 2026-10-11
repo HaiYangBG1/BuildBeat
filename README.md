@@ -27,15 +27,18 @@ BuildBeat 面向人和 AI 会话，把要做的事、做到哪、定过什么都
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-zh-light.png" width="100%" alt="交付循环：work.md 之后依次是实现、验证、审查，审查有问题就修复、重验、再审，最后停下等你拍板；work.md、决定、审查问题和每轮运行的终态记录留在 Git 里">
 </picture>
 
-一项工作对应一份 `work.md`。你点头之后，`buildbeat run` 在一个单独的工作树里开工：先实现，再跑你项目自己的测试，然后交给另一个只读的会话审查；审出问题就修，修完重新测、重新审。测试结果由 BuildBeat 自己去读，不靠 AI 汇报。中途断了，再执行一次 `buildbeat run` 就接着跑。
+1. 你说要做什么，AI 先写一份 `work.md` 给你看：目标、范围、做到什么算完
+2. 你点头，它在一个单独的副本里写代码、跑你项目自己的测试
+3. 另一个只读的 AI 来审查；有问题就修，修完重新测、重新审
+4. 做完了停下来，等你拍板
 
-它只在需要人的时候停下：等你决定合不合、预算用完、审查一直不收敛，或者环境出了问题（缺工具、服务连不上这类，不会被当成代码 bug 去改）。
+测试结果由 BuildBeat 自己去读，不靠 AI 汇报。中途断了，说一句「继续」就接着跑。
 
-## 五分钟开始
+## 开始用
 
-需要 Node ≥ 20、Git，以及一个已登录的 AI 命令行工具。实现、审查、修复各由谁来做，在 run 配置里指定：Codex、Claude Code 或任意脚本都行。
+需要 Node ≥ 20、Git，以及一个已登录的 AI 编程工具。实现、审查、修复各交给哪个 AI，在配置里写：Codex、Claude Code 或任意脚本都行。
 
-**1. 安装运行时**
+**1. 装一次运行时**（也可以直接让 AI 帮你装）
 
 ```bash
 npm view @haiyangbg/buildbeat@latest version
@@ -43,7 +46,7 @@ npm install --global @haiyangbg/buildbeat@latest
 buildbeat --version
 ```
 
-**2. 跟会话说（推荐）**：在 Claude Code 里装上插件，会话就知道怎么用 BuildBeat。
+**2. 在 Claude Code 里装插件**，AI 就知道怎么用 BuildBeat。用别的 AI 工具，就让它先读 npm 包里的 `SKILL.md`。
 
 ```text
 /plugin marketplace add HaiYangBG1/BuildBeat
@@ -51,32 +54,29 @@ buildbeat --version
 /buildbeat:buildbeat
 ```
 
-之后用平常的话推进：
+**3. 之后就跟 AI 说话**，命令都由它来跑，常见场景见下面「用起来是什么样」。
 
-| 你说 | 会话做什么 |
-|---|---|
-| 准备这项功能 | 写好 `work.md`：目标、范围、做到什么算完 |
-| 接受，开工 | 记下你的同意，开始跑 |
-| 到哪了、需要我决定什么 | 列出当前结果、测试和审查的证据、等你拍板的事 |
-| 我已经修好了 | 核对你的提交，接着重新测、重新审 |
-| 换会话 | 把还没记下的事写进项目，新会话从记录接着干 |
+想自己敲命令，见[快速开始](docs/v2/guide/01-quickstart.md)。从 3.x 升级：先让旧版把进行中的工作跑完或取消，再换新版本。
 
-**3. 或者直接用命令行**：把模板放进项目（见下面「项目里的文件」），写好 `work.md` 和 run 配置，然后：
+## 用起来是什么样
 
-```bash
-buildbeat accept --repo . --work WORK-X --by owner
-buildbeat check --config delivery/work/WORK-X/run-config.yaml
-buildbeat run --config delivery/work/WORK-X/run-config.yaml
-buildbeat status --repo . --work WORK-X
-```
+| 场景 | 你说 | AI |
+|---|---|---|
+| 第一次用 | 在这个项目里用 BuildBeat | 照模板放好文件、填好配置，检查一遍能跑 |
+| 开始一项工作 | 给账本加个导出 CSV 的功能 | 写好 `work.md` 给你看：导出当前筛选的账目，带逗号的字段加引号，测试全过才算完 |
+| | 行，开工 | 开工，做完或需要你的时候再叫你 |
+| 换会话、换电脑、换人 | 到哪了？ | 「导出 CSV」做完了，等你拍板：第一轮审查发现带逗号没加引号，已修好重测，第二轮通过 |
+| 拍板 | 批准，合并吧 | 合并 |
+| | 再改改，空表也要能导出 | 接着修，重新测、重新审，过了再叫你 |
+| 自己动手改了 | 按钮文案我改了，已经提交 | 把你的改动重新测、重新审，过了再叫你 |
+| 卡住了 | | 停下来告诉你：本地数据库没启动，这不是代码问题，没去改代码 |
+| | 开好了，继续 | 接着跑 |
+| 好几个仓库 | 所有仓库到哪了？ | 一次列出全部待办 |
 
-`check` 先检查配置和环境有没有问题；`run` 开跑，中途断了再执行一次就接着来。每一步的细节见[快速开始](docs/v2/guide/01-quickstart.md)。
+它会停下来找你的情况只有这几种：做完了等你拍板、预算用完、审查一直不收敛、环境出了问题。
 
-从 3.x 升级：先用原来的 3.x 运行时把进行中的 Run 跑完或取消，再换新版本。
-
-## 跑起来是什么样
-
-一项工作在第 1 轮审查里被挑出一个问题，修好、重测，第 2 轮审查通过，然后停下来等你拍板。下面是真实输出的节选（`…` 处有省略）：
+<details>
+<summary>「到哪了？」时 AI 背后看到的输出</summary>
 
 ```text
 $ buildbeat status --repo . --work WORK-CSV-EXPORT
@@ -93,10 +93,11 @@ work WORK-CSV-EXPORT:
     next: buildbeat decide … --action fix --reason <what to repair> --by <you>
 ```
 
-
-`cost` 那行写着审了几轮、发现几个问题、人等了多久。下面四个 `next` 是你能做的选择：批准这一版、拒绝、自己改好交回、让它再修一轮。批准会绑定这一版的提交号，审完之后代码要是又变了，原来的批准就不作数。
+</details>
 
 ## 项目里的文件
+
+第一次接入时，AI 会照模板把这些文件放好：
 
 ```
 你的项目/
@@ -121,14 +122,14 @@ work WORK-CSV-EXPORT:
     └── worktrees/                  只在本机：AI 干活用的隔离副本
 ```
 
-`delivery/` 里的东西都进 Git，换会话、换软件、换电脑、换人，拉下代码就能接着干。`.buildbeat/runtime/` 和 `.buildbeat/worktrees/` 只在本机，正在跑的那一轮不会跟着 Git 走，要在原来那台机器上跑完或停掉。
-
-模板随 npm 包一起装好，在 `$(npm root -g)/@haiyangbg/buildbeat/templates/`。没装 BuildBeat 的人和 AI 也能读这些文件、起草 `work.md`。手上有好几个仓库，`buildbeat status --repo . --all-repos` 一次看完所有待办。
+- `delivery/` 进 Git：换会话、换软件、换电脑、换人，拉下代码就能接着干
+- `.buildbeat/runtime/`、`.buildbeat/worktrees/` 只在本机：正在跑的那一轮不跟着 Git 走，要在原来那台机器上跑完或停掉
+- 没装 BuildBeat 的人和 AI 也能读这些文件、起草 `work.md`
 
 ## 能力边界
 
 - **AI 只能动它该动的**：实现和修复只能改 run 配置里允许的目录，审查是只读的；日志里的密钥按配置的规则打码。
-- **它不替你做决定**：合并、推送、部署、发布都要你自己授权去做。上线之后可以用 `buildbeat release` 跑一遍项目自己的检查并记下来，检查通过这项工作才算结束。
+- **它不替你做决定**：合并、推送、部署、发布都要你自己授权去做。你批准的就是你看过的那一版，之后代码再变，就得重新批准。上线之后，AI 会跑一遍项目自己的检查并记下来，检查通过这项工作才算结束。
 - **它不管的事**：不做多人账号、角色/权限管理，不采集或上传项目使用数据，没有遥测采集。用哪个模型、怎么登录，由你配置的 AI 工具决定。
 
 参与贡献看[贡献指南](CONTRIBUTING.md)，代码以 [MIT 许可证](LICENSE)开源。
