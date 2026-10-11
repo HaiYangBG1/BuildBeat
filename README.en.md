@@ -128,6 +128,17 @@ work WORK-CSV-EXPORT:
 
 </details>
 
+## How a work is managed
+
+A work is one result you can see, like "CSV export". It has its own folder and one `work.md`, and everything from start to finish is recorded there:
+
+- **Agree first, then build**: `work.md` says the goal, the scope and what counts as done, and nothing starts until you agree; if `work.md` changes later, you agree again.
+- **Several runs if needed**: if one run doesn't get there, another starts. Earlier results, the problems review found and your rulings on them all carry over to the next run.
+- **A limit**: review rounds are counted for the whole work (6 by default); at the limit it stops and asks you instead of changing things forever.
+- **You approve what you saw**: an approval covers that version of the code; if the code changes afterwards, it needs approving again.
+- **You can see where it is**: drafting → ready to start → running → waiting for your go-ahead → merged → released → closed.
+- **No getting in each other's way**: one work runs one run at a time; different works can run side by side once you've confirmed their tests don't fight over ports or databases.
+
 ## Files in your project
 
 The first time, the AI puts these files in place from the templates:
@@ -158,12 +169,6 @@ your-project/
 - `delivery/` goes into Git: switching sessions, tools, computers or people just means pulling the code and carrying on
 - `.buildbeat/runtime/` and `.buildbeat/worktrees/` stay on this machine: a run in progress does not travel with Git, so finish or stop it where it started
 - People and AI tools without BuildBeat installed can still read these files and draft `work.md`
-
-## Boundaries
-
-- **The AI only touches what it should**: build and fix can change only the folders the run config allows, review is read-only, and secrets in logs are masked by the rules you configure.
-- **It doesn't decide for you**: merging, pushing, deploying and releasing all need your own authorization. What you approve is the version you looked at; if the code changes afterwards, it needs approving again. After going live, the AI runs the project's own checks and records them; the work is done only when they pass.
-- **What it doesn't do**: it has no multi-user accounts, roles and permissions, does not collect or upload project usage data and has no telemetry collection. The model and sign-in belong to the AI tool you configure.
 
 To contribute, see [Contributing](CONTRIBUTING.md); the code is open source under the [MIT license](LICENSE).
 
