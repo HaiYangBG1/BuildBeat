@@ -14,9 +14,9 @@
 
 <p align="center"><a href="README.md">中文</a> · English</p>
 
-> **Why the name**: every step is a note, and the agent plays them beat by beat; the score it has played (context, decisions and outcomes) stays in Git, ready to read again.
+When you code with AI, every switch of session, tool, computer or person means explaining everything from the start.
 
-BuildBeat is for humans and AI sessions: the work description, decisions and each run's outcome stay in project files and Git; implementation, verification, review and repair move forward outside the session and can always resume; the candidate waits with its evidence for your merge decision.
+BuildBeat is for humans and AI sessions. It keeps what needs doing, how far it got and what was decided in the project and Git, so whoever picks it up can carry on. Once the AI has written the code, it goes on to run the tests, review and fix problems, then stops and waits for your go-ahead.
 
 ## At a glance
 
@@ -27,25 +27,15 @@ BuildBeat is for humans and AI sessions: the work description, decisions and eac
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-light.png" width="100%" alt="The delivery loop: after work.md come build, verify and review; findings go to fix, verify and review again; then the run stops for you to decide; work.md, decisions, findings and each run's final record stay in Git">
 </picture>
 
-Each work gets one `work.md`. Once you accept it, `buildbeat run` moves it forward beat by beat in an isolated worktree: build, run the project's own verification commands, an independent read-only review, and on findings fix, verify and review again. It stops when a person is really needed: the merge decision, an infrastructure failure, an exhausted budget, a review that does not converge. The work description, decisions, review findings and each run's final record go into Git, so a new session, another tool or another person continues from the same record; the live ledger and raw logs stay on this machine (see Records and handoffs below).
+Each work gets one `work.md`. Once you say yes, `buildbeat run` starts in a separate worktree: build first, then run your project's own tests, then hand it to another read-only session for review; findings get fixed, then tested and reviewed again. BuildBeat reads the test results itself instead of relying on the AI's report. If it stops halfway, run `buildbeat run` again and it carries on.
 
-## Three promises
-
-### Walk away
-
-**Close the session, switch AI tools or hand over, and the work carries on.** The work description and the run ledger live in the project, and `buildbeat run` resumes from them; in a main repository with several code repositories, `buildbeat status --repo . --all-repos` shows what is pending everywhere.
-
-### Come back to facts
-
-**What you find is evidence, not what an AI says about itself.** Verification runs the project's real commands and the runtime reads results back from Git and the ledger; review is independent and read-only; missing tools, an unavailable backend or a review that hands in no report stop as infrastructure failures instead of being "fixed" as code.
-
-### Decide with confidence
-
-**What you approve is the version you reviewed.** A merge approval is bound to the candidate (`--candidate`); a small problem spotted at the merge decision can be fixed and handed over (`run --adopt`) or sent back to the fixer in one line (`decide --action fix`); merge, push, release and deployment stay with people.
+It only stops when it needs a person: your merge decision, a used-up budget, a review that keeps finding new problems, or a broken environment (a missing tool, an unreachable service and the like, which never get "fixed" as code bugs).
 
 ## Start in five minutes
 
-The runtime needs Node ≥ 20. Before upgrading from 3.x, finish or cancel runs still in progress with their original 3.x runtime (see [Migration](docs/MIGRATION.md)). Read [SKILL.md](SKILL.md) and the [quickstart](docs/v2/guide/01-quickstart.en.md): put the templates in your project, write a `work.md`, and fill in the real AI tool and verification commands in the run config.
+You need Node ≥ 20, Git and an AI command-line tool you are signed in to. The run config names who builds, reviews and fixes: Codex, Claude Code or any script.
+
+**1. Install the runtime**
 
 ```bash
 npm view @haiyangbg/buildbeat@latest version
@@ -53,15 +43,40 @@ npm install --global @haiyangbg/buildbeat@latest
 buildbeat --version
 ```
 
+**2. Talk to a session (recommended)**: install the plugin in Claude Code and the session knows how to use BuildBeat.
+
+```text
+/plugin marketplace add HaiYangBG1/BuildBeat
+/plugin install buildbeat@buildbeat-plugins
+/buildbeat:buildbeat
+```
+
+Then move the work along in plain words:
+
+| You say | The session |
+|---|---|
+| Prepare this feature | Writes `work.md`: goal, scope, what counts as done |
+| Accepted, start | Records your yes and starts the run |
+| Where are we, what do you need from me | Shows the current result, the test and review evidence, and what waits for you |
+| I fixed it myself | Checks your commit, then tests and reviews it again |
+| New session | Writes down anything not yet recorded; the next session carries on from the record |
+
+**3. Or use the command line**: put the templates in your project (see "Files in your project" below), write `work.md` and the run config, then:
+
 ```bash
 buildbeat accept --repo . --work WORK-X --by owner
+buildbeat check --config delivery/work/WORK-X/run-config.yaml
 buildbeat run --config delivery/work/WORK-X/run-config.yaml
 buildbeat status --repo . --work WORK-X
 ```
 
+`check` looks for problems in the config and environment first; `run` starts, and if it stops halfway, run it again to carry on. Step-by-step details are in the [quickstart](docs/v2/guide/01-quickstart.en.md).
+
+Upgrading from 3.x: finish or cancel runs in progress with the original 3.x runtime before switching versions.
+
 ## What it looks like
 
-The first review round of a work found one problem; the fixer repaired it, verify ran again, the second review passed, and the run now waits for your merge decision. An excerpt of real output (`…` marks omissions):
+The first review round of a work found one problem; it was fixed and tested again, the second review passed, and the run now waits for your go-ahead. An excerpt of real output (`…` marks omissions):
 
 ```text
 $ buildbeat status --repo . --work WORK-CSV-EXPORT
@@ -78,43 +93,44 @@ work WORK-CSV-EXPORT:
     next: buildbeat decide … --action fix --reason <what to repair> --by <you>
 ```
 
-The cost line shows how many review rounds ran, how many problems were found, how long people waited and where those waits went. The decision card offers four choices: approve (bound to this candidate), reject, hand over your own fix, or send it back to the fixer.
 
-## Records and handoffs
+The `cost` line says how many review rounds ran, how many problems were found and how long people waited. The four `next` lines are your choices: approve this version, reject it, hand back your own fix, or ask for another repair round. An approval is tied to this version's commit; if the code changes after you reviewed it, the old approval no longer counts.
 
-End-to-end work packages keep the whole story of a work in the repository:
+## Files in your project
 
-- `delivery/work/<ID>/` **travels with Git**: work.md, run config, decisions, review findings, each run's terminal record (outcome, cost, evidence digests and references)
-- `.buildbeat/runtime/` **stays on this machine**: the run ledger, logs, screenshots and other raw evidence
-- `.buildbeat/worktrees/` **stays on this machine**: the isolated worktrees that hold candidates
+```
+your-project/
+├── AGENTS.md, CLAUDE.md            tell AI tools this project uses BuildBeat
+├── .gitignore                      add the two .buildbeat/ folders below
+├── delivery/                       travels with Git
+│   ├── envelope/
+│   │   ├── worker.sh               wraps an AI tool as a step BuildBeat can call
+│   │   └── prompts/                prompts for build, review and fix
+│   └── work/
+│       └── WORK-X/                 one folder per work
+│           ├── work.md             what to do and what counts as done
+│           ├── run-config.yaml     which AI, which tests, which folders it may change
+│           ├── decisions.jsonl     accept, approve, close and other decisions
+│           ├── review-findings.jsonl  problems the review found and your rulings
+│           ├── releases.jsonl      checks after going live (only if used)
+│           └── runs/RUN-X-01/
+│               └── run-record.json this run's outcome, evidence and cost
+└── .buildbeat/
+    ├── notify.yaml                 optional: webhook or DingTalk alerts when you're needed
+    ├── runtime/                    this machine only: live ledger, logs, screenshots
+    └── worktrees/                  this machine only: isolated copies the AI works in
+```
 
-Save missing facts before switching sessions; active runs do not migrate through Git clone. People and tools without the runtime can still read status and write work descriptions.
+Everything under `delivery/` goes into Git, so switching sessions, tools, computers or people just means pulling the code and carrying on. `.buildbeat/runtime/` and `.buildbeat/worktrees/` stay on this machine; a run in progress does not travel with Git, so finish or stop it where it started.
 
-[Session handoff](docs/v2/guide/11-session-handoff.en.md) · [Recovery](docs/v2/guide/10-recovery.en.md) · [Without the runtime](docs/v2/guide/12-without-runtime.en.md)
+The templates come with the npm package, in `$(npm root -g)/@haiyangbg/buildbeat/templates/`. People and AI tools without BuildBeat installed can still read these files and draft `work.md`. With several repositories, `buildbeat status --repo . --all-repos` shows every pending item at once.
 
 ## Boundaries
 
-BuildBeat does not provide multi-user accounts, roles and permissions. It does not collect or upload project usage data and has no telemetry collection. Models and authentication belong to the configured AI tool. Merge, push, deployment and publication remain separately authorized external actions; after a release, `buildbeat release` records the project's own readback and the window closes only when it passes. Production monitoring and arbitrary workflow/policy languages are outside the product.
+- **The AI only touches what it should**: build and fix can change only the folders the run config allows, review is read-only, and secrets in logs are masked by the rules you configure.
+- **It doesn't decide for you**: merging, pushing, deploying and releasing all need your own authorization. After going live, `buildbeat release` runs the project's own checks and records them; the work is done only when they pass.
+- **What it doesn't do**: it has no multi-user accounts, roles and permissions, does not collect or upload project usage data and has no telemetry collection. The model and sign-in belong to the AI tool you configure.
 
-[Capabilities](docs/CAPABILITY-MATRIX.md) · [Security](docs/v2/guide/09-security-boundaries.en.md) · [Migration](docs/MIGRATION.md)
+To contribute, see [Contributing](CONTRIBUTING.md); the code is open source under the [MIT license](LICENSE).
 
-## Claude Code plugin
-
-The plugin supplies Skill, templates and docs; the runtime is installed separately.
-
-```text
-/plugin marketplace add HaiYangBG1/BuildBeat
-/plugin install buildbeat@buildbeat-plugins
-/buildbeat:buildbeat
-```
-
-## Read more
-
-| To do this | Read |
-|---|---|
-| Set up a project for the first time | [Quickstart](docs/v2/guide/01-quickstart.en.md) |
-| Talk to a session day to day | [How to talk](docs/v2/guide/00-how-to-talk.en.md) |
-| Understand the fixed flow and the run config | [Workflow and configuration](docs/v2/guide/02-workflow-guide.en.md) |
-| Approve, reject, read evidence | [Decisions and evidence](docs/v2/guide/07-approval-guide.en.md) |
-| Hand over across sessions and people | [Session handoff](docs/v2/guide/11-session-handoff.en.md) |
-| Contribute | [Contributing](CONTRIBUTING.md) · [MIT license](LICENSE) |
+> **Why the name**: every step is a note, and the agent plays them beat by beat; the score it has played (context, decisions and outcomes) stays in Git, ready to read again.

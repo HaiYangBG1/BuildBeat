@@ -275,12 +275,9 @@ def check_readme_shape() -> list[str]:
         ("README.en.md", en, ".en.md"),
     ):
         targets = set(MARKDOWN_LINK.findall(content))
-        for target in (
-            "SKILL.md", f"docs/v2/guide/01-quickstart{suffix}", f"docs/v2/guide/11-session-handoff{suffix}",
-            "docs/CAPABILITY-MATRIX.md",
-    "docs/MIGRATION.md", f"docs/v2/guide/10-recovery{suffix}",
-            f"docs/v2/guide/09-security-boundaries{suffix}", "CONTRIBUTING.md", "LICENSE",
-        ):
+        # Keep links to what a reader cannot do without; the rest of the
+        # guide (migration, recovery, handoff) is linked from the quickstart.
+        for target in (f"docs/v2/guide/01-quickstart{suffix}", "CONTRIBUTING.md", "LICENSE"):
             if target not in targets:
                 errors.append(f"{filename}: missing user entry point {target}")
         for boundary in (".buildbeat/runtime/", ".buildbeat/worktrees/"):
@@ -300,7 +297,6 @@ def check_readme_shape() -> list[str]:
 
     required_positioning_pairs = (
         ("面向人和 AI 会话", "for humans and AI sessions"),
-        ("端到端工作包", "End-to-end work packages"),
         (
             "/plugin install buildbeat@buildbeat-plugins",
             "/plugin install buildbeat@buildbeat-plugins",
