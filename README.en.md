@@ -66,15 +66,15 @@ To type the commands yourself, see the [quickstart](docs/v2/guide/01-quickstart.
 
 ## What it looks like
 
-The first review round of a work found one problem; it was fixed and tested again, the second review passed, and the run now waits for you:
+Say you asked the AI for "CSV export" yesterday, and today you open a new session:
 
 > **You**: Where are we?
 >
-> **AI**: WORK-CSV-EXPORT is done and waiting for your go-ahead. The first review found that fields with commas weren't quoted; that's fixed and retested, and the second review passed. You can approve this version, reject it, hand me your own fix, or have me repair it once more.
+> **AI**: "CSV export" is done and waiting for your go-ahead. The first review caught one problem: fields with commas weren't quoted. That's fixed and retested, and the second review passed. Approve it as is, or should I change anything?
 >
-> **You**: Approve.
+> **You**: Approve and merge it.
 >
-> **AI**: Approved, tied to this version's commit ede20b6; if the code changes later, this approval no longer counts. Shall I merge it now?
+> **AI**: Done, it's merged.
 
 <details>
 <summary>What the AI sees behind the scenes</summary>
@@ -130,7 +130,7 @@ People and AI tools without BuildBeat installed can still read these files and d
 ## Boundaries
 
 - **The AI only touches what it should**: build and fix can change only the folders the run config allows, review is read-only, and secrets in logs are masked by the rules you configure.
-- **It doesn't decide for you**: merging, pushing, deploying and releasing all need your own authorization. After going live, the AI runs the project's own checks and records them; the work is done only when they pass.
+- **It doesn't decide for you**: merging, pushing, deploying and releasing all need your own authorization. What you approve is the version you looked at; if the code changes afterwards, it needs approving again. After going live, the AI runs the project's own checks and records them; the work is done only when they pass.
 - **What it doesn't do**: it has no multi-user accounts, roles and permissions, does not collect or upload project usage data and has no telemetry collection. The model and sign-in belong to the AI tool you configure.
 
 To contribute, see [Contributing](CONTRIBUTING.md); the code is open source under the [MIT license](LICENSE).
