@@ -69,18 +69,42 @@ To install step by step yourself, see the [quickstart](docs/v2/guide/01-quicksta
 
 ## What it looks like
 
-| Situation | You say | The AI |
-|---|---|---|
-| First time | (paste the text above) | Installs the runtime, puts the templates in place, tells you it is ready |
-| Starting a work | Add CSV export to the ledger | Writes `work.md` for you to read: export the filtered entries, quote fields with commas, done when all tests pass |
-| | Yes, go | Starts, and calls you when it's done or needs you |
-| New session, computer or person | Where are we? | "CSV export" is done and waits for you: the first review found unquoted commas, fixed and retested, the second review passed |
-| Go-ahead | Approve and merge it | Merges |
-| | Change it: empty lists should export too | Repairs, tests and reviews again, then calls you |
-| You changed something | I reworded the button and committed it | Tests and reviews your change again, then calls you |
-| Stuck | | Stops and tells you: the local database isn't running; that's not a code problem, so the code is untouched |
-| | It's up, continue | Carries on |
-| Several repositories | Where are all the repos at? | Lists every pending item at once |
+**First time**
+
+- **You**: (paste the text above)
+- **AI**: All set, we can start.
+
+**Starting a work**
+
+- **You**: Add CSV export to the ledger.
+- **AI**: I wrote `work.md`: export the filtered entries, quote fields with commas, done when all tests pass. Look right?
+- **You**: Yes, go.
+
+**New session, computer or person**
+
+- **You**: Where are we?
+- **AI**: "CSV export" is done and waiting for your go-ahead. The first review found unquoted commas; that's fixed and retested, and the second review passed.
+- **You**: Approve and merge it.
+
+**One more change**
+
+- **You**: Empty lists should export too.
+- **AI**: OK, I'll keep going, test and review again, and call you when it passes.
+
+**You changed something yourself**
+
+- **You**: I reworded the button and committed it.
+- **AI**: Got it, I'll test and review your change again.
+
+**Stuck**
+
+- **AI**: I've stopped: the local database isn't running. That's not a code problem, so I haven't touched the code.
+- **You**: It's up, continue.
+
+**Several repositories**
+
+- **You**: Where are all the repos at?
+- **AI**: Three works across two repos: one waits for your go-ahead, two are still running.
 
 It only stops to find you in these cases: the work is done and waits for your go-ahead, the budget is used up, a review keeps finding new problems, or the environment is broken.
 
