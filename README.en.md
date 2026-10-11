@@ -66,7 +66,17 @@ To type the commands yourself, see the [quickstart](docs/v2/guide/01-quickstart.
 
 ## What it looks like
 
-Say you asked the AI for "CSV export" yesterday, and today you open a new session:
+**Starting a work**
+
+> **You**: Add CSV export to the ledger.
+>
+> **AI**: I wrote `work.md`: export the entries currently filtered, quote fields that contain commas, and it's done when all tests pass. Does that look right?
+>
+> **You**: Yes, go.
+>
+> **AI**: Started. I'll call you when it's done or when I need you.
+
+**The next day, in a new session**
 
 > **You**: Where are we?
 >
@@ -76,8 +86,20 @@ Say you asked the AI for "CSV export" yesterday, and today you open a new sessio
 >
 > **AI**: Done, it's merged.
 
+**Stuck halfway**
+
+> **AI**: I've stopped: the tests need the local database, and it isn't running. That's not a code problem, so I haven't touched the code. Start the database and tell me, and I'll carry on.
+>
+> **You**: It's up, continue.
+
+**You changed something yourself**
+
+> **You**: I reworded the button myself and committed it.
+>
+> **AI**: Got it. I'll test and review your change again and call you for the go-ahead once it passes.
+
 <details>
-<summary>What the AI sees behind the scenes</summary>
+<summary>What the AI sees behind the scenes in the new-session example</summary>
 
 ```text
 $ buildbeat status --repo . --work WORK-CSV-EXPORT
