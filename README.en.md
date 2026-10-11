@@ -16,7 +16,7 @@
 
 When you code with AI, every switch of session, tool, computer or person means explaining everything from the start.
 
-BuildBeat is for humans and AI sessions. It keeps what needs doing, how far it got and what was decided in the project and Git, so whoever picks it up can carry on. The AI writes, tests and reviews the code outside the session and fixes what it finds; when it's done it comes back to you with the test results, and you decide whether it merges.
+BuildBeat is for humans and AI sessions. It keeps what needs doing, how far it got and what was decided in the project and Git, so whoever picks it up can carry on. Once the AI has written the code, it goes on to run the tests, review and fix problems, then stops and waits for you to decide whether to merge.
 
 ## At a glance
 
