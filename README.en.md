@@ -27,15 +27,15 @@ BuildBeat is for humans and AI sessions. It keeps what needs doing, how far it g
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-light.png" width="100%" alt="The delivery loop: after work.md come build, verify and review; findings go to fix, verify and review again; then the run stops for you to decide; work.md, decisions, findings and each run's final record stay in Git">
 </picture>
 
-Each work gets one `work.md`. Once you say yes, `buildbeat run` starts in a separate worktree: build first, then run your project's own tests, then hand it to another read-only session for review; findings get fixed, then tested and reviewed again. BuildBeat reads the test results itself instead of relying on the AI's report. If it stops halfway, run `buildbeat run` again and it carries on.
+Tell the AI what you want and it first writes a `work.md` for you to read: goal, scope, what counts as done. Once you say yes, it starts in a separate copy: write the code, run your project's own tests, then hand it to another read-only AI for review; findings get fixed, then tested and reviewed again. BuildBeat reads the test results itself instead of relying on the AI's report. If it stops halfway, say "continue" in any session and it carries on.
 
-It only stops when it needs a person: your merge decision, a used-up budget, a review that keeps finding new problems, or a broken environment (a missing tool, an unreachable service and the like, which never get "fixed" as code bugs).
+It only stops to ask you when it needs you: the work is done and waits for your go-ahead, the budget is used up, a review keeps finding new problems, or the environment is broken (a missing tool, an unreachable service and the like, which never get "fixed" as code bugs).
 
-## Start in five minutes
+## Get started
 
-You need Node ≥ 20, Git and an AI command-line tool you are signed in to. The run config names who builds, reviews and fixes: Codex, Claude Code or any script.
+You need Node ≥ 20, Git and an AI coding tool you are signed in to. The config says which AI builds, reviews and fixes: Codex, Claude Code or any script.
 
-**1. Install the runtime**
+**1. Install the runtime once** (or just ask the AI to install it)
 
 ```bash
 npm view @haiyangbg/buildbeat@latest version
@@ -43,7 +43,7 @@ npm install --global @haiyangbg/buildbeat@latest
 buildbeat --version
 ```
 
-**2. Talk to a session (recommended)**: install the plugin in Claude Code and the session knows how to use BuildBeat.
+**2. Install the plugin in Claude Code** so the AI knows how to use BuildBeat. With another AI tool, have it read `SKILL.md` from the npm package first.
 
 ```text
 /plugin marketplace add HaiYangBG1/BuildBeat
@@ -51,32 +51,33 @@ buildbeat --version
 /buildbeat:buildbeat
 ```
 
-Then move the work along in plain words:
+**3. From then on, just talk to the AI**; it runs the commands:
 
-| You say | The session |
+| You say | The AI |
 |---|---|
-| Prepare this feature | Writes `work.md`: goal, scope, what counts as done |
-| Accepted, start | Records your yes and starts the run |
-| Where are we, what do you need from me | Shows the current result, the test and review evidence, and what waits for you |
-| I fixed it myself | Checks your commit, then tests and reviews it again |
-| New session | Writes down anything not yet recorded; the next session carries on from the record |
+| Use BuildBeat in this project | Puts the files in place from the templates, fills in the config and checks that it can run |
+| Prepare this feature | Writes `work.md` for you to read |
+| Accepted, start | Records your yes, then builds, tests, reviews and fixes |
+| Where are we, what do you need from me | Tells you the result, the test and review evidence, and what waits for you |
+| Approve / fix it again / I fixed it myself | Records your decision; repairs, tests and reviews again if needed |
+| Continue | A new session carries on from the records in the project |
 
-**3. Or use the command line**: put the templates in your project (see "Files in your project" below), write `work.md` and the run config, then:
-
-```bash
-buildbeat accept --repo . --work WORK-X --by owner
-buildbeat check --config delivery/work/WORK-X/run-config.yaml
-buildbeat run --config delivery/work/WORK-X/run-config.yaml
-buildbeat status --repo . --work WORK-X
-```
-
-`check` looks for problems in the config and environment first; `run` starts, and if it stops halfway, run it again to carry on. Step-by-step details are in the [quickstart](docs/v2/guide/01-quickstart.en.md).
-
-Upgrading from 3.x: finish or cancel runs in progress with the original 3.x runtime before switching versions.
+To type the commands yourself, see the [quickstart](docs/v2/guide/01-quickstart.en.md). Upgrading from 3.x: let the old version finish or cancel work in progress before switching versions.
 
 ## What it looks like
 
-The first review round of a work found one problem; it was fixed and tested again, the second review passed, and the run now waits for your go-ahead. An excerpt of real output (`…` marks omissions):
+The first review round of a work found one problem; it was fixed and tested again, the second review passed, and the run now waits for you:
+
+> **You**: Where are we?
+>
+> **AI**: WORK-CSV-EXPORT is done and waiting for your go-ahead. The first review found that fields with commas weren't quoted; that's fixed and retested, and the second review passed. You can approve this version, reject it, hand me your own fix, or have me repair it once more.
+>
+> **You**: Approve.
+>
+> **AI**: Approved, tied to this version's commit ede20b6; if the code changes later, this approval no longer counts. Shall I merge it now?
+
+<details>
+<summary>What the AI sees behind the scenes</summary>
 
 ```text
 $ buildbeat status --repo . --work WORK-CSV-EXPORT
@@ -93,10 +94,11 @@ work WORK-CSV-EXPORT:
     next: buildbeat decide … --action fix --reason <what to repair> --by <you>
 ```
 
-
-The `cost` line says how many review rounds ran, how many problems were found and how long people waited. The four `next` lines are your choices: approve this version, reject it, hand back your own fix, or ask for another repair round. An approval is tied to this version's commit; if the code changes after you reviewed it, the old approval no longer counts.
+</details>
 
 ## Files in your project
+
+The first time, the AI puts these files in place from the templates:
 
 ```
 your-project/
@@ -123,12 +125,12 @@ your-project/
 
 Everything under `delivery/` goes into Git, so switching sessions, tools, computers or people just means pulling the code and carrying on. `.buildbeat/runtime/` and `.buildbeat/worktrees/` stay on this machine; a run in progress does not travel with Git, so finish or stop it where it started.
 
-The templates come with the npm package, in `$(npm root -g)/@haiyangbg/buildbeat/templates/`. People and AI tools without BuildBeat installed can still read these files and draft `work.md`. With several repositories, `buildbeat status --repo . --all-repos` shows every pending item at once.
+People and AI tools without BuildBeat installed can still read these files and draft `work.md`. With several repositories, ask "where are all the repos at" and the AI lists every pending item at once.
 
 ## Boundaries
 
 - **The AI only touches what it should**: build and fix can change only the folders the run config allows, review is read-only, and secrets in logs are masked by the rules you configure.
-- **It doesn't decide for you**: merging, pushing, deploying and releasing all need your own authorization. After going live, `buildbeat release` runs the project's own checks and records them; the work is done only when they pass.
+- **It doesn't decide for you**: merging, pushing, deploying and releasing all need your own authorization. After going live, the AI runs the project's own checks and records them; the work is done only when they pass.
 - **What it doesn't do**: it has no multi-user accounts, roles and permissions, does not collect or upload project usage data and has no telemetry collection. The model and sign-in belong to the AI tool you configure.
 
 To contribute, see [Contributing](CONTRIBUTING.md); the code is open source under the [MIT license](LICENSE).
