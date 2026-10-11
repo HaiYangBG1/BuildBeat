@@ -33,19 +33,19 @@ The work description, decisions and each run's outcome go into project files and
 
 Each work gets one `work.md`. Once you accept it, `buildbeat run` moves it forward in an isolated worktree: build → run the project's own verification commands → an independent read-only review, and on findings fix, verify and review again. It stops only when a person is really needed: the merge decision, an infrastructure failure, an exhausted budget, a review that does not converge.
 
-## Three promises
+## How it works
 
-### Walk away
+### No re-explaining after a new session
 
-**Close the session, switch AI tools or hand over, and the work carries on.** The work description and the run ledger live in the project, and `buildbeat run` resumes from them; in a main repository with several code repositories, `buildbeat status --repo . --all-repos` shows what is pending everywhere.
+What to do, how far it got and what was decided live in the project's `delivery/work/` and travel with Git. A new session, another AI tool or a teammate reads that record and carries on. If a run stops halfway, running `buildbeat run` again picks up where it stopped. With several repositories, `buildbeat status --repo . --all-repos` shows every pending item at once.
 
-### Come back to facts
+### Test results come from running tests, not from the AI
 
-**What you find is evidence, not what an AI says about itself.** Verification runs the project's real commands and the runtime reads results back from Git and the ledger; review is independent and read-only; missing tools, an unavailable backend or a review that hands in no report stop as infrastructure failures instead of being "fixed" as code.
+Verification runs your project's own test commands, and BuildBeat reads the results itself instead of trusting the AI's summary. Review goes to a separate read-only session that cannot change the code. A missing tool, an unreachable service or a review with no report stops the run and tells you, instead of being "fixed" as a code bug.
 
-### Decide with confidence
+### What you approve is what gets merged
 
-**What you approve is the version you reviewed.** A merge approval is bound to the candidate (`--candidate`); a small problem spotted at the merge decision can be fixed and handed over (`run --adopt`) or sent back to the fixer in one line (`decide --action fix`); merge, push, release and deployment stay with people.
+An approval carries the candidate's commit; if the code changes after you reviewed it, the old approval no longer counts. If you spot a small problem before merging, fix it yourself and hand it back (`run --adopt`), or ask for another repair round in one line (`decide --action fix`). Merging, pushing and releasing stay with you.
 
 ## Start in five minutes
 
