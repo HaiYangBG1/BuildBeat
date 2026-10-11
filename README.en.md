@@ -27,9 +27,12 @@ BuildBeat is for humans and AI sessions. It keeps what needs doing, how far it g
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-light.png" width="100%" alt="The delivery loop: after work.md come build, verify and review; findings go to fix, verify and review again; then the run stops for you to decide; work.md, decisions, findings and each run's final record stay in Git">
 </picture>
 
-Tell the AI what you want and it first writes a `work.md` for you to read: goal, scope, what counts as done. Once you say yes, it starts in a separate copy: write the code, run your project's own tests, then hand it to another read-only AI for review; findings get fixed, then tested and reviewed again. BuildBeat reads the test results itself instead of relying on the AI's report. If it stops halfway, say "continue" in any session and it carries on.
+1. You say what you want; the AI first writes a `work.md` for you to read: goal, scope, what counts as done
+2. You say yes; it writes the code in a separate copy and runs your project's own tests
+3. Another read-only AI reviews it; findings get fixed, then tested and reviewed again
+4. When it's done, it stops and waits for your go-ahead
 
-It only stops to ask you when it needs you: the work is done and waits for your go-ahead, the budget is used up, a review keeps finding new problems, or the environment is broken (a missing tool, an unreachable service and the like, which never get "fixed" as code bugs).
+BuildBeat reads the test results itself instead of relying on the AI's report. If it stops halfway, say "continue" and it carries on.
 
 ## Get started
 
@@ -51,55 +54,29 @@ buildbeat --version
 /buildbeat:buildbeat
 ```
 
-**3. From then on, just talk to the AI**; it runs the commands:
-
-| You say | The AI |
-|---|---|
-| Use BuildBeat in this project | Puts the files in place from the templates, fills in the config and checks that it can run |
-| Prepare this feature | Writes `work.md` for you to read |
-| Accepted, start | Records your yes, then builds, tests, reviews and fixes |
-| Where are we, what do you need from me | Tells you the result, the test and review evidence, and what waits for you |
-| Approve / fix it again / I fixed it myself | Records your decision; repairs, tests and reviews again if needed |
-| Continue | A new session carries on from the records in the project |
+**3. From then on, just talk to the AI**; it runs the commands. Common situations are under "What it looks like" below.
 
 To type the commands yourself, see the [quickstart](docs/v2/guide/01-quickstart.en.md). Upgrading from 3.x: let the old version finish or cancel work in progress before switching versions.
 
 ## What it looks like
 
-**Starting a work**
+| Situation | You say | The AI |
+|---|---|---|
+| First time | Use BuildBeat in this project | Puts the files in place from the templates, fills in the config, checks that it runs |
+| Starting a work | Add CSV export to the ledger | Writes `work.md` for you to read: export the filtered entries, quote fields with commas, done when all tests pass |
+| | Yes, go | Starts, and calls you when it's done or needs you |
+| New session, computer or person | Where are we? | "CSV export" is done and waits for you: the first review found unquoted commas, fixed and retested, the second review passed |
+| Go-ahead | Approve and merge it | Merges |
+| | Change it: empty lists should export too | Repairs, tests and reviews again, then calls you |
+| You changed something | I reworded the button and committed it | Tests and reviews your change again, then calls you |
+| Stuck | | Stops and tells you: the local database isn't running; that's not a code problem, so the code is untouched |
+| | It's up, continue | Carries on |
+| Several repositories | Where are all the repos at? | Lists every pending item at once |
 
-> **You**: Add CSV export to the ledger.
->
-> **AI**: I wrote `work.md`: export the entries currently filtered, quote fields that contain commas, and it's done when all tests pass. Does that look right?
->
-> **You**: Yes, go.
->
-> **AI**: Started. I'll call you when it's done or when I need you.
-
-**The next day, in a new session**
-
-> **You**: Where are we?
->
-> **AI**: "CSV export" is done and waiting for your go-ahead. The first review caught one problem: fields with commas weren't quoted. That's fixed and retested, and the second review passed. Approve it as is, or should I change anything?
->
-> **You**: Approve and merge it.
->
-> **AI**: Done, it's merged.
-
-**Stuck halfway**
-
-> **AI**: I've stopped: the tests need the local database, and it isn't running. That's not a code problem, so I haven't touched the code. Start the database and tell me, and I'll carry on.
->
-> **You**: It's up, continue.
-
-**You changed something yourself**
-
-> **You**: I reworded the button myself and committed it.
->
-> **AI**: Got it. I'll test and review your change again and call you for the go-ahead once it passes.
+It only stops to find you in these cases: the work is done and waits for your go-ahead, the budget is used up, a review keeps finding new problems, or the environment is broken.
 
 <details>
-<summary>What the AI sees behind the scenes in the new-session example</summary>
+<summary>What the AI sees behind "Where are we?"</summary>
 
 ```text
 $ buildbeat status --repo . --work WORK-CSV-EXPORT
@@ -145,9 +122,9 @@ your-project/
     └── worktrees/                  this machine only: isolated copies the AI works in
 ```
 
-Everything under `delivery/` goes into Git, so switching sessions, tools, computers or people just means pulling the code and carrying on. `.buildbeat/runtime/` and `.buildbeat/worktrees/` stay on this machine; a run in progress does not travel with Git, so finish or stop it where it started.
-
-People and AI tools without BuildBeat installed can still read these files and draft `work.md`. With several repositories, ask "where are all the repos at" and the AI lists every pending item at once.
+- `delivery/` goes into Git: switching sessions, tools, computers or people just means pulling the code and carrying on
+- `.buildbeat/runtime/` and `.buildbeat/worktrees/` stay on this machine: a run in progress does not travel with Git, so finish or stop it where it started
+- People and AI tools without BuildBeat installed can still read these files and draft `work.md`
 
 ## Boundaries
 
