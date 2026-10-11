@@ -128,6 +128,12 @@ work WORK-CSV-EXPORT:
 
 </details>
 
+## What a work is
+
+**What**: the smallest unit BuildBeat keeps records in. One result you can see, like "CSV export", is one work, with one folder.
+
+**Why**: the AI doesn't remember things, and sessions change at any time. What the work is for, how far it got, what review found and what you decided all go into that folder, so whoever picks it up carries on from there, and later you can look back at how it got done.
+
 ## Files in your project
 
 The first time, the AI puts these files in place from the templates:
@@ -158,12 +164,6 @@ your-project/
 - `delivery/` goes into Git: switching sessions, tools, computers or people just means pulling the code and carrying on
 - `.buildbeat/runtime/` and `.buildbeat/worktrees/` stay on this machine: a run in progress does not travel with Git, so finish or stop it where it started
 - People and AI tools without BuildBeat installed can still read these files and draft `work.md`
-
-## Boundaries
-
-- **The AI only touches what it should**: build and fix can change only the folders the run config allows, review is read-only, and secrets in logs are masked by the rules you configure.
-- **It doesn't decide for you**: merging, pushing, deploying and releasing all need your own authorization. What you approve is the version you looked at; if the code changes afterwards, it needs approving again. After going live, the AI runs the project's own checks and records them; the work is done only when they pass.
-- **What it doesn't do**: it has no multi-user accounts, roles and permissions, does not collect or upload project usage data and has no telemetry collection. The model and sign-in belong to the AI tool you configure.
 
 To contribute, see [Contributing](CONTRIBUTING.md); the code is open source under the [MIT license](LICENSE).
 
