@@ -128,16 +128,11 @@ work WORK-CSV-EXPORT:
 
 </details>
 
-## How a work is managed
+## What a work is
 
-A work is one result you can see, like "CSV export". It has its own folder and one `work.md`, and everything from start to finish is recorded there:
+**What**: the smallest unit BuildBeat keeps records in. One result you can see, like "CSV export", is one work, with one folder.
 
-- **Agree first, then build**: `work.md` says the goal, the scope and what counts as done, and nothing starts until you agree; if `work.md` changes later, you agree again.
-- **Several runs if needed**: if one run doesn't get there, another starts. Earlier results, the problems review found and your rulings on them all carry over to the next run.
-- **A limit**: review rounds are counted for the whole work (6 by default); at the limit it stops and asks you instead of changing things forever.
-- **You approve what you saw**: an approval covers that version of the code; if the code changes afterwards, it needs approving again.
-- **You can see where it is**: drafting → ready to start → running → waiting for your go-ahead → merged → released → closed.
-- **No getting in each other's way**: one work runs one run at a time; different works can run side by side once you've confirmed their tests don't fight over ports or databases.
+**Why**: the AI doesn't remember things, and sessions change at any time. What the work is for, how far it got, what review found and what you decided all go into that folder, so whoever picks it up carries on from there, and later you can look back at how it got done.
 
 ## Files in your project
 
