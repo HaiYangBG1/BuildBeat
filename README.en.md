@@ -14,9 +14,13 @@
 
 <p align="center"><a href="README.md">中文</a> · English</p>
 
-> **Why the name**: every step is a note, and the agent plays them beat by beat; the score it has played (context, decisions and outcomes) stays in Git, ready to read again.
+BuildBeat is for humans and AI sessions. It fixes the three things that stall coding with AI most often:
 
-BuildBeat is for humans and AI sessions: the work description, decisions and each run's outcome stay in project files and Git; implementation, verification, review and repair move forward outside the session and can always resume; the candidate waits with its evidence for your merge decision.
+- **A new session forgets everything**, so you explain the work all over again;
+- **The AI says "done and tested"**, and you cannot tell whether that is true;
+- **After several rounds of changes**, you are not sure which version you are approving.
+
+The work description, decisions and each run's outcome go into project files and Git; implementation, verification, review and repair move forward outside the session and pick up again after an interruption; the candidate then waits with its evidence for your decision.
 
 ## At a glance
 
@@ -27,7 +31,7 @@ BuildBeat is for humans and AI sessions: the work description, decisions and eac
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-light.png" width="100%" alt="The delivery loop: after work.md come build, verify and review; findings go to fix, verify and review again; then the run stops for you to decide; work.md, decisions, findings and each run's final record stay in Git">
 </picture>
 
-Each work gets one `work.md`. Once you accept it, `buildbeat run` moves it forward beat by beat in an isolated worktree: build, run the project's own verification commands, an independent read-only review, and on findings fix, verify and review again. It stops when a person is really needed: the merge decision, an infrastructure failure, an exhausted budget, a review that does not converge. The work description, decisions, review findings and each run's final record go into Git, so a new session, another tool or another person continues from the same record; the live ledger and raw logs stay on this machine (see Records and handoffs below).
+Each work gets one `work.md`. Once you accept it, `buildbeat run` moves it forward in an isolated worktree: build → run the project's own verification commands → an independent read-only review, and on findings fix, verify and review again. It stops only when a person is really needed: the merge decision, an infrastructure failure, an exhausted budget, a review that does not converge.
 
 ## Three promises
 
@@ -45,7 +49,9 @@ Each work gets one `work.md`. Once you accept it, `buildbeat run` moves it forwa
 
 ## Start in five minutes
 
-The runtime needs Node ≥ 20. Before upgrading from 3.x, finish or cancel runs still in progress with their original 3.x runtime (see [Migration](docs/MIGRATION.md)). Read [SKILL.md](SKILL.md) and the [quickstart](docs/v2/guide/01-quickstart.en.md): put the templates in your project, write a `work.md`, and fill in the real AI tool and verification commands in the run config.
+You need Node ≥ 20, Git and an AI command-line tool you are signed in to. The run config names who builds, reviews and fixes: Codex, Claude Code or any script.
+
+**1. Install the runtime**
 
 ```bash
 npm view @haiyangbg/buildbeat@latest version
@@ -53,11 +59,26 @@ npm install --global @haiyangbg/buildbeat@latest
 buildbeat --version
 ```
 
+**2. Talk to a session (recommended)**: install the plugin in Claude Code; its Skill ([SKILL.md](SKILL.md)) teaches the session how to use the runtime.
+
+```text
+/plugin marketplace add HaiYangBG1/BuildBeat
+/plugin install buildbeat@buildbeat-plugins
+/buildbeat:buildbeat
+```
+
+Then move the work along in plain words: "prepare this feature" → the session writes `work.md`; "accepted, start" → the run begins; "where are we, what do you need from me" → candidates, evidence and pending decisions. More phrases in [How to talk](docs/v2/guide/00-how-to-talk.en.md).
+
+**3. Or use the command line**: follow the [quickstart](docs/v2/guide/01-quickstart.en.md) to put the templates in place and write `work.md` and the run config, then:
+
 ```bash
 buildbeat accept --repo . --work WORK-X --by owner
+buildbeat check --config delivery/work/WORK-X/run-config.yaml
 buildbeat run --config delivery/work/WORK-X/run-config.yaml
 buildbeat status --repo . --work WORK-X
 ```
+
+Upgrading from 3.x: finish or cancel runs in progress with the original 3.x runtime first; see [Migration](docs/MIGRATION.md).
 
 ## What it looks like
 
@@ -98,16 +119,6 @@ BuildBeat does not provide multi-user accounts, roles and permissions. It does n
 
 [Capabilities](docs/CAPABILITY-MATRIX.md) · [Security](docs/v2/guide/09-security-boundaries.en.md) · [Migration](docs/MIGRATION.md)
 
-## Claude Code plugin
-
-The plugin supplies Skill, templates and docs; the runtime is installed separately.
-
-```text
-/plugin marketplace add HaiYangBG1/BuildBeat
-/plugin install buildbeat@buildbeat-plugins
-/buildbeat:buildbeat
-```
-
 ## Read more
 
 | To do this | Read |
@@ -118,3 +129,5 @@ The plugin supplies Skill, templates and docs; the runtime is installed separate
 | Approve, reject, read evidence | [Decisions and evidence](docs/v2/guide/07-approval-guide.en.md) |
 | Hand over across sessions and people | [Session handoff](docs/v2/guide/11-session-handoff.en.md) |
 | Contribute | [Contributing](CONTRIBUTING.md) · [MIT license](LICENSE) |
+
+> **Why the name**: every step is a note, and the agent plays them beat by beat; the score it has played (context, decisions and outcomes) stays in Git, ready to read again.

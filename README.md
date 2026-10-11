@@ -14,9 +14,13 @@
 
 <p align="center">中文 · <a href="README.en.md">English</a></p>
 
-> **名字的由来**：每一步是一个音符，Agent 按节拍把它们演奏出来；演奏过的乐谱——上下文、决定和结论——留在 Git 里，随时翻阅。
+BuildBeat 面向人和 AI 会话，解决用 AI 写代码时最常卡住的三件事：
 
-BuildBeat 面向人和 AI 会话：工作说明、决定和每轮结论留在项目文件与 Git 里，实现、验证、审查和修复在会话之外自动推进、随时可恢复，候选带着证据停在你的合并决定前。
+- **会话一换，上下文就没了**，又得从头交代一遍；
+- **AI 说「做完了、测过了」**，你没法判断是不是真的；
+- **改过好几轮**，你不确定自己批准的是哪一版。
+
+它把工作说明、决定和每轮结论写进项目文件与 Git；实现、验证、审查、修复在会话之外自动推进，中断了能接着跑；最后候选带着证据停下，等你拍板。
 
 ## 一眼看懂
 
@@ -27,7 +31,7 @@ BuildBeat 面向人和 AI 会话：工作说明、决定和每轮结论留在项
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-zh-light.png" width="100%" alt="交付循环：work.md 之后依次是实现、验证、审查，审查有问题就修复、重验、再审，最后停下等你拍板；work.md、决定、审查问题和每轮运行的终态记录留在 Git 里">
 </picture>
 
-一项工作写一份 `work.md`。你接受之后，`buildbeat run` 在隔离的工作树里按节拍推进：实现、跑项目自己的验证命令、独立只读审查，有问题就修复、重验、再审。真正需要人的时候它会停下：合并拍板、环境故障、预算到顶、审查不收敛。工作说明、决定、审查问题和每轮运行的终态记录都进 Git，换会话、换工具、换人都从同一份记录接着干；运行中的台账和原始日志留在本机（见下文「记录与接续」）。
+一项工作对应一份 `work.md`。你接受之后，`buildbeat run` 在隔离的工作树里推进：实现 → 跑项目自己的验证命令 → 独立只读审查，有问题就修复、重验、再审。只在真正需要人的时候停下：合并拍板、环境故障、预算到顶、审查不收敛。
 
 ## 三个承诺
 
@@ -45,7 +49,9 @@ BuildBeat 面向人和 AI 会话：工作说明、决定和每轮结论留在项
 
 ## 五分钟开始
 
-运行时需要 Node ≥ 20。从 3.x 升级前，先用原来的 3.x 运行时完成或取消仍在进行的 Run（见[迁移说明](docs/MIGRATION.md)）。先读 [SKILL.md](SKILL.md) 与[快速开始](docs/v2/guide/01-quickstart.md)：把模板放进项目，写一份 `work.md`，在 run 配置里填好真实的 AI 工具和验证命令。
+需要 Node ≥ 20、Git，以及一个已登录的 AI 命令行工具。实现、审查、修复各由谁来做，在 run 配置里指定：Codex、Claude Code 或任意脚本都行。
+
+**1. 安装运行时**
 
 ```bash
 npm view @haiyangbg/buildbeat@latest version
@@ -53,11 +59,26 @@ npm install --global @haiyangbg/buildbeat@latest
 buildbeat --version
 ```
 
+**2. 跟会话说（推荐）**：在 Claude Code 里装上插件，插件里的 Skill（[SKILL.md](SKILL.md)）会教会话怎么用运行时。
+
+```text
+/plugin marketplace add HaiYangBG1/BuildBeat
+/plugin install buildbeat@buildbeat-plugins
+/buildbeat:buildbeat
+```
+
+之后用平常的话推进：「准备这项功能」→ 会话写好 `work.md`；「接受，开工」→ 开始跑；「到哪了、需要我决定什么」→ 列出候选、证据和待决定事项。更多说法见[怎么和会话说话](docs/v2/guide/00-how-to-talk.md)。
+
+**3. 或者直接用命令行**：按[快速开始](docs/v2/guide/01-quickstart.md)放好模板、写好 `work.md` 和 run 配置，然后：
+
 ```bash
 buildbeat accept --repo . --work WORK-X --by owner
+buildbeat check --config delivery/work/WORK-X/run-config.yaml
 buildbeat run --config delivery/work/WORK-X/run-config.yaml
 buildbeat status --repo . --work WORK-X
 ```
+
+从 3.x 升级：先用原来的 3.x 运行时完成或取消进行中的 Run，见[迁移说明](docs/MIGRATION.md)。
 
 ## 跑起来是什么样
 
@@ -98,16 +119,6 @@ BuildBeat 不提供多人账号、角色/权限系统，不采集或上传项目
 
 [能力矩阵](docs/CAPABILITY-MATRIX.md) · [安全边界](docs/v2/guide/09-security-boundaries.md) · [迁移说明](docs/MIGRATION.md)
 
-## Claude Code 插件
-
-插件提供 Skill、模板与文档，运行时单独安装。
-
-```text
-/plugin marketplace add HaiYangBG1/BuildBeat
-/plugin install buildbeat@buildbeat-plugins
-/buildbeat:buildbeat
-```
-
 ## 继续阅读
 
 | 想做什么 | 看哪里 |
@@ -118,3 +129,5 @@ BuildBeat 不提供多人账号、角色/权限系统，不采集或上传项目
 | 批准、拒绝、证据 | [决定与证据](docs/v2/guide/07-approval-guide.md) |
 | 换会话、换人接手 | [跨会话接续](docs/v2/guide/11-session-handoff.md) |
 | 参与贡献 | [贡献指南](CONTRIBUTING.md) · [MIT 许可证](LICENSE) |
+
+> **名字的由来**：每一步是一个音符，Agent 按节拍把它们演奏出来；演奏过的乐谱——上下文、决定和结论——留在 Git 里，随时翻阅。
