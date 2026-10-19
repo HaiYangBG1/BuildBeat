@@ -12,6 +12,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
+import { describeActor, selfMergeApproval } from "./actor.js";
 import { listInbox } from "./decisions.js";
 import { configTargets, directory, discoverRepos, pathLabel, shellArg, workConfigs } from "./overview-repos.js";
 
@@ -63,6 +64,7 @@ export function artifactStatus(workDir, decisions, artifact) {
     accepted: !stale,
     stale,
     by: latest.by,
+    actor: latest.actor ?? null,
     at: latest.ts,
   };
 }
@@ -233,6 +235,31 @@ export function computeOverview(
     const plan = unified ? intent : artifactStatus(workDir, decisions, "plan");
     const envFacts = existsSync(join(workDir, "env-facts.md"));
     const findingRows = readFindingsAccount(repoRoot, workId);
+    // Run and work decisions from decisions.jsonl, finding rulings from
+    // review-findings.jsonl, in time order.
+    const decisionRows = [
+      ...decisions.map((item) => ({
+        ts: item.ts ?? null,
+        decisionRef: item.decisionRef ?? null,
+        ...(item.run ? { run: item.run } : {}),
+        transition: item.transition ?? null,
+        decision: item.decision ?? null,
+        by: item.by ?? null,
+        actor: item.actor ?? null,
+        who: describeActor(item),
+      })),
+      ...findingRows.filter((item) => item.kind === "adjudication").map((item) => ({
+        ts: item.ts ?? null,
+        decisionRef: null,
+        transition: "adjudicate-finding",
+        decision: item.action ?? null,
+        fingerprint: item.fingerprint ?? null,
+        by: item.by ?? null,
+        actor: item.actor ?? null,
+        who: describeActor(item),
+      })),
+    ].sort((a, b) => String(a.ts ?? "").localeCompare(String(b.ts ?? "")));
+    const selfMerge = selfMergeApproval(decisionRows);
     const adjudicated = latestAdjudications(findingRows);
     const openFindings = findingRows.filter(
       (row) =>
@@ -378,10 +405,20 @@ export function computeOverview(
       openFindings,
       findings: findingRows
         .filter((item) => item.kind === "finding")
-        .map((item) => ({
-          ...item,
-          adjudication: adjudicated.get(item.fingerprint)?.action ?? "open",
-        })),
+        .map((item) => {
+          const verdict = adjudicated.get(item.fingerprint);
+          return {
+            ...item,
+            adjudication: verdict?.action ?? "open",
+            ...(verdict ? { adjudicatedBy: describeActor(verdict) } : {}),
+          };
+        }),
+      // Who decided what, as recorded: rows written before identities were
+      // recorded say so rather than being read as a person's decision. The
+      // full list comes with a single-work view; a merge approval the AI
+      // session gave itself is flagged on every view.
+      ...(work ? { decisions: decisionRows } : {}),
+      ...(selfMerge ? { selfMergeApproval: selfMerge } : {}),
       runs: runs.length,
       cost: runs.length > 0 ? computeWorkCost(repoRoot, workId) : null,
       latest: latest
@@ -424,7 +461,7 @@ function mark(status) {
   return status.accepted ? "✓" : "draft";
 }
 
-export function renderOverview(rows) {
+export function renderOverview(rows, { decisions = false } = {}) {
   if (rows.length === 0) {
     return "overview: no work items under delivery/work";
   }
@@ -453,7 +490,7 @@ export function renderOverview(rows) {
     if (!settled && row.findings?.length) {
       for (const finding of row.findings)
         lines.push(
-          `  [${finding.severity} ${finding.fingerprint}] (${finding.adjudication}) ${finding.summary}`,
+          `  [${finding.severity} ${finding.fingerprint}] (${finding.adjudication}${finding.adjudicatedBy ? ` by ${finding.adjudicatedBy}` : ""}) ${finding.summary}`,
         );
     }
     if (row.envFacts) {
@@ -476,6 +513,21 @@ export function renderOverview(rows) {
       lines.push(
         `  latest ${row.latest.id} ${row.latest.status}${cand}${wait} @ ${row.latest.at ?? "?"}${why}`,
       );
+    }
+    const selfMerge = row.selfMergeApproval;
+    if (selfMerge) {
+      lines.push(
+        `  note: merge approved by an AI session (${selfMerge.actor.id}, ${selfMerge.decisionRef ?? "?"}), not by a person`,
+      );
+    }
+    if (decisions && row.decisions?.length) {
+      lines.push("  decisions:");
+      for (const item of row.decisions) {
+        const what = [item.transition, item.fingerprint, item.decision].filter(Boolean).join(" ");
+        lines.push(
+          `    ${item.ts ?? "?"} ${item.decisionRef ?? "-"} ${what} by ${item.who}`,
+        );
+      }
     }
     lines.push(`  next: ${row.next}`);
   }

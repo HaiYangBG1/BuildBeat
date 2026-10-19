@@ -10,6 +10,7 @@
 import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { actorFrom } from "./actor.js";
 
 export const ADJUDICATION_ACTIONS = ["accept", "dismiss"];
 
@@ -181,7 +182,7 @@ export function recordReviewFindings(repoRoot, workId, { run, step, attempt, fin
   return recorded;
 }
 
-export function adjudicateFinding(repoRoot, workId, { fingerprint, action, by, note, ts }) {
+export function adjudicateFinding(repoRoot, workId, { fingerprint, action, by, as, actor, note, ts }) {
   if (!ADJUDICATION_ACTIONS.includes(action)) {
     throw new FindingsError(`action must be one of ${ADJUDICATION_ACTIONS.join("|")}, got: ${action}`);
   }
@@ -192,12 +193,14 @@ export function adjudicateFinding(repoRoot, workId, { fingerprint, action, by, n
       `no recorded finding with fingerprint ${fingerprint}; adjudications bind to recorded findings only`,
     );
   }
+  const who = actorFrom({ actor, by, as, repoRoot });
   const row = {
     ts: ts ?? new Date().toISOString(),
     kind: "adjudication",
     fingerprint,
     action,
-    by: by ?? "human",
+    by: who.id,
+    actor: who,
     ...(note ? { note } : {}),
   };
   appendRow(repoRoot, workId, row);

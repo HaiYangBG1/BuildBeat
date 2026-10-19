@@ -1,0 +1,61 @@
+{
+  "run": "RUN-APPROVAL-IDENTITY-01",
+  "work": "WORK-APPROVAL-IDENTITY",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-APPROVAL-IDENTITY-02 (same work WORK-APPROVAL-IDENTITY)"
+  },
+  "events": {
+    "from": 1,
+    "to": 5,
+    "lastDigest": "sha256:16ae87576f9454cc1a7fb4d04630688decd3412bc46884974af210f2247784ad"
+  },
+  "startedAt": "2026-10-19T10:57:21.010Z",
+  "finishedAt": "2026-10-19T11:22:14.201Z",
+  "attempts": {},
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 0,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 1493189
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 0
+  },
+  "workspaces": {
+    "RUN-APPROVAL-IDENTITY-01": {
+      "repo": ".",
+      "branch": "run/RUN-APPROVAL-IDENTITY-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-APPROVAL-IDENTITY-01",
+      "base": "6f8e2f890f80e8bf0d845fc5d06a2e33ef3363cc",
+      "candidate": null
+    }
+  },
+  "evidence": [],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

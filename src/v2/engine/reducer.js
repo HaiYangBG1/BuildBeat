@@ -221,6 +221,7 @@ export function applyEvent(state, event) {
         transition: data.transition,
         subject: data.subject,
         decisionRef: data.decisionRef,
+        ...(event.actor ? { actor: event.actor } : {}),
       });
       if (data.decision === "approved" || data.decision === "fix") {
         next.approvals.push({
