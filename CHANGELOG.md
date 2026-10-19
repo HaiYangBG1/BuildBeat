@@ -2,6 +2,13 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- Decisions now say who made them and whether that was a person or an AI session (WORK-APPROVAL-IDENTITY). Before, every approval, acceptance, adoption, repair request, finding ruling and closure was written as a person's, and the name defaulted to `human`, so an approval the driving AI session gave itself looked the same as one its owner gave. Each decision line in `decisions.jsonl` and each ruling in `review-findings.jsonl` keeps `by` and adds `actor` (`kind` human or agent, `id`, where the name came from, and `via: "agent-session"` when a session passed on a person's decision); run ledgers and run records carry the same identity.
+- New `--as human|agent` on every decision command. Without it the runtime goes by where the command runs: inside an AI coding tool (`CLAUDECODE`, `AI_AGENT`, `CODEX_SANDBOX`, or `BUILDBEAT_ACTOR=agent`) the decision is the session's and named after the tool; otherwise it is a person's, named from `git config user.name`, and without a git name `--by` is required. This is a default, not a safeguard: a session can still claim `--as human`, which the security boundaries page now says.
+- `status --work <ID>` lists every decision, finding rulings included, with who made it, and `status --run <RUN>` lists the run's decisions; any status view notes when the latest merge approval came from an AI session; `check`, `findings list` and the confirmation lines name the decider. Older records without an identity read as "identity not recorded" and are never guessed from the name.
+- The Skill relays the owner's own decisions with `--as human --by <owner>`; the approval, no-runtime and security guides (zh/en) and the events spec describe the identity fields.
+
 ## v4.2.3 — 2026-10-11（补丁：README 改成「装好后跟 AI 说话」）
 
 > **发布状态**：`@haiyangbg/buildbeat@4.2.3` 已于 2026-10-11 从 `main`（内容 PR #84–#87，release PR #88，merge commit `1c8fb81`，tag `v4.2.3`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 38145039505，publish 与 verify 双 job 一次 success；所有者授权「发个 4.2.3」）。独立回读（直连 npmjs.org）：`latest` = 4.2.3、`dist.integrity` 与本地用 Node 24 + npm 11.19.0 打的候选逐字一致、注册表 tarball 解压后与候选逐字节相同、SLSA v1 provenance、隔离安装 `--version` = 4.2.3、裸调用零写入、`npm audit signatures` 通过；GitHub Release v4.2.3 标 Latest；本机两份全局安装均为 4.2.3；证据见 [`docs/releases/V4.2.3-RELEASE-EVIDENCE-2026-10-11.md`](docs/releases/V4.2.3-RELEASE-EVIDENCE-2026-10-11.md)。同日所有者本人经 npm 两步验证把 dist-tag `next` 从 4.2.2 挪到 4.2.3；直连 npmjs.org 回读 `next` = `latest` = 4.2.3。

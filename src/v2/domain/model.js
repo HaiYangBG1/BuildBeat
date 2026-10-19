@@ -29,7 +29,7 @@ export const STEP_STATES = [
 
 export const GATE_RESULTS = ["PASS", "RETRY", "ROUTE", "WAIT_HUMAN", "BLOCK", "UNVERIFIED"];
 
-export const ACTOR_KINDS = ["kernel", "worker", "human", "adapter", "provider"];
+export const ACTOR_KINDS = ["kernel", "worker", "human", "agent", "adapter", "provider"];
 
 export const POLICY_PHASES = ["pre", "post", "transition", "action"];
 

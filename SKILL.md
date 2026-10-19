@@ -24,14 +24,14 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 |---|---|
 | 接手、查看进度、有什么待批 | `buildbeat status --repo .`；主仓的 run 配置中 `repo:` 指向其他仓时，查看全部代码仓加 `--all-repos`（运行时 4.1 起；可加 `--work`、`--json`）；单仓指定 `--work` 或 `--run` 查看细节 |
 | 准备一项工作 | 写 `delivery/work/<ID>/work.md`，包含目标、范围、验收、实施计划；复制 run-config 样板并填真实命令 |
-| 接受工作说明 | `buildbeat accept --repo . --work <ID> --by <owner>`；用户已有明确授权时直接记录，不重复问同一个决定 |
+| 接受工作说明 | `buildbeat accept --repo . --work <ID> --as human --by <owner>`；用户已有明确授权时直接记录，不重复问同一个决定 |
 | 开工、继续 | `buildbeat run --config <config>`；首次编号，已有运行则恢复；明确新一轮时加 `--new` |
-| 批准、拒绝 | 读取状态卡并复制批准或拒绝命令；合并批准为 `buildbeat decide --repo . --run <RUN> --action approve --transition enter-wait-merge --candidate <完整 SHA> --by <owner>`，使用卡片候选；修复后旧候选或未绑定候选的批准失效；非终态决定后续跑 |
-| 合并决定退回修复 | `buildbeat decide --repo . --run <RUN> --action fix --reason <要修什么> --by <owner>`；仅合并决定点且有 fixer 时可用，再 `buildbeat run --config <config> --run <RUN>` 续跑；原因记为已接受 P1，重验、再审，review 预算照常累计 |
-| 问题接受、驳回 | `buildbeat decide --repo . --work <ID> --action accept|dismiss --fingerprint <fp> --by <owner> --note <reason>` |
+| 批准、拒绝 | 读取状态卡并复制批准或拒绝命令；合并批准为 `buildbeat decide --repo . --run <RUN> --action approve --transition enter-wait-merge --candidate <完整 SHA> --as human --by <owner>`，使用卡片候选；修复后旧候选或未绑定候选的批准失效；非终态决定后续跑 |
+| 合并决定退回修复 | `buildbeat decide --repo . --run <RUN> --action fix --reason <要修什么> --as human --by <owner>`；仅合并决定点且有 fixer 时可用，再 `buildbeat run --config <config> --run <RUN>` 续跑；原因记为已接受 P1，重验、再审，review 预算照常累计 |
+| 问题接受、驳回 | `buildbeat decide --repo . --work <ID> --action accept|dismiss --fingerprint <fp> --as human --by <owner> --note <reason>` |
 | 已手修并提交 | `buildbeat run --config <config> --run <RUN> --adopt <sha> --by <name>`；检查干净工作树与实际 HEAD 后从 verify 继续；合并决定点也可用，此时须为当前候选的新后代且改动不越界 |
 | 配置或环境有问题 | `buildbeat check --config <config>`；显式 `--step <step>` 会在主检出执行 worker，只有用户任务需要才调用，结果不是正式证据 |
-| 上线后回读、关窗 | 人完成上线后 `buildbeat release --config <config> [--note <text>]`；最近一次回读通过再 `buildbeat decide --repo . --work <ID> --action close --result <text> --by <owner>`。回读失败不能关窗 |
+| 上线后回读、关窗 | 人完成上线后 `buildbeat release --config <config> [--note <text>]`；最近一次回读通过再 `buildbeat decide --repo . --work <ID> --action close --result <text> --as human --by <owner>`。回读失败不能关窗 |
 | 结束一轮 | `buildbeat stop --repo . --run <RUN> --reason <reason>`；活动驱动持锁时先处理进程，不能把 stop 当作进程杀手 |
 | 清理 | `buildbeat gc --repo .` 查看计划，授权范围内再加 `--apply`；不得丢唯一候选或脏工作树 |
 
@@ -41,6 +41,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 - 一个端到端 Work 对一个可验收结果负责。范围内继续推进，不能因单个文件或步骤完成就结束任务。
 - 默认固定 build → verify → review → wait-merge，失败经 fix → verify。配置全部检查后才启动；不要生成 workflow.yaml 或 Policy 文件。
 - Reviewer 独立、只读；任何自述不能代替 Git 和真实命令的证据。提供 builder/verifier/reviewer/fixer，缺 worker 时明确停下接管。
+- 决定身份如实记：用户在对话里明确说出的决定，用 `--as human --by <owner>` 转达，记录会注明经 AI 会话录入；会话自己做的决定（如 `--adopt`）不加 `--as`，自动记为 AI 会话。
 - 只在目标确认、真正例外和最终决定处请求用户。review 默认不分诊；不收敛、环境故障、预算耗尽照常停人，不能由驾驶会话冒充人批准。
 - Work review 预算默认 6 轮，跨所有 Run 累计；保留缓存、增量审查、人工修复接管和环境故障分类。
 - 长运行脱离宿主短超时启动。状态、最近输出、耗时和通知用于发现停顿；STALLED 不等于进程已终止。

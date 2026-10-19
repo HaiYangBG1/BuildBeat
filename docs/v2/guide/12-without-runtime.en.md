@@ -22,16 +22,18 @@ The ledger of a run in progress lives in `.buildbeat/runtime/` on the machine ru
 - **Accept `work.md` as the work owner:** append a line to `decisions.jsonl`. `digest` is the SHA-256 of the `work.md` file content (for example `shasum -a 256 work.md`); `decisionRef` is `A-<ID>-<current line count + 1>`:
 
   ```json
-  {"ts":"2026-10-04T08:00:00.000Z","decisionRef":"A-WORK-X-1","decision":"approved","transition":"accept-work","subject":{"artifact":"work","digest":"sha256:<64 hex digits>"},"by":"<name>"}
+  {"ts":"2026-10-04T08:00:00.000Z","decisionRef":"A-WORK-X-1","decision":"approved","transition":"accept-work","subject":{"artifact":"work","digest":"sha256:<64 hex digits>"},"by":"<name>","actor":{"kind":"human","id":"<name>","source":"flag"}}
   ```
 
 - **Rule on a recorded review finding:** append a line to `review-findings.jsonl`. `fingerprint` must be an existing finding's fingerprint; `action` is `accept` or `dismiss`:
 
   ```json
-  {"ts":"2026-10-04T08:00:00.000Z","kind":"adjudication","fingerprint":"<fingerprint>","action":"dismiss","by":"<name>","note":"<reason>"}
+  {"ts":"2026-10-04T08:00:00.000Z","kind":"adjudication","fingerprint":"<fingerprint>","action":"dismiss","by":"<name>","actor":{"kind":"human","id":"<name>","source":"flag"},"note":"<reason>"}
   ```
 
-- **Close a Work that needs no release** (for example a documentation change): append `{"ts":"2026-10-04T09:00:00.000Z","decision":"closed","transition":"close-work","subject":{"result":"<outcome>"},"by":"<name>"}`. A Work that is released closes through the runtime's `release` and `decide --action close`, which bind the closure to a readback.
+- **Close a Work that needs no release** (for example a documentation change): append `{"ts":"2026-10-04T09:00:00.000Z","decision":"closed","transition":"close-work","subject":{"result":"<outcome>"},"by":"<name>","actor":{"kind":"human","id":"<name>","source":"flag"}}`. A Work that is released closes through the runtime's `release` and `decide --action close`, which bind the closure to a readback.
+
+`actor` says truthfully who decided: a person writes `"kind":"human"`; an AI tool deciding on its own writes `"kind":"agent"` with the tool's name as `id`; an AI tool passing on what a person said in the conversation writes the person's name with `"kind":"human"` and adds `"via":"agent-session"`. Older lines with `by` and no `actor` stay valid; status shows them as "identity not recorded".
 
 Each line must be one complete JSON object; only append, never edit earlier lines. Commit the files and hand them to someone with the runtime.
 

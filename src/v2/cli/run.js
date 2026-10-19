@@ -76,6 +76,7 @@ import {
   resumeRun,
   startRun,
 } from "../runtime/orchestrator.js";
+import { describeActor, selfMergeApproval } from "../runtime/actor.js";
 import { toRepoRef } from "../runtime/repo-ref.js";
 import { EventLedger } from "../storage/event-ledger.js";
 import {
@@ -95,20 +96,23 @@ const USAGE = `BuildBeat runtime
 
 Usage:
   buildbeat --version
-  buildbeat accept --repo <path> --work <WORK-ID> [--by <name>]
-  buildbeat run --config <run-config.yaml> [--run <RUN-ID>] [--new] [--adopt <sha> --by <name>]
+  buildbeat accept --repo <path> --work <WORK-ID> [--by <name>] [--as human|agent]
+  buildbeat run --config <run-config.yaml> [--run <RUN-ID>] [--new] [--adopt <sha> [--by <name>] [--as human|agent]]
   buildbeat status --repo <path> [--work <WORK-ID> | --run <RUN-ID>] [--all-repos] [--json]
-  buildbeat decide --repo <path> --run <RUN-ID> --action approve|reject --transition <t> [--candidate <sha>] [--by <name>] [--reason <text>]
-  buildbeat decide --repo <path> --run <RUN-ID> --action fix --reason <text> [--by <name>]
-  buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--note <text>]
+  buildbeat decide --repo <path> --run <RUN-ID> --action approve|reject --transition <t> [--candidate <sha>] [--by <name>] [--as human|agent] [--reason <text>]
+  buildbeat decide --repo <path> --run <RUN-ID> --action fix --reason <text> [--by <name>] [--as human|agent]
+  buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--as human|agent] [--note <text>]
   buildbeat release --config <run-config.yaml> [--ref <ref>] [--note <text>]
-  buildbeat decide --repo <path> --work <WORK-ID> --action close --result <text> [--by <name>]
+  buildbeat decide --repo <path> --work <WORK-ID> --action close --result <text> [--by <name>] [--as human|agent]
   buildbeat check --config <run-config.yaml> [--step <id>]
   buildbeat stop --repo <path> --run <RUN-ID> --reason <text>
   buildbeat gc --repo <path> [--apply] [--force]
   buildbeat history --repo <path> --run <RUN-ID> [--verify]
 
 Core legacy command spellings remain aliases; see docs/MIGRATION.md.
+Decisions record who made them: --by names the person or session (default:
+git user.name for a person, the detected tool for an AI session); --as says
+which (default: agent inside a detected AI session, otherwise human).
 check --step executes that worker in the main checkout, outside the evidence ledger.
 `;
 
@@ -283,6 +287,18 @@ function printState(state, ledger, view = {}) {
     const digest = item.kind === "screenshot" ? ` ${item.digest}` : "";
     console.log(
       `evidence [${item.status}/${item.grade}] ${item.kind} ${ref}${digest}${reused}`,
+    );
+  }
+  // Who answered each request, as the ledger recorded it.
+  for (const item of state.decisions) {
+    console.log(
+      `decision ${item.decisionRef} ${item.transition} ${item.decision} by ${describeActor(item)}`,
+    );
+  }
+  const selfMerge = selfMergeApproval(state.decisions);
+  if (selfMerge) {
+    console.log(
+      `note: merge approved by an AI session (${selfMerge.actor.id}, ${selfMerge.decisionRef}), not by a person`,
     );
   }
   if (state.pendingHuman) {
@@ -915,12 +931,12 @@ async function commandResume(
     const resumeAt = nextStep(options.workflow, "fix", "succeeded") ?? "verify";
     const adopted = adoptCandidate(options.repoRoot, options.runId, {
       sha: flags.adopt,
-      by: flags.by ?? "human",
+      by: flags.by, as: flags.as,
       resumeAt,
       allowedPaths: options.allowedPaths,
     });
     console.log(
-      `adopted ${adopted.adopted} as candidate (${adopted.decisionRef}, answers ${adopted.transition}); resuming at ${adopted.resumeAt}`,
+      `adopted ${adopted.adopted} as candidate (${adopted.decisionRef} by ${describeActor(adopted)}, answers ${adopted.transition}); resuming at ${adopted.resumeAt}`,
     );
   }
   const watching = spawnStallWatcher(
@@ -1035,7 +1051,7 @@ function commandApprove(flags) {
   }
   const policies = flags.config ? loadRunConfig(flags, "approve").policies : [];
   const result = approveRun(resolve(flags.repo), flags.run, {
-    by: flags.by ?? "human",
+    by: flags.by, as: flags.as,
     transition: flags.transition,
     candidate: flags.candidate,
     policies,
@@ -1047,7 +1063,7 @@ function commandApprove(flags) {
     console.log(`  new candidate: ${result.subject.candidate}`);
     return;
   }
-  console.log(`approved ${result.transition} as ${result.decisionRef}`);
+  console.log(`approved ${result.transition} as ${result.decisionRef} by ${describeActor(result)}`);
   console.log(`  candidate: ${result.subject.candidate}`);
   console.log(`  planDigest: ${result.subject.planDigest}`);
   for (const warning of result.warnings ?? []) {
@@ -1069,11 +1085,11 @@ function commandReject(flags) {
     throw new Error("reject requires --repo and --run");
   }
   const result = rejectRun(resolve(flags.repo), flags.run, {
-    by: flags.by ?? "human",
+    by: flags.by, as: flags.as,
     transition: flags.transition,
     reason: flags.reason,
   });
-  console.log(`rejected as ${result.decisionRef}; run cancelled and compacted`);
+  console.log(`rejected as ${result.decisionRef} by ${describeActor(result)}; run cancelled and compacted`);
 }
 
 function commandAccept(flags) {
@@ -1089,10 +1105,10 @@ function commandAccept(flags) {
     .map((name) => name.trim())
     .filter(Boolean);
   const results = acceptArtifacts(resolve(flags.repo), flags.work, artifacts, {
-    by: flags.by ?? "human",
+    by: flags.by, as: flags.as,
   });
   for (const result of results) {
-    console.log(`accepted ${result.artifact} as ${result.decisionRef}`);
+    console.log(`accepted ${result.artifact} as ${result.decisionRef} by ${describeActor(result)}`);
     console.log(`  digest: ${result.digest}`);
   }
   console.log(
@@ -1211,7 +1227,7 @@ function commandDoctor(flags) {
       : status.stale
         ? "accepted but edited since (stale)"
         : status.accepted
-          ? `accepted${status.by ? ` by ${status.by}` : ""}`
+          ? `accepted${status.by || status.actor ? ` by ${describeActor(status)}` : ""}`
           : "draft (not accepted)";
     console.log(`  ${artifact}.md: ${label}`);
   }
@@ -1376,7 +1392,7 @@ function commandFindings(rest) {
     const adjudicated = latestAdjudications(rows);
     for (const row of findings) {
       const verdict = adjudicated.get(row.fingerprint);
-      const status = verdict ? `${verdict.action} by ${verdict.by}` : "open";
+      const status = verdict ? `${verdict.action} by ${describeActor(verdict)}` : "open";
       const reRaised = row.reRaised ? " RE-RAISED" : "";
       console.log(
         `[${row.severity} ${row.fingerprint}] (${status})${reRaised} ${row.summary}`,
@@ -1392,6 +1408,7 @@ function commandFindings(rest) {
       fingerprint: flags.fingerprint,
       action: flags.action,
       by: flags.by,
+      as: flags.as,
       note: flags.note,
     });
     console.log(
@@ -1500,7 +1517,7 @@ function commandStatus(flags) {
           const open = group.works.filter((row) => !row.settled);
           if (open.length) {
             console.log(`repo ${pathLabel(process.cwd(), group.repo)}:`);
-            console.log(renderOverview(open));
+            console.log(renderOverview(open, { decisions: Boolean(flags.work) }));
           }
         }
         for (const group of result.repos) {
@@ -1510,7 +1527,7 @@ function commandStatus(flags) {
       } else {
         // Keep the single-repo surface while forwarding work facts and waits.
         console.log(renderOverview(rows.map((row) => row.repo === result.repos[0].repo
-          ? { ...row, repo: undefined } : row)));
+          ? { ...row, repo: undefined } : row), { decisions: Boolean(flags.work) }));
         if (result.pending.length) commandInbox(flags, result.pending);
         if (!flags.work) console.log(renderMetrics(computeMetrics(repoRoot)));
       }
@@ -1624,10 +1641,10 @@ function commandDecide(flags) {
       repoRoot: resolve(flags.repo),
       workId: flags.work,
       result: flags.result,
-      by: flags.by ?? "human",
+      by: flags.by, as: flags.as,
     });
     console.log(
-      `closed ${flags.work} as ${row.decisionRef} (readback ${row.subject.readback.slice(0, 19)} at ${row.subject.commit.slice(0, 7)})`,
+      `closed ${flags.work} as ${row.decisionRef} by ${describeActor(row)} (readback ${row.subject.readback.slice(0, 19)} at ${row.subject.commit.slice(0, 7)})`,
     );
     return;
   }
@@ -1650,9 +1667,9 @@ function commandDecide(flags) {
       hasFixer = Boolean(candidates[0].adapters.fixer);
     }
     const result = requestFix(repoRoot, flags.run, {
-      by: flags.by ?? "human", reason: flags.reason, hasFixer,
+      by: flags.by, as: flags.as, reason: flags.reason, hasFixer,
     });
-    console.log(`repair requested as ${result.decisionRef}; continue with: buildbeat run --config <run-config.yaml> --run ${flags.run}`);
+    console.log(`repair requested as ${result.decisionRef} by ${describeActor(result)}; continue with: buildbeat run --config <run-config.yaml> --run ${flags.run}`);
     return;
   }
   if (["accept", "dismiss"].includes(flags.action) && flags.fingerprint) {
@@ -1661,7 +1678,7 @@ function commandDecide(flags) {
     const result = adjudicateFinding(resolve(flags.repo), flags.work, {
       fingerprint: flags.fingerprint,
       action: flags.action,
-      by: flags.by ?? "human",
+      by: flags.by, as: flags.as,
       note: flags.note,
     });
     console.log(JSON.stringify(result));

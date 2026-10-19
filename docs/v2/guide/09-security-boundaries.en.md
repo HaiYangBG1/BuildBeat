@@ -10,6 +10,7 @@
 | push restriction | Override configured remote push URLs in the worktree; not a network sandbox |
 | env allowlist | Limit inherited variables; HOME files, keychains and SSH files remain outside it |
 | approval and evidence | Bind current candidate, work digest, evidence and frozen safeguards |
+| decision identity | Records whether a person or an AI session decided; without `--as` it goes by AI tools' environment markers. A default, not a safeguard: an AI session can still pass `--as human` or clear its environment |
 | concurrency locks | Local repository coordination with per-Work exclusion; no cross-machine scheduler |
 
 Host sandboxing, production credential isolation and server branch protection need their respective platforms. The runner has no merge/push/deploy/publish call path, but arbitrary external workers still have their actual host permissions.

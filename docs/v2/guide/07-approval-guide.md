@@ -23,4 +23,6 @@ status 的决定卡包含 transition、候选、计划摘要、证据、原因�
 
 合并和上线仍由人完成。上线后运行 `buildbeat release --config <config> [--note <text>]`：它确认该 Work 已成功 Run 的候选包含在 `--ref`（默认当前 HEAD）中，在主检出执行 run-config `release:` 段配置的只读回读命令（形状、环境白名单与脱敏同 worker），把结果、退出码、提交、输出摘要和末尾若干行追加到 `delivery/work/<ID>/releases.jsonl`。最近一次回读通过后，用 `decide --repo . --work <ID> --action close --result <text>` 关窗，写入绑定该回读的 close-work 决定；回读失败时不能关窗。run 配置都没有 `release:` 段的 Work 到合并为止，status 提示没有剩余必做步骤。
 
+每条决定都记下是谁、以什么身份做的：`--by` 写名字，`--as human|agent` 写是人还是 AI 会话。不写 `--as` 时看执行环境：在 AI 编程工具里执行（识别 `CLAUDECODE`、`AI_AGENT`、`CODEX_SANDBOX`；其他工具可设 `BUILDBEAT_ACTOR=agent`）记为 AI 会话，名字默认是工具名；否则记为人，名字默认取 `git config user.name`，取不到就要求写 `--by`。AI 会话转达你在对话里说的决定时用 `--as human --by <你的名字>`，记录会注明"经 AI 会话录入"。`status --work <ID>` 列出每条决定（含问题的接受、驳回）和身份，`status --run <RUN>` 列出该 Run 的决定；最近一次合并批准来自 AI 会话时，status 会单独标出。旧记录没有身份字段，显示"身份未记录"，不按名字猜。
+
 通知只报告待批、结束或疑似卡顿，不能接收审批；webhook/钉钉 URL 仅从环境变量读取，发送失败不影响 Run。看门进程是运行反馈的内部实现。
