@@ -14,6 +14,8 @@ allowedPaths:
   - plugins
   - SKILL.md
   - CHANGELOG.md
+  # the test script loads a helper that clears AI-session markers
+  - package.json
 reviewTriage: off
 budgets:
   reviewRoundsPerWork: 6
