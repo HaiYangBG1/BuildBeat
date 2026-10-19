@@ -1,0 +1,150 @@
+{
+  "run": "RUN-APPROVAL-IDENTITY-03",
+  "work": "WORK-APPROVAL-IDENTITY",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 26,
+    "lastDigest": "sha256:756d85dec5b9aa2bcef89a2184c60e8ed45c030ebdcb97b5e57d2b331e67b459"
+  },
+  "startedAt": "2026-10-19T13:32:06.578Z",
+  "finishedAt": "2026-10-19T13:39:59.667Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 1,
+      "remaining": 5
+    }
+  },
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 2,
+    "waits": {
+      "decided": {
+        "count": 2,
+        "ms": 193736
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 278880
+  },
+  "workspaces": {
+    "RUN-APPROVAL-IDENTITY-03": {
+      "repo": ".",
+      "branch": "run/RUN-APPROVAL-IDENTITY-03",
+      "worktreePath": ".buildbeat/worktrees/RUN-APPROVAL-IDENTITY-03",
+      "base": "25bef40badf242a51de01df94007ecdd3443c678",
+      "candidate": "006e4b53c8740fe52066587cf9c93214bd0f366a"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-APPROVAL-IDENTITY-03/logs/verify-1.log",
+      "kind": "command",
+      "subject": "006e4b53c8740fe52066587cf9c93214bd0f366a",
+      "digest": "sha256:193db35f83416b2a3600327e6c0795dc9ce3ff8b7dba8fcff6c635a4fda37541",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:9dd411682d0086d4794bf6b6f32ce2c95fd1f4344e3238885095bc644b1b156b"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-APPROVAL-IDENTITY-03/logs/review-1.log",
+      "kind": "command",
+      "subject": "006e4b53c8740fe52066587cf9c93214bd0f366a",
+      "digest": "sha256:f7a1e5e79089079d83345d58b614bd67c4a0c26662f125a2c2bab1d78ff0cc4b",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-APPROVAL-IDENTITY-03/outputs/review-1.json",
+      "kind": "review",
+      "subject": "006e4b53c8740fe52066587cf9c93214bd0f366a",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "006e4b53c8740fe52066587cf9c93214bd0f366a",
+        "planDigest": "sha256:fb38babe79491bb843f1bf268e4fbffba9de1e9e823c1b83ea9784e3058d25cd",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-APPROVAL-IDENTITY-03-1",
+      "actor": {
+        "kind": "agent",
+        "id": "codex",
+        "source": "flag"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "006e4b53c8740fe52066587cf9c93214bd0f366a",
+        "planDigest": "sha256:fb38babe79491bb843f1bf268e4fbffba9de1e9e823c1b83ea9784e3058d25cd",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-APPROVAL-IDENTITY-03-2",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-APPROVAL-IDENTITY-03-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "006e4b53c8740fe52066587cf9c93214bd0f366a",
+        "planDigest": "sha256:fb38babe79491bb843f1bf268e4fbffba9de1e9e823c1b83ea9784e3058d25cd",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-APPROVAL-IDENTITY-03-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "006e4b53c8740fe52066587cf9c93214bd0f366a",
+        "planDigest": "sha256:fb38babe79491bb843f1bf268e4fbffba9de1e9e823c1b83ea9784e3058d25cd",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
