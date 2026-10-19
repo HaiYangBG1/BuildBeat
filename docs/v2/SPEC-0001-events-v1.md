@@ -42,7 +42,7 @@
 | `ts` | 是 | ISO-8601 UTC，毫秒精度 |
 | `run` / `work` | 是 | 所属 Run / Work ID |
 | `type` | 是 | UPPER_SNAKE，取自 §4 注册表（注册表 additive 扩展） |
-| `actor` | 是 | `kind ∈ {kernel, worker, human, adapter, provider}` + `id` |
+| `actor` | 是 | `kind ∈ {kernel, worker, human, agent, adapter, provider}` + `id`；additive（WORK-APPROVAL-IDENTITY）：决定类事件的 actor 为 `human` 或 `agent`（AI 会话），并带 `source`（`flag` / `git` / `env` / `default`），AI 会话转达人的决定时带 `via: "agent-session"`；没有 `source` 的旧 actor 视为身份未记录 |
 | `data` | 是 | 类型专属载荷（§4）；载荷演进 additive-only，破坏性语义变化必须用新 `type` |
 | `prev` | 是 | 前一行事件的 `digest`；首行取 `"sha256:GENESIS"` |
 | `digest` | 是 | 本行除 `digest` 字段外按规范化 JSON（键排序、无空白）序列化后的 sha256 |
@@ -67,7 +67,7 @@
 | `WORKSPACE_BOUND` | kernel | `workspaceId, repo, branch, worktreePath, base` | 一个 Run 可多次（多仓绑定，卡点 2/4） |
 | `STEP_STARTED` | kernel | `step, attempt, worker, adapter, workspaceId` | Step 开跑 |
 | `STEP_FINISHED` | kernel | `step, attempt, status ∈ {succeeded,failed,blocked,invalid-output,timeout,crashed}, exitCode?`；additive（迭代 09）：`infra?: true`（worker 基础设施故障：timeout / crashed / invalid-output / exit 75；状态 `steps[step].infraAttempts` 累加，不扣预算） | Adapter 异常退出也必须落此事件（不变量 15） |
-| `CANDIDATE_PINNED` | kernel / human | `workspaceId, base, candidate`；additive（迭代 09）：`adopted?: true`（人或驾驶会话手修后经 `resume --adopt` 供出的候选，actor 为 human） | candidate 由 Git 回读后固定 |
+| `CANDIDATE_PINNED` | kernel / human / agent | `workspaceId, base, candidate`；additive（迭代 09）：`adopted?: true`（人或驾驶会话手修后经 `run --adopt` 供出的候选，actor 为做出采纳的 human 或 agent） | candidate 由 Git 回读后固定 |
 | `EVIDENCE_RECORDED` | kernel/provider | `evidenceRef, kind, subject, digest, status, grade`；additive（迭代 08）：`cacheKey?`（树+命令+信封的复用键）、`reused? {run, evidenceRef, digest}`（本记录引用了哪次已通过的证据而未重跑） | 指向满足 Evidence Contract 的记录 |
 | `POLICY_EVALUATED` | kernel | `policy, phase ∈ {pre,post,transition,action}, result ∈ GateResult, enforcement, reason` | 每次 Policy 裁决可解释 |
 | `TRANSITION` | kernel | `from, to, cause` | 每次状态转换一条（不变量 5） |
@@ -75,7 +75,7 @@
 | `BUDGET_CONSUMED` | kernel | `kind ∈ {attempts,tokens,cost,time}, amount, remaining` | 预算台账（卡点 1：token/费用不再 `UNVERIFIED`） |
 | `BUDGET_EXTENDED` | kernel | `step, amount, maxAttempts, approvalRef, scope?` | additive（迭代 09）：人批准了预算耗尽的 `resume-<step>`，该步上限 +`amount`；状态 `budgetExtensions[step]` 累加，`maxAttemptsFor(step)` 据此重放。`scope: work` 时是 Work 级 review 轮数上限（`budgets.reviewRoundsPerWork`）被人放行一轮，累加到 `workReviewGrants` |
 | `HUMAN_REQUESTED` | kernel | `transition, subject{candidate,planDigest,evidenceDigest}, reasons`；additive：`kind ∈ {boundary,final-decision,finding-triage,stale,infra,budget,work-review-cap,review-not-converging}`（`review-not-converging`：review 修过的 finding 又出现或阻断数多于上一轮，停 `enter-fix`） | 进入 WAITING_HUMAN |
-| `DECISION_RECORDED` | human | `decision ∈ {approved,rejected}, transition, subject, decisionRef`；additive（迭代 09）：`adopted?: <sha>`、`resumeAt?: <step>`（adopt 时 subject 即该提交，恢复从 `resumeAt` 起而非 transition 所指的步） | 同步落 Git 决策记录 |
+| `DECISION_RECORDED` | human / agent | `decision ∈ {approved,rejected}, transition, subject, decisionRef`；additive（迭代 09）：`adopted?: <sha>`、`resumeAt?: <step>`（adopt 时 subject 即该提交，恢复从 `resumeAt` 起而非 transition 所指的步） | 同步落 Git 决策记录 |
 | `APPROVAL_STALE` | kernel | `approvalRef, changed ⊆ {candidate,plan,evidence}` | F6 的机器化 |
 | `CHECKPOINT` | kernel | `resumePoint{step,attempt}, workspaceStates[]` | F5 的机器化：恢复只允许从最近 CHECKPOINT 或安全推导点继续 |
 | `RUN_INTERRUPTED` | kernel | `cause` | 尽力而为；崩溃时允许缺失，恢复逻辑不得依赖其存在 |

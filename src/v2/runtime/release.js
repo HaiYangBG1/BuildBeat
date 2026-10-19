@@ -18,6 +18,7 @@ import {
 import { join } from "node:path";
 
 import { createShellAdapter } from "../adapters/shell.js";
+import { actorFrom } from "./actor.js";
 import { toRepoRef } from "./repo-ref.js";
 
 const TAIL_LINES = 20;
@@ -190,7 +191,9 @@ export function closeWork({
   repoRoot,
   workId,
   result,
-  by = "human",
+  by,
+  as,
+  actor,
   ts = new Date().toISOString(),
 }) {
   if (typeof result !== "string" || result.trim() === "") {
@@ -212,6 +215,7 @@ export function closeWork({
       `the latest readback failed (exit ${latest.exitCode} at ${latest.ts}); fix the release and run buildbeat release again before closing`,
     );
   }
+  const who = actorFrom({ actor, by, as, repoRoot });
   const count = existsSync(decisionsPath)
     ? readFileSync(decisionsPath, "utf8").split("\n").filter(Boolean).length
     : 0;
@@ -226,7 +230,8 @@ export function closeWork({
       commit: latest.commit,
       candidate: latest.candidate,
     },
-    by,
+    by: who.id,
+    actor: who,
   };
   appendFileSync(decisionsPath, `${JSON.stringify(row)}\n`, "utf8");
   return row;

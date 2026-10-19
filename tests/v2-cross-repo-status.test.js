@@ -341,10 +341,12 @@ test("ordinary local status JSON exactly preserves the pre-cross-repo serializat
   const root = repo(realpathSync(tempDir("bb-status-compat-")));
   work(root, "LOCAL", root);
   const draft = { exists: true, accepted: false, stale: false };
-  // Full baseline row shape from 8ef9c29, including the original local hints.
+  // Full baseline row shape from 8ef9c29, including the original local hints;
+  // WORK-APPROVAL-IDENTITY adds the single-work decision list and the
+  // decider's identity on accepted artifacts.
   const expected = {
     works: [{ work: "LOCAL", stage: "WORK_DRAFT", intent: draft, plan: draft,
-      workArtifact: "work", envFacts: false, openFindings: 0, findings: [], runs: 0,
+      workArtifact: "work", envFacts: false, openFindings: 0, findings: [], decisions: [], runs: 0,
       cost: null, latest: null, merged: false, mergedCandidate: null,
       next: "buildbeat accept --repo . --work LOCAL --artifact work --by <you>" }],
     pending: [], metrics: null,
@@ -353,7 +355,10 @@ test("ordinary local status JSON exactly preserves the pre-cross-repo serializat
   acceptArtifact(root, "LOCAL", "work", { by: "owner" });
   const decision = JSON.parse(readFileSync(join(root, "delivery/work/LOCAL/decisions.jsonl"), "utf8").trim());
   expected.works[0].stage = "READY_TO_RUN";
-  expected.works[0].intent = expected.works[0].plan = { exists: true, accepted: true, stale: false, by: "owner", at: decision.ts };
+  const owner = { kind: "human", id: "owner", source: "flag" };
+  expected.works[0].intent = expected.works[0].plan = { exists: true, accepted: true, stale: false, by: "owner", actor: owner, at: decision.ts };
+  expected.works[0].decisions = [{ ts: decision.ts, decisionRef: decision.decisionRef, transition: "accept-work",
+    decision: "approved", by: "owner", actor: owner, who: "owner (person)" }];
   expected.works[0].next = "buildbeat run --config delivery/work/LOCAL/run-config.yaml";
   assert.equal(cli(root, "--work", "LOCAL", "--json"), JSON.stringify(expected, null, 2) + "\n");
   const log = ledger(root, "LOCAL");

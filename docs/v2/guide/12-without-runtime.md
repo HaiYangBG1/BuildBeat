@@ -22,16 +22,18 @@
 - **由工作所有者接受 `work.md`**：在 `decisions.jsonl` 末尾追加一行，`digest` 是 `work.md` 文件内容的 SHA-256（例如 `shasum -a 256 work.md`），`decisionRef` 用 `A-<ID>-<当前行数+1>`：
 
   ```json
-  {"ts":"2026-10-04T08:00:00.000Z","decisionRef":"A-WORK-X-1","decision":"approved","transition":"accept-work","subject":{"artifact":"work","digest":"sha256:<64 位十六进制>"},"by":"<姓名>"}
+  {"ts":"2026-10-04T08:00:00.000Z","decisionRef":"A-WORK-X-1","decision":"approved","transition":"accept-work","subject":{"artifact":"work","digest":"sha256:<64 位十六进制>"},"by":"<姓名>","actor":{"kind":"human","id":"<姓名>","source":"flag"}}
   ```
 
 - **裁决已记录的审查发现**：在 `review-findings.jsonl` 末尾追加一行，`fingerprint` 必须是已有发现的指纹，`action` 为 `accept` 或 `dismiss`：
 
   ```json
-  {"ts":"2026-10-04T08:00:00.000Z","kind":"adjudication","fingerprint":"<指纹>","action":"dismiss","by":"<姓名>","note":"<理由>"}
+  {"ts":"2026-10-04T08:00:00.000Z","kind":"adjudication","fingerprint":"<指纹>","action":"dismiss","by":"<姓名>","actor":{"kind":"human","id":"<姓名>","source":"flag"},"note":"<理由>"}
   ```
 
-- **关闭不需要上线的 Work**（例如只改文档）：追加 `{"ts":"2026-10-04T09:00:00.000Z","decision":"closed","transition":"close-work","subject":{"result":"<结论>"},"by":"<姓名>"}`。需要上线的 Work 用运行时的 `release` 与 `decide --action close` 关窗，关窗会绑定回读记录。
+- **关闭不需要上线的 Work**（例如只改文档）：追加 `{"ts":"2026-10-04T09:00:00.000Z","decision":"closed","transition":"close-work","subject":{"result":"<结论>"},"by":"<姓名>","actor":{"kind":"human","id":"<姓名>","source":"flag"}}`。需要上线的 Work 用运行时的 `release` 与 `decide --action close` 关窗，关窗会绑定回读记录。
+
+`actor` 如实写是谁做的决定：人写 `"kind":"human"`；AI 工具自己做的决定写 `"kind":"agent"`，`id` 写工具名；AI 工具转达人在对话里说的决定，写人的名字和 `"kind":"human"`，再加 `"via":"agent-session"`。只有 `by`、没有 `actor` 的旧行照常有效，status 显示为"身份未记录"。
 
 每行必须是完整的一行 JSON，只追加不改旧行。写完后提交（commit），交给装有运行时的一方。
 

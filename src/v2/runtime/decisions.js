@@ -29,6 +29,7 @@ import {
   readback,
   releaseLock,
 } from "../workspace/workspace-manager.js";
+import { actorFrom } from "./actor.js";
 import { writeRunRecord } from "./run-record.js";
 import { resolveRepoRef } from "./repo-ref.js";
 
@@ -108,8 +109,9 @@ function recordDecisionFile(repoRoot, work, line) {
 export function approveRun(
   repoRoot,
   runId,
-  { by = "human", transition, ts, policies, candidate } = {},
+  { by, as, actor, transition, ts, policies, candidate } = {},
 ) {
+  const who = actorFrom({ actor, by, as, repoRoot });
   // Read, check and write under the run lock: a ledger read before the
   // lock may be stale by the time it is written to.
   acquireLock(repoRoot, runId);
@@ -242,7 +244,7 @@ export function approveRun(
     const decisionRef = `D-${runId}-${ledger.state.decisions.length + 1}`;
     ledger.append({
       type: "DECISION_RECORDED",
-      actor: { kind: "human", id: by },
+      actor: who,
       ts: when,
       data: {
         decision: "approved",
@@ -258,7 +260,8 @@ export function approveRun(
       decision: "approved",
       transition: pending.transition,
       subject: pending.subject,
-      by,
+      by: who.id,
+      actor: who,
     });
     let terminal = false;
     if (pending.kind === "final-decision") {
@@ -278,6 +281,7 @@ export function approveRun(
     return {
       approved: true,
       decisionRef,
+      actor: who,
       terminal,
       transition: pending.transition,
       subject: pending.subject,
@@ -300,8 +304,9 @@ export function approveRun(
 export function adoptCandidate(
   repoRoot,
   runId,
-  { sha, by = "human", resumeAt, ts, allowedPaths } = {},
+  { sha, by, as, actor, resumeAt, ts, allowedPaths } = {},
 ) {
+  const who = actorFrom({ actor, by, as, repoRoot });
   acquireLock(repoRoot, runId);
   try {
     if (!sha || typeof sha !== "string" || sha.length < 7) {
@@ -362,7 +367,7 @@ export function adoptCandidate(
     if (bound.candidate !== tree.head) {
       ledger.append({
         type: "CANDIDATE_PINNED",
-        actor: { kind: "human", id: by },
+        actor: who,
         ts: when,
         data: {
           workspaceId: runId,
@@ -380,7 +385,7 @@ export function adoptCandidate(
     const decisionRef = `D-${runId}-${ledger.state.decisions.length + 1}`;
     ledger.append({
       type: "DECISION_RECORDED",
-      actor: { kind: "human", id: by },
+      actor: who,
       ts: when,
       data: {
         decision: "approved",
@@ -398,13 +403,15 @@ export function adoptCandidate(
       decision: "approved",
       transition: pending.transition,
       subject,
-      by,
+      by: who.id,
+      actor: who,
       adopted: tree.head,
       resumeAt,
     });
     return {
       adopted: tree.head,
       decisionRef,
+      actor: who,
       transition: pending.transition,
       resumeAt,
       state: ledger.state,
@@ -416,7 +423,8 @@ export function adoptCandidate(
 
 // Queue a human-requested repair without fabricating a review or a budget
 // grant. The ordinary resume loop consumes this decision at the fix step.
-export function requestFix(repoRoot, runId, { by = "human", reason, ts, hasFixer } = {}) {
+export function requestFix(repoRoot, runId, { by, as, actor, reason, ts, hasFixer } = {}) {
+  const who = actorFrom({ actor, by, as, repoRoot });
   acquireLock(repoRoot, runId);
   try {
     const ledger = openWaiting(repoRoot, runId);
@@ -444,16 +452,16 @@ export function requestFix(repoRoot, runId, { by = "human", reason, ts, hasFixer
       findings: [finding], ts: when,
     });
     adjudicateFinding(repoRoot, ledger.state.run.work, {
-      fingerprint: fingerprintFinding(finding), action: "accept", by,
+      fingerprint: fingerprintFinding(finding), action: "accept", actor: who,
       note: decisionRef, ts: when,
     });
     const data = {
       decision: "fix", transition: pending.transition, subject: pending.subject,
       decisionRef, reason: finding.summary, resumeAt: "fix",
     };
-    ledger.append({ type: "DECISION_RECORDED", actor: { kind: "human", id: by }, ts: when, data });
-    recordDecisionFile(repoRoot, ledger.state.run.work, { ts: when, run: runId, ...data, by });
-    return { decisionRef, state: ledger.state };
+    ledger.append({ type: "DECISION_RECORDED", actor: who, ts: when, data });
+    recordDecisionFile(repoRoot, ledger.state.run.work, { ts: when, run: runId, ...data, by: who.id, actor: who });
+    return { decisionRef, actor: who, state: ledger.state };
   } finally {
     releaseLock(repoRoot, runId);
   }
@@ -467,7 +475,7 @@ export function acceptArtifact(
   repoRoot,
   workId,
   artifact,
-  { by = "human", ts } = {},
+  { by, as, actor, ts } = {},
 ) {
   if (!["work", "intent", "plan", "spec"].includes(artifact))
     throw new DecisionError("artifact must be work, intent, plan or spec");
@@ -475,6 +483,7 @@ export function acceptArtifact(
   if (!existsSync(filePath)) {
     throw new DecisionError(`artifact file missing: ${filePath}`);
   }
+  const who = actorFrom({ actor, by, as, repoRoot });
   const digest = sha256Text(readFileSync(filePath, "utf8"));
   const decisionsPath = join(
     repoRoot,
@@ -494,9 +503,10 @@ export function acceptArtifact(
     decision: "approved",
     transition: `accept-${artifact}`,
     subject: { artifact, digest },
-    by,
+    by: who.id,
+    actor: who,
   });
-  return { decisionRef, digest };
+  return { decisionRef, digest, actor: who };
 }
 
 // One human "accept" for several artifacts: every file must exist before any
@@ -516,17 +526,20 @@ export function acceptArtifacts(repoRoot, workId, artifacts, options = {}) {
   if (missing.length > 0) {
     throw new DecisionError(`artifact file missing: ${missing.join(", ")}`);
   }
+  // Resolve once so every line of one accept names the same decider.
+  const actor = actorFrom({ ...options, repoRoot });
   return unique.map((artifact) => ({
     artifact,
-    ...acceptArtifact(repoRoot, workId, artifact, options),
+    ...acceptArtifact(repoRoot, workId, artifact, { ts: options.ts, actor }),
   }));
 }
 
 export function rejectRun(
   repoRoot,
   runId,
-  { by = "human", transition, reason, ts } = {},
+  { by, as, actor, transition, reason, ts } = {},
 ) {
+  const who = actorFrom({ actor, by, as, repoRoot });
   acquireLock(repoRoot, runId);
   try {
     const ledger = openWaiting(repoRoot, runId);
@@ -540,7 +553,7 @@ export function rejectRun(
     const decisionRef = `D-${runId}-${ledger.state.decisions.length + 1}`;
     ledger.append({
       type: "DECISION_RECORDED",
-      actor: { kind: "human", id: by },
+      actor: who,
       ts: when,
       data: {
         decision: "rejected",
@@ -556,7 +569,8 @@ export function rejectRun(
       decision: "rejected",
       transition: pending.transition,
       subject: pending.subject,
-      by,
+      by: who.id,
+      actor: who,
       reason: reason ?? null,
     });
     ledger.append({
@@ -565,11 +579,11 @@ export function rejectRun(
       ts: when,
       data: {
         status: "CANCELLED",
-        reason: `rejected by ${by}${reason ? `: ${reason}` : ""}`,
+        reason: `rejected by ${who.id}${reason ? `: ${reason}` : ""}`,
       },
     });
     writeRunRecord({ repoRoot, ledger, ts: when });
-    return { rejected: true, decisionRef, state: ledger.state };
+    return { rejected: true, decisionRef, actor: who, state: ledger.state };
   } finally {
     releaseLock(repoRoot, runId);
   }

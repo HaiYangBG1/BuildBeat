@@ -236,7 +236,7 @@ test("findings CLI lists and adjudicates from the Git plane", () => {
   const after = execFileSync("node", [CLI, "findings", "list", "--repo", root, "--work", "WORK-CLI"], {
     encoding: "utf8",
   });
-  assert.match(after, /\(dismiss by haiyang\)/);
+  assert.match(after, /\(dismiss by haiyang \(person\)\)/);
   const raw = readFileSync(join(root, "delivery", "work", "WORK-CLI", "review-findings.jsonl"), "utf8");
   assert.equal(raw.trim().split("\n").length, 2);
 });
