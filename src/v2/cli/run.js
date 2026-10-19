@@ -76,7 +76,7 @@ import {
   resumeRun,
   startRun,
 } from "../runtime/orchestrator.js";
-import { describeActor } from "../runtime/actor.js";
+import { describeActor, selfMergeApproval } from "../runtime/actor.js";
 import { toRepoRef } from "../runtime/repo-ref.js";
 import { EventLedger } from "../storage/event-ledger.js";
 import {
@@ -287,6 +287,18 @@ function printState(state, ledger, view = {}) {
     const digest = item.kind === "screenshot" ? ` ${item.digest}` : "";
     console.log(
       `evidence [${item.status}/${item.grade}] ${item.kind} ${ref}${digest}${reused}`,
+    );
+  }
+  // Who answered each request, as the ledger recorded it.
+  for (const item of state.decisions) {
+    console.log(
+      `decision ${item.decisionRef} ${item.transition} ${item.decision} by ${describeActor(item)}`,
+    );
+  }
+  const selfMerge = selfMergeApproval(state.decisions);
+  if (selfMerge) {
+    console.log(
+      `note: merge approved by an AI session (${selfMerge.actor.id}, ${selfMerge.decisionRef}), not by a person`,
     );
   }
   if (state.pendingHuman) {

@@ -99,6 +99,14 @@ export function actorFrom({ actor, by, as, repoRoot, env } = {}) {
   return resolveActor({ by, as, repoRoot, env });
 }
 
+// The merge approval to call out on every status view: the latest one,
+// when an AI session gave it under a recorded identity.
+export function selfMergeApproval(decisions) {
+  const latest = [...(decisions ?? [])].reverse().find((item) =>
+    item.transition === "enter-wait-merge" && item.decision === "approved");
+  return latest?.actor?.kind === "agent" && latest.actor.source ? latest : null;
+}
+
 // Plain-words label for a recorded decision row or ledger decision. Rows
 // written before identities were recorded carry no actor (or a ledger actor
 // without `source`): they say so instead of being guessed from the name.

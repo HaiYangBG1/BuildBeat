@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
-import { describeActor } from "./actor.js";
+import { describeActor, selfMergeApproval } from "./actor.js";
 import { listInbox } from "./decisions.js";
 import { configTargets, directory, discoverRepos, pathLabel, shellArg, workConfigs } from "./overview-repos.js";
 
@@ -234,20 +234,32 @@ export function computeOverview(
     );
     const plan = unified ? intent : artifactStatus(workDir, decisions, "plan");
     const envFacts = existsSync(join(workDir, "env-facts.md"));
-    const decisionRows = decisions.map((item) => ({
-      ts: item.ts ?? null,
-      decisionRef: item.decisionRef ?? null,
-      ...(item.run ? { run: item.run } : {}),
-      transition: item.transition ?? null,
-      decision: item.decision ?? null,
-      by: item.by ?? null,
-      actor: item.actor ?? null,
-      who: describeActor(item),
-    }));
-    const lastMerge = [...decisionRows].reverse().find((item) =>
-      item.transition === "enter-wait-merge" && item.decision === "approved");
-    const selfMerge = lastMerge?.actor?.kind === "agent" && lastMerge.actor.source ? lastMerge : null;
     const findingRows = readFindingsAccount(repoRoot, workId);
+    // Run and work decisions from decisions.jsonl, finding rulings from
+    // review-findings.jsonl, in time order.
+    const decisionRows = [
+      ...decisions.map((item) => ({
+        ts: item.ts ?? null,
+        decisionRef: item.decisionRef ?? null,
+        ...(item.run ? { run: item.run } : {}),
+        transition: item.transition ?? null,
+        decision: item.decision ?? null,
+        by: item.by ?? null,
+        actor: item.actor ?? null,
+        who: describeActor(item),
+      })),
+      ...findingRows.filter((item) => item.kind === "adjudication").map((item) => ({
+        ts: item.ts ?? null,
+        decisionRef: null,
+        transition: "adjudicate-finding",
+        decision: item.action ?? null,
+        fingerprint: item.fingerprint ?? null,
+        by: item.by ?? null,
+        actor: item.actor ?? null,
+        who: describeActor(item),
+      })),
+    ].sort((a, b) => String(a.ts ?? "").localeCompare(String(b.ts ?? "")));
+    const selfMerge = selfMergeApproval(decisionRows);
     const adjudicated = latestAdjudications(findingRows);
     const openFindings = findingRows.filter(
       (row) =>
@@ -511,7 +523,7 @@ export function renderOverview(rows, { decisions = false } = {}) {
     if (decisions && row.decisions?.length) {
       lines.push("  decisions:");
       for (const item of row.decisions) {
-        const what = [item.transition, item.decision].filter(Boolean).join(" ");
+        const what = [item.transition, item.fingerprint, item.decision].filter(Boolean).join(" ");
         lines.push(
           `    ${item.ts ?? "?"} ${item.decisionRef ?? "-"} ${what} by ${item.who}`,
         );

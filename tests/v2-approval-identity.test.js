@@ -159,6 +159,9 @@ test("an AI session approving the merge is recorded, replayable and called out i
   const status = cli(f.root, NO_SESSION, "status", "--repo", f.root, "--work", "WORK-I");
   assert.match(status, /note: merge approved by an AI session \(claude-code, D-RUN-I-1\), not by a person/);
   assert.match(status, /decisions:\n.* D-RUN-I-1 enter-wait-merge approved by claude-code \(AI session\)/);
+  const run = cli(f.root, NO_SESSION, "status", "--repo", f.root, "--run", "RUN-I");
+  assert.match(run, /decision D-RUN-I-1 enter-wait-merge approved by claude-code \(AI session\)/);
+  assert.match(run, /note: merge approved by an AI session \(claude-code, D-RUN-I-1\), not by a person/);
   const overview = cli(f.root, NO_SESSION, "status", "--repo", f.root);
   assert.match(overview, /note: merge approved by an AI session/);
   const json = JSON.parse(cli(f.root, NO_SESSION, "status", "--repo", f.root, "--work", "WORK-I", "--json"));
@@ -211,6 +214,17 @@ test("every decision entry point records the decider", () => {
     `${JSON.stringify({ ts: "2026-10-19T00:00:00.000Z", status: "passed", digest: "sha256:readback", commit: git(root, "rev-parse", "HEAD"), candidate: null })}\n`);
   const closed = closeWork({ repoRoot: root, workId: "WORK-I", result: "released" });
   assert.deepEqual(closed.actor, { kind: "human", id: "Test", source: "git" });
+
+  // Finding rulings are decisions too, listed with their decider even
+  // after the work is closed.
+  const status = cli(root, NO_SESSION, "status", "--repo", root, "--work", "WORK-I");
+  assert.match(status, /WORK-I {2}CLOSED/);
+  assert.match(status, new RegExp(`adjudicate-finding ${finding.fingerprint} dismiss by owner \\(person\\)`));
+  assert.match(status, /close-work closed by Test \(person\)/);
+  const json = JSON.parse(cli(root, NO_SESSION, "status", "--repo", root, "--work", "WORK-I", "--json"));
+  const ruling = json.works[0].decisions.find((item) => item.transition === "adjudicate-finding");
+  assert.deepEqual(ruling.actor, { kind: "human", id: "owner", source: "flag" });
+  assert.equal(ruling.fingerprint, finding.fingerprint);
 });
 
 test("records written before identities existed stay readable and are not guessed", () => {
