@@ -1,0 +1,209 @@
+{
+  "run": "RUN-APPROVAL-IDENTITY-02",
+  "work": "WORK-APPROVAL-IDENTITY",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 45,
+    "lastDigest": "sha256:08eb6146d10835fed2c04b6f9cb593b7df96d331c96bd82aa9d59f9b3ee9f89b"
+  },
+  "startedAt": "2026-10-19T11:22:14.202Z",
+  "finishedAt": "2026-10-19T11:38:04.297Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 4
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "waits": {
+      "decided": {
+        "count": 3,
+        "ms": 319358
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 629757
+  },
+  "workspaces": {
+    "RUN-APPROVAL-IDENTITY-02": {
+      "repo": ".",
+      "branch": "run/RUN-APPROVAL-IDENTITY-02",
+      "worktreePath": ".buildbeat/worktrees/RUN-APPROVAL-IDENTITY-02",
+      "base": "3c99296570cd3cbf21791dec4669825ed97238ee",
+      "candidate": "d9e19007c2f8a9c73df4c3dd443bdf9668943a32"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-APPROVAL-IDENTITY-02/logs/verify-1.log",
+      "kind": "command",
+      "subject": "db0d7fb602d62fcbc0e239ee5f6f487c021d7e91",
+      "digest": "sha256:8ac492c3b8cf6bb91d855219b6afe39b9fbc9277542fd5ddf22f805bfeefb026",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:2365194fea2fae6ba534cb7830afd3802639b486a0054cf265a1a2c29dba57a3"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-APPROVAL-IDENTITY-02/logs/review-1.log",
+      "kind": "command",
+      "subject": "db0d7fb602d62fcbc0e239ee5f6f487c021d7e91",
+      "digest": "sha256:fe7d1f27f026faca4c2a019b15d9b02719d71cfca46c0fd0f386965208182e09",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-APPROVAL-IDENTITY-02/outputs/review-1.json",
+      "kind": "review",
+      "subject": "db0d7fb602d62fcbc0e239ee5f6f487c021d7e91",
+      "digest": "sha256:f96de127d950d95314234fd0a2923cf4cf7d0580ee28411cc0e39fe9971800db",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/cli/run.js 的 status --run 仍调用未展示决定身份的 printState，AI 会话批准合并后只显示 SUCCEEDED，缺少验收要求的 AI 合并批准提示及对应回归测试。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/overview.js 的决定列表只读取 decisions.jsonl，遗漏 review-findings.jsonl 中的问题接受和驳回裁决，导致 status --work 无法列出每条决定的时间与身份，JSON 也未保留裁决的 actor 字段，且已结束 Work 连裁决摘要都不显示。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-APPROVAL-IDENTITY-02/logs/verify-2.log",
+      "kind": "command",
+      "subject": "d9e19007c2f8a9c73df4c3dd443bdf9668943a32",
+      "digest": "sha256:1b705691d09b7271c13f6bf5a0e68e0cb7c049fc702078e98268fa2b9c145ace",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:138bc8cfaa9fb8621794a85b6909fe1365faf04ee8028f5ca8c11b0ffaddd9b4"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-APPROVAL-IDENTITY-02/logs/review-2.log",
+      "kind": "command",
+      "subject": "d9e19007c2f8a9c73df4c3dd443bdf9668943a32",
+      "digest": "sha256:376888fc3c5ba8c79c090b90f084a0a15dde70e351b6538bb93c485fecf3c5a4",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-APPROVAL-IDENTITY-02/outputs/review-2.json",
+      "kind": "review",
+      "subject": "d9e19007c2f8a9c73df4c3dd443bdf9668943a32",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "db0d7fb602d62fcbc0e239ee5f6f487c021d7e91",
+        "planDigest": "sha256:fb38babe79491bb843f1bf268e4fbffba9de1e9e823c1b83ea9784e3058d25cd",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-APPROVAL-IDENTITY-02-1",
+      "actor": {
+        "kind": "human",
+        "id": "claude-session"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "d9e19007c2f8a9c73df4c3dd443bdf9668943a32",
+        "planDigest": "sha256:fb38babe79491bb843f1bf268e4fbffba9de1e9e823c1b83ea9784e3058d25cd",
+        "evidenceDigest": "sha256:f96de127d950d95314234fd0a2923cf4cf7d0580ee28411cc0e39fe9971800db"
+      },
+      "decisionRef": "D-RUN-APPROVAL-IDENTITY-02-2",
+      "actor": {
+        "kind": "human",
+        "id": "claude-session"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d9e19007c2f8a9c73df4c3dd443bdf9668943a32",
+        "planDigest": "sha256:fb38babe79491bb843f1bf268e4fbffba9de1e9e823c1b83ea9784e3058d25cd",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-APPROVAL-IDENTITY-02-3",
+      "actor": {
+        "kind": "human",
+        "id": "project-owner",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-APPROVAL-IDENTITY-02-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "db0d7fb602d62fcbc0e239ee5f6f487c021d7e91",
+        "planDigest": "sha256:fb38babe79491bb843f1bf268e4fbffba9de1e9e823c1b83ea9784e3058d25cd",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-APPROVAL-IDENTITY-02-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "d9e19007c2f8a9c73df4c3dd443bdf9668943a32",
+        "planDigest": "sha256:fb38babe79491bb843f1bf268e4fbffba9de1e9e823c1b83ea9784e3058d25cd",
+        "evidenceDigest": "sha256:f96de127d950d95314234fd0a2923cf4cf7d0580ee28411cc0e39fe9971800db"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-APPROVAL-IDENTITY-02-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d9e19007c2f8a9c73df4c3dd443bdf9668943a32",
+        "planDigest": "sha256:fb38babe79491bb843f1bf268e4fbffba9de1e9e823c1b83ea9784e3058d25cd",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
