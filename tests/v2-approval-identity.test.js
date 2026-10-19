@@ -243,3 +243,27 @@ test("records written before identities existed stay readable and are not guesse
   assert.doesNotMatch(status, /merge approved by an AI session/);
   assert.equal(describeActor({ by: "x", actor: { kind: "human", id: "x" } }), "x (identity not recorded)");
 });
+
+test("Codex desktop without a sandbox marker is still an AI session", () => {
+  const root = repo();
+  const env = { CODEX_THREAD_ID: "fixture-thread" };
+  assert.deepEqual(detectAgentSession(env), { tool: "codex", marker: "CODEX_THREAD_ID" });
+  assert.deepEqual(resolveActor({ repoRoot: root, env }), { kind: "agent", id: "codex", source: "env" });
+  assert.deepEqual(resolveActor({ repoRoot: root, env, as: "human", by: "owner" }),
+    { kind: "human", id: "owner", source: "flag", via: "agent-session" });
+});
+
+test("Codex desktop decisions persist AI identity and human relay provenance", () => {
+  const f = finalDecision();
+  const env = { CODEX_THREAD_ID: "fixture-thread" };
+  cli(f.root, env, "decide", "--repo", f.root, "--run", "RUN-I", "--action", "approve",
+    "--transition", "enter-wait-merge", "--candidate", f.candidate());
+  assert.deepEqual(decisionsOf(f.root).at(-1).actor, { kind: "agent", id: "codex", source: "env" });
+  assert.match(cli(f.root, NO_SESSION, "status", "--repo", f.root, "--run", "RUN-I"), /merge approved by an AI session \(codex,/);
+
+  const relay = finalDecision();
+  cli(relay.root, env, "decide", "--repo", relay.root, "--run", "RUN-I", "--action", "approve",
+    "--transition", "enter-wait-merge", "--candidate", relay.candidate(), "--as", "human", "--by", "owner");
+  assert.deepEqual(decisionsOf(relay.root).at(-1).actor,
+    { kind: "human", id: "owner", source: "flag", via: "agent-session" });
+});

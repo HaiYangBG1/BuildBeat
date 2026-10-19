@@ -18,6 +18,8 @@ export const ACTOR_DECISION_KINDS = ["human", "agent"];
 const AGENT_MARKERS = [
   { env: "CLAUDECODE", name: () => "claude-code" },
   { env: "CODEX_SANDBOX", name: () => "codex" },
+  // Desktop/full-access sessions keep a thread ID even without a sandbox.
+  { env: "CODEX_THREAD_ID", name: () => "codex" },
   { env: "AI_AGENT", name: (value) => /^[A-Za-z][A-Za-z0-9.-]{0,39}/.exec(value)?.[0] ?? "ai-session" },
   { env: "BUILDBEAT_ACTOR", name: () => "ai-session", only: "agent" },
 ];
