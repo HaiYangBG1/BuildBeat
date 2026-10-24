@@ -80,6 +80,7 @@ src/v2/presets/software-delivery.yaml
 src/v2/runtime/actor.js
 src/v2/runtime/cache.js
 src/v2/runtime/closeout.js
+src/v2/runtime/code-trace.js
 src/v2/runtime/decisions.js
 src/v2/runtime/env-contract.js
 src/v2/runtime/envelope.js

@@ -51,7 +51,8 @@ import {
   renderOverview,
   runsFor,
 } from "../runtime/overview.js";
-import { configTargets, workConfigs, pathLabel, shellArg } from "../runtime/overview-repos.js";
+import { configTargets, ignoredRecordsWarning, workConfigs, pathLabel, shellArg } from "../runtime/overview-repos.js";
+import { renderTrace, traceLines } from "../runtime/code-trace.js";
 import { closeWork, runReadback } from "../runtime/release.js";
 import {
   DEFAULT_STALL_AFTER_MS,
@@ -108,6 +109,7 @@ Usage:
   buildbeat stop --repo <path> --run <RUN-ID> --reason <text>
   buildbeat gc --repo <path> [--apply] [--force]
   buildbeat history --repo <path> --run <RUN-ID> [--verify]
+  buildbeat history --repo <path> --path <file>[:<line>[-<line>]] [--json]
 
 Core legacy command spellings remain aliases; see docs/MIGRATION.md.
 Decisions record who made them: --by names the person or session (default:
@@ -1111,6 +1113,8 @@ function commandAccept(flags) {
     console.log(`accepted ${result.artifact} as ${result.decisionRef} by ${describeActor(result)}`);
     console.log(`  digest: ${result.digest}`);
   }
+  const ignored = ignoredRecordsWarning(resolve(flags.repo), flags.work);
+  if (ignored) console.log(ignored);
   console.log(
     "  note: editing an artifact after acceptance makes its acceptance stale",
   );
@@ -1231,6 +1235,8 @@ function commandDoctor(flags) {
           : "draft (not accepted)";
     console.log(`  ${artifact}.md: ${label}`);
   }
+  const ignored = ignoredRecordsWarning(options.repoRoot, options.workId);
+  if (ignored) console.log(ignored);
   for (const policy of options.policies) {
     for (const artifact of policy.kind === "artifact"
       ? [policy.artifact]
@@ -1424,6 +1430,18 @@ function commandFindings(rest) {
       `findings subcommand must be list|adjudicate, got: ${sub ?? "(none)"}`,
     );
   }
+}
+
+// Which works wrote these lines (WORK-CODE-TRACE): blame at HEAD, mapped to
+// works through recorded run ranges, Work: trailers and work folders.
+async function commandTrace(flags) {
+  if (!flags.repo) throw new Error("history --path requires --repo");
+  const trace = await traceLines(flags.path, {
+    repo: resolve(flags.repo),
+    callers: [process.cwd()],
+    cwd: process.cwd(),
+  });
+  console.log(flags.json === "true" ? JSON.stringify(trace, null, 2) : renderTrace(trace));
 }
 
 function commandEvents(flags) {
@@ -1936,7 +1954,9 @@ async function main() {
     } else if (command === "check") {
       flags.step ? commandPreflight(flags) : commandDoctor(flags);
     } else if (command === "history") {
-      flags.verify === "true" ? commandReplay(flags) : commandEvents(flags);
+      if (flags.path) await commandTrace(flags);
+      else if (flags.verify === "true") commandReplay(flags);
+      else commandEvents(flags);
     } else if (command === "start") {
       await commandStart(flags);
     } else if (command === "resume") {

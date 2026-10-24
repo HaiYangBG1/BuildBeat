@@ -7,7 +7,8 @@
 # 做的事（每一条都对应 docs/v2/guide/05-worker-contract.md 的一条合同）：
 #   1. 工具不在 PATH → exit 75（EX_TEMPFAIL）：内核判基础设施故障停人，不派 fixer、不扣预算；
 #   2. 有 $BUILDBEAT_PROMPT 就把 prompt 文本作为最后一个参数追加给工具（codex exec / claude -p 都吃位置参数）；
-#   3. 写入步：工具返回后若工作树有改动，机械地 git add -A && git commit（提交动作不交给模型）；
+#   3. 写入步：工具返回后若工作树有改动，机械地 git add -A && git commit（提交动作不交给模型），
+#      提交信息末尾带一行 Work: <工作编号>，`buildbeat history --path` 从代码找回工作时认它；
 #   4. 只读步：工具的 stdout 落到 $BUILDBEAT_OUTPUT（工具自己写了该文件则不覆盖）；不 commit；
 #   5. 工具退出码原样透传；本脚本自己不判断候选好坏——那是 verify 与 review 的事。
 # cwd 已由内核设为该步的隔离 worktree；不要 cd。
@@ -31,6 +32,7 @@ fi
 
 input="${BUILDBEAT_INPUT:-{}}"
 run_id="$(printf '%s' "$input" | sed -n 's/.*"runId":"\([^"]*\)".*/\1/p')"
+work_id="$(printf '%s' "$input" | sed -n 's/.*"workId":"\([^"]*\)".*/\1/p')"
 attempt="$(printf '%s' "$input" | sed -n 's/.*"attempt":\([0-9]*\).*/\1/p')"
 
 args=("$@")
@@ -44,8 +46,12 @@ case "$role" in
     status=$?
     if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
       git add -A
+      message=(-m "${role}: ${run_id:-run} attempt ${attempt:-?}")
+      if [ -n "$work_id" ]; then
+        message+=(-m "Work: ${work_id}")
+      fi
       git -c user.name="${GIT_AUTHOR_NAME:-buildbeat-worker}" -c user.email="${GIT_AUTHOR_EMAIL:-worker@buildbeat.local}" \
-        commit -q -m "${role}: ${run_id:-run} attempt ${attempt:-?}" || status=$?
+        commit -q "${message[@]}" || status=$?
     fi
     exit "$status"
     ;;

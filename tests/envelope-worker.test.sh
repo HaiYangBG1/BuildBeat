@@ -71,7 +71,12 @@ status=$(BUILDBEAT_PROMPT="$PROMPT" run_worker "$repo" builder -- stub-write)
 check "builder exits with the tool's status" "$status" 0
 check "the prompt is passed as the last argument" "$(cat "$repo/made-by-stub.txt")" "do the thing"
 check "builder commits its changes mechanically" "$(git -C "$repo" log -1 --format=%s)" "builder: RUN-T-01 attempt 2"
+check "builder's commit names its work in a Work: trailer" "$(git -C "$repo" log -1 --format=%B | grep -c '^Work: WORK-T$')" 1
 check "builder leaves a clean worktree" "$(git -C "$repo" status --porcelain)" ""
+
+repo=$(new_repo no-work)
+BUILDBEAT_INPUT='{"runId":"RUN-T-01","step":"build","attempt":1}' run_worker "$repo" builder -- stub-write > /dev/null
+check "without a work id the commit has no Work: trailer" "$(git -C "$repo" log -1 --format=%B | grep -c '^Work:')" 0
 
 repo=$(new_repo fixer)
 status=$(STUB_EXIT=3 BUILDBEAT_PROMPT="$PROMPT" run_worker "$repo" fixer -- stub-write)

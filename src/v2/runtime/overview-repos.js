@@ -93,6 +93,21 @@ export function governingConfigs(repoRoot, workId, { callers = [], warnings = []
   return configs;
 }
 
+// The warning to print when a work's records would stay out of Git (a
+// .gitignore rule or .git/info/exclude), or null. Records that never reach
+// Git cannot be found from another machine or by another person; in a pilot
+// workspace all five code repositories excluded delivery/ this way.
+export function ignoredRecordsWarning(repoRoot, workId) {
+  try {
+    execFileSync("git", ["-C", repoRoot, "check-ignore", "-q", "--no-index", `delivery/work/${workId}/work.md`], {
+      stdio: "ignore",
+    });
+  } catch {
+    return null;
+  }
+  return `warning: delivery/work/${workId}/ is ignored by Git here (.gitignore or .git/info/exclude); its records will not travel with the code`;
+}
+
 export function discoverRepos(repoRoot, warnings, roots = new Map()) {
   const repos = new Set([repoRoot]);
   const workRoot = join(repoRoot, "delivery", "work");

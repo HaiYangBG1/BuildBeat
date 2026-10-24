@@ -36,9 +36,11 @@ The ledger of a run in progress lives in `.buildbeat/runtime/` on the machine ru
 
 - **Close a Work that needs no release** (for example a documentation change): once `result.md` is written, append `{"ts":"2026-10-04T09:00:00.000Z","decision":"closed","transition":"close-work","subject":{"result":"<outcome>","resultDigest":"sha256:<64 hex digits>","promotions":[]},"by":"<name>","actor":{"kind":"human","id":"<name>","source":"flag"}}`. `resultDigest` is the SHA-256 of the `result.md` file content (for example `shasum -a 256 result.md`); `promotions` lists each promotion line of result.md as `{"path":"<path>","commit":"<full commit hash>"}`, or `[]` when there is none. A Work that is released closes through the runtime's `release` and `decide --action close`, which bind the closure to a readback.
 
+- **When you commit code or documents for a work**, end the commit message with a blank line and `Work: <ID>`. Someone with the runtime can then find the work from the code with `buildbeat history --path`.
+
 `actor` says truthfully who decided: a person writes `"kind":"human"`; an AI tool deciding on its own writes `"kind":"agent"` with the tool's name as `id`; an AI tool passing on what a person said in the conversation writes the person's name with `"kind":"human"` and adds `"via":"agent-session"`. Older lines with `by` and no `actor` stay valid; status shows them as "identity not recorded".
 
-Each line must be one complete JSON object; only append, never edit earlier lines. Commit the files and hand them to someone with the runtime.
+Each line must be one complete JSON object; only append, never edit earlier lines. Commit the files and hand them to someone with the runtime. `delivery/` belongs in Git: do not exclude it in `.gitignore` or `.git/info/exclude`.
 
 ## What you must not do
 
