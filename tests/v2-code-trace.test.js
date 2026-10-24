@@ -10,7 +10,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { parsePathSpec, workTrailers } from "../src/v2/runtime/code-trace.js";
+import { parsePathSpec } from "../src/v2/runtime/code-trace.js";
 import { tempDir } from "./support/tmp.js";
 
 const ROOT = join(import.meta.dirname, "..");
@@ -44,12 +44,12 @@ function write(root, path, text) {
   mkdirSync(dirname(join(root, path)), { recursive: true });
   writeFileSync(join(root, path), text);
 }
-function commit(root, message, files, trailer) {
+function commit(root, message, files, ...paragraphs) {
   for (const [path, text] of Object.entries(files)) {
     write(root, path, text);
     git(root, "add", "--", path);
   }
-  git(root, ...IDENTITY, "commit", "-q", "-m", message, ...(trailer ? ["-m", trailer] : []));
+  git(root, ...IDENTITY, "commit", "-q", "-m", message, ...paragraphs.flatMap((paragraph) => ["-m", paragraph]));
   return git(root, "rev-parse", "HEAD");
 }
 function work(root, id, title) {
@@ -182,8 +182,38 @@ test("a rebased commit keeps its trailer though its recorded run range no longer
   assert.equal(row.work, "WORK-R");
   assert.deepEqual(row.via, [{ kind: "trailer" }]);
   assert.notEqual(row.commits[0], before);
-  assert.deepEqual(workTrailers("feat: x\n\nbody text\n\nWork: WORK-A\nCo-Authored-By: someone\nwork: WORK-B\n"), ["WORK-A", "WORK-B"]);
-  assert.deepEqual(workTrailers("feat: x\n\nWork: WORK-OLD\n\nlast paragraph without trailers\n"), []);
+});
+
+test("a Work: line counts only inside Git's trailer block", () => {
+  const root = repo();
+  commit(root, "Work: WORK-SUBJECT", { "src/t.js": lines("one") });
+  commit(root, "feat: two", { "src/t.js": lines("one", "two") }, "Work: WORK-BODY", "a closing paragraph, so the line above is body text");
+  commit(root, "feat: three", { "src/t.js": lines("one", "two", "three") }, "body", "Work: WORK-A\nCo-Authored-By: someone\nwork: WORK-B");
+  const trace = traced(root, "src/t.js");
+  assert.deepEqual(trace.works.map((row) => row.work).sort(), ["WORK-A", "WORK-B"]);
+  for (const row of trace.works) assert.deepEqual(row.via, [{ kind: "trailer" }]);
+  assert.equal(trace.untraced.lines, 2);
+  assert.deepEqual(trace.untraced.commits.map((item) => item.subject).sort(), ["Work: WORK-SUBJECT", "feat: two"]);
+});
+
+test("a line written in a merge commit traces through what the merge changed", () => {
+  const root = repo();
+  commit(root, "base", { "src/m.js": lines("start") });
+  git(root, "checkout", "-q", "-b", "side");
+  commit(root, "side change", { "src/m.js": lines("side") });
+  git(root, "checkout", "-q", "main");
+  commit(root, "main change", { "src/m.js": lines("main") });
+  // The merge conflicts; the person resolves it by hand and records the
+  // resolution in the work's notes in the same merge commit.
+  assert.throws(() => git(root, ...IDENTITY, "merge", "-q", "side"));
+  write(root, "src/m.js", lines("resolved"));
+  write(root, "delivery/work/WORK-M/notes.md", "resolved the conflict\n");
+  git(root, "add", "--", "src/m.js", "delivery/work/WORK-M/notes.md");
+  git(root, ...IDENTITY, "commit", "-q", "--no-edit");
+  work(root, "WORK-M", "Merge work");
+  const [row] = traced(root, "src/m.js").works;
+  assert.equal(row.work, "WORK-M");
+  assert.deepEqual(row.via, [{ kind: "folder" }]);
 });
 
 test("records kept in the checkout around a code repository still trace its lines", () => {

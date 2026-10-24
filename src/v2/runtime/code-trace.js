@@ -160,33 +160,24 @@ async function runRanges(root, runs) {
   return map;
 }
 
-// "Work: <ID>" lines in the message's last paragraph, where Git keeps
-// trailers.
-export function workTrailers(message) {
-  const last = message.trim().split(/\n\s*\n/).at(-1) ?? "";
-  const ids = [];
-  for (const line of last.split("\n")) {
-    const match = /^work:\s*(\S+)\s*$/i.exec(line.trim());
-    if (match) ids.push(match[1]);
-  }
-  return ids;
-}
-
-// Commit time, subject, trailers and changed paths of each commit, in one
-// call.
+// Commit time, subject, Work: trailers and changed paths of each commit, in
+// one call. Trailers come from Git's own parser, so a subject or a body line
+// that happens to start with "Work:" is not one. A merge commit's paths are
+// read against its first parent, which is what a line resolved in the merge
+// was written into.
 function commitFacts(root, commits) {
   const facts = new Map();
   if (commits.length === 0) return facts;
   const out = git(root, [
-    "-c", "core.quotePath=false", "log", "--no-walk=unsorted", "--name-only",
-    "--format=%x1e%H%x1f%ct%x1f%s%x1f%B%x1f", ...commits,
+    "-c", "core.quotePath=false", "log", "--no-walk=unsorted", "--name-only", "--diff-merges=first-parent",
+    "--format=%x1e%H%x1f%ct%x1f%s%x1f%(trailers:key=Work,valueonly,separator=%x1d)%x1f", ...commits,
   ]);
   for (const chunk of out.split("\x1e").slice(1)) {
-    const [commit, time, subject, message, names = ""] = chunk.split("\x1f");
+    const [commit, time, subject, trailers, names = ""] = chunk.split("\x1f");
     facts.set(commit, {
       time: Number(time),
       subject,
-      trailers: workTrailers(message),
+      trailers: trailers.split("\x1d").map((value) => value.trim().split(/\s+/)[0]).filter(Boolean),
       paths: names.split("\n").map((name) => name.trim()).filter(Boolean),
     });
   }
