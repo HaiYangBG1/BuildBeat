@@ -1,0 +1,211 @@
+{
+  "run": "RUN-CONTEXT-CLOSEOUT-01",
+  "work": "WORK-CONTEXT-CLOSEOUT",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 45,
+    "lastDigest": "sha256:a932e8d400d9aef7587cd739db8a400f4d2c68f908a3ee174a99f8a8d440e5c8"
+  },
+  "startedAt": "2026-10-24T16:23:48.810Z",
+  "finishedAt": "2026-10-24T17:05:50.506Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 4
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "waits": {
+      "decided": {
+        "count": 3,
+        "ms": 1922599
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 598074
+  },
+  "workspaces": {
+    "RUN-CONTEXT-CLOSEOUT-01": {
+      "repo": ".",
+      "branch": "run/RUN-CONTEXT-CLOSEOUT-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-CONTEXT-CLOSEOUT-01",
+      "base": "0aa76153d41664a8904dc29f389ac3c6d7c2dfab",
+      "candidate": "11a12e73909be70e46ca16f57e7c1f00094fba1b"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CONTEXT-CLOSEOUT-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "f20811ccb02d7d9de889096d5caf5f99b3daa864",
+      "digest": "sha256:366217e69654b18449cb29343f81d787359a7bdaba99e46561c7028acf464c23",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:35293779d6890df80e24f376f47638cf56665306ad0c64194002211e910ba04e"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CONTEXT-CLOSEOUT-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "f20811ccb02d7d9de889096d5caf5f99b3daa864",
+      "digest": "sha256:ff7ce77421819514e8aead27c4a67d1659e6cb96e8f632cc3b72ab7b813a3f6a",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CONTEXT-CLOSEOUT-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "f20811ccb02d7d9de889096d5caf5f99b3daa864",
+      "digest": "sha256:f81c90c26767397eff79467add0cd982dfe8e86761056f0bf1bfb5a30c3a28ff",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/release.js:223–225 仅扫描目标代码仓中的 run-config，遗漏已支持的主仓配置转发场景：当 release 配置位于主仓、代码仓尚无回读记录时，会错误允许仅凭 result.md 关窗，绕过已配置的上线回读要求，且新增测试未覆盖此路径。"
+        },
+        {
+          "severity": "P2",
+          "summary": "SKILL.md:36、60 将写回改动提交安排在展示给用户之前，违背已确认 work.md 要求的“先展示写回改动和结果摘要，人同意后再提交”顺序，应恢复提交前确认步骤。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CONTEXT-CLOSEOUT-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "11a12e73909be70e46ca16f57e7c1f00094fba1b",
+      "digest": "sha256:fdbec6d6fe73f58986f24bc4cb01e1ed7407926b0b969b3636712915785d134d",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:45fd10640528e1e780e2bbdc007586d323d365c19425d28bf9401ead764ada9f"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CONTEXT-CLOSEOUT-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "11a12e73909be70e46ca16f57e7c1f00094fba1b",
+      "digest": "sha256:df088d560c0adfe3021d72eeb88a5d5977a91ef49239d5b0a66a82fbc8c28a3a",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CONTEXT-CLOSEOUT-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "11a12e73909be70e46ca16f57e7c1f00094fba1b",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "f20811ccb02d7d9de889096d5caf5f99b3daa864",
+        "planDigest": "sha256:70842d00fed6f9df655ad4e585aca404834ac91d46e598010a48c08fee6ed014",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-CONTEXT-CLOSEOUT-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "11a12e73909be70e46ca16f57e7c1f00094fba1b",
+        "planDigest": "sha256:70842d00fed6f9df655ad4e585aca404834ac91d46e598010a48c08fee6ed014",
+        "evidenceDigest": "sha256:f81c90c26767397eff79467add0cd982dfe8e86761056f0bf1bfb5a30c3a28ff"
+      },
+      "decisionRef": "D-RUN-CONTEXT-CLOSEOUT-01-2",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "11a12e73909be70e46ca16f57e7c1f00094fba1b",
+        "planDigest": "sha256:70842d00fed6f9df655ad4e585aca404834ac91d46e598010a48c08fee6ed014",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-CONTEXT-CLOSEOUT-01-3",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-CONTEXT-CLOSEOUT-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "f20811ccb02d7d9de889096d5caf5f99b3daa864",
+        "planDigest": "sha256:70842d00fed6f9df655ad4e585aca404834ac91d46e598010a48c08fee6ed014",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-CONTEXT-CLOSEOUT-01-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "11a12e73909be70e46ca16f57e7c1f00094fba1b",
+        "planDigest": "sha256:70842d00fed6f9df655ad4e585aca404834ac91d46e598010a48c08fee6ed014",
+        "evidenceDigest": "sha256:f81c90c26767397eff79467add0cd982dfe8e86761056f0bf1bfb5a30c3a28ff"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-CONTEXT-CLOSEOUT-01-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "11a12e73909be70e46ca16f57e7c1f00094fba1b",
+        "planDigest": "sha256:70842d00fed6f9df655ad4e585aca404834ac91d46e598010a48c08fee6ed014",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
