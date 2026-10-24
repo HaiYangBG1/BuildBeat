@@ -96,14 +96,14 @@ const USAGE = `BuildBeat runtime
 
 Usage:
   buildbeat --version
-  buildbeat accept --repo <path> --work <WORK-ID> [--by <name>] [--as human|agent]
+  buildbeat accept --repo <path> --work <WORK-ID> [--by <name>] [--as human|agent] [--note <text>]
   buildbeat run --config <run-config.yaml> [--run <RUN-ID>] [--new] [--adopt <sha> [--by <name>] [--as human|agent]]
   buildbeat status --repo <path> [--work <WORK-ID> | --run <RUN-ID>] [--all-repos] [--json]
   buildbeat decide --repo <path> --run <RUN-ID> --action approve|reject --transition <t> [--candidate <sha>] [--by <name>] [--as human|agent] [--reason <text>]
   buildbeat decide --repo <path> --run <RUN-ID> --action fix --reason <text> [--by <name>] [--as human|agent]
   buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--as human|agent] [--note <text>]
   buildbeat release --config <run-config.yaml> [--ref <ref>] [--note <text>]
-  buildbeat decide --repo <path> --work <WORK-ID> --action close --result <text> [--by <name>] [--as human|agent]
+  buildbeat decide --repo <path> --work <WORK-ID> --action close [--result <text>] [--note <text>] [--by <name>] [--as human|agent]
   buildbeat check --config <run-config.yaml> [--step <id>]
   buildbeat stop --repo <path> --run <RUN-ID> --reason <text>
   buildbeat gc --repo <path> [--apply] [--force]
@@ -1105,7 +1105,7 @@ function commandAccept(flags) {
     .map((name) => name.trim())
     .filter(Boolean);
   const results = acceptArtifacts(resolve(flags.repo), flags.work, artifacts, {
-    by: flags.by, as: flags.as,
+    by: flags.by, as: flags.as, note: flags.note,
   });
   for (const result of results) {
     console.log(`accepted ${result.artifact} as ${result.decisionRef} by ${describeActor(result)}`);
@@ -1522,7 +1522,7 @@ function commandStatus(flags) {
         }
         for (const group of result.repos) {
           const count = group.settled;
-          console.log(`${pathLabel(process.cwd(), group.repo)}: settled ${count.total} (closed ${count.closed} · cancelled ${count.cancelled} · merged, no release step ${count.merged})`);
+          console.log(`${pathLabel(process.cwd(), group.repo)}: settled ${count.total} (closed ${count.closed} · cancelled ${count.cancelled} · merged, not closed ${count.merged})`);
         }
       } else {
         // Keep the single-repo surface while forwarding work facts and waits.
@@ -1625,7 +1625,7 @@ function commandRelease(flags) {
   }
   console.log(
     row.status === "passed"
-      ? `next: buildbeat decide --repo ${repoLabel} --work ${options.workId} --action close --result <what was released> --by <you>`
+      ? `next: write delivery/work/${options.workId}/result.md, then buildbeat decide --repo ${repoLabel} --work ${options.workId} --action close --by <you>`
       : "next: fix the release, then run buildbeat release again; the window cannot close on a failed readback",
   );
   if (row.status !== "passed") {
@@ -1641,10 +1641,19 @@ function commandDecide(flags) {
       repoRoot: resolve(flags.repo),
       workId: flags.work,
       result: flags.result,
+      note: flags.note,
+      runs: runsFor(resolve(flags.repo), flags.work),
       by: flags.by, as: flags.as,
     });
+    const parts = [
+      `result.md ${row.subject.resultDigest.slice(0, 19)}`,
+      `written into the project: ${row.subject.promotions.length}`,
+      ...(row.subject.readback
+        ? [`readback ${row.subject.readback.slice(0, 19)} at ${row.subject.commit.slice(0, 7)}`]
+        : []),
+    ];
     console.log(
-      `closed ${flags.work} as ${row.decisionRef} by ${describeActor(row)} (readback ${row.subject.readback.slice(0, 19)} at ${row.subject.commit.slice(0, 7)})`,
+      `closed ${flags.work} as ${row.decisionRef} by ${describeActor(row)} (${parts.join(" · ")})`,
     );
     return;
   }
@@ -1685,7 +1694,7 @@ function commandDecide(flags) {
     return;
   }
   throw new Error(
-    "decide requires --action approve|reject|fix, accept|dismiss with --work and --fingerprint, or close with --work and --result",
+    "decide requires --action approve|reject|fix, accept|dismiss with --work and --fingerprint, or close with --work",
   );
 }
 

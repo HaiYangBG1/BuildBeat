@@ -108,7 +108,7 @@ test("overview derives each work's stage and next move from the Git and runtime 
   assert.equal(rows["WORK-C"].stage, "PLAN_STALE");
   assert.equal(rows["WORK-C"].plan.stale, true);
   assert.equal(rows["WORK-D"].stage, "READY_TO_RUN");
-  assert.match(rows["WORK-D"].next, /close it with a decisions.jsonl row/);
+  assert.match(rows["WORK-D"].next, /if it was doc-only, close out: write delivery\/work\/WORK-D\/result\.md, then buildbeat decide --repo \. --work WORK-D --action close --by <you>$/);
   assert.equal(rows["WORK-H"].stage, "CLOSED");
   assert.match(rows["WORK-H"].next, /^closed @ 2026-09-03T12:34:05Z: doc-only work shipped via main$/);
   assert.equal(rows["WORK-I"].stage, "CANCELLED");

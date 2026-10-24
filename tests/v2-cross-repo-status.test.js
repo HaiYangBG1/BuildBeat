@@ -136,7 +136,7 @@ test("all-repos merges authoritative work facts, keeps drafts and counts settled
   assert.ok(pendingHeader >= 0 && pendingHeader < text.search(/^repo .+:$/m), "pending decisions come before the per-repo sections");
   assert.match(text, /RELEASE  MERGED/);
   assert.doesNotMatch(text, /(?:DONE  CLOSED|CANCEL  CANCELLED|MERGED  MERGED)/);
-  assert.match(text, /settled 3 \(closed 1 · cancelled 1 · merged, no release step 1\)/);
+  assert.match(text, /settled 3 \(closed 1 · cancelled 1 · merged, not closed 1\)/);
   assert.match(text, /runs in: code-b/);
   assert.doesNotMatch(text, /[\u4e00-\u9fff]/, "the cross-repo view prints English like the rest of the CLI");
   assert.match(text, /--config delivery\/work\/SHARED\/run-config.yaml/);

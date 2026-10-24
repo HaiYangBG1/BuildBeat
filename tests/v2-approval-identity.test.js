@@ -212,6 +212,7 @@ test("every decision entry point records the decider", () => {
 
   appendFileSync(join(root, "delivery", "work", "WORK-I", "releases.jsonl"),
     `${JSON.stringify({ ts: "2026-10-19T00:00:00.000Z", status: "passed", digest: "sha256:readback", commit: git(root, "rev-parse", "HEAD"), candidate: null })}\n`);
+  writeFileSync(join(root, "delivery", "work", "WORK-I", "result.md"), "# WORK-I result\n\nReleased.\n");
   const closed = closeWork({ repoRoot: root, workId: "WORK-I", result: "released" });
   assert.deepEqual(closed.actor, { kind: "human", id: "Test", source: "git" });
 

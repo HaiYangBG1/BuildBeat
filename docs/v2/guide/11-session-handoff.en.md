@@ -6,9 +6,11 @@ Before closing a session, save the goal, decisions, unverified scope and next st
 
 A new session reads AGENTS.md, work.md (or legacy intent/plan), decisions and status. Verify available facts and reuse still-valid authorization. A new conversation is not permission to start a duplicate run.
 
+For a closed work, read its result.md first: what was delivered, what was decided, what is left and where it went, and what was written into the project's documents. Before drafting a new work, search the closed works' result.md for related conclusions and leftovers, and carry the ones that matter into the new work.md's "why now".
+
 For a main repository managing several code repositories, start with `buildbeat status --repo . --all-repos`. This reads the main checkout, targets named by `repo:` in its `delivery/work/` run configurations, and immediate child Git checkouts containing `delivery/work/`. Discovery deduplicates real paths and never recurses. Missing or invalid targets and unreadable configurations produce warnings without hiding other repositories.
 
-Pending decisions come first, followed by open work grouped by repository. CLOSED, CANCELLED and merged work whose configuration has no `release:` are counted only. Merged work with `release:` remains visible until closed. `--json` returns `{repos: [{repo, works, settled}], pending, warnings}` including settled work. `--work <ID>` filters the merged results; `--run` cannot be combined with `--all-repos`.
+Pending decisions come first, followed by open work grouped by repository. CLOSED, CANCELLED and merged work whose configuration has no `release:` are counted only; the last are counted as `merged, not closed`, and single-repository `status` points them at closing out. Merged work with `release:` remains visible until closed. `--json` returns `{repos: [{repo, works, settled}], pending, warnings}` including settled work. `--work <ID>` filters the merged results; `--run` cannot be combined with `--all-repos`.
 
 When a configured target has the matching work directory or a runtime ledger, its state, findings and decisions are authoritative and the work appears only under that repository. Suggested commands retain the main repository's configuration and use paths relative to the caller; fill in person/reason placeholders before executing. Work without target records remains under the main repository with its runtime target shown. Single-repository `status` also reads this one level of target state, preventing duplicate-start suggestions.
 
