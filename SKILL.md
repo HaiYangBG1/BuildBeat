@@ -18,6 +18,8 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 
 合并决定点的 `run --adopt`、`decide --action fix` 与批准命令的 `--candidate` 候选绑定要求运行时 4.2 或更高版本。
 
+`history --path`（从代码找回工作）和 `delivery/` 被 Git 忽略时的提醒，需要包含这项改动的运行时；更早的运行时上，只能读提交信息和 `delivery/work/*/runs/*/run-record.json` 里每一轮的起点与候选来判断。
+
 关窗要求 `result.md`、核对写回行、`--note` 需要包含收口改动的运行时。4.2.3 及更早的运行时关窗仍要求上线回读通过并必须带 `--result`，不读 `result.md`；这时照样写 `result.md`，但不能声称写回行已由运行时核对。
 
 ## 会话操作
@@ -25,6 +27,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 | 用户意图 | 操作 |
 |---|---|
 | 接手、查看进度、有什么待批 | `buildbeat status --repo .`；主仓的 run 配置中 `repo:` 指向其他仓时，查看全部代码仓加 `--all-repos`（运行时 4.1 起；可加 `--work`、`--json`）；单仓指定 `--work` 或 `--run` 查看细节 |
+| 这段代码为什么这样、是哪项工作改的 | `buildbeat history --repo . --path <文件>[:<行>[-<行>]]`，再读列出的 work.md、result.md 和决定；追不到的行如实说追不到，不按提交标题猜 |
 | 准备一项工作 | 先在已关工作的 `result.md` 里搜相关结论和遗留；照 `templates/v2/work.example.md` 的八节写 `delivery/work/<ID>/work.md`（写法见下）；复制 run-config 样板并填真实命令 |
 | 接受工作说明 | `buildbeat accept --repo . --work <ID> --as human --by <owner> [--note <原话>]`；用户已有明确授权时直接记录，不重复问同一个决定 |
 | 开工、继续 | `buildbeat run --config <config>`；首次编号，已有运行则恢复；明确新一轮时加 `--new` |
@@ -47,6 +50,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 - 只在目标确认、真正例外和最终决定处请求用户。review 默认不分诊；不收敛、环境故障、预算耗尽照常停人，不能由驾驶会话冒充人批准。
 - Work review 预算默认 6 轮，跨所有 Run 累计；保留缓存、增量审查、人工修复接管和环境故障分类。
 - 长运行脱离宿主短超时启动。状态、最近输出、耗时和通知用于发现停顿；STALLED 不等于进程已终止。
+- `delivery/` 跟代码一起进 Git：不要用 `.gitignore` 或 `.git/info/exclude` 排除它，`accept` 和 `check` 发现被忽略会提醒。为某项工作手工提交（手修后 `--adopt`、只改文档的工作）时，提交信息末尾空一行写 `Work: <ID>`；随包信封的机械提交会自动带。
 - 新会话先读项目入口、work.md、Git 与状态。旧的 intent/plan 和历史记录继续读取；活动运行不能随意删除或重复启动。
 - 既有项目规范由项目所有者维护，不覆盖；项目治理模板不在 BuildBeat 范围内。生产监控与部署放在项目工具中。有 UI 的交付在 run-config 写 `requireScreenshot: true`，verify 把真渲染截图以 PNG 写进 `BUILDBEAT_SCREENSHOT_DIR`。
 - merge、push、发布、部署需要对应授权；最终批准只表示候选具备合并条件。不要用 `git add -A`，只提交本次具体文件。

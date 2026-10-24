@@ -36,9 +36,11 @@
 
 - **关闭不需要上线的 Work**（例如只改文档）：写好 `result.md` 后追加 `{"ts":"2026-10-04T09:00:00.000Z","decision":"closed","transition":"close-work","subject":{"result":"<结论>","resultDigest":"sha256:<64 位十六进制>","promotions":[]},"by":"<姓名>","actor":{"kind":"human","id":"<姓名>","source":"flag"}}`。`resultDigest` 是 `result.md` 文件内容的 SHA-256（例如 `shasum -a 256 result.md`）；`promotions` 按 result.md 的写回行逐条填 `{"path":"<路径>","commit":"<完整提交号>"}`，没有写回就是 `[]`。需要上线的 Work 用运行时的 `release` 与 `decide --action close` 关窗，关窗会绑定回读记录。
 
+- **为某项工作提交代码或文档时**，提交信息末尾空一行写 `Work: <ID>`。装有运行时的一方用 `buildbeat history --path` 就能从代码找回这项工作。
+
 `actor` 如实写是谁做的决定：人写 `"kind":"human"`；AI 工具自己做的决定写 `"kind":"agent"`，`id` 写工具名；AI 工具转达人在对话里说的决定，写人的名字和 `"kind":"human"`，再加 `"via":"agent-session"`。只有 `by`、没有 `actor` 的旧行照常有效，status 显示为"身份未记录"。
 
-每行必须是完整的一行 JSON，只追加不改旧行。写完后提交（commit），交给装有运行时的一方。
+每行必须是完整的一行 JSON，只追加不改旧行。写完后提交（commit），交给装有运行时的一方。`delivery/` 要进 Git，不要在 `.gitignore` 或 `.git/info/exclude` 里排除它。
 
 ## 不得做
 

@@ -3,7 +3,7 @@
 Install the runtime: `npm install --global @haiyangbg/buildbeat@latest` (Node ≥ 20). Before upgrading from 3.x, finish or cancel runs still in progress with their original 3.x runtime, see [Migration](../../MIGRATION.md); never replace a runtime underneath an active run.
 
 1. Check Node ≥20, Git, Bash and an authenticated AI tool. Keep project-owned instructions.
-2. The templates ship with the npm package under `$(npm root -g)/@haiyangbg/buildbeat/templates/`. Install `v2/AGENTS.md` and `v2/CLAUDE.md` according to the tool's loading rules; copy runtime exclusions from `gitignore.template` (in `templates/`, not in `v2/`).
+2. The templates ship with the npm package under `$(npm root -g)/@haiyangbg/buildbeat/templates/`. Install `v2/AGENTS.md` and `v2/CLAUDE.md` according to the tool's loading rules; copy runtime exclusions from `gitignore.template` (in `templates/`, not in `v2/`). `delivery/` goes into Git with the code; do not exclude it in `.gitignore` or `.git/info/exclude`.
 3. Create delivery/work/WORK-X/work.md following the eight sections of work.example.md: goal, why now, facts checked (each with its source), scope, decisions before starting, acceptance, implementation plan and stop conditions. Headings may be in the project's own language.
 4. Copy templates/v2/envelope/ to delivery/envelope/ and configure real tool and verification commands. New work needs no workflow.yaml copy.
 5. After the user accepts the work, use the commands below. Detach long runs from short host timeouts and handle the decision shown by status. After the merge (and a passing readback when a release is configured), write delivery/work/WORK-X/result.md from result.example.md, then close the work with the last command.
