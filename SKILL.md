@@ -33,7 +33,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 | 问题接受、驳回 | `buildbeat decide --repo . --work <ID> --action accept|dismiss --fingerprint <fp> --as human --by <owner> --note <reason>` |
 | 已手修并提交 | `buildbeat run --config <config> --run <RUN> --adopt <sha> --by <name>`；检查干净工作树与实际 HEAD 后从 verify 继续；合并决定点也可用，此时须为当前候选的新后代且改动不越界 |
 | 配置或环境有问题 | `buildbeat check --config <config>`；显式 `--step <step>` 会在主检出执行 worker，只有用户任务需要才调用，结果不是正式证据 |
-| 收口、关窗 | 合并后起草 `delivery/work/<ID>/result.md`（模板 `templates/v2/result.example.md`），按下面的清单把该写回的结论写进项目文档并提交，在 `result.md` 里记 `路径 @ 提交`；用 `status --repo . --work <ID>` 先核对写回行，一屏给用户看过后 `buildbeat decide --repo . --work <ID> --action close --as human --by <owner> [--note <原话>]`，再把 `result.md` 与 `decisions.jsonl` 一起提交。设了 `release:` 的工作，人完成上线后先 `buildbeat release --config <config> [--note <text>]`，最近一次回读通过才能关窗 |
+| 收口、关窗 | 合并后起草 `delivery/work/<ID>/result.md`（模板 `templates/v2/result.example.md`），按下面的清单准备要写回项目文档的改动，把改动和 `result.md` 摘要放在一屏给用户看；用户同意后提交写回改动，在 `result.md` 里填 `路径 @ 提交`，`status --repo . --work <ID>` 核对通过后 `buildbeat decide --repo . --work <ID> --action close --as human --by <owner> [--note <原话>]`，再把 `result.md` 与 `decisions.jsonl` 一起提交。设了 `release:` 的工作，人完成上线后先 `buildbeat release --config <config> [--note <text>]`，最近一次回读通过才能关窗。run 配置在主仓、记录在代码仓时，从主仓执行关窗 |
 | 结束一轮 | `buildbeat stop --repo . --run <RUN> --reason <reason>`；活动驱动持锁时先处理进程，不能把 stop 当作进程杀手 |
 | 清理 | `buildbeat gc --repo .` 查看计划，授权范围内再加 `--apply`；不得丢唯一候选或脏工作树 |
 
@@ -57,7 +57,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 
 - `work.md` 的"起因"写谁、什么时候、原话是什么，以及接着哪项已关工作。"已核实的现状"标日期或提交，分两类：已确认的每条带出处（文件、提交、命令输出），待核的写明由谁、什么时候确认，不把推断写成事实。
 - "开工前待拍板"每项给推荐和另一种做法的后果，用户接受即按推荐；对外可见的名字（命令、参数、文件、提示文字）写原文。"验收"把机器能查的和只有人或线上能确认的分开写。"停止条件"写必须停下问人的情况，不只写预算。标题可以按项目的语言写。
-- 收口前逐项检查哪些结论该写回项目：对外约定（接口、格式、命令）变了；以后的工作要遵守的决定；还会再踩的环境事实（能机器检查的写进 run-config `requires:`）；过程中发现项目文档说错或过时；worker 提示词该改。写进项目已有的文档（没有合适的就写进 AGENTS.md，保持短，过时的当场删），提交后在 `result.md` 记成 `- <路径> @ <提交> — <写了什么>`；都没有就写"无"和原因。
+- 收口前逐项检查哪些结论该写回项目：对外约定（接口、格式、命令）变了；以后的工作要遵守的决定；还会再踩的环境事实（能机器检查的写进 run-config `requires:`）；过程中发现项目文档说错或过时；worker 提示词该改。写进项目已有的文档（没有合适的就写进 AGENTS.md，保持短，过时的当场删）。改动先给用户看，用户同意后再提交，然后在 `result.md` 记成 `- <路径> @ <提交> — <写了什么>`；都没有就写"无"和原因。
 - `result.md` 要短：开头一段写做成了什么、在哪，然后是定了什么、剩下什么（写明转去哪）、写进了项目哪些文档。审查轮数和成本由 status 给出，不复述过程。
 - 关窗只表示这项工作的上下文收尾，不代表已经上线；合并、推送、发布照旧要授权。
 

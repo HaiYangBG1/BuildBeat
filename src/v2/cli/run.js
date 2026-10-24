@@ -1643,6 +1643,7 @@ function commandDecide(flags) {
       result: flags.result,
       note: flags.note,
       runs: runsFor(resolve(flags.repo), flags.work),
+      callers: [process.cwd()],
       by: flags.by, as: flags.as,
     });
     const parts = [

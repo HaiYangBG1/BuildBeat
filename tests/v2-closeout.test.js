@@ -124,6 +124,46 @@ test("a work with a release, or a run config that cannot be read, still needs a 
   assert.equal(existsSync(join(ship, "decisions.jsonl")), false);
 });
 
+test("a release kept in the main repository governs a work whose records live in a code repository", () => {
+  const main = repo();
+  // A main repository with its code repository inside, the layout
+  // status --all-repos discovers.
+  const code = join(main, "code");
+  mkdirSync(code);
+  git(code, "init", "-q", "-b", "main");
+  git(code, ...IDENTITY, "commit", "-q", "--allow-empty", "-m", "fixture");
+  const mainConfig = join(work(main, "CROSS", {
+    "run-config.yaml": "repo: ../../../code\nwork: CROSS\nrelease:\n  command: true\n",
+  }), "run-config.yaml");
+  const dir = work(code, "CROSS", { "result.md": "# CROSS result\n\nShipped.\n" });
+  const fromMain = () => call(main, "decide", "--repo", "code", "--work", "CROSS", "--action", "close", "--by", "owner");
+  assert.match(fromMain().stderr, /CROSS has no readback/);
+  // From inside the code repository the enclosing main repository is read too.
+  assert.match(close(code, "CROSS").stderr, /CROSS has no readback/);
+  assert.equal(existsSync(join(dir, "decisions.jsonl")), false);
+  // Without a release in the main repository's config, the page alone closes it.
+  writeFileSync(mainConfig, "repo: ../../../code\nwork: CROSS\n");
+  assert.equal(fromMain().status, 0);
+  assert.equal(decisions(dir).at(-1).transition, "close-work");
+});
+
+test("runs recorded here with no run config in reach refuse the close", () => {
+  // A code repository on its own: the main repository that holds its
+  // config is neither the caller nor around it.
+  const code = repo();
+  const dir = work(code, "AWAY", { "result.md": "# AWAY result\n\nShipped.\n" });
+  const record = join(dir, "runs", "RUN-AWAY-01");
+  mkdirSync(record, { recursive: true });
+  writeFileSync(join(record, "run-record.json"), JSON.stringify({
+    startedAt: "2026-10-25T00:00:00Z",
+    terminal: { status: "SUCCEEDED" },
+    workspaces: { "RUN-AWAY-01": { candidate: git(code, "rev-parse", "HEAD") } },
+  }));
+  const refused = close(code, "AWAY");
+  assert.notEqual(refused.status, 0);
+  assert.match(refused.stderr, /AWAY: its run configs are not in this repository; close it from the repository that holds them/);
+});
+
 test("a work cannot be closed underneath its own run in progress", () => {
   const root = repo();
   const dir = work(root, "LIVE", { "result.md": "# LIVE result\n\nNot done yet.\n" });

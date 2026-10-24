@@ -21,7 +21,7 @@ import { join } from "node:path";
 import { createShellAdapter } from "../adapters/shell.js";
 import { actorFrom } from "./actor.js";
 import { checkPromotions, readResult } from "./closeout.js";
-import { workConfigs } from "./overview-repos.js";
+import { governingConfigs } from "./overview-repos.js";
 import { toRepoRef } from "./repo-ref.js";
 
 const TAIL_LINES = 20;
@@ -190,15 +190,18 @@ export function runReadback({
 
 // Closes a work: a close-work decision bound to its result page and to the
 // conclusions the page says were written into the project. A work with a
-// release (a release: section, a readback already run, or a run config that
-// cannot be read) closes only on a passing latest readback; any other work
-// closes once result.md is there.
+// release (a release: section in any config that governs it, a readback
+// already run, or a run config that cannot be read) closes only on a passing
+// latest readback; any other work closes once result.md is there. callers
+// are the directories the command was given from, where a main repository's
+// config for a work kept in a code repository can be found.
 export function closeWork({
   repoRoot,
   workId,
   result,
   note,
   runs = [],
+  callers = [],
   by,
   as,
   actor,
@@ -220,9 +223,16 @@ export function closeWork({
   // In the order the status hint gives: release and readback first, then
   // the result page.
   const releases = readReleases(repoRoot, workId);
+  const configs = governingConfigs(repoRoot, workId, { callers });
+  // Runs recorded here and no config in reach: the config, and perhaps a
+  // release, lives in a main repository this command cannot see.
+  if (configs.length === 0 && runs.length > 0 && releases.length === 0) {
+    throw new ReleaseError(
+      `${workId}: its run configs are not in this repository; close it from the repository that holds them`,
+    );
+  }
   const released =
-    releases.length > 0 ||
-    workConfigs(repoRoot, workId).some((config) => config.release !== false);
+    releases.length > 0 || configs.some((config) => config.release !== false);
   const latest = released ? releases.at(-1) : null;
   if (released && !latest) {
     throw new ReleaseError(
