@@ -6,9 +6,11 @@
 
 新会话读取项目 AGENTS.md、Work 的 work.md（或旧 intent/plan）、决定与 status。能从记录查到的事实自行核对，沿用仍有效的授权；不把开新会话等同于重开 Run。
 
+已关窗的工作先读它的 result.md：做成了什么、定了什么、剩下什么转去了哪里、写进了项目哪些文档。起草新工作前，先在已关工作的 result.md 里搜相关的结论和遗留，把用得上的写进新 work.md 的"起因"。
+
 主仓管理多个代码仓时，先运行 `buildbeat status --repo . --all-repos`。它只读查看主仓、主仓 `delivery/work/` 下 run 配置的 `repo:` 目标仓，以及主仓下一层含 `delivery/work/` 的 Git 仓，按真实路径去重，不递归。不存在或无效的目标、读不了的配置会给出警告，其余仓继续显示。
 
-待人决定先列出，随后按仓显示未了结工作；CLOSED、CANCELLED 和已合并且配置没有 `release:` 的工作只计数。已合并但配有 `release:`、尚未关窗的工作仍显示。`--json` 返回 `{repos: [{repo, works, settled}], pending, warnings}`，包含已了结工作；`--work <ID>` 筛选各仓合并后的这项工作，`--run` 不能与 `--all-repos` 同用。
+待人决定先列出，随后按仓显示未了结工作；CLOSED、CANCELLED 和已合并且配置没有 `release:` 的工作只计数，后者计为 `merged, not closed`，单仓 `status` 会提示它去收口。已合并但配有 `release:`、尚未关窗的工作仍显示。`--json` 返回 `{repos: [{repo, works, settled}], pending, warnings}`，包含已了结工作；`--work <ID>` 筛选各仓合并后的这项工作，`--run` 不能与 `--all-repos` 同用。
 
 主仓配置指向的代码仓已有同名工作目录或运行台账时，状态、审查问题和决定取自代码仓，只在代码仓下显示；提示命令保留主仓配置，仓路径和配置路径相对当前目录，可填入人名、理由等占位内容后执行。目标仓还没有记录时，工作留在主仓并注明运行目标。不加 `--all-repos` 的主仓 `status` 也会读取这一层目标仓的真实状态，避免提示重复开跑。
 

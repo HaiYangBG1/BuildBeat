@@ -2,9 +2,10 @@
 // lane, owner decision 2026-10-04). BuildBeat still performs no deployment
 // (invariant 20): after a person releases a merged candidate, the project's
 // own read-only command proves the release took effect. Every readback is a
-// line in the Work's releases.jsonl, next to its decisions, and the window
-// closes only on a passing readback. Real cost behind it: one pilot go-live
-// was recorded by hand as forty "step N readback" commits.
+// line in the Work's releases.jsonl, next to its decisions, and a work with
+// a release closes only on a passing readback (its result page is checked in
+// closeout.js). Real cost behind it: one pilot go-live was recorded by hand
+// as forty "step N readback" commits.
 
 import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
@@ -19,6 +20,8 @@ import { join } from "node:path";
 
 import { createShellAdapter } from "../adapters/shell.js";
 import { actorFrom } from "./actor.js";
+import { checkPromotions, readResult } from "./closeout.js";
+import { governingConfigs } from "./overview-repos.js";
 import { toRepoRef } from "./repo-ref.js";
 
 const TAIL_LINES = 20;
@@ -185,35 +188,78 @@ export function runReadback({
   return row;
 }
 
-// Closes the release window: a close-work decision bound to the latest
-// readback, which must have passed.
+// Closes a work: a close-work decision bound to its result page and to the
+// conclusions the page says were written into the project. A work with a
+// release (a release: section in any config that governs it, a readback
+// already run, or a run config that cannot be read) closes only on a passing
+// latest readback; any other work closes once result.md is there. callers
+// are the directories the command was given from, where a main repository's
+// config for a work kept in a code repository can be found.
 export function closeWork({
   repoRoot,
   workId,
   result,
+  note,
+  runs = [],
+  callers = [],
   by,
   as,
   actor,
   ts = new Date().toISOString(),
 }) {
-  if (typeof result !== "string" || result.trim() === "") {
-    throw new ReleaseError("closing a work needs --result <text>");
-  }
   const decisionsPath = join(workDir(repoRoot, workId), "decisions.jsonl");
   const decisions = readRows(decisionsPath);
   if (decisions.some((row) => row.transition === "close-work")) {
     throw new ReleaseError(`${workId} is already closed`);
   }
-  const latest = readReleases(repoRoot, workId).at(-1);
-  if (!latest) {
+  // A live run contradicts a closure (status lets the run win), so a work
+  // without a release cannot be closed underneath one of its own runs.
+  const live = runs.find((run) => run.status === "RUNNING" || run.status === "WAITING_HUMAN");
+  if (live) {
+    throw new ReleaseError(
+      `${workId} has a run in progress (${live.id} ${live.status}); finish or stop it before closing`,
+    );
+  }
+  // In the order the status hint gives: release and readback first, then
+  // the result page.
+  const releases = readReleases(repoRoot, workId);
+  const configs = governingConfigs(repoRoot, workId, { callers });
+  // Runs recorded here and no config in reach: the config, and perhaps a
+  // release, lives in a main repository this command cannot see.
+  if (configs.length === 0 && runs.length > 0 && releases.length === 0) {
+    throw new ReleaseError(
+      `${workId}: its run configs are not in this repository; close it from the repository that holds them`,
+    );
+  }
+  const released =
+    releases.length > 0 || configs.some((config) => config.release !== false);
+  const latest = released ? releases.at(-1) : null;
+  if (released && !latest) {
     throw new ReleaseError(
       `${workId} has no readback; run buildbeat release --config <run-config.yaml> after the release first`,
     );
   }
-  if (latest.status !== "passed") {
+  if (latest && latest.status !== "passed") {
     throw new ReleaseError(
       `the latest readback failed (exit ${latest.exitCode} at ${latest.ts}); fix the release and run buildbeat release again before closing`,
     );
+  }
+  const page = readResult(repoRoot, workId);
+  if (!page.exists) {
+    throw new ReleaseError(
+      `closing a work needs delivery/work/${workId}/result.md (template: templates/v2/result.example.md)`,
+    );
+  }
+  const summary =
+    typeof result === "string" && result.trim() !== "" ? result.trim() : page.summary;
+  if (!summary) {
+    throw new ReleaseError("closing a work needs --result <text>");
+  }
+  // Every line is checked and every problem reported at once.
+  const promotions = checkPromotions(repoRoot, workId, page.promotions);
+  const problems = promotions.filter((item) => !item.ok).map((item) => item.problem);
+  if (problems.length > 0) {
+    throw new ReleaseError(problems.join("\n"));
   }
   const who = actorFrom({ actor, by, as, repoRoot });
   const count = existsSync(decisionsPath)
@@ -225,11 +271,14 @@ export function closeWork({
     decision: "closed",
     transition: "close-work",
     subject: {
-      result: result.trim(),
-      readback: latest.digest,
-      commit: latest.commit,
-      candidate: latest.candidate,
+      result: summary,
+      resultDigest: page.digest,
+      promotions: promotions.map(({ path, commit }) => ({ path, commit })),
+      ...(latest
+        ? { readback: latest.digest, commit: latest.commit, candidate: latest.candidate }
+        : {}),
     },
+    ...(typeof note === "string" && note.trim() !== "" ? { note: note.trim() } : {}),
     by: who.id,
     actor: who,
   };

@@ -4,15 +4,16 @@
 
 1. 检查 Node ≥20、Git、Bash 和已鉴权的 AI 工具；保留项目自己的规范。
 2. 模板随 npm 包安装在 `$(npm root -g)/@haiyangbg/buildbeat/templates/`。将其中 `v2/AGENTS.md`、`v2/CLAUDE.md` 按工具装载方式放入项目；从 `gitignore.template`（在 `templates/` 下，不在 `v2/` 里）复制运行时排除项。
-3. 建 delivery/work/WORK-X/work.md，使用 work.example.md 的目标、范围、验收、实施计划结构。
+3. 建 delivery/work/WORK-X/work.md，照 work.example.md 的八节写：目标、起因、已核实的现状（每条带出处）、范围、开工前待拍板、验收、实施计划、停止条件。标题可以用项目自己的语言。
 4. 把 templates/v2/envelope/ 复制为 delivery/envelope/；配置真实工具和验证命令。新工作不用复制 workflow.yaml。
-5. 用户接受工作说明后运行下面命令。长运行使用宿主支持的脱离方式启动；根据 status 的待决定对象处理例外。
+5. 用户接受工作说明后运行下面命令。长运行使用宿主支持的脱离方式启动；根据 status 的待决定对象处理例外。合并后（设了上线回读的，回读通过后），照 result.example.md 写 delivery/work/WORK-X/result.md，再用最后一条命令关窗。
 
 ```bash
 buildbeat accept --repo . --work WORK-X --by owner
 buildbeat check --config delivery/work/WORK-X/run-config.yaml
 buildbeat run --config delivery/work/WORK-X/run-config.yaml
 buildbeat status --repo . --work WORK-X
+buildbeat decide --repo . --work WORK-X --action close --by owner
 ```
 
 ```yaml

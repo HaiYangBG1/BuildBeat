@@ -153,6 +153,7 @@ your-project/
 │           ├── decisions.jsonl     accept, approve, close and other decisions
 │           ├── review-findings.jsonl  problems the review found and your rulings
 │           ├── releases.jsonl      checks after going live (only if used)
+│           ├── result.md           written at closing: what was delivered, what is left, what went into project docs
 │           └── runs/RUN-X-01/
 │               └── run-record.json this run's outcome, evidence and cost
 └── .buildbeat/

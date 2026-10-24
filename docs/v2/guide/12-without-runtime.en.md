@@ -8,11 +8,12 @@ People and AI tools without the `buildbeat` runtime (a machine without Node, a w
 
 | File (under `delivery/work/<ID>/`) | Content |
 |---|---|
-| `work.md` | Goal, scope, acceptance, implementation plan |
+| `work.md` | Goal, why now, facts checked, scope, decisions before starting, acceptance, implementation plan, stop conditions |
 | `decisions.jsonl` | Acceptances, approvals, closures; one JSON object per line |
 | `review-findings.jsonl` | Review findings and human verdicts |
 | `runs/<RUN>/run-record.json` | Terminal state, candidate, evidence digests and cost of finished runs |
 | `releases.jsonl` | Release readbacks after the merge |
+| `result.md` | Written at closing: what was delivered, what was decided, what is left, what was written into the project's documents |
 
 The ledger of a run in progress lives in `.buildbeat/runtime/` on the machine running it and is not in Git; that side's `buildbeat status` is authoritative for progress.
 
@@ -31,7 +32,9 @@ The ledger of a run in progress lives in `.buildbeat/runtime/` on the machine ru
   {"ts":"2026-10-04T08:00:00.000Z","kind":"adjudication","fingerprint":"<fingerprint>","action":"dismiss","by":"<name>","actor":{"kind":"human","id":"<name>","source":"flag"},"note":"<reason>"}
   ```
 
-- **Close a Work that needs no release** (for example a documentation change): append `{"ts":"2026-10-04T09:00:00.000Z","decision":"closed","transition":"close-work","subject":{"result":"<outcome>"},"by":"<name>","actor":{"kind":"human","id":"<name>","source":"flag"}}`. A Work that is released closes through the runtime's `release` and `decide --action close`, which bind the closure to a readback.
+- **Write `result.md`** from `templates/v2/result.example.md`. Conclusions that later work needs go into the project's own documents first and are committed (the commit must already be on the main branch); result.md then records each one as `- <path> @ <commit> — <what was written>`.
+
+- **Close a Work that needs no release** (for example a documentation change): once `result.md` is written, append `{"ts":"2026-10-04T09:00:00.000Z","decision":"closed","transition":"close-work","subject":{"result":"<outcome>","resultDigest":"sha256:<64 hex digits>","promotions":[]},"by":"<name>","actor":{"kind":"human","id":"<name>","source":"flag"}}`. `resultDigest` is the SHA-256 of the `result.md` file content (for example `shasum -a 256 result.md`); `promotions` lists each promotion line of result.md as `{"path":"<path>","commit":"<full commit hash>"}`, or `[]` when there is none. A Work that is released closes through the runtime's `release` and `decide --action close`, which bind the closure to a readback.
 
 `actor` says truthfully who decided: a person writes `"kind":"human"`; an AI tool deciding on its own writes `"kind":"agent"` with the tool's name as `id`; an AI tool passing on what a person said in the conversation writes the person's name with `"kind":"human"` and adds `"via":"agent-session"`. Older lines with `by` and no `actor` stay valid; status shows them as "identity not recorded".
 
@@ -40,9 +43,9 @@ Each line must be one complete JSON object; only append, never edit earlier line
 ## What you must not do
 
 - Approve or reject a run, or adopt a candidate: the runtime records these in the run ledger and re-reads the candidate and evidence before stamping.
-- Write or edit a run ledger, `run-record.json`, `releases.jsonl` or any evidence; claim that verification, review or a release readback has passed.
+- Write or edit a run ledger, `run-record.json`, `releases.jsonl` or any evidence; claim that verification, review, a release readback or the promotion check has passed.
 - Record a decision in someone else's name, or edit existing lines.
 
 ## Handing over to someone with the runtime
 
-After pulling the commit they run `buildbeat status --repo . --work <ID>`: a changed `work.md` shows as awaiting acceptance, and hand-written acceptance and adjudication lines take effect under the same digest and fingerprint rules. `buildbeat run --config <config>` then continues delivery.
+After pulling the commit they run `buildbeat status --repo . --work <ID>`: a changed `work.md` shows as awaiting acceptance, and hand-written acceptance and adjudication lines take effect under the same digest and fingerprint rules; the promotion lines in `result.md` are checked live (✓/✗), and a `result.md` changed after the close is flagged. `buildbeat run --config <config>` then continues delivery.

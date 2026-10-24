@@ -60,6 +60,39 @@ export function configTargets(configs, warnings, roots = new Map()) {
   });
 }
 
+// The checkout that contains path (its root or any directory inside it).
+function enclosingCheckout(path) {
+  try {
+    const top = execFileSync("git", ["-C", path, "rev-parse", "--show-toplevel"], {
+      encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return top ? realpathSync(top) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Run configs that govern a work kept in this checkout: its own, and those a
+// main repository keeps for it with repo: pointing here, looked up in the
+// caller's checkout and in the checkout this one sits inside (the layouts
+// status follows). An unreadable config there counts too, so a release
+// cannot be skipped because its config could not be read.
+export function governingConfigs(repoRoot, workId, { callers = [], warnings = [] } = {}) {
+  const real = realpathSync(repoRoot);
+  const configs = workConfigs(real, workId, warnings);
+  const roots = new Set();
+  for (const path of [...callers, dirname(real)]) {
+    const root = path ? enclosingCheckout(path) : null;
+    if (root && root !== real) roots.add(root);
+  }
+  for (const root of roots) {
+    for (const config of configTargets(workConfigs(root, workId, warnings), warnings)) {
+      if (config.error || config.repo === real) configs.push(config);
+    }
+  }
+  return configs;
+}
+
 export function discoverRepos(repoRoot, warnings, roots = new Map()) {
   const repos = new Set([repoRoot]);
   const workRoot = join(repoRoot, "delivery", "work");

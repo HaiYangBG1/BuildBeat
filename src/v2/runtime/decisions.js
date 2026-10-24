@@ -475,7 +475,7 @@ export function acceptArtifact(
   repoRoot,
   workId,
   artifact,
-  { by, as, actor, ts } = {},
+  { by, as, actor, note, ts } = {},
 ) {
   if (!["work", "intent", "plan", "spec"].includes(artifact))
     throw new DecisionError("artifact must be work, intent, plan or spec");
@@ -503,6 +503,8 @@ export function acceptArtifact(
     decision: "approved",
     transition: `accept-${artifact}`,
     subject: { artifact, digest },
+    // The person's own words or reason, as given with the decision.
+    ...(typeof note === "string" && note.trim() !== "" ? { note: note.trim() } : {}),
     by: who.id,
     actor: who,
   });
@@ -530,7 +532,7 @@ export function acceptArtifacts(repoRoot, workId, artifacts, options = {}) {
   const actor = actorFrom({ ...options, repoRoot });
   return unique.map((artifact) => ({
     artifact,
-    ...acceptArtifact(repoRoot, workId, artifact, { ts: options.ts, actor }),
+    ...acceptArtifact(repoRoot, workId, artifact, { ts: options.ts, actor, note: options.note }),
   }));
 }
 

@@ -13,6 +13,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { describeActor, selfMergeApproval } from "./actor.js";
+import { checkPromotions, readResult } from "./closeout.js";
 import { listInbox } from "./decisions.js";
 import { configTargets, directory, discoverRepos, pathLabel, shellArg, workConfigs } from "./overview-repos.js";
 
@@ -247,6 +248,7 @@ export function computeOverview(
         by: item.by ?? null,
         actor: item.actor ?? null,
         who: describeActor(item),
+        ...(typeof item.note === "string" && item.note ? { note: item.note } : {}),
       })),
       ...findingRows.filter((item) => item.kind === "adjudication").map((item) => ({
         ts: item.ts ?? null,
@@ -257,6 +259,7 @@ export function computeOverview(
         by: item.by ?? null,
         actor: item.actor ?? null,
         who: describeActor(item),
+        ...(typeof item.note === "string" && item.note ? { note: item.note } : {}),
       })),
     ].sort((a, b) => String(a.ts ?? "").localeCompare(String(b.ts ?? "")));
     const selfMerge = selfMergeApproval(decisionRows);
@@ -299,6 +302,17 @@ export function computeOverview(
       latest &&
       (latest.status === "RUNNING" || latest.status === "WAITING_HUMAN");
 
+    // A work closes with its result page (closeout.js): the hint names the
+    // page and the command, and a closed work says how many conclusions it
+    // wrote into the project and whether the page changed afterwards.
+    const page = readResult(repoRoot, workId);
+    const closedDigest =
+      closure && typeof closure.subject?.resultDigest === "string"
+        ? closure.subject.resultDigest
+        : null;
+    const resultChanged = Boolean(closedDigest) && page.digest !== closedDigest;
+    const closeOut = `write delivery/work/${workId}/result.md, then buildbeat decide --repo ${repoLabel} --work ${workId} --action close --by <you>`;
+
     let stage;
     let next;
     if (closure && !liveRun) {
@@ -309,6 +323,13 @@ export function computeOverview(
           ? closure.subject.result
           : "see decisions.jsonl";
       next = `${stage.toLowerCase()} @ ${closure.ts ?? "?"}: ${result.slice(0, 160)}`;
+      if (closedDigest) {
+        const written = Array.isArray(closure.subject.promotions)
+          ? closure.subject.promotions.length
+          : 0;
+        next += ` · written into the project: ${written}`;
+        if (resultChanged) next += " · result.md changed after closing";
+      }
     } else if (!intent.exists && (!latest || directory(workDir))) {
       // A work directory without a work description stays NO_INTENT even
       // when it has runs, as in 4.0.0; only a work known solely from
@@ -340,7 +361,7 @@ export function computeOverview(
         next =
           configs.length > 0
             ? `buildbeat run --config ${configPath}`
-            : `no run-config in delivery/work/${workId}: write one, or close it with a decisions.jsonl row {"transition":"close-work","decision":"closed","subject":{"result":"..."}} if it was doc-only`;
+            : `no run-config in delivery/work/${workId}: write one, or, if it was doc-only, close out: ${closeOut}`;
       }
     } else if (latest.status === "RUNNING") {
       stage = "RUNNING";
@@ -358,26 +379,25 @@ export function computeOverview(
       // A release-readback lane that reached wait-close and was approved is
       // a closed release window, not "nothing to merge".
       stage = "RELEASED";
-      next = `release window closed by ${latest.id}; close the work with a decisions.jsonl row {"transition":"close-work","decision":"closed","subject":{"result":"released"}}`;
+      next = `release window closed by ${latest.id}; close out: ${closeOut}`;
     } else if (merged) {
       stage = "MERGED";
       // After the merge: the person releases, the project's readback proves
-      // it, and the window closes on a passing readback. The readback lives
-      // in whichever run config has a release: section; when every config
-      // was read and none has one, `buildbeat release` could only fail, so
-      // the merge is the end of the work. Unreadable or absent configs keep
-      // the generic hint.
+      // it, and the work closes on a passing readback and its result page.
+      // The readback lives in whichever run config has a release: section;
+      // when every config was read and none has one, the work closes out
+      // with its result page alone. Unreadable or absent configs keep the
+      // generic release hint.
       const releaseConfig = configs.find((item) => item.release) ?? null;
       const releasePath = releaseConfig ? pathFor(releaseConfig) : configPath;
       const noReleaseStep =
         configs.length > 0 && !releaseConfig && !configs.some((item) => item.error);
-      const close = `buildbeat decide --repo ${repoLabel} --work ${workId} --action close --result <what was released> --by <you>`;
       next = !readback
         ? noReleaseStep
-          ? "merged; no release readback configured, nothing left to do (add a release: section to the run config to record a readback and close the window)"
-          : `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release it (a human action), then buildbeat release --config ${releasePath}; then ${close}`
+          ? `merged; close out: ${closeOut}`
+          : `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release it (a human action), then buildbeat release --config ${releasePath}; then ${closeOut}`
         : readback.status === "passed"
-          ? `readback passed @ ${readback.ts} (${readback.commit.slice(0, 7)}); close the window: ${close}`
+          ? `readback passed @ ${readback.ts} (${readback.commit.slice(0, 7)}); close the window: ${closeOut}`
           : `latest readback failed @ ${readback.ts} (exit ${readback.exitCode}); fix the release, then buildbeat release --config ${releasePath} again`;
       if (latest.status !== "SUCCEEDED") {
         next += `   # latest run ${latest.id} ended ${latest.status} after the merge`;
@@ -419,6 +439,23 @@ export function computeOverview(
       // session gave itself is flagged on every view.
       ...(work ? { decisions: decisionRows } : {}),
       ...(selfMerge ? { selfMergeApproval: selfMerge } : {}),
+      // The single-work view checks the page's promotion lines against Git
+      // now, closed or not, so a draft shows what closing would refuse.
+      ...(work && (page.exists || closedDigest)
+        ? {
+            result: {
+              exists: page.exists,
+              ...(page.exists
+                ? {
+                    summary: page.summary,
+                    digest: page.digest,
+                    promotions: checkPromotions(repoRoot, workId, page.promotions, { ref: mainRef }),
+                  }
+                : {}),
+              ...(closedDigest ? { changedAfterClose: resultChanged } : {}),
+            },
+          }
+        : {}),
       runs: runs.length,
       cost: runs.length > 0 ? computeWorkCost(repoRoot, workId) : null,
       latest: latest
@@ -525,8 +562,15 @@ export function renderOverview(rows, { decisions = false } = {}) {
       for (const item of row.decisions) {
         const what = [item.transition, item.fingerprint, item.decision].filter(Boolean).join(" ");
         lines.push(
-          `    ${item.ts ?? "?"} ${item.decisionRef ?? "-"} ${what} by ${item.who}`,
+          `    ${item.ts ?? "?"} ${item.decisionRef ?? "-"} ${what} by ${item.who}${item.note ? ` — ${item.note}` : ""}`,
         );
+      }
+    }
+    if (row.result?.exists) {
+      const promotions = row.result.promotions ?? [];
+      lines.push(`  written into the project:${promotions.length ? "" : " none"}`);
+      for (const item of promotions) {
+        lines.push(item.ok ? `    ✓ ${item.path} @ ${item.commit.slice(0, 7)}` : `    ✗ ${item.problem}`);
       }
     }
     lines.push(`  next: ${row.next}`);
