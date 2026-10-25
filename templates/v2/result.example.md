@@ -6,7 +6,7 @@ What was delivered and where (merge commit, version, release), and who confirmed
 - Decisions later readers need, one line each; point to decisions.jsonl or a project document.
 
 ## Left over
-- What was not done and where it went (another work, an issue). Write "none" when nothing is left.
+- What was not done and where it went (another work, an issue). Write "none" when nothing is left. A work that took over a leftover can be linked with a `- related: <work id>` line.
 
 ## Written into the project
 Conclusions that outlive this work, written into the project's own documents and committed before closing: a changed interface or format, a decision later works must follow, an environment fact that will bite again, a project document found wrong or stale, a worker prompt that should change. One line each, in this form:

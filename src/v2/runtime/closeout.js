@@ -23,8 +23,8 @@ const PROMOTION =
 
 // Text lines of a Markdown page outside fenced code and HTML comments, so a
 // template's guidance kept in comments or an example in a code block is
-// neither the summary nor a promotion.
-function textLines(text) {
+// neither the summary nor a promotion (nor a link between works).
+export function textLines(text) {
   const lines = [];
   let fence = null;
   let comment = false;

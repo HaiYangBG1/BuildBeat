@@ -498,7 +498,8 @@ function mark(status) {
   return status.accepted ? "✓" : "draft";
 }
 
-export function renderOverview(rows, { decisions = false } = {}) {
+// extra(row) adds lines under a row before its next step (the work thread).
+export function renderOverview(rows, { decisions = false, extra = null } = {}) {
   if (rows.length === 0) {
     return "overview: no work items under delivery/work";
   }
@@ -573,6 +574,7 @@ export function renderOverview(rows, { decisions = false } = {}) {
         lines.push(item.ok ? `    ✓ ${item.path} @ ${item.commit.slice(0, 7)}` : `    ✗ ${item.problem}`);
       }
     }
+    if (extra) lines.push(...extra(row));
     lines.push(`  next: ${row.next}`);
   }
   return lines.join("\n");
