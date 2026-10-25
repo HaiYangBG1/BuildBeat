@@ -1,0 +1,1 @@
+{"ts":"2026-10-25T06:38:43.562Z","decisionRef":"A-WORK-TEAM-ENTRY-1","decision":"approved","transition":"accept-work","subject":{"artifact":"work","digest":"sha256:dbcfa4b9063e426fb3c421e1ba2529abbecb94a1d96baa9f94a25f96a639b8af"},"note":"所有者说「先做完，再说合并的事」：会话按推荐接受，开工前四项都按推荐","by":"claude-code","actor":{"kind":"agent","id":"claude-code","source":"env"}}
