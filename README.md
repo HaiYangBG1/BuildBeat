@@ -67,6 +67,8 @@ BuildBeat 面向人和 AI 会话，把要做的事、做到哪、定过什么都
 
 想自己动手一步步装，见[快速开始](docs/v2/guide/01-quickstart.md)。
 
+不想装 Node 或运行时？只用 Skill 和项目文件也行，见[只用 Skill 和项目文件](docs/v2/guide/12-without-runtime.md)。
+
 ## 用起来是什么样
 
 **第一次用**

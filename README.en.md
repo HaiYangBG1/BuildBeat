@@ -67,6 +67,8 @@ Once it's set up, just talk to it; common situations are under "What it looks li
 
 To install step by step yourself, see the [quickstart](docs/v2/guide/01-quickstart.en.md).
 
+No Node or runtime? Skill and project files alone work too; see [Skill and project files only](docs/v2/guide/12-without-runtime.en.md).
+
 ## What it looks like
 
 **First time**
