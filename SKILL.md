@@ -11,20 +11,21 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 
 先跑 `buildbeat --version`，按结果选命令：
 
-- 4.x：按下文操作，但合并决定点的两种修复入口有下述版本限制。
+- 5.x：按下文操作。
+- 4.x：大部分照下文，但下面几条写明要 5.0 的，4.x 没有；合并决定点的两种修复入口另有 4.2 的限制。升级到 5.0 前看[迁移说明](docs/MIGRATION.md)的「4.x → 5.0」。
 - 3.x：下文的 `run`、`status --work`、`decide`、`check`、`history` 和 `work.md` 在 3.x 不存在，沿用项目现有的 3.x 写法：`intent.md` + `plan.md`，分别 `accept --artifact intent` 与 `accept --artifact plan`；`start --config <config> --attempt new` 开工，`resume --config <config> [--run <RUN>] [--adopt <sha> --by <name>]` 续跑；`overview`、`inbox`、`status --run <RUN>` 看进度；`approve --transition <t>` / `reject --reason <why>` 决定；`findings adjudicate` 裁决问题；`doctor` 检查配置；run-config 保留 `workflow:` 与 `riskPreset:`。
 - 3.x 的活动 Run 只能用 3.x 运行时完成或取消。升级到 4.x 前先问用户，并按[迁移说明](docs/MIGRATION.md)处理。
 - 没有运行时：按[只用 Skill 和项目文件](docs/v2/guide/12-without-runtime.md)干活，这是一种完整的用法，不是降级。照下文写 `work.md`，模板用项目里的 `delivery/templates/`，没有就用 Skill 自带的 `templates/v2/`；用户同意后照指南格式手写接受行，摘要用 `shasum -a 256` 算；按平常的方式改代码、测试、提交，提交信息带 `Work: <ID>`；合并后写 `result.md`，写回的结论先提交再记 `路径 @ 提交`，并用 Git 自查提交在主干上、改了那个文件；最后手写关窗行。现状里的指针用 `git diff <标题里的提交> HEAD -- <路径>` 自查。自己跑的测试照实说是自己跑的；不得代批 Run，不得声称运行时的验证、审查、回读或写回核对已经通过。
 
 合并决定点的 `run --adopt`、`decide --action fix` 与批准命令的 `--candidate` 候选绑定要求运行时 4.2 或更高版本。
 
-关系行（`follows` / `split from` / `related` / `ref`）、`status --work` 列出的工作串线和 `status --ref`，需要包含这项改动的运行时；更早的运行时只能读工作说明的正文。
+关系行（`follows` / `split from` / `related` / `ref`）、`status --work` 列出的工作串线和 `status --ref`，需要运行时 5.0 或更高版本；更早的运行时只能读工作说明的正文。
 
-`history --path`（从代码找回工作）和 `delivery/` 被 Git 忽略时的提醒，需要包含这项改动的运行时；更早的运行时上，只能读提交信息和 `delivery/work/*/runs/*/run-record.json` 里每一轮的起点与候选来判断。
+`history --path`（从代码找回工作）和 `delivery/` 被 Git 忽略时的提醒，需要运行时 5.0 或更高版本；更早的运行时上，只能读提交信息和 `delivery/work/*/runs/*/run-record.json` 里每一轮的起点与候选来判断。
 
-现状比对（`status --work` 的 `facts:` 块，`accept` 和 `check` 的 `warning: facts …`）需要包含这项改动的运行时；更早的运行时上，用 `git diff <标题里的提交> HEAD -- <路径>` 自己对。
+现状比对（`status --work` 的 `facts:` 块，`accept` 和 `check` 的 `warning: facts …`）需要运行时 5.0 或更高版本；更早的运行时上，用 `git diff <标题里的提交> HEAD -- <路径>` 自己对。
 
-关窗要求 `result.md`、核对写回行、`--note` 需要包含收口改动的运行时。4.2.3 及更早的运行时关窗仍要求上线回读通过并必须带 `--result`，不读 `result.md`；这时照样写 `result.md`，但不能声称写回行已由运行时核对。
+关窗要求 `result.md`、核对写回行、`--note` 需要运行时 5.0 或更高版本。4.x 的运行时关窗仍要求上线回读通过并必须带 `--result`，不读 `result.md`；这时照样写 `result.md`，但不能声称写回行已由运行时核对。
 
 ## 会话操作
 

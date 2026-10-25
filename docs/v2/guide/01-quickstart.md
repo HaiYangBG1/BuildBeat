@@ -1,6 +1,6 @@
 # 快速开始
 
-安装运行时：`npm install --global @haiyangbg/buildbeat@latest`（Node ≥ 20）。从 3.x 升级前，先用原来的 3.x 运行时完成或取消仍在进行的 Run，见[迁移说明](../../MIGRATION.md)；不要在 Run 进行中替换运行时。
+安装运行时：`npm install --global @haiyangbg/buildbeat@latest`（Node ≥ 20）。从 3.x 升级前，先用原来的 3.x 运行时完成或取消仍在进行的 Run，见[迁移说明](../../MIGRATION.md)；不要在 Run 进行中替换运行时。从 4.x 升到 5.0，先看迁移说明里的「4.x → 5.0」：关窗前要先写 `result.md`。
 
 1. 检查 Node ≥20、Git、Bash 和已鉴权的 AI 工具；保留项目自己的规范。
 2. 模板随 npm 包安装在 `$(npm root -g)/@haiyangbg/buildbeat/templates/`。将其中 `v2/AGENTS.md`、`v2/CLAUDE.md` 按工具装载方式放入项目；从 `gitignore.template`（在 `templates/` 下，不在 `v2/` 里）复制运行时排除项。`delivery/` 要跟代码一起进 Git，不要在 `.gitignore` 或 `.git/info/exclude` 里排除它。

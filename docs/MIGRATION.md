@@ -3,6 +3,28 @@
 Status: applies to 4.0.0 and later. Installing the runtime changes no project
 file; finish or cancel 3.x runs still in progress with their 3.x runtime first.
 
+## 4.x → 5.0 / 升到 5.0
+
+Installing 5.0 changes no project file. The workflow, the engine and the run
+ledger only gained additions (an `agent` actor kind, the decider kept on each
+decision), so runs started under 4.x carry on under 5.0. Do not go back to 4.x
+for a run 5.0 has recorded decisions in. What changes for people and sessions:
+
+- Closing a work needs `delivery/work/<ID>/result.md` (template
+  `templates/v2/result.example.md`). A work without a release readback closes
+  with the page alone; a work with one still needs a passing readback first.
+  `- <path> @ <commit>` lines in it are checked against Git. Works closed under
+  4.x stay closed.
+- Decisions record who made them. Without `--as`, a decision made inside an AI
+  coding tool is the session's; a session relaying a person's decision passes
+  `--as human --by <name>`. Older rows show as "identity not recorded".
+- Projects that keep copies of the templates take the new `work.example.md`
+  (eight sections) and `result.example.md` by hand, and re-copy
+  `templates/v2/envelope/worker.sh` so mechanical commits carry `Work: <ID>`.
+- `delivery/` belongs in Git; `accept` and `check` warn when it is ignored.
+- 关窗前先写 `result.md`；会话转达人的决定时加 `--as human --by <名字>`；
+  项目里拷过的模板和信封按需重新拷；`delivery/` 跟代码一起进 Git。
+
 ## Existing work / 存量工作
 
 - Keep candidate branches, raw logs, decisions, findings and run-record.json.

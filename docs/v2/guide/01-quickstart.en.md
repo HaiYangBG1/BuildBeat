@@ -1,6 +1,6 @@
 # Quickstart
 
-Install the runtime: `npm install --global @haiyangbg/buildbeat@latest` (Node ≥ 20). Before upgrading from 3.x, finish or cancel runs still in progress with their original 3.x runtime, see [Migration](../../MIGRATION.md); never replace a runtime underneath an active run.
+Install the runtime: `npm install --global @haiyangbg/buildbeat@latest` (Node ≥ 20). Before upgrading from 3.x, finish or cancel runs still in progress with their original 3.x runtime, see [Migration](../../MIGRATION.md); never replace a runtime underneath an active run. When upgrading from 4.x to 5.0, read "4.x → 5.0" in the migration note first: closing a work needs `result.md`.
 
 1. Check Node ≥20, Git, Bash and an authenticated AI tool. Keep project-owned instructions.
 2. The templates ship with the npm package under `$(npm root -g)/@haiyangbg/buildbeat/templates/`. Install `v2/AGENTS.md` and `v2/CLAUDE.md` according to the tool's loading rules; copy runtime exclusions from `gitignore.template` (in `templates/`, not in `v2/`). `delivery/` goes into Git with the code; do not exclude it in `.gitignore` or `.git/info/exclude`.
