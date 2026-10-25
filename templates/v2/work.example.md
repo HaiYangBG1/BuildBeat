@@ -15,6 +15,7 @@ Link related works and external ids one per line; status strings linked works in
 ## Facts checked (<date>, on <commit>)
 - Confirmed: what the code, configuration, records or a command showed, each with where it came from (file, commit, command output).
 - To confirm: what nobody has seen yet, and who confirms it when (during the run, after the release, a person).
+Write the commit you checked on in this heading and point at code as `path`, `path:<line>` or `path:<line>-<line>` in backticks (the tail of a path is enough when it names one file); status --work compares that code with the code the work starts from and lists what changed.
 
 ## Scope
 In: the changes this work makes.

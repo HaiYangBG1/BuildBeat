@@ -9,7 +9,7 @@ may be written by hand.
 
 | Capability | Current implementation | Boundary |
 |---|---|---|
-| Work context | work.md (why now, facts checked with sources, decisions before starting), accepted digest, decisions with the person's own words, candidate and evidence; result.md at closing; lines of code traced back to their works (`history --path`: recorded run ranges, `Work:` trailers, work folders); related works strung into one thread across repositories (`follows` / `split from` / `related` / `ref` lines; `status --work`, `status --ref`) | Chat discussions must be saved explicitly; records kept out of Git cannot be found elsewhere |
+| Work context | work.md (why now, facts checked with sources, decisions before starting), accepted digest, decisions with the person's own words, candidate and evidence; result.md at closing; lines of code traced back to their works (`history --path`: recorded run ranges, `Work:` trailers, work folders); related works strung into one thread across repositories (`follows` / `split from` / `related` / `ref` lines; `status --work`, `status --ref`); code the facts point at (`path:<start>-<end>` under a heading naming the commit checked on) compared with where the work starts, in `status --work` and as `accept` / `check` warnings | Chat discussions must be saved explicitly; records kept out of Git cannot be found elsewhere |
 | Delivery loop | Fixed build/verify/review/fix flow | External CLI tools do the actual work |
 | Recovery | Run/step ledger, resume, manual candidate adoption, stale locks | Active runtime is not transferred by Git clone |
 | Trusted result | Real command evidence, current candidate, read-only review | Script tests do not prove real AI business capability |
