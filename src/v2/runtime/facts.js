@@ -57,20 +57,33 @@ export function parseFacts(text) {
   return sections;
 }
 
-function git(repoRoot, args) {
-  return execFileSync("git", ["--literal-pathspecs", "-C", repoRoot, ...args], {
+// Each Git call costs a process start (about 0.17 s on the pilot's largest
+// checkout), so a work's facts take a fixed handful of calls, not one per
+// pointer.
+function git(repoRoot, args, input = null) {
+  return execFileSync("git", ["--literal-pathspecs", "-C", repoRoot, "-c", "core.quotePath=false", ...args], {
     encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
+    input: input ?? undefined,
+    stdio: [input === null ? "ignore" : "pipe", "pipe", "ignore"],
     maxBuffer: 256 * 1024 * 1024,
   });
 }
 
-function commitOf(repoRoot, name) {
+// Names resolved to commits in one call; a name that is no commit here maps
+// to null.
+function commitsOf(repoRoot, names) {
+  if (!names.length) return [];
+  let out = "";
   try {
-    return git(repoRoot, ["rev-parse", "--verify", "--quiet", `${name}^{commit}`]).trim() || null;
+    out = git(repoRoot, ["cat-file", "--batch-check=%(objectname) %(objecttype)"], names.map((name) => `${name}^{commit}`).join("\n") + "\n");
   } catch {
-    return null;
+    return names.map(() => null);
   }
+  const lines = out.split("\n");
+  return names.map((_, index) => {
+    const [object, type] = (lines[index] ?? "").split(" ");
+    return type === "commit" ? object : null;
+  });
 }
 
 // The base the latest run started from, from its ledger here or its record.
@@ -100,17 +113,57 @@ function locate(pointer, files, dirs) {
   return pointer.path.includes("/") || pointer.lines ? { reason: "no file" } : null;
 }
 
-// Whether a unified diff (-U0) touches lines start..end of the old file. A
-// hunk replaces old lines a..a+n-1; a pure insertion (n = 0) after line a
-// lands inside the range when start <= a < end. Lines moving because of
-// edits above them are not a change.
-function touches(diff, [start, end]) {
-  for (const match of diff.matchAll(/^@@ -(\d+)(?:,(\d+))? /gm)) {
-    const at = Number(match[1]);
-    const count = match[2] === undefined ? 1 : Number(match[2]);
-    if (count === 0 ? start <= at && at < end : at <= end && at + count - 1 >= start) return true;
+// The hunks of a -U0 patch for each file in it. Renames are off, so the
+// header names the same path on both sides ("diff --git a/<p> b/<p>").
+function patchFiles(patch) {
+  const files = new Map();
+  let current = null;
+  for (const line of patch.split("\n")) {
+    if (line.startsWith("diff --git a/")) {
+      const names = line.slice("diff --git a/".length);
+      const half = (names.length - 3) / 2;
+      const path = Number.isInteger(half) && names.slice(half) === ` b/${names.slice(0, half)}` ? names.slice(0, half) : null;
+      current = path === null ? null : { hunks: [], binary: false };
+      if (path !== null) files.set(path, current);
+      continue;
+    }
+    if (!current) continue;
+    const hunk = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(line);
+    if (hunk) {
+      current.hunks.push({
+        at: Number(hunk[1]), count: hunk[2] === undefined ? 1 : Number(hunk[2]),
+        to: Number(hunk[3]), size: hunk[4] === undefined ? 1 : Number(hunk[4]),
+      });
+    } else if (line.startsWith("Binary files ")) {
+      current.binary = true;
+    }
   }
-  return false;
+  return files;
+}
+
+// Whether a file's change touches lines start..end of the old side. A hunk
+// replaces old lines at..at+count-1; a pure insertion (count 0) after line
+// `at` lands inside the range when start <= at < end. Lines moving because of
+// edits above them are not a change. A binary change has no hunks to compare
+// lines with and counts; a change of mode alone leaves the lines as they were.
+function touches(file, [start, end]) {
+  if (file.binary) return true;
+  return file.hunks.some(({ at, count }) => (count === 0 ? start <= at && at < end : at <= end && at + count - 1 >= start));
+}
+
+// Lines start..end of the old side, carried over to the new side: moved by
+// the hunks above them, widened to a hunk that replaces them.
+function follow(file, [start, end]) {
+  const carry = (line, last) => {
+    let shift = 0;
+    for (const { at, count, to, size } of file.hunks) {
+      if (count > 0 && at <= line && line <= at + count - 1) return last ? to + Math.max(size, 1) - 1 : to;
+      if (count > 0 ? at + count - 1 < line : at < line) shift += size - count;
+    }
+    return line + shift;
+  };
+  const from = carry(start, false);
+  return [from, Math.max(from, carry(end, true))];
 }
 
 // The facts of one work compared with `against`: null when its description
@@ -121,10 +174,14 @@ export function checkFacts(repoRoot, workId, { against = "HEAD", label = "HEAD" 
   const file = existsSync(join(dir, "work.md")) ? "work.md" : existsSync(join(dir, "intent.md")) ? "intent.md" : null;
   if (!file) return null;
   const sections = parseFacts(readFileSync(join(dir, file), "utf8"));
-  let section = null;
+  if (!sections.length) return null;
+  const names = sections.flatMap((item) => item.commits);
+  const resolved = commitsOf(repoRoot, [...names, against]);
+  const target = resolved.pop();
   let pin = null;
+  let section = null;
   for (const item of sections) {
-    pin = item.commits.map((name) => commitOf(repoRoot, name)).find(Boolean) ?? null;
+    pin = item.commits.map((name) => resolved[names.indexOf(name)]).find(Boolean) ?? null;
     if (pin) {
       section = item;
       break;
@@ -133,7 +190,6 @@ export function checkFacts(repoRoot, workId, { against = "HEAD", label = "HEAD" 
   if (!pin) {
     return sections.some((item) => item.pointers.length) ? { file, checkedOn: null, against: null, pointers: [] } : null;
   }
-  const target = commitOf(repoRoot, against);
   if (!target) return null;
   const files = new Set(git(repoRoot, ["ls-tree", "-r", "--name-only", "-z", pin]).split("\0").filter(Boolean));
   const dirs = new Set();
@@ -157,38 +213,44 @@ export function checkFacts(repoRoot, workId, { against = "HEAD", label = "HEAD" 
     const fields = git(repoRoot, ["diff", "--name-status", "--no-renames", "-z", pin, target, "--", ...paths]).split("\0");
     for (let at = 0; at + 1 < fields.length; at += 2) status.set(fields[at + 1], fields[at]);
   }
-  const diffs = new Map();
-  const history = new Map();
+  // Lines pointed at are compared on the diff between the two commits.
+  const lined = [...new Set(pointers.filter((item) => !item.state && item.lines && status.has(item.path) && status.get(item.path) !== "D").map((item) => item.path))];
+  const diff = lined.length
+    ? patchFiles(git(repoRoot, ["diff", "-U0", "--no-color", "--no-ext-diff", "--no-renames", pin, target, "--", ...lined]))
+    : new Map();
   for (const item of pointers) {
     if (item.state) continue;
     const kind = status.get(item.path);
-    if (!kind) {
-      item.state = "same";
-      continue;
-    }
-    if (kind === "D") {
-      item.state = "not found";
-      item.reason = `not in ${label}`;
-      continue;
-    }
-    if (item.lines) {
-      if (!diffs.has(item.path)) diffs.set(item.path, git(repoRoot, ["diff", "-U0", "--no-color", "--no-ext-diff", "--no-renames", pin, target, "--", item.path]));
-      const diff = diffs.get(item.path);
-      // A binary change has no hunks to compare lines with: count it. A
-      // change of mode alone has none either and leaves the lines as they were.
-      item.state = /^Binary files /m.test(diff) || touches(diff, item.lines) ? "changed" : "elsewhere";
-    } else {
-      item.state = "changed";
-    }
-    if (item.state === "changed") {
-      if (!history.has(item.path)) {
-        history.set(item.path, git(repoRoot, ["log", "--format=%H%x1f%s", `${pin}..${target}`, "--", item.path]).split("\n").filter(Boolean));
-      }
-      const commits = history.get(item.path);
-      item.commits = commits.length;
-      if (commits.length) {
-        const [commit, subject] = commits[0].split("\x1f");
-        item.latest = { commit, subject };
+    if (!kind) item.state = "same";
+    else if (kind === "D") Object.assign(item, { state: "not found", reason: `not in ${label}` });
+    else if (!item.lines) item.state = "changed";
+    else item.state = !diff.has(item.path) || touches(diff.get(item.path), item.lines) ? "changed" : "elsewhere";
+  }
+  // The commits that changed what each changed pointer names, oldest first:
+  // any commit touching the file, or, with lines, a commit touching those
+  // lines as they stood just before it. A change made only in a merge is
+  // not counted.
+  const changed = pointers.filter((item) => item.state === "changed");
+  if (changed.length) {
+    const walk = git(repoRoot, [
+      "log", "--no-merges", "--topo-order", "--reverse", "-p", "-U0", "--no-color", "--no-ext-diff", "--no-renames",
+      "--format=%x1e%H%x1f%s", `${pin}..${target}`, "--", ...new Set(changed.map((item) => item.path)),
+    ]);
+    const ranges = new Map(changed.map((item) => [item, item.lines]));
+    for (const item of changed) item.commits = 0;
+    for (const record of walk.split("\x1e").slice(1)) {
+      const newline = record.indexOf("\n");
+      const [commit, subject] = (newline < 0 ? record : record.slice(0, newline)).split("\x1f");
+      const touched = patchFiles(newline < 0 ? "" : record.slice(newline + 1));
+      for (const item of changed) {
+        const change = touched.get(item.path);
+        if (!change) continue;
+        const range = ranges.get(item);
+        if (!range || touches(change, range)) {
+          item.commits += 1;
+          item.latest = { commit, subject };
+        }
+        if (range) ranges.set(item, follow(change, range));
       }
     }
   }

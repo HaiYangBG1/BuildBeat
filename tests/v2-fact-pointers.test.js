@@ -44,7 +44,8 @@ const CONFIG = ["repo: ../../..", "work: W", "run: RUN-W", "allowedPaths:", "  -
   "    command: bash", "    args:", "      - -lc", "      - \"true\""];
 
 // Code checked on `pin`, a work whose facts point at it, then a commit that
-// moves, edits, inserts into and deletes the code pointed at.
+// moves, edits, inserts into and deletes the code pointed at, and a later one
+// that edits only line 17 (moved to 21 by then) and the end of util.js.
 function fixture() {
   const root = realpathSync(tempDir("bb-facts-"));
   git(root, "init", "-q", "-b", "main");
@@ -61,6 +62,7 @@ function fixture() {
     `## Facts checked (2026-10-25, on ${pin.slice(0, 7)})`,
     "- `src/app.js:5-7` reads the flag; `app.js:15` logs it.",
     "- `src/app.js:10-12` and `src/app.js:12` handle errors; `./src/app.js:5-7` again.",
+    "- `src/app.js:17` retries.",
     "- `src/lib/util.js` formats; `docs/a.md` explains; `src/gone.js` is old.",
     "- `config.yml`, `src/missing.js:3`, `src/lib/`, `session.validate`, `--json` and `https://example.com/x.js`.",
     "```", "- `src/app.js:1`", "```",
@@ -78,7 +80,11 @@ function fixture() {
   write(root, "src/lib/util.js", `${numbered("util", 6).join("\n")}\n`);
   rmSync(join(root, "src/gone.js"));
   const change = commit(root, "change the code");
-  return { root, pin, change };
+  app[20] = "app line 17 changed later";
+  write(root, "src/app.js", `${app.join("\n")}\n`);
+  write(root, "src/lib/util.js", `${numbered("util", 7).join("\n")}\n`);
+  const later = commit(root, "change line 17 and util again");
+  return { root, pin, change, later };
 }
 
 test("only the section whose heading names a commit is read, outside code and comments", () => {
@@ -107,7 +113,7 @@ test("only the section whose heading names a commit is read, outside code and co
 });
 
 test("status --work compares the code pointed at with HEAD before the first run, line by line", () => {
-  const { root, pin, change } = fixture();
+  const { root, pin, change, later } = fixture();
   const facts = row(root, "W").facts;
   assert.equal(facts.checkedOn, pin);
   assert.equal(facts.against, "HEAD");
@@ -116,6 +122,7 @@ test("status --work compares the code pointed at with HEAD before the first run,
     ["app.js:15", "src/app.js", "elsewhere"], // lines moved by edits above, not edited
     ["src/app.js:10-12", "src/app.js", "changed"], // a line inserted inside the range
     ["src/app.js:12", "src/app.js", "elsewhere"], // a line inserted right after it
+    ["src/app.js:17", "src/app.js", "changed"], // moved down by four, then edited
     ["src/lib/util.js", "src/lib/util.js", "changed"], // no lines: any change counts
     ["docs/a.md", "docs/a.md", "same"],
     ["src/gone.js", "src/gone.js", "not found"],
@@ -123,15 +130,23 @@ test("status --work compares the code pointed at with HEAD before the first run,
     ["src/missing.js:3", null, "not found"],
   ]);
   assert.deepEqual(facts.pointers[0].lines, [5, 7]);
-  assert.equal(facts.pointers[0].commits, 1);
-  assert.deepEqual(facts.pointers[0].latest, { commit: change, subject: "change the code" });
+  // Commits are those that changed the lines pointed at, followed as they
+  // move; the later commit edits other lines of the file and is not one of
+  // them for 5-7 and 10-12. Without lines, every commit to the file counts.
+  const by = (text) => facts.pointers.find((item) => item.text === text);
+  assert.deepEqual([by("src/app.js:5-7").commits, by("src/app.js:5-7").latest], [1, { commit: change, subject: "change the code" }]);
+  assert.deepEqual([by("src/app.js:10-12").commits, by("src/app.js:10-12").latest.commit], [1, change]);
+  assert.deepEqual([by("src/app.js:17").commits, by("src/app.js:17").latest.commit], [1, later]);
+  assert.deepEqual([by("src/lib/util.js").commits, by("src/lib/util.js").latest.commit], [2, later]);
   const short = pin.slice(0, 7);
-  const latest = `(1 commit, latest ${change.slice(0, 7)} change the code)`;
+  const first = `(1 commit, latest ${change.slice(0, 7)} change the code)`;
+  const again = `latest ${later.slice(0, 7)} change line 17 and util again)`;
   assert.deepEqual(block(cli(root, "status", "--repo", ".", "--work", "W")), [
-    `  facts: checked on ${short}, compared with HEAD: 9 pointers, 3 changed, 2 changed elsewhere in the file, 3 not found`,
-    `    changed  src/app.js:5-7  ${latest}`,
-    `    changed  src/app.js:10-12  ${latest}`,
-    `    changed  src/lib/util.js  ${latest}`,
+    `  facts: checked on ${short}, compared with HEAD: 10 pointers, 4 changed, 2 changed elsewhere in the file, 3 not found`,
+    `    changed  src/app.js:5-7  ${first}`,
+    `    changed  src/app.js:10-12  ${first}`,
+    `    changed  src/app.js:17  (1 commit, ${again}`,
+    `    changed  src/lib/util.js  (2 commits, ${again}`,
     "    not found  src/gone.js  (not in HEAD)",
     `    not found  config.yml  (matches 2 files at ${short})`,
     `    not found  src/missing.js:3  (no file at ${short})`,
@@ -140,8 +155,8 @@ test("status --work compares the code pointed at with HEAD before the first run,
 
 test("accept and check warn when code the facts point at changed; check uses the run config's base", () => {
   const { root, pin } = fixture();
-  const warning = `warning: facts in delivery/work/W/work.md were checked on ${pin.slice(0, 7)}; 4 referenced places changed since: ` +
-    "src/app.js:5-7, src/app.js:10-12, src/lib/util.js, src/gone.js; re-check them before starting";
+  const warning = `warning: facts in delivery/work/W/work.md were checked on ${pin.slice(0, 7)}; 5 referenced places changed since: ` +
+    "src/app.js:5-7, src/app.js:10-12, src/app.js:17, src/lib/util.js, src/gone.js; re-check them before starting";
   assert.ok(cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner").split("\n").includes(warning));
   assert.ok(cli(root, "check", "--config", "delivery/work/W/run-config.yaml").split("\n").includes(warning));
   // A run config whose base is the commit the facts were checked on: nothing changed.
@@ -161,7 +176,7 @@ test("after a run the facts are compared with its base; a closed work has no fac
   assert.equal(facts.against, "base of RUN-W-01");
   assert.equal(facts.pointers.find((item) => item.path === "docs/a.md").state, "same");
   assert.match(cli(root, "status", "--repo", ".", "--work", "W"),
-    new RegExp(`^ {2}facts: checked on ${pin.slice(0, 7)}, compared with base of RUN-W-01: 9 pointers, 3 changed,`, "m"));
+    new RegExp(`^ {2}facts: checked on ${pin.slice(0, 7)}, compared with base of RUN-W-01: 10 pointers, 4 changed,`, "m"));
 
   cli(root, "decide", "--repo", ".", "--run", "RUN-W-01", "--action", "reject", "--reason", "done elsewhere", "--by", "owner");
   appendFileSync(join(root, "delivery/work/W/decisions.jsonl"),
