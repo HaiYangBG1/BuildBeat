@@ -370,12 +370,20 @@ test("a merged work closes only after a passing release readback", () => {
   assert.ok(existsSync(join(f.root, passed.log)));
   assert.match(overview().next, /readback passed/);
 
+  // A passing readback is not enough on its own: the work closes with its
+  // result page, and the readback stays bound to the close decision.
+  const pageless = f.call("decide", "--repo", ".", "--work", "WORK-S", "--action", "close", "--result", "released 1.0", "--by", "owner");
+  assert.notEqual(pageless.status, 0);
+  assert.match(pageless.stderr, /closing a work needs delivery\/work\/WORK-S\/result\.md \(template: templates\/v2\/result\.example\.md\)/);
+  writeFileSync(join(f.dir, "result.md"), "# WORK-S result\n\nReleased 1.0 and read back.\n");
   f.ok("decide", "--repo", ".", "--work", "WORK-S", "--action", "close", "--result", "released 1.0", "--by", "owner");
   const decisions = readFileSync(join(f.dir, "decisions.jsonl"), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
   const closed = decisions.at(-1);
   assert.equal(closed.transition, "close-work");
   assert.equal(closed.subject.readback, passed.digest);
   assert.equal(closed.subject.result, "released 1.0");
+  assert.match(closed.subject.resultDigest, /^sha256:[0-9a-f]{64}$/);
+  assert.deepEqual(closed.subject.promotions, []);
   assert.equal(overview().stage, "CLOSED");
   const again = f.call("decide", "--repo", ".", "--work", "WORK-S", "--action", "close", "--result", "again");
   assert.match(again.stderr, /already closed/);
@@ -401,9 +409,15 @@ test("records written by hand under the without-runtime guide are honoured by th
   f.ok("run", "--config", f.config);
   assert.equal(f.state("RUN-S-01").pendingHuman.transition, "enter-wait-merge");
   f.ok("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "reject", "--reason", "documentation only");
-  // A Work that needs no release closes with the guide's close-work line.
+  // A Work that needs no release closes with the guide's close-work line,
+  // bound to its result page by the page's SHA-256.
+  writeFileSync(join(f.dir, "result.md"), "# WORK-S result\n\nDocs only.\n");
   const close = JSON.parse(guide.match(/`(\{[^`]*"close-work"[^`]*\})`/)[1]);
   close.subject.result = "docs only";
+  close.subject.resultDigest = close.subject.resultDigest.replace(
+    /<[^<>]*>/,
+    createHash("sha256").update(readFileSync(join(f.dir, "result.md"))).digest("hex"),
+  );
   close.by = "owner";
   writeFileSync(
     join(f.dir, "decisions.jsonl"),
@@ -411,7 +425,7 @@ test("records written by hand under the without-runtime guide are honoured by th
   );
   const closed = JSON.parse(f.ok("status", "--repo", ".", "--work", "WORK-S", "--json")).works[0];
   assert.equal(closed.stage, "CLOSED");
-  assert.match(closed.next, /docs only/);
+  assert.match(closed.next, /: docs only · written into the project: 0$/);
 });
 
 test("images that are empty, mislabelled or symlinked are not screenshots", () => {

@@ -9,7 +9,7 @@ may be written by hand.
 
 | Capability | Current implementation | Boundary |
 |---|---|---|
-| Work context | work.md, accepted digest, decisions, candidate and evidence | Chat discussions must be saved explicitly |
+| Work context | work.md (why now, facts checked with sources, decisions before starting), accepted digest, decisions with the person's own words, candidate and evidence; result.md at closing; lines of code traced back to their works (`history --path`: recorded run ranges, `Work:` trailers, work folders); related works strung into one thread across repositories (`follows` / `split from` / `related` / `ref` lines; `status --work`, `status --ref`) | Chat discussions must be saved explicitly; records kept out of Git cannot be found elsewhere |
 | Delivery loop | Fixed build/verify/review/fix flow | External CLI tools do the actual work |
 | Recovery | Run/step ledger, resume, manual candidate adoption, stale locks | Active runtime is not transferred by Git clone |
 | Trusted result | Real command evidence, current candidate, read-only review | Script tests do not prove real AI business capability |
@@ -17,7 +17,7 @@ may be written by hand.
 | Efficiency | Verify cache, review range hints, parallel Work isolation | External test state must be isolated and stable |
 | Feedback | Unified status/cost/decisions, also across a main repository and its code repositories (`--all-repos`), liveness, webhook/DingTalk | Notifications do not approve |
 | UI evidence | `requireScreenshot`: screenshots from verify, bound to the candidate and required at merge | The project's verify renders and captures |
-| Release closeout | `release` records the project's readback in the Work; `decide --action close` on a passing readback | No deployment; observation stays with project monitoring |
+| Closeout | Every work closes with result.md bound by digest; "path @ commit" lines for conclusions written into project documents are checked against Git; a work with a release also needs a passing `release` readback | No deployment; observation stays with project monitoring; the runtime checks the page, it does not write it |
 | Maintenance | Check, history/replay, safe gc | Not a production monitoring service |
 
 The runtime has no account service, telemetry, remote project database, hosted

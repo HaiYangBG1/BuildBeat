@@ -147,10 +147,12 @@ if find "$INSTALL_PATH" -type l -print -quit | grep -q .; then
 fi
 cmp -s "$REPO_ROOT/SKILL.md" "$INSTALL_PATH/SKILL.md" \
   || fail "installed root skill differs from the canonical SKILL.md"
-cmp -s \
-  "$REPO_ROOT/templates/v2/work.example.md" \
-  "$INSTALL_PATH/templates/v2/work.example.md" \
-  || fail "installed templates differ from the canonical repository source"
+for template in work.example.md result.example.md; do
+  cmp -s \
+    "$REPO_ROOT/templates/v2/$template" \
+    "$INSTALL_PATH/templates/v2/$template" \
+    || fail "installed templates differ from the canonical repository source: $template"
+done
 [ ! -e "$INSTALL_PATH/templates/standards" ] || fail "retired governance templates are still installed by default"
 pass "cached plugin is self-contained, dereferenced, and excludes retired templates and the CLI bin"
 

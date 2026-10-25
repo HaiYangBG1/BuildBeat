@@ -153,6 +153,7 @@ your-project/
 │           ├── decisions.jsonl     accept, approve, close and other decisions
 │           ├── review-findings.jsonl  problems the review found and your rulings
 │           ├── releases.jsonl      checks after going live (only if used)
+│           ├── result.md           written at closing: what was delivered, what is left, what went into project docs
 │           └── runs/RUN-X-01/
 │               └── run-record.json this run's outcome, evidence and cost
 └── .buildbeat/
@@ -161,7 +162,7 @@ your-project/
     └── worktrees/                  this machine only: isolated copies the AI works in
 ```
 
-- `delivery/` goes into Git: switching sessions, tools, computers or people just means pulling the code and carrying on
+- `delivery/` goes into Git: switching sessions, tools, computers or people just means pulling the code and carrying on; do not exclude it in `.gitignore` or `.git/info/exclude`
 - `.buildbeat/runtime/` and `.buildbeat/worktrees/` stay on this machine: a run in progress does not travel with Git, so finish or stop it where it started
 - People and AI tools without BuildBeat installed can still read these files and draft `work.md`
 

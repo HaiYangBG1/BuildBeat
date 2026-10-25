@@ -43,6 +43,7 @@ Shell changes should also pass `bash -n` and ShellCheck. Workflow changes should
 
 When workflow semantics change, update `SKILL.md`, the affected templates, both READMEs, and tests together. When a documented sample changes, make sure a test still parses or runs it (`tests/v2-templates-firstrun.test.js` covers the run-config samples).
 - Add regression evidence and call out compatibility, migration, security, and rollback boundaries.
+- To read structured lines (promotion, relation and ref lines and the like) out of a Markdown page, use `textLines` in `src/v2/runtime/closeout.js`. It follows Markdown's rules for fenced and indented code, inline code spans, backslash escapes and HTML comments that open mid-line or span lines; do not write another line scanner. Three review rounds of one work went to edge cases a hand-written scanner had missed.
 - `lessons.md` and `evals/` take real incidents only: an eval is added red first, then made green by the fix. Do not add lessons for hypothetical failures.
 - Never include credentials, private project source, personal data, company or internal-system names, or local paths.
 

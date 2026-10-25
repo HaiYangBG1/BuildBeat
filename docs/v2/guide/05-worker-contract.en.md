@@ -2,7 +2,7 @@
 
 [简体中文](05-worker-contract.md)
 
-Builders and fixers commit changes inside the allowed scope. Verifiers run real acceptance commands. Reviewers independently inspect the pinned candidate without changing the worktree.
+Builders and fixers commit changes inside the allowed scope. Verifiers run real acceptance commands. Reviewers independently inspect the pinned candidate without changing the worktree. The shipped envelope commits for builders and fixers and ends each message with a `Work: <work id>` trailer (from `workId` in `BUILDBEAT_INPUT`), which `buildbeat history --path` uses to find the work behind a line of code.
 
 Structured output: {"status":"succeeded","findings":[{"severity":"P2","summary":"specific issue"}]}. severity is P0–P3 and summary is a string; P0/P1 routes to repair. A changed worktree after a read-only step blocks its result.
 

@@ -51,7 +51,9 @@ import {
   renderOverview,
   runsFor,
 } from "../runtime/overview.js";
-import { configTargets, workConfigs, pathLabel, shellArg } from "../runtime/overview-repos.js";
+import { configTargets, discoverRepos, ignoredRecordsWarning, workConfigs, pathLabel, shellArg } from "../runtime/overview-repos.js";
+import { renderTrace, traceLines } from "../runtime/code-trace.js";
+import { attachThreads, readWorks, renderThread, worksWithRef } from "../runtime/threads.js";
 import { closeWork, runReadback } from "../runtime/release.js";
 import {
   DEFAULT_STALL_AFTER_MS,
@@ -96,18 +98,20 @@ const USAGE = `BuildBeat runtime
 
 Usage:
   buildbeat --version
-  buildbeat accept --repo <path> --work <WORK-ID> [--by <name>] [--as human|agent]
+  buildbeat accept --repo <path> --work <WORK-ID> [--by <name>] [--as human|agent] [--note <text>]
   buildbeat run --config <run-config.yaml> [--run <RUN-ID>] [--new] [--adopt <sha> [--by <name>] [--as human|agent]]
   buildbeat status --repo <path> [--work <WORK-ID> | --run <RUN-ID>] [--all-repos] [--json]
+  buildbeat status --repo <path> [--all-repos] --ref <id> [--json]
   buildbeat decide --repo <path> --run <RUN-ID> --action approve|reject --transition <t> [--candidate <sha>] [--by <name>] [--as human|agent] [--reason <text>]
   buildbeat decide --repo <path> --run <RUN-ID> --action fix --reason <text> [--by <name>] [--as human|agent]
   buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--as human|agent] [--note <text>]
   buildbeat release --config <run-config.yaml> [--ref <ref>] [--note <text>]
-  buildbeat decide --repo <path> --work <WORK-ID> --action close --result <text> [--by <name>] [--as human|agent]
+  buildbeat decide --repo <path> --work <WORK-ID> --action close [--result <text>] [--note <text>] [--by <name>] [--as human|agent]
   buildbeat check --config <run-config.yaml> [--step <id>]
   buildbeat stop --repo <path> --run <RUN-ID> --reason <text>
   buildbeat gc --repo <path> [--apply] [--force]
   buildbeat history --repo <path> --run <RUN-ID> [--verify]
+  buildbeat history --repo <path> --path <file>[:<line>[-<line>]] [--json]
 
 Core legacy command spellings remain aliases; see docs/MIGRATION.md.
 Decisions record who made them: --by names the person or session (default:
@@ -1105,12 +1109,14 @@ function commandAccept(flags) {
     .map((name) => name.trim())
     .filter(Boolean);
   const results = acceptArtifacts(resolve(flags.repo), flags.work, artifacts, {
-    by: flags.by, as: flags.as,
+    by: flags.by, as: flags.as, note: flags.note,
   });
   for (const result of results) {
     console.log(`accepted ${result.artifact} as ${result.decisionRef} by ${describeActor(result)}`);
     console.log(`  digest: ${result.digest}`);
   }
+  const ignored = ignoredRecordsWarning(resolve(flags.repo), flags.work);
+  if (ignored) console.log(ignored);
   console.log(
     "  note: editing an artifact after acceptance makes its acceptance stale",
   );
@@ -1231,6 +1237,8 @@ function commandDoctor(flags) {
           : "draft (not accepted)";
     console.log(`  ${artifact}.md: ${label}`);
   }
+  const ignored = ignoredRecordsWarning(options.repoRoot, options.workId);
+  if (ignored) console.log(ignored);
   for (const policy of options.policies) {
     for (const artifact of policy.kind === "artifact"
       ? [policy.artifact]
@@ -1426,6 +1434,18 @@ function commandFindings(rest) {
   }
 }
 
+// Which works wrote these lines (WORK-CODE-TRACE): blame at HEAD, mapped to
+// works through recorded run ranges, Work: trailers and work folders.
+async function commandTrace(flags) {
+  if (!flags.repo) throw new Error("history --path requires --repo");
+  const trace = await traceLines(flags.path, {
+    repo: resolve(flags.repo),
+    callers: [process.cwd()],
+    cwd: process.cwd(),
+  });
+  console.log(flags.json === "true" ? JSON.stringify(trace, null, 2) : renderTrace(trace));
+}
+
 function commandEvents(flags) {
   if (!flags.repo || !flags.run) {
     throw new Error("events requires --repo and --run");
@@ -1477,6 +1497,26 @@ function commandMetrics(flags) {
   console.log(renderMetrics(summary));
 }
 
+// Works that carry an external id (`- ref: <id>`), each with its thread; no
+// match prints nothing (WORK-THREADS).
+function commandStatusByRef(flags, repoRoot) {
+  const root = realpathSync(repoRoot);
+  const roots = flags["all-repos"] === "true" ? discoverRepos(root, []) : [root];
+  const cwd = process.cwd();
+  const rows = worksWithRef(readWorks(roots), String(flags.ref))
+    .map((match) => {
+      const row = computeOverview(match.repo, { work: match.work, cwd, repoLabel: shellArg(pathLabel(cwd, match.repo)) })[0];
+      return row ? { ...row, repo: row.repo ?? match.repo, repoLabel: pathLabel(cwd, row.repo ?? match.repo) } : null;
+    })
+    .filter(Boolean);
+  attachThreads(rows, roots, cwd);
+  if (flags.json === "true") {
+    console.log(JSON.stringify({ works: rows }, null, 2));
+  } else if (rows.length) {
+    console.log(renderOverview(rows.map((row) => (roots.length === 1 ? { ...row, repo: undefined } : row)), { extra: renderThread }));
+  }
+}
+
 function commandStatus(flags) {
   if (!flags.repo) throw new Error("status requires --repo");
   const repoRoot = resolve(flags.repo);
@@ -1484,10 +1524,16 @@ function commandStatus(flags) {
     throw new Error("status: --all-repos cannot be used with --run; use --work instead");
   if (flags.run && flags.work)
     throw new Error("status: choose --run or --work");
+  if (flags.ref && (flags.run || flags.work))
+    throw new Error("status: choose --ref, --work or --run");
+  if (flags.ref) return commandStatusByRef(flags, repoRoot);
   if (!flags.run) {
     const allRepos = flags["all-repos"] === "true";
     const result = computeRepositoryOverview(repoRoot, { work: flags.work ?? null, allRepos, localRepoLabel: repoLabelFor(repoRoot, flags.repo) });
     const rows = result.repos.flatMap((group) => group.works);
+    // One work's view also shows the works linked to it (WORK-THREADS).
+    if (flags.work) attachThreads(rows, result.repos.map((group) => group.repo));
+    const extra = flags.work ? renderThread : null;
     if (flags.json === "true") {
       console.log(JSON.stringify(allRepos ? result : {
         works: rows.map((row) => {
@@ -1514,20 +1560,21 @@ function commandStatus(flags) {
           }
         }
         for (const group of result.repos) {
-          const open = group.works.filter((row) => !row.settled);
+          // A work asked for by name is shown even when it is settled.
+          const open = group.works.filter((row) => flags.work || !row.settled);
           if (open.length) {
             console.log(`repo ${pathLabel(process.cwd(), group.repo)}:`);
-            console.log(renderOverview(open, { decisions: Boolean(flags.work) }));
+            console.log(renderOverview(open, { decisions: Boolean(flags.work), extra }));
           }
         }
         for (const group of result.repos) {
           const count = group.settled;
-          console.log(`${pathLabel(process.cwd(), group.repo)}: settled ${count.total} (closed ${count.closed} · cancelled ${count.cancelled} · merged, no release step ${count.merged})`);
+          console.log(`${pathLabel(process.cwd(), group.repo)}: settled ${count.total} (closed ${count.closed} · cancelled ${count.cancelled} · merged, not closed ${count.merged})`);
         }
       } else {
         // Keep the single-repo surface while forwarding work facts and waits.
         console.log(renderOverview(rows.map((row) => row.repo === result.repos[0].repo
-          ? { ...row, repo: undefined } : row), { decisions: Boolean(flags.work) }));
+          ? { ...row, repo: undefined } : row), { decisions: Boolean(flags.work), extra }));
         if (result.pending.length) commandInbox(flags, result.pending);
         if (!flags.work) console.log(renderMetrics(computeMetrics(repoRoot)));
       }
@@ -1625,7 +1672,7 @@ function commandRelease(flags) {
   }
   console.log(
     row.status === "passed"
-      ? `next: buildbeat decide --repo ${repoLabel} --work ${options.workId} --action close --result <what was released> --by <you>`
+      ? `next: write delivery/work/${options.workId}/result.md, then buildbeat decide --repo ${repoLabel} --work ${options.workId} --action close --by <you>`
       : "next: fix the release, then run buildbeat release again; the window cannot close on a failed readback",
   );
   if (row.status !== "passed") {
@@ -1641,10 +1688,20 @@ function commandDecide(flags) {
       repoRoot: resolve(flags.repo),
       workId: flags.work,
       result: flags.result,
+      note: flags.note,
+      runs: runsFor(resolve(flags.repo), flags.work),
+      callers: [process.cwd()],
       by: flags.by, as: flags.as,
     });
+    const parts = [
+      `result.md ${row.subject.resultDigest.slice(0, 19)}`,
+      `written into the project: ${row.subject.promotions.length}`,
+      ...(row.subject.readback
+        ? [`readback ${row.subject.readback.slice(0, 19)} at ${row.subject.commit.slice(0, 7)}`]
+        : []),
+    ];
     console.log(
-      `closed ${flags.work} as ${row.decisionRef} by ${describeActor(row)} (readback ${row.subject.readback.slice(0, 19)} at ${row.subject.commit.slice(0, 7)})`,
+      `closed ${flags.work} as ${row.decisionRef} by ${describeActor(row)} (${parts.join(" · ")})`,
     );
     return;
   }
@@ -1685,7 +1742,7 @@ function commandDecide(flags) {
     return;
   }
   throw new Error(
-    "decide requires --action approve|reject|fix, accept|dismiss with --work and --fingerprint, or close with --work and --result",
+    "decide requires --action approve|reject|fix, accept|dismiss with --work and --fingerprint, or close with --work",
   );
 }
 
@@ -1926,7 +1983,9 @@ async function main() {
     } else if (command === "check") {
       flags.step ? commandPreflight(flags) : commandDoctor(flags);
     } else if (command === "history") {
-      flags.verify === "true" ? commandReplay(flags) : commandEvents(flags);
+      if (flags.path) await commandTrace(flags);
+      else if (flags.verify === "true") commandReplay(flags);
+      else commandEvents(flags);
     } else if (command === "start") {
       await commandStart(flags);
     } else if (command === "resume") {

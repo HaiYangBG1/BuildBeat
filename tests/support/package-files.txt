@@ -79,6 +79,8 @@ src/v2/policy/policy.js
 src/v2/presets/software-delivery.yaml
 src/v2/runtime/actor.js
 src/v2/runtime/cache.js
+src/v2/runtime/closeout.js
+src/v2/runtime/code-trace.js
 src/v2/runtime/decisions.js
 src/v2/runtime/env-contract.js
 src/v2/runtime/envelope.js
@@ -93,6 +95,7 @@ src/v2/runtime/overview.js
 src/v2/runtime/release.js
 src/v2/runtime/repo-ref.js
 src/v2/runtime/run-record.js
+src/v2/runtime/threads.js
 src/v2/runtime/work-cost.js
 src/v2/storage/event-ledger.js
 src/v2/workspace/workspace-manager.js
@@ -104,6 +107,7 @@ templates/v2/envelope/prompts/builder.md
 templates/v2/envelope/prompts/fixer.md
 templates/v2/envelope/prompts/reviewer.md
 templates/v2/envelope/worker.sh
+templates/v2/result.example.md
 templates/v2/run-config.example.yaml
 templates/v2/work.example.md
 templates/v2/指挥台.md

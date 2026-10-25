@@ -153,6 +153,7 @@ work WORK-CSV-EXPORT:
 │           ├── decisions.jsonl     接受、批准、关闭这些决定
 │           ├── review-findings.jsonl  审查挑出的问题和你的裁决
 │           ├── releases.jsonl      上线后的检查记录（用到才有）
+│           ├── result.md           关窗时写：做成了什么、剩下什么、写进了哪些项目文档
 │           └── runs/RUN-X-01/
 │               └── run-record.json 这一轮的结果、证据和成本
 └── .buildbeat/
@@ -161,7 +162,7 @@ work WORK-CSV-EXPORT:
     └── worktrees/                  只在本机：AI 干活用的隔离副本
 ```
 
-- `delivery/` 进 Git：换会话、换软件、换电脑、换人，拉下代码就能接着干
+- `delivery/` 进 Git：换会话、换软件、换电脑、换人，拉下代码就能接着干；不要在 `.gitignore` 或 `.git/info/exclude` 里排除它
 - `.buildbeat/runtime/`、`.buildbeat/worktrees/` 只在本机：正在跑的那一轮不跟着 Git 走，要在原来那台机器上跑完或停掉
 - 没装 BuildBeat 的人和 AI 也能读这些文件、起草 `work.md`
 

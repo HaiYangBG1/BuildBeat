@@ -1,0 +1,51 @@
+# Run config for WORK-CODE-TRACE. Paths resolve relative to this file.
+# Builder and fixer are deliberately absent: the driving session writes the
+# change and hands each commit over with --adopt. Verify runs the full local
+# gate; review is the shipped reviewer prompt on codex, read-only.
+repo: ../../..
+work: WORK-CODE-TRACE
+run: RUN-CODE-TRACE
+allowedPaths:
+  - src
+  - tests
+  - docs
+  - templates
+  # the example project's worker.sh must stay the template, byte for byte
+  - example
+  - SKILL.md
+  - README.md
+  - README.en.md
+  - CHANGELOG.md
+reviewTriage: off
+budgets:
+  reviewRoundsPerWork: 6
+parallel: true
+cache:
+  verify: tree
+envelope:
+  prompts: ../../../templates/v2/envelope/prompts
+  vars:
+    component: buildbeat
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+requires:
+  - command: node
+    min: "20"
+  - command: codex
+workers:
+  verifier:
+    command: bash
+    timeoutMs: 1800000
+    args:
+      - delivery/work/WORK-CODE-TRACE/verify.sh
+  reviewer:
+    command: bash
+    timeoutMs: 3600000
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only

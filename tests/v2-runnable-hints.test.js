@@ -15,8 +15,10 @@ import { tempDir } from "./support/tmp.js";
 const ROOT = join(import.meta.dirname, "..");
 const CLI = join(ROOT, "bin", "buildbeat.js");
 const actor = { kind: "kernel", id: "test" };
-const NOTHING_LEFT =
-  "merged; no release readback configured, nothing left to do (add a release: section to the run config to record a readback and close the window)";
+// Since close-out: a merged work without a release closes with its result
+// page instead of having "nothing left to do".
+const CLOSE_OUT =
+  "merged; close out: write delivery/work/PLAIN/result.md, then buildbeat decide --repo . --work PLAIN --action close --by <you>";
 
 function fixtureEnv() {
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
@@ -57,15 +59,15 @@ function cli(cwd, ...args) {
 const row = (root, id) => JSON.parse(cli(root, "status", "--repo", ".", "--work", id, "--json")).works[0];
 const config = (id, extra = "") => `repo: ../../..\nwork: ${id}\n${extra}`;
 
-test("a merged work whose run configs have no release: section has nothing left to do", () => {
+test("a merged work whose run configs have no release: section closes out with its result page", () => {
   const root = repo();
   work(root, "PLAIN", { "run-config.yaml": config("PLAIN") });
   archived(root, "PLAIN", "SUCCEEDED");
   const plain = row(root, "PLAIN");
   assert.equal(plain.stage, "MERGED");
-  assert.equal(plain.next, NOTHING_LEFT);
+  assert.equal(plain.next, CLOSE_OUT);
   assert.doesNotMatch(plain.next, /buildbeat release --config/);
-  assert.match(cli(root, "status", "--repo", ".", "--work", "PLAIN"), /next: merged; no release readback configured, nothing left to do/);
+  assert.match(cli(root, "status", "--repo", ".", "--work", "PLAIN"), /next: merged; close out: write delivery\/work\/PLAIN\/result\.md/);
 });
 
 test("a merged work with a release: section points at the config that has it", () => {
@@ -79,7 +81,7 @@ test("a merged work with a release: section points at the config that has it", (
   archived(root, "SHIP", "SUCCEEDED");
   const ship = row(root, "SHIP");
   assert.equal(ship.stage, "MERGED");
-  assert.match(ship.next, /release it \(a human action\), then buildbeat release --config delivery\/work\/SHIP\/run-config_ship\.yaml; then buildbeat decide --repo \. --work SHIP --action close/);
+  assert.match(ship.next, /release it \(a human action\), then buildbeat release --config delivery\/work\/SHIP\/run-config_ship\.yaml; then write delivery\/work\/SHIP\/result\.md, then buildbeat decide --repo \. --work SHIP --action close/);
 });
 
 test("an unreadable run config keeps the generic release hint", () => {
@@ -88,7 +90,7 @@ test("an unreadable run config keeps the generic release hint", () => {
   archived(root, "BROKEN", "SUCCEEDED");
   const broken = row(root, "BROKEN");
   assert.equal(broken.stage, "MERGED");
-  assert.notEqual(broken.next, NOTHING_LEFT);
+  assert.doesNotMatch(broken.next, /^merged; close out:/);
   assert.match(broken.next, /buildbeat release --config delivery\/work\/BROKEN\/run-config\.yaml/);
 });
 

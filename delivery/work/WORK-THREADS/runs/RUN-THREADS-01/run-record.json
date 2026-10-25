@@ -1,0 +1,325 @@
+{
+  "run": "RUN-THREADS-01",
+  "work": "WORK-THREADS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 83,
+    "lastDigest": "sha256:3a56bee5d1130746ccde905405d6deab538f1522313cb82d5b8fc19ff7bf409d"
+  },
+  "startedAt": "2026-10-25T03:58:33.027Z",
+  "finishedAt": "2026-10-25T04:43:23.093Z",
+  "attempts": {
+    "verify": 4,
+    "review": 4
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 4,
+      "remaining": 2
+    }
+  },
+  "cost": {
+    "reviewRounds": 4,
+    "humanWaits": 5,
+    "waits": {
+      "decided": {
+        "count": 5,
+        "ms": 1262477
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 1424924
+  },
+  "workspaces": {
+    "RUN-THREADS-01": {
+      "repo": ".",
+      "branch": "run/RUN-THREADS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-THREADS-01",
+      "base": "07e69f5df5e071d3a0063d67563ca5ce7261f242",
+      "candidate": "967a2182ff638ab0c63ea7d50e956c86f2f7baff"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-THREADS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "c248e4a918ebf1ab0e885d0f4ddd7223729d2ce5",
+      "digest": "sha256:2c42d4b9592d10ce221643fb3fa2c877db87717de62a8fa873d618c426e30b1f",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:57fe26718e28ab522a8aa8eb7d7f5477b40a96654ea0057a23a275c994710694"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-THREADS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "c248e4a918ebf1ab0e885d0f4ddd7223729d2ce5",
+      "digest": "sha256:60dd2075d33c576bdd9a11531729daa04a5d7a108b13b0bb65e71e9023cee2d4",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-THREADS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "c248e4a918ebf1ab0e885d0f4ddd7223729d2ce5",
+      "digest": "sha256:0f78ac3e23fda893c69f9b7cdf9dfe9b13dfc130206171005d28d963e5765342",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/threads.js:28 的 Markdown 过滤不完整：四空格缩进代码块，以及“正文 <!--”开启的跨行 HTML 注释中的 related/ref 行仍被解析，导致示例或隐藏内容生成真实关系和外部编号匹配；应排除这些内容并补充回归测试。"
+        },
+        {
+          "severity": "P2",
+          "summary": "src/v2/runtime/threads.js:48 同时读取 work.md 和旧 intent.md；两者并存时，旧说明中的关系和外部编号仍进入当前工作视图。应优先读取 work.md，仅在其不存在时回退 intent.md，避免旧内容污染关系图。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-THREADS-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "15295817675925319ddc8353b2c856ca27f0c759",
+      "digest": "sha256:f55a6b6a5adf0cd15e50978fb2d25258796a76c773a37a79a9ca53a39d707a09",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:175793be38ccf06885d73bcece7b5624e0f364a1a3698d1592c229716ef137a8"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-THREADS-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "15295817675925319ddc8353b2c856ca27f0c759",
+      "digest": "sha256:bc5c3829ae86cba18f816e715f6e4b45aebf317047b1a51f8078854784a3ae00",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-THREADS-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "15295817675925319ddc8353b2c856ca27f0c759",
+      "digest": "sha256:900b54e1578e6121e61d340ad212a88749354ec2f0278216316a69587416cfa9",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/closeout.js:40–61 在识别缩进代码块前处理 HTML 注释，也未排除行内代码：示例中的 `<!--` 会开启跨行注释状态，吞掉其后真实的 related/ref 行。只读复现还确认共享解析器因此漏掉 result.md 的摘要和 promotion 校验项。应先识别代码上下文，避免代码中的注释标记改变解析状态，并补充回归测试。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-THREADS-01/logs/verify-3.log",
+      "kind": "command",
+      "subject": "0e382b20ded05051f67209381e9ab8314882c698",
+      "digest": "sha256:505d77da2f5c113190a46a530ddc01df1abd41e7cf3f6dfcb3fef4fe7323513d",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:eccc47913f206871b46b0cf0affc7063240772a7c3f4eff84749215b620fc717"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-THREADS-01/logs/review-3.log",
+      "kind": "command",
+      "subject": "0e382b20ded05051f67209381e9ab8314882c698",
+      "digest": "sha256:221ce40fd518543054be1c6b69ca19739f94240fcfcb6ab0cfc4a43b83cee575",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-THREADS-01/outputs/review-3.json",
+      "kind": "review",
+      "subject": "0e382b20ded05051f67209381e9ab8314882c698",
+      "digest": "sha256:f7b0694a3e262c73198eee4a6e268a7b810d65596d57e992c9330e2349caa964",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/closeout.js:67–72 将转义的反引号和长度不匹配的反引号串误识别为行内代码，导致真实 HTML 注释未被过滤。只读复现：以 \"Note \\` <!-- hidden `\" 开头的跨行注释，其内部 related/ref 行和 promotion 项仍被解析，生成隐藏关系及错误校验项。应识别反引号转义并严格匹配分隔符长度，补充回归测试。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-THREADS-01/logs/verify-4.log",
+      "kind": "command",
+      "subject": "967a2182ff638ab0c63ea7d50e956c86f2f7baff",
+      "digest": "sha256:4ce544c432493e998e648e801c4c5312068a69701e2cdb864b8000c2011728c0",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:69d702e2ddd3e4df2a3b33c7beece1490b29f8f5245f8530facaec9baad54594"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-THREADS-01/logs/review-4.log",
+      "kind": "command",
+      "subject": "967a2182ff638ab0c63ea7d50e956c86f2f7baff",
+      "digest": "sha256:5bd57a64de8f60cea503b8aa76d322d83f8b15d6d1d6ea2f61e7c479543ee39d",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-THREADS-01/outputs/review-4.json",
+      "kind": "review",
+      "subject": "967a2182ff638ab0c63ea7d50e956c86f2f7baff",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "c248e4a918ebf1ab0e885d0f4ddd7223729d2ce5",
+        "planDigest": "sha256:00bc73bd44ac8a9cf1425417df751a3cfeeaa7e2fee9e464749598aaace102fb",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-THREADS-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "15295817675925319ddc8353b2c856ca27f0c759",
+        "planDigest": "sha256:00bc73bd44ac8a9cf1425417df751a3cfeeaa7e2fee9e464749598aaace102fb",
+        "evidenceDigest": "sha256:0f78ac3e23fda893c69f9b7cdf9dfe9b13dfc130206171005d28d963e5765342"
+      },
+      "decisionRef": "D-RUN-THREADS-01-2",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "0e382b20ded05051f67209381e9ab8314882c698",
+        "planDigest": "sha256:00bc73bd44ac8a9cf1425417df751a3cfeeaa7e2fee9e464749598aaace102fb",
+        "evidenceDigest": "sha256:900b54e1578e6121e61d340ad212a88749354ec2f0278216316a69587416cfa9"
+      },
+      "decisionRef": "D-RUN-THREADS-01-3",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "967a2182ff638ab0c63ea7d50e956c86f2f7baff",
+        "planDigest": "sha256:00bc73bd44ac8a9cf1425417df751a3cfeeaa7e2fee9e464749598aaace102fb",
+        "evidenceDigest": "sha256:f7b0694a3e262c73198eee4a6e268a7b810d65596d57e992c9330e2349caa964"
+      },
+      "decisionRef": "D-RUN-THREADS-01-4",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "967a2182ff638ab0c63ea7d50e956c86f2f7baff",
+        "planDigest": "sha256:00bc73bd44ac8a9cf1425417df751a3cfeeaa7e2fee9e464749598aaace102fb",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-THREADS-01-5",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-THREADS-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "c248e4a918ebf1ab0e885d0f4ddd7223729d2ce5",
+        "planDigest": "sha256:00bc73bd44ac8a9cf1425417df751a3cfeeaa7e2fee9e464749598aaace102fb",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-THREADS-01-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "15295817675925319ddc8353b2c856ca27f0c759",
+        "planDigest": "sha256:00bc73bd44ac8a9cf1425417df751a3cfeeaa7e2fee9e464749598aaace102fb",
+        "evidenceDigest": "sha256:0f78ac3e23fda893c69f9b7cdf9dfe9b13dfc130206171005d28d963e5765342"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-THREADS-01-3",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "0e382b20ded05051f67209381e9ab8314882c698",
+        "planDigest": "sha256:00bc73bd44ac8a9cf1425417df751a3cfeeaa7e2fee9e464749598aaace102fb",
+        "evidenceDigest": "sha256:900b54e1578e6121e61d340ad212a88749354ec2f0278216316a69587416cfa9"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-THREADS-01-4",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "967a2182ff638ab0c63ea7d50e956c86f2f7baff",
+        "planDigest": "sha256:00bc73bd44ac8a9cf1425417df751a3cfeeaa7e2fee9e464749598aaace102fb",
+        "evidenceDigest": "sha256:f7b0694a3e262c73198eee4a6e268a7b810d65596d57e992c9330e2349caa964"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-THREADS-01-5",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "967a2182ff638ab0c63ea7d50e956c86f2f7baff",
+        "planDigest": "sha256:00bc73bd44ac8a9cf1425417df751a3cfeeaa7e2fee9e464749598aaace102fb",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

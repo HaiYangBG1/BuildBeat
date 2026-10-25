@@ -1,0 +1,211 @@
+{
+  "run": "RUN-CODE-TRACE-01",
+  "work": "WORK-CODE-TRACE",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 45,
+    "lastDigest": "sha256:334584583e54a082b819228b178134c0084dec7efbbc8897903cd9028f17ddc3"
+  },
+  "startedAt": "2026-10-24T17:33:14.458Z",
+  "finishedAt": "2026-10-24T18:15:38.399Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 4
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "waits": {
+      "decided": {
+        "count": 3,
+        "ms": 1965004
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 577959
+  },
+  "workspaces": {
+    "RUN-CODE-TRACE-01": {
+      "repo": ".",
+      "branch": "run/RUN-CODE-TRACE-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-CODE-TRACE-01",
+      "base": "a5873568eb97633b1749302483003e409ad8756f",
+      "candidate": "8260a5c08ea4635b4625659b045aa09881d10095"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CODE-TRACE-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "b9daf52315647c6f51ba89d8e7fced9c75f243a0",
+      "digest": "sha256:bed40574b950c9012cedf165040c36808168228901495b583ed7a3b9367e6e31",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:7f98f4a501d073d6c0b544b097960bf97af3eb562c8f1c0d06bbcfce02a7df88"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CODE-TRACE-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "b9daf52315647c6f51ba89d8e7fced9c75f243a0",
+      "digest": "sha256:ee3e527d5237646ff254d0f667e2f2382e23ea3876335fd60b2792023387a6a1",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CODE-TRACE-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "b9daf52315647c6f51ba89d8e7fced9c75f243a0",
+      "digest": "sha256:b9cf6c5ae0591896537c11a720937ab61744bd9e424265e92e24723c1db2e227",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/code-trace.js:165 的 workTrailers 将标题或普通正文中的 Work: 行误认作 Git trailer：仅含标题「Work: WORK-REFERENCE」也返回该工作，而 git interpret-trailers --parse 返回空，违反不按标题归属工作的要求；应严格解析 trailer 并补充回归测试。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/code-trace.js:181 的 git log --name-only 未启用合并提交差异，导致合并提交的工作目录改动被遗漏；当冲突解决产生的代码行归属于该合并提交，且没有运行范围或 Work trailer 时，会错误计为未追溯。应读取合并提交的路径差异并补充回归测试。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CODE-TRACE-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "8260a5c08ea4635b4625659b045aa09881d10095",
+      "digest": "sha256:d1c06aa7476e804cf922b13335fa3d3ced8f169c6f5c8d1a27f106bd38c31886",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:201184c109c90063327f7664ad12f9ff67cc3c2c2702d4a2d6677623dcb0f5ef"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CODE-TRACE-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "8260a5c08ea4635b4625659b045aa09881d10095",
+      "digest": "sha256:11a4807f67310ddc11b4cfe897c26a7ab75f3425344c301a03a597f942e70516",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CODE-TRACE-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "8260a5c08ea4635b4625659b045aa09881d10095",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "b9daf52315647c6f51ba89d8e7fced9c75f243a0",
+        "planDigest": "sha256:234e3044255ed5b1fe3c5a7c662dac0625b41acf64420f328fef4df3d265050d",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-CODE-TRACE-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "8260a5c08ea4635b4625659b045aa09881d10095",
+        "planDigest": "sha256:234e3044255ed5b1fe3c5a7c662dac0625b41acf64420f328fef4df3d265050d",
+        "evidenceDigest": "sha256:b9cf6c5ae0591896537c11a720937ab61744bd9e424265e92e24723c1db2e227"
+      },
+      "decisionRef": "D-RUN-CODE-TRACE-01-2",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "8260a5c08ea4635b4625659b045aa09881d10095",
+        "planDigest": "sha256:234e3044255ed5b1fe3c5a7c662dac0625b41acf64420f328fef4df3d265050d",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-CODE-TRACE-01-3",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-CODE-TRACE-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "b9daf52315647c6f51ba89d8e7fced9c75f243a0",
+        "planDigest": "sha256:234e3044255ed5b1fe3c5a7c662dac0625b41acf64420f328fef4df3d265050d",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-CODE-TRACE-01-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "8260a5c08ea4635b4625659b045aa09881d10095",
+        "planDigest": "sha256:234e3044255ed5b1fe3c5a7c662dac0625b41acf64420f328fef4df3d265050d",
+        "evidenceDigest": "sha256:b9cf6c5ae0591896537c11a720937ab61744bd9e424265e92e24723c1db2e227"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-CODE-TRACE-01-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "8260a5c08ea4635b4625659b045aa09881d10095",
+        "planDigest": "sha256:234e3044255ed5b1fe3c5a7c662dac0625b41acf64420f328fef4df3d265050d",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
