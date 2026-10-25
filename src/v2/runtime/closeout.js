@@ -25,7 +25,7 @@ const PROMOTION =
 // comments, so a template's guidance kept in comments or an example in a code
 // block is neither the summary nor a promotion (nor a link between works).
 // Code is recognised first: a comment marker inside a code block or an inline
-// code span is text, not the start of a comment. A comment may open or close
+// code span (or escaped with a backslash) is text, not the start of a comment. A comment may open or close
 // anywhere else on a line and span several lines; what lies outside it is the
 // line's text.
 export function textLines(text) {
@@ -64,9 +64,24 @@ export function textLines(text) {
         if (end < 0) break;
         comment = false;
         at = end + 3;
+      } else if (raw[at] === "\\" && /[!-/:-@[-`{-~]/.test(raw[at + 1] ?? "")) {
+        // A backslash-escaped punctuation character is plain text: \` opens
+        // no code span and \<!-- no comment.
+        kept += raw.slice(at, at + 2);
+        at += 2;
       } else if (raw[at] === "`") {
+        // A code span closes at the next run of exactly as many backticks;
+        // without one, the backticks are plain text.
         const run = /^`+/.exec(raw.slice(at))[0];
-        const close = raw.indexOf(run, at + run.length);
+        const runs = /`+/g;
+        runs.lastIndex = at + run.length;
+        let close = -1;
+        for (let match = runs.exec(raw); match; match = runs.exec(raw)) {
+          if (match[0].length === run.length) {
+            close = match.index;
+            break;
+          }
+        }
         const stop = close < 0 ? at + run.length : close + run.length;
         kept += raw.slice(at, stop);
         at = stop;

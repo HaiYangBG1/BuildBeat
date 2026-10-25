@@ -91,6 +91,19 @@ test("relation and ref lines are read outside code and comments, in any case", (
   assert.deepEqual(coded.links.map((link) => link.to), ["WORK-AFTER-INDENTED", "WORK-AFTER-INLINE"]);
   assert.deepEqual(coded.refs, ["TASK-AFTER-FENCE"]);
   assert.match(coded.prose, /Use `<!--` and ``<!-- -->`` to hide text\./);
+
+  // Backticks follow Markdown: an escaped backtick or a run with no closing
+  // run of the same length opens no code span, so the comment after it hides
+  // its lines; an escaped backslash leaves the backtick free to open one, and
+  // an escaped "<" opens no comment.
+  const escaped = parseLinks([
+    "Note \\` <!-- hidden `", "- related: WORK-HIDDEN-1", "-->",
+    "Use `` and ` <!-- hidden", "- ref: TASK-HIDDEN", "-->",
+    "A \\\\` <!-- not a comment `", "- related: WORK-SEEN-1",
+    "\\<!-- not a comment either", "- related: WORK-SEEN-2",
+  ].join("\n"));
+  assert.deepEqual(escaped.links.map((link) => link.to), ["WORK-SEEN-1", "WORK-SEEN-2"]);
+  assert.deepEqual(escaped.refs, []);
 });
 
 test("a work with both work.md and a legacy intent.md is read from work.md", () => {
