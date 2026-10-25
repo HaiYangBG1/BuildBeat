@@ -1,0 +1,150 @@
+{
+  "run": "RUN-FACT-DIR-POINTERS-01",
+  "work": "WORK-FACT-DIR-POINTERS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 26,
+    "lastDigest": "sha256:21872cf09da7b7e1ab30bdf6302f5dfbe867910da9aace4bf54465c04a7c156e"
+  },
+  "startedAt": "2026-10-25T07:10:46.324Z",
+  "finishedAt": "2026-10-25T07:25:12.795Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 1,
+      "remaining": 5
+    }
+  },
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 2,
+    "waits": {
+      "decided": {
+        "count": 2,
+        "ms": 501929
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 364011
+  },
+  "workspaces": {
+    "RUN-FACT-DIR-POINTERS-01": {
+      "repo": ".",
+      "branch": "run/RUN-FACT-DIR-POINTERS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-FACT-DIR-POINTERS-01",
+      "base": "c5cf444b9e94fdfe72782e4dfd73f11f9468e704",
+      "candidate": "0aa186afc4e4ac149349358995bd1fd1beffdc5f"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-DIR-POINTERS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "0aa186afc4e4ac149349358995bd1fd1beffdc5f",
+      "digest": "sha256:0819d2d71ecd183b5afde598864726eadae82a57fc5b8bd3a0babb21a64a98a8",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:5bf059e60ab0625d3902773dc0bea398bb901d607890d7891e102a1547c3cb26"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-DIR-POINTERS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "0aa186afc4e4ac149349358995bd1fd1beffdc5f",
+      "digest": "sha256:1e3f57a62998de814d8a6526808a178d5b9b92ae8dd77cbc45d2dba42c083f45",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-DIR-POINTERS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "0aa186afc4e4ac149349358995bd1fd1beffdc5f",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "0aa186afc4e4ac149349358995bd1fd1beffdc5f",
+        "planDigest": "sha256:1b3aa66d70033d112c33b5ee00196be976e342bf1ebf6ee1f316c99ebb8d10b4",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-FACT-DIR-POINTERS-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "0aa186afc4e4ac149349358995bd1fd1beffdc5f",
+        "planDigest": "sha256:1b3aa66d70033d112c33b5ee00196be976e342bf1ebf6ee1f316c99ebb8d10b4",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-FACT-DIR-POINTERS-01-2",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-FACT-DIR-POINTERS-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "0aa186afc4e4ac149349358995bd1fd1beffdc5f",
+        "planDigest": "sha256:1b3aa66d70033d112c33b5ee00196be976e342bf1ebf6ee1f316c99ebb8d10b4",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-FACT-DIR-POINTERS-01-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "0aa186afc4e4ac149349358995bd1fd1beffdc5f",
+        "planDigest": "sha256:1b3aa66d70033d112c33b5ee00196be976e342bf1ebf6ee1f316c99ebb8d10b4",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
