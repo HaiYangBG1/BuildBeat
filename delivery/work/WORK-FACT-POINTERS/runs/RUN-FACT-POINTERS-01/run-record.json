@@ -1,0 +1,344 @@
+{
+  "run": "RUN-FACT-POINTERS-01",
+  "work": "WORK-FACT-POINTERS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 82,
+    "lastDigest": "sha256:e4903d77b16cb6b18b62e60de49081ce98d7392b0f7433ecd5591c609246d641"
+  },
+  "startedAt": "2026-10-25T05:29:16.210Z",
+  "finishedAt": "2026-10-25T06:20:05.268Z",
+  "attempts": {
+    "verify": 4,
+    "review": 4
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 4,
+      "remaining": 2
+    }
+  },
+  "cost": {
+    "reviewRounds": 4,
+    "humanWaits": 5,
+    "waits": {
+      "decided": {
+        "count": 5,
+        "ms": 1520152
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 1526712
+  },
+  "workspaces": {
+    "RUN-FACT-POINTERS-01": {
+      "repo": ".",
+      "branch": "run/RUN-FACT-POINTERS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-FACT-POINTERS-01",
+      "base": "70f7693912c1a44b1651c5a70c6d7302d90aa0fb",
+      "candidate": "d595ced1c48c7321a766ef248317a1082c5ddb3e"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-POINTERS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "86fe0d272b8ea670bc6afff6977faa06da7f8703",
+      "digest": "sha256:f48e42f9bd5b2a30a0f3ae45f48d189522fcd8552a58cd359d688db3c5f6d4c5",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:5b083c776525e5984ee6d0a22ef5ba03643ced96d112f8f9ceb5087bfc0d2d95"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-POINTERS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "86fe0d272b8ea670bc6afff6977faa06da7f8703",
+      "digest": "sha256:2d4b82ad7543c5841c1ea9f15e825d3651024d70353031fc0d80ebf18552e46b",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-POINTERS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "86fe0d272b8ea670bc6afff6977faa06da7f8703",
+      "digest": "sha256:59d3b72b01ef144c8607bb602de49ab5d154f06baa493be927e38926aa758099",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/facts.js:184-191 按整个文件的 git log 计算行级指针的 commits/latest，导致后续仅修改文件其他位置的提交也被计数并标为最新，违反已确认的提交归因要求，应按引用行筛选提交并补充多提交回归测试。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-POINTERS-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "a798c0560bc8f517ff54d132ad7190af463a67a3",
+      "digest": "sha256:ad12252690e7c5f318a2f9b1fbf6978a7978bcba41003c6c5fff3c5ed07a6fe0",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:953fe5a03e5541542c2d4ec292a912f17b80deb0aa70794f66acedb8eb508fc9"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-POINTERS-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "a798c0560bc8f517ff54d132ad7190af463a67a3",
+      "digest": "sha256:ec5cad666abd6cef43a1705ff1e7c7a3c6700158f94b77f9a907ed16178e0a64",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-POINTERS-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "a798c0560bc8f517ff54d132ad7190af463a67a3",
+      "digest": "sha256:8f217d01e9e84dc4c1c9d8c6c5a9e1ff7ff5af19ef8df12c598698b9bd50e5ea",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/facts.js:235-253 将分支补丁按拓扑序当作连续版本回放并共享行号区间，当一个分支在引用行前插入内容、另一个分支修改原引用行时，会漏计后者并丢失 latest，需要按父提交关系追踪行号。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/facts.js:236 的 --no-merges 排除了合并提交独有的修改，使仅在合并时改变的指针显示 changed 却得到 commits 为 0 且没有 latest，违反已确认的提交归因要求。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/facts.js:156-166 将完全删除的引用区间映射为前一行，导致删除第 5 行后再修改无关的第 4 行也被计入 commits 并成为 latest，需要终止对已删除区间的追踪。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/facts.js:118-127 的补丁解析依赖固定 a/、b/ 前缀，但 Git 调用没有固定这些前缀，配置 diff.noprefix=true 时会将仅修改文件别处的指针误报为 changed 并漏掉提交归因，需要显式固定补丁前缀。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-POINTERS-01/logs/verify-3.log",
+      "kind": "command",
+      "subject": "d595ced1c48c7321a766ef248317a1082c5ddb3e",
+      "digest": "sha256:9749e3a131385a3a8658240287dff833ce1408d74ac84d9ce47e8f86778fa495",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:b8a6ba9e2864dd3516c6d62951d3a06b3ccaa7b57d0e52115a375f86c23b5fe1"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-POINTERS-01/logs/review-3.log",
+      "kind": "command",
+      "subject": "d595ced1c48c7321a766ef248317a1082c5ddb3e",
+      "digest": "sha256:a485b92ce2631baae125d8236c811591f33a75f721ffddeed45c22eadc642280",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-POINTERS-01/outputs/review-3.json",
+      "kind": "review",
+      "subject": "d595ced1c48c7321a766ef248317a1082c5ddb3e",
+      "digest": "sha256:66bb80a6ed5b78500484bc8ee1a1193558a2cce9f4e9a8c7b7b1d31037bf1287",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/facts.js:184-191 按整个文件的 git log 计算行级指针的 commits/latest，导致后续仅修改文件其他位置的提交也被计数并标为最新，违反已确认的提交归因要求，应按引用行筛选提交并补充多提交回归测试。",
+          "location": "本轮对应 src/v2/runtime/facts.js:229-236；沿用历史 finding 原文。"
+        },
+        {
+          "severity": "P2",
+          "summary": "src/v2/runtime/facts.js:236、270-271 将已确认的 pointers[].commits/latest 改为 pointers[].file.commits/latest，并修改显示文案，但输入绑定的已接受 work.md 仍规定原字段和文案；应恢复约定，或先将变更记录到工作说明并重新接受。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-POINTERS-01/logs/verify-4.log",
+      "kind": "command",
+      "subject": "d595ced1c48c7321a766ef248317a1082c5ddb3e",
+      "digest": "sha256:e5e185dd37d5812aaddc05053ad83db72814ad6eae1131dfa58d950b591e8d62",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:b8a6ba9e2864dd3516c6d62951d3a06b3ccaa7b57d0e52115a375f86c23b5fe1",
+      "reused": {
+        "run": "RUN-FACT-POINTERS-01",
+        "evidenceRef": ".buildbeat/runtime/runs/RUN-FACT-POINTERS-01/logs/verify-3.log",
+        "digest": "sha256:9749e3a131385a3a8658240287dff833ce1408d74ac84d9ce47e8f86778fa495"
+      }
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-POINTERS-01/logs/review-4.log",
+      "kind": "command",
+      "subject": "d595ced1c48c7321a766ef248317a1082c5ddb3e",
+      "digest": "sha256:4095673e8010b4e579f915ddc8c36ad3b39526908b0f3e778f169c99afffeaa8",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FACT-POINTERS-01/outputs/review-4.json",
+      "kind": "review",
+      "subject": "d595ced1c48c7321a766ef248317a1082c5ddb3e",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "86fe0d272b8ea670bc6afff6977faa06da7f8703",
+        "planDigest": "sha256:c791f0b2f52941671e7677fe933f69c58ae2995735b6d4857b4773d02172ce2a",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-FACT-POINTERS-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "a798c0560bc8f517ff54d132ad7190af463a67a3",
+        "planDigest": "sha256:c791f0b2f52941671e7677fe933f69c58ae2995735b6d4857b4773d02172ce2a",
+        "evidenceDigest": "sha256:59d3b72b01ef144c8607bb602de49ab5d154f06baa493be927e38926aa758099"
+      },
+      "decisionRef": "D-RUN-FACT-POINTERS-01-2",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "d595ced1c48c7321a766ef248317a1082c5ddb3e",
+        "planDigest": "sha256:c791f0b2f52941671e7677fe933f69c58ae2995735b6d4857b4773d02172ce2a",
+        "evidenceDigest": "sha256:8f217d01e9e84dc4c1c9d8c6c5a9e1ff7ff5af19ef8df12c598698b9bd50e5ea"
+      },
+      "decisionRef": "D-RUN-FACT-POINTERS-01-3",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "d595ced1c48c7321a766ef248317a1082c5ddb3e",
+        "planDigest": "sha256:c791f0b2f52941671e7677fe933f69c58ae2995735b6d4857b4773d02172ce2a",
+        "evidenceDigest": "sha256:66bb80a6ed5b78500484bc8ee1a1193558a2cce9f4e9a8c7b7b1d31037bf1287"
+      },
+      "decisionRef": "D-RUN-FACT-POINTERS-01-4",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d595ced1c48c7321a766ef248317a1082c5ddb3e",
+        "planDigest": "sha256:c791f0b2f52941671e7677fe933f69c58ae2995735b6d4857b4773d02172ce2a",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-FACT-POINTERS-01-5",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-FACT-POINTERS-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "86fe0d272b8ea670bc6afff6977faa06da7f8703",
+        "planDigest": "sha256:c791f0b2f52941671e7677fe933f69c58ae2995735b6d4857b4773d02172ce2a",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-FACT-POINTERS-01-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "a798c0560bc8f517ff54d132ad7190af463a67a3",
+        "planDigest": "sha256:c791f0b2f52941671e7677fe933f69c58ae2995735b6d4857b4773d02172ce2a",
+        "evidenceDigest": "sha256:59d3b72b01ef144c8607bb602de49ab5d154f06baa493be927e38926aa758099"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-FACT-POINTERS-01-3",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "d595ced1c48c7321a766ef248317a1082c5ddb3e",
+        "planDigest": "sha256:c791f0b2f52941671e7677fe933f69c58ae2995735b6d4857b4773d02172ce2a",
+        "evidenceDigest": "sha256:8f217d01e9e84dc4c1c9d8c6c5a9e1ff7ff5af19ef8df12c598698b9bd50e5ea"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-FACT-POINTERS-01-4",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "d595ced1c48c7321a766ef248317a1082c5ddb3e",
+        "planDigest": "sha256:c791f0b2f52941671e7677fe933f69c58ae2995735b6d4857b4773d02172ce2a",
+        "evidenceDigest": "sha256:66bb80a6ed5b78500484bc8ee1a1193558a2cce9f4e9a8c7b7b1d31037bf1287"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-FACT-POINTERS-01-5",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d595ced1c48c7321a766ef248317a1082c5ddb3e",
+        "planDigest": "sha256:c791f0b2f52941671e7677fe933f69c58ae2995735b6d4857b4773d02172ce2a",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
