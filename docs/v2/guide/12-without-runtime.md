@@ -16,31 +16,31 @@
 
 ## 怎么开始
 
-用 Claude Code：装插件就行，Skill、模板和这份指南都在里面，不用装 npm 包。
+把下面这段复制给你的 AI 编程工具（Claude Code、Codex、Cursor 都行），它会把项目配好。项目是大家共用的，不管谁用什么工具，都照这一段配。
+
+```text
+请帮我在这个项目里用 BuildBeat 的写法记录需求，先不装运行时（https://github.com/HaiYangBG1/BuildBeat）：
+
+1. 读那个仓库里的 SKILL.md 和 docs/v2/guide/12-without-runtime.md，之后按"只用 Skill 和项目文件"的方式干活。
+2. 把那个仓库里的 templates/v2/work.example.md 和 templates/v2/result.example.md 拷到这个项目的 delivery/templates/ 下。
+3. 在这个项目的 AGENTS.md（没有就新建）里加一句：需求按 BuildBeat 的写法记在 delivery/work/<编号>/，模板在 delivery/templates/，规则见 https://github.com/HaiYangBG1/BuildBeat/blob/main/docs/v2/guide/12-without-runtime.md
+4. 确认 delivery/ 没有被 .gitignore 或 .git/info/exclude 排除，然后把这些改动提交。
+5. 弄好后用一两句话告诉我可以开始了。之后我只用平常的话说要做什么。
+```
+
+用 Claude Code 的，还可以装上插件，以后每个会话都会自动加载 Skill；插件里也带着模板和这份指南，不用装 npm 包。
 
 ```text
 /plugin marketplace add HaiYangBG1/BuildBeat
 /plugin install buildbeat@buildbeat-plugins
 ```
 
-用别的 AI 编程工具（Codex、Cursor 等）：把下面这段复制给它。
-
-```text
-请帮我在这个项目里用 BuildBeat 的写法记录需求，先不装运行时（https://github.com/HaiYangBG1/BuildBeat）：
-
-1. 读这个仓库里的 SKILL.md 和 docs/v2/guide/12-without-runtime.md，之后按"只用 Skill 和项目文件"的方式干活。
-2. 起草工作说明照 templates/v2/work.example.md，收口照 templates/v2/result.example.md，都在同一个仓库里。
-3. 在项目的 AGENTS.md（没有就新建）里加一句：需求按 BuildBeat 的写法记在 delivery/work/<编号>/，规则见上面那份指南。
-4. 确认 delivery/ 没有被 .gitignore 或 .git/info/exclude 排除。
-5. 弄好后用一两句话告诉我可以开始了。之后我只用平常的话说要做什么。
-```
-
 ## 日常怎么做
 
-1. **起草**：说清要做什么，AI 在 `delivery/work/<编号>/work.md` 照八节起草；"已核实的现状"的标题写核实时的提交号，引用代码写成 `路径:起-止`。
+1. **起草**：说清要做什么，AI 照 `delivery/templates/work.example.md` 的八节在 `delivery/work/<编号>/work.md` 起草；"已核实的现状"的标题写核实时的提交号，引用代码写成 `路径:起-止`。
 2. **接受**：你看过、同意后，AI 照下面"接受 `work.md`"的格式在 `decisions.jsonl` 末尾记一行，摘要由它算。
 3. **动手**：照平常的方式改代码、跑测试、提交，提交信息末尾带 `Work: <编号>`；合并走项目原来的流程。
-4. **收口**：合并后照 `result.example.md` 写 `result.md`。以后还用得上的结论，先写进项目自己的文档并提交，再在 `result.md` 里记成 `路径 @ 提交`；AI 可以用 Git 自查这个提交在主干上、确实改了那个文件。
+4. **收口**：合并后照 `delivery/templates/result.example.md` 写 `result.md`。以后还用得上的结论，先写进项目自己的文档并提交，再在 `result.md` 里记成 `路径 @ 提交`；AI 可以用 Git 自查这个提交在主干上、确实改了那个文件。
 5. **关窗**：照下面的格式记一行关窗，把 `result.md` 和 `decisions.jsonl` 一起提交。
 
 换会话或换人接手时，先读 `work.md`、`decisions.jsonl` 和 `result.md`；现状里的指针用 `git diff <标题里的提交> HEAD -- <路径>` 看代码变没变。

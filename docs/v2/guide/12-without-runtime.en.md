@@ -16,31 +16,31 @@ With files only there is no automatic loop, isolated worktree, approval binding,
 
 ## How to start
 
-With Claude Code, install the plugin; it carries the Skill, the templates and this guide, so no npm package is needed.
+Paste this to your AI coding tool (Claude Code, Codex and Cursor all work) and it sets the project up. The project is shared, so set it up this way whichever tool each person uses.
+
+```text
+Please set up this project to record requirements the BuildBeat way, without the runtime for now (https://github.com/HaiYangBG1/BuildBeat):
+
+1. Read SKILL.md and docs/v2/guide/12-without-runtime.en.md in that repository, and from then on work the "Skill and project files only" way.
+2. Copy templates/v2/work.example.md and templates/v2/result.example.md from that repository into this project's delivery/templates/.
+3. Add one line to this project's AGENTS.md (create it if missing): requirements are recorded the BuildBeat way under delivery/work/<id>/, templates are in delivery/templates/, rules at https://github.com/HaiYangBG1/BuildBeat/blob/main/docs/v2/guide/12-without-runtime.en.md
+4. Make sure delivery/ is not excluded by .gitignore or .git/info/exclude, then commit these changes.
+5. Tell me in a sentence or two when it is ready. From then on I will just say what I want done.
+```
+
+With Claude Code you can also install the plugin, so every session loads the Skill on its own; the plugin carries the templates and this guide too, so no npm package is needed.
 
 ```text
 /plugin marketplace add HaiYangBG1/BuildBeat
 /plugin install buildbeat@buildbeat-plugins
 ```
 
-With another AI coding tool (Codex, Cursor and the like), paste this to it:
-
-```text
-Please set up this project to record requirements the BuildBeat way, without the runtime for now (https://github.com/HaiYangBG1/BuildBeat):
-
-1. Read SKILL.md and docs/v2/guide/12-without-runtime.en.md in that repository, and from then on work the "Skill and project files only" way.
-2. Draft work descriptions from templates/v2/work.example.md and close out with templates/v2/result.example.md, both in the same repository.
-3. Add one line to the project's AGENTS.md (create it if missing): requirements are recorded the BuildBeat way under delivery/work/<id>/, following the guide above.
-4. Make sure delivery/ is not excluded by .gitignore or .git/info/exclude.
-5. Tell me in a sentence or two when it is ready. From then on I will just say what I want done.
-```
-
 ## Day to day
 
-1. **Draft:** say what you want; the AI drafts `delivery/work/<id>/work.md` in the eight sections, naming the commit it checked on in the facts heading and pointing at code as `path:<start>-<end>`.
+1. **Draft:** say what you want; the AI drafts `delivery/work/<id>/work.md` in the eight sections of `delivery/templates/work.example.md`, naming the commit it checked on in the facts heading and pointing at code as `path:<start>-<end>`.
 2. **Accept:** once you have read and agreed, the AI appends one line to `decisions.jsonl` in the "Accept `work.md`" format below and computes the digest.
 3. **Do the work:** edit, test and commit as usual, ending each commit message with `Work: <id>`; merging follows the project's own process.
-4. **Close out:** after the merge, write `result.md` from `result.example.md`. Conclusions later work needs go into the project's own documents first and are committed; `result.md` then records each as `path @ commit`. The AI can check with Git that the commit is on the main branch and changes that file.
+4. **Close out:** after the merge, write `result.md` from `delivery/templates/result.example.md`. Conclusions later work needs go into the project's own documents first and are committed; `result.md` then records each as `path @ commit`. The AI can check with Git that the commit is on the main branch and changes that file.
 5. **Close:** append the close line in the format below and commit `result.md` with `decisions.jsonl`.
 
 When a new session or another person picks a work up, they read `work.md`, `decisions.jsonl` and `result.md` first; `git diff <commit in the facts heading> HEAD -- <path>` shows whether the code a fact points at has changed.

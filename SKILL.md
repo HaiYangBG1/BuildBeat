@@ -14,7 +14,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 - 4.x：按下文操作，但合并决定点的两种修复入口有下述版本限制。
 - 3.x：下文的 `run`、`status --work`、`decide`、`check`、`history` 和 `work.md` 在 3.x 不存在，沿用项目现有的 3.x 写法：`intent.md` + `plan.md`，分别 `accept --artifact intent` 与 `accept --artifact plan`；`start --config <config> --attempt new` 开工，`resume --config <config> [--run <RUN>] [--adopt <sha> --by <name>]` 续跑；`overview`、`inbox`、`status --run <RUN>` 看进度；`approve --transition <t>` / `reject --reason <why>` 决定；`findings adjudicate` 裁决问题；`doctor` 检查配置；run-config 保留 `workflow:` 与 `riskPreset:`。
 - 3.x 的活动 Run 只能用 3.x 运行时完成或取消。升级到 4.x 前先问用户，并按[迁移说明](docs/MIGRATION.md)处理。
-- 没有运行时：按[只用 Skill 和项目文件](docs/v2/guide/12-without-runtime.md)干活，这是一种完整的用法，不是降级。照下文写 `work.md`；用户同意后照指南格式手写接受行，摘要用 `shasum -a 256` 算；按平常的方式改代码、测试、提交，提交信息带 `Work: <ID>`；合并后写 `result.md`，写回的结论先提交再记 `路径 @ 提交`，并用 Git 自查提交在主干上、改了那个文件；最后手写关窗行。现状里的指针用 `git diff <标题里的提交> HEAD -- <路径>` 自查。自己跑的测试照实说是自己跑的；不得代批 Run，不得声称运行时的验证、审查、回读或写回核对已经通过。
+- 没有运行时：按[只用 Skill 和项目文件](docs/v2/guide/12-without-runtime.md)干活，这是一种完整的用法，不是降级。照下文写 `work.md`，模板用项目里的 `delivery/templates/`，没有就用 Skill 自带的 `templates/v2/`；用户同意后照指南格式手写接受行，摘要用 `shasum -a 256` 算；按平常的方式改代码、测试、提交，提交信息带 `Work: <ID>`；合并后写 `result.md`，写回的结论先提交再记 `路径 @ 提交`，并用 Git 自查提交在主干上、改了那个文件；最后手写关窗行。现状里的指针用 `git diff <标题里的提交> HEAD -- <路径>` 自查。自己跑的测试照实说是自己跑的；不得代批 Run，不得声称运行时的验证、审查、回读或写回核对已经通过。
 
 合并决定点的 `run --adopt`、`decide --action fix` 与批准命令的 `--candidate` 候选绑定要求运行时 4.2 或更高版本。
 
