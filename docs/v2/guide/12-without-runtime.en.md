@@ -38,6 +38,8 @@ The ledger of a run in progress lives in `.buildbeat/runtime/` on the machine ru
 
 - **Write relation lines** in a `work.md` you are drafting (before acceptance) or in `result.md`, one per line: `- follows: <id>`, `- split from: <id>`, `- related: <id>`, `- ref: <external id>`. They are plain text; someone with the runtime sees the linked works strung into one thread with `status --work`.
 
+- **Write the facts section** with the commit you checked on in its heading and code pointed at as `path:<start>-<end>` in backticks. This is plain text too; without the runtime, `git diff <that commit> HEAD -- <path>` shows whether the code changed. Someone with the runtime sees what changed in `status --work`.
+
 - **When you commit code or documents for a work**, end the commit message with a blank line and `Work: <ID>`. Someone with the runtime can then find the work from the code with `buildbeat history --path`.
 
 `actor` says truthfully who decided: a person writes `"kind":"human"`; an AI tool deciding on its own writes `"kind":"agent"` with the tool's name as `id`; an AI tool passing on what a person said in the conversation writes the person's name with `"kind":"human"` and adds `"via":"agent-session"`. Older lines with `by` and no `actor` stay valid; status shows them as "identity not recorded".

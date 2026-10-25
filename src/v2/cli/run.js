@@ -54,6 +54,7 @@ import {
 import { configTargets, discoverRepos, ignoredRecordsWarning, workConfigs, pathLabel, shellArg } from "../runtime/overview-repos.js";
 import { renderTrace, traceLines } from "../runtime/code-trace.js";
 import { attachThreads, readWorks, renderThread, worksWithRef } from "../runtime/threads.js";
+import { attachFacts, factsWarning, renderFacts } from "../runtime/facts.js";
 import { closeWork, runReadback } from "../runtime/release.js";
 import {
   DEFAULT_STALL_AFTER_MS,
@@ -1117,6 +1118,8 @@ function commandAccept(flags) {
   }
   const ignored = ignoredRecordsWarning(resolve(flags.repo), flags.work);
   if (ignored) console.log(ignored);
+  const facts = factsWarning(resolve(flags.repo), flags.work);
+  if (facts) console.log(facts);
   console.log(
     "  note: editing an artifact after acceptance makes its acceptance stale",
   );
@@ -1239,6 +1242,9 @@ function commandDoctor(flags) {
   }
   const ignored = ignoredRecordsWarning(options.repoRoot, options.workId);
   if (ignored) console.log(ignored);
+  // Facts compared with the base the next run would start from.
+  const facts = factsWarning(options.repoRoot, options.workId, { against: options.base, label: options.base });
+  if (facts) console.log(facts);
   for (const policy of options.policies) {
     for (const artifact of policy.kind === "artifact"
       ? [policy.artifact]
@@ -1531,9 +1537,13 @@ function commandStatus(flags) {
     const allRepos = flags["all-repos"] === "true";
     const result = computeRepositoryOverview(repoRoot, { work: flags.work ?? null, allRepos, localRepoLabel: repoLabelFor(repoRoot, flags.repo) });
     const rows = result.repos.flatMap((group) => group.works);
-    // One work's view also shows the works linked to it (WORK-THREADS).
-    if (flags.work) attachThreads(rows, result.repos.map((group) => group.repo));
-    const extra = flags.work ? renderThread : null;
+    // One work's view also shows the works linked to it (WORK-THREADS) and
+    // which code its facts point at has changed (WORK-FACT-POINTERS).
+    if (flags.work) {
+      attachThreads(rows, result.repos.map((group) => group.repo));
+      attachFacts(rows);
+    }
+    const extra = flags.work ? (row) => [...renderFacts(row), ...renderThread(row)] : null;
     if (flags.json === "true") {
       console.log(JSON.stringify(allRepos ? result : {
         works: rows.map((row) => {
