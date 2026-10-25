@@ -1,0 +1,211 @@
+{
+  "run": "RUN-TEAM-ENTRY-01",
+  "work": "WORK-TEAM-ENTRY",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 45,
+    "lastDigest": "sha256:516f6cf8a1a9a78bcb3b3af89d35f783def45670b2e900992eb75c6938792813"
+  },
+  "startedAt": "2026-10-25T06:38:45.327Z",
+  "finishedAt": "2026-10-25T06:56:29.863Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 4
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "waits": {
+      "decided": {
+        "count": 3,
+        "ms": 408755
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 654783
+  },
+  "workspaces": {
+    "RUN-TEAM-ENTRY-01": {
+      "repo": ".",
+      "branch": "run/RUN-TEAM-ENTRY-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-TEAM-ENTRY-01",
+      "base": "a6441fb3b37da49c15015a187368d62e42695505",
+      "candidate": "d031dbf8b710c090b45508aa70da48b084725400"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-TEAM-ENTRY-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "eafc3007ce3d05638ddb190f2403391d51c727e6",
+      "digest": "sha256:eadbf29ce85f4499c08d0171bd365d200907eaf3891ae44e651b1e4d7afe8b90",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:d255f19a2f2d56ea28d7434ad60eefea972530bf23a629c3e29e63362939c37e"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-TEAM-ENTRY-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "eafc3007ce3d05638ddb190f2403391d51c727e6",
+      "digest": "sha256:d7d4141d95ca3a6e17678e50ec11ae368a445c1a5b952f079112cf916d19e034",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-TEAM-ENTRY-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "eafc3007ce3d05638ddb190f2403391d51c727e6",
+      "digest": "sha256:5732cb3b66e9fbfa4a7fab617909b69900d0e7f418e61a5bea9719aeb6a1cb9b",
+      "status": "passed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P2",
+          "summary": "指南 12 中英文入门提示未落实已确认的“两份模板放进项目”，仅引用远端模板，且 AGENTS.md 示例中的“上面那份指南”缺少明确路径或链接，不能保证换会话后仍可定位规则。"
+        },
+        {
+          "severity": "P2",
+          "summary": "docs/v2/guide/README.md:14 和 README.en.md:14 仍显示“12-without-runtime”，未按 work.md 的范围和命名约定改为“只用 Skill 和项目文件”及“Skill and project files only”。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-TEAM-ENTRY-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "d031dbf8b710c090b45508aa70da48b084725400",
+      "digest": "sha256:837ae81662881a8f0bda5f50c86742b962a6cf4e54e8964d0cd5a461594785a1",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:183ea48572e4ced377f28c8574be5a688be567438ee40830c1eee00aec8272e3"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-TEAM-ENTRY-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "d031dbf8b710c090b45508aa70da48b084725400",
+      "digest": "sha256:06b6597dae79d33154b05fc8c3118c866de6daf88fb5e83cd98ba89cdaffc9fb",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-TEAM-ENTRY-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "d031dbf8b710c090b45508aa70da48b084725400",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "eafc3007ce3d05638ddb190f2403391d51c727e6",
+        "planDigest": "sha256:dbcfa4b9063e426fb3c421e1ba2529abbecb94a1d96baa9f94a25f96a639b8af",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-TEAM-ENTRY-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d031dbf8b710c090b45508aa70da48b084725400",
+        "planDigest": "sha256:dbcfa4b9063e426fb3c421e1ba2529abbecb94a1d96baa9f94a25f96a639b8af",
+        "evidenceDigest": "sha256:5732cb3b66e9fbfa4a7fab617909b69900d0e7f418e61a5bea9719aeb6a1cb9b"
+      },
+      "decisionRef": "D-RUN-TEAM-ENTRY-01-2",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d031dbf8b710c090b45508aa70da48b084725400",
+        "planDigest": "sha256:dbcfa4b9063e426fb3c421e1ba2529abbecb94a1d96baa9f94a25f96a639b8af",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-TEAM-ENTRY-01-3",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-TEAM-ENTRY-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "eafc3007ce3d05638ddb190f2403391d51c727e6",
+        "planDigest": "sha256:dbcfa4b9063e426fb3c421e1ba2529abbecb94a1d96baa9f94a25f96a639b8af",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-TEAM-ENTRY-01-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d031dbf8b710c090b45508aa70da48b084725400",
+        "planDigest": "sha256:dbcfa4b9063e426fb3c421e1ba2529abbecb94a1d96baa9f94a25f96a639b8af",
+        "evidenceDigest": "sha256:5732cb3b66e9fbfa4a7fab617909b69900d0e7f418e61a5bea9719aeb6a1cb9b"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-TEAM-ENTRY-01-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d031dbf8b710c090b45508aa70da48b084725400",
+        "planDigest": "sha256:dbcfa4b9063e426fb3c421e1ba2529abbecb94a1d96baa9f94a25f96a639b8af",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

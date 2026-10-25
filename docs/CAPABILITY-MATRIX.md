@@ -1,11 +1,11 @@
 # BuildBeat capability matrix / 能力矩阵
 
-Current release: 4.2.3. One product path: Skill → local runtime →
-project records. The Claude Code plugin distributes the Skill and references;
-install the runtime separately. Files remain readable without the runtime, but
-manual work has no automatic loop, isolation, budget or approval enforcement;
-[Taking part without the runtime](v2/guide/12-without-runtime.en.md) states what
-may be written by hand.
+Current release: 4.2.3. Two ways to use it. Skill → project records keeps each
+work's context in Git with no runtime: [Skill and project files only](v2/guide/12-without-runtime.en.md)
+states what is written by hand and what must not be claimed. Skill → local
+runtime → project records adds the automatic loop, isolation, budgets, approval
+binding and the runtime's checks of those records. The Claude Code plugin
+distributes the Skill, templates and guides; install the runtime separately.
 
 | Capability | Current implementation | Boundary |
 |---|---|---|
