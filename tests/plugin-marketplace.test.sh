@@ -138,6 +138,11 @@ for relative in templates docs example; do
 done
 [ -f "$INSTALL_PATH/docs/v2/guide/01-quickstart.md" ] \
   || fail "installed plugin is missing reference documentation"
+# A team without the runtime starts from the plugin alone: guide 12 must ship.
+for guide in 12-without-runtime.md 12-without-runtime.en.md; do
+  cmp -s "$REPO_ROOT/docs/v2/guide/$guide" "$INSTALL_PATH/docs/v2/guide/$guide" \
+    || fail "installed plugin is missing or differs on the files-only guide: $guide"
+done
 [ -f "$INSTALL_PATH/example/README.md" ] \
   || fail "installed plugin is missing the example project"
 [ ! -e "$INSTALL_PATH/bin" ] \
