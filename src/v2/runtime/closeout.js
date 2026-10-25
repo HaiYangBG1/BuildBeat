@@ -23,9 +23,11 @@ const PROMOTION =
 
 // Text lines of a Markdown page outside fenced code, indented code and HTML
 // comments, so a template's guidance kept in comments or an example in a code
-// block is neither the summary nor a promotion (nor a link between works). A
-// comment may open or close anywhere on a line and span several lines; what
-// lies outside it is the line's text.
+// block is neither the summary nor a promotion (nor a link between works).
+// Code is recognised first: a comment marker inside a code block or an inline
+// code span is text, not the start of a comment. A comment may open or close
+// anywhere else on a line and span several lines; what lies outside it is the
+// line's text.
 export function textLines(text) {
   const lines = [];
   let fence = null;
@@ -37,39 +39,55 @@ export function textLines(text) {
       if (raw.trim().startsWith(fence)) fence = null;
       continue;
     }
-    let kept = "";
-    let rest = raw;
-    while (rest.length) {
-      const mark = rest.indexOf(comment ? "-->" : "<!--");
-      if (mark < 0) {
-        if (!comment) kept += rest;
-        break;
+    if (!comment) {
+      // An indented code block starts after a blank line and runs on through
+      // further indented lines.
+      if (/^( {4}|\t)/.test(raw) && raw.trim() !== "" && (blankBefore || indented)) {
+        indented = true;
+        blankBefore = false;
+        continue;
       }
-      if (!comment) kept += rest.slice(0, mark);
-      rest = rest.slice(mark + (comment ? 3 : 4));
-      comment = !comment;
+      const opening = /^ {0,3}(`{3,}|~{3,})/.exec(raw);
+      if (opening) {
+        fence = opening[1];
+        indented = false;
+        blankBefore = false;
+        continue;
+      }
+    }
+    const before = comment;
+    let kept = "";
+    let at = 0;
+    while (at < raw.length) {
+      if (comment) {
+        const end = raw.indexOf("-->", at);
+        if (end < 0) break;
+        comment = false;
+        at = end + 3;
+      } else if (raw[at] === "`") {
+        const run = /^`+/.exec(raw.slice(at))[0];
+        const close = raw.indexOf(run, at + run.length);
+        const stop = close < 0 ? at + run.length : close + run.length;
+        kept += raw.slice(at, stop);
+        at = stop;
+      } else if (raw.startsWith("<!--", at)) {
+        comment = true;
+        at += 4;
+      } else {
+        kept += raw[at];
+        at += 1;
+      }
     }
     if (kept.trim() === "") {
-      if (kept === raw) {
+      // A blank line (not one that was all comment) ends a paragraph.
+      if (!before && !comment && raw.trim() === "") {
         lines.push("");
         blankBefore = true;
       }
       continue;
     }
-    // An indented code block starts after a blank line and runs on through
-    // further indented lines.
-    if (/^( {4}|\t)/.test(kept) && (blankBefore || indented)) {
-      indented = true;
-      blankBefore = false;
-      continue;
-    }
     indented = false;
     blankBefore = false;
-    const opening = /^(`{3,}|~{3,})/.exec(kept.trim());
-    if (opening) {
-      fence = opening[1];
-      continue;
-    }
     lines.push(kept);
   }
   return lines;

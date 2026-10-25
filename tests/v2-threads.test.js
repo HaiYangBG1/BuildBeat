@@ -77,6 +77,20 @@ test("relation and ref lines are read outside code and comments, in any case", (
   assert.deepEqual(hidden.refs, []);
   assert.match(hidden.prose, /and back to text/);
   assert.doesNotMatch(hidden.prose, /hidden from readers/);
+
+  // A comment marker inside code is text: it opens no comment and swallows
+  // none of the real lines after it.
+  const coded = parseLinks([
+    "Example:", "", "    <!-- an indented example opens no comment", "",
+    "- related: WORK-AFTER-INDENTED",
+    "Use `<!--` and ``<!-- -->`` to hide text.",
+    "- related: WORK-AFTER-INLINE",
+    "```", "<!-- inside a fence", "```",
+    "- ref: TASK-AFTER-FENCE",
+  ].join("\n"));
+  assert.deepEqual(coded.links.map((link) => link.to), ["WORK-AFTER-INDENTED", "WORK-AFTER-INLINE"]);
+  assert.deepEqual(coded.refs, ["TASK-AFTER-FENCE"]);
+  assert.match(coded.prose, /Use `<!--` and ``<!-- -->`` to hide text\./);
 });
 
 test("a work with both work.md and a legacy intent.md is read from work.md", () => {
