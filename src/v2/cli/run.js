@@ -51,8 +51,9 @@ import {
   renderOverview,
   runsFor,
 } from "../runtime/overview.js";
-import { configTargets, ignoredRecordsWarning, workConfigs, pathLabel, shellArg } from "../runtime/overview-repos.js";
+import { configTargets, discoverRepos, ignoredRecordsWarning, workConfigs, pathLabel, shellArg } from "../runtime/overview-repos.js";
 import { renderTrace, traceLines } from "../runtime/code-trace.js";
+import { attachThreads, readWorks, renderThread, worksWithRef } from "../runtime/threads.js";
 import { closeWork, runReadback } from "../runtime/release.js";
 import {
   DEFAULT_STALL_AFTER_MS,
@@ -100,6 +101,7 @@ Usage:
   buildbeat accept --repo <path> --work <WORK-ID> [--by <name>] [--as human|agent] [--note <text>]
   buildbeat run --config <run-config.yaml> [--run <RUN-ID>] [--new] [--adopt <sha> [--by <name>] [--as human|agent]]
   buildbeat status --repo <path> [--work <WORK-ID> | --run <RUN-ID>] [--all-repos] [--json]
+  buildbeat status --repo <path> [--all-repos] --ref <id> [--json]
   buildbeat decide --repo <path> --run <RUN-ID> --action approve|reject --transition <t> [--candidate <sha>] [--by <name>] [--as human|agent] [--reason <text>]
   buildbeat decide --repo <path> --run <RUN-ID> --action fix --reason <text> [--by <name>] [--as human|agent]
   buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--as human|agent] [--note <text>]
@@ -1495,6 +1497,26 @@ function commandMetrics(flags) {
   console.log(renderMetrics(summary));
 }
 
+// Works that carry an external id (`- ref: <id>`), each with its thread; no
+// match prints nothing (WORK-THREADS).
+function commandStatusByRef(flags, repoRoot) {
+  const root = realpathSync(repoRoot);
+  const roots = flags["all-repos"] === "true" ? discoverRepos(root, []) : [root];
+  const cwd = process.cwd();
+  const rows = worksWithRef(readWorks(roots), String(flags.ref))
+    .map((match) => {
+      const row = computeOverview(match.repo, { work: match.work, cwd, repoLabel: shellArg(pathLabel(cwd, match.repo)) })[0];
+      return row ? { ...row, repo: row.repo ?? match.repo, repoLabel: pathLabel(cwd, row.repo ?? match.repo) } : null;
+    })
+    .filter(Boolean);
+  attachThreads(rows, roots, cwd);
+  if (flags.json === "true") {
+    console.log(JSON.stringify({ works: rows }, null, 2));
+  } else if (rows.length) {
+    console.log(renderOverview(rows.map((row) => (roots.length === 1 ? { ...row, repo: undefined } : row)), { extra: renderThread }));
+  }
+}
+
 function commandStatus(flags) {
   if (!flags.repo) throw new Error("status requires --repo");
   const repoRoot = resolve(flags.repo);
@@ -1502,10 +1524,16 @@ function commandStatus(flags) {
     throw new Error("status: --all-repos cannot be used with --run; use --work instead");
   if (flags.run && flags.work)
     throw new Error("status: choose --run or --work");
+  if (flags.ref && (flags.run || flags.work))
+    throw new Error("status: choose --ref, --work or --run");
+  if (flags.ref) return commandStatusByRef(flags, repoRoot);
   if (!flags.run) {
     const allRepos = flags["all-repos"] === "true";
     const result = computeRepositoryOverview(repoRoot, { work: flags.work ?? null, allRepos, localRepoLabel: repoLabelFor(repoRoot, flags.repo) });
     const rows = result.repos.flatMap((group) => group.works);
+    // One work's view also shows the works linked to it (WORK-THREADS).
+    if (flags.work) attachThreads(rows, result.repos.map((group) => group.repo));
+    const extra = flags.work ? renderThread : null;
     if (flags.json === "true") {
       console.log(JSON.stringify(allRepos ? result : {
         works: rows.map((row) => {
@@ -1532,10 +1560,11 @@ function commandStatus(flags) {
           }
         }
         for (const group of result.repos) {
-          const open = group.works.filter((row) => !row.settled);
+          // A work asked for by name is shown even when it is settled.
+          const open = group.works.filter((row) => flags.work || !row.settled);
           if (open.length) {
             console.log(`repo ${pathLabel(process.cwd(), group.repo)}:`);
-            console.log(renderOverview(open, { decisions: Boolean(flags.work) }));
+            console.log(renderOverview(open, { decisions: Boolean(flags.work), extra }));
           }
         }
         for (const group of result.repos) {
@@ -1545,7 +1574,7 @@ function commandStatus(flags) {
       } else {
         // Keep the single-repo surface while forwarding work facts and waits.
         console.log(renderOverview(rows.map((row) => row.repo === result.repos[0].repo
-          ? { ...row, repo: undefined } : row), { decisions: Boolean(flags.work) }));
+          ? { ...row, repo: undefined } : row), { decisions: Boolean(flags.work), extra }));
         if (result.pending.length) commandInbox(flags, result.pending);
         if (!flags.work) console.log(renderMetrics(computeMetrics(repoRoot)));
       }

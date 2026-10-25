@@ -105,6 +105,15 @@ test("--result overrides the page's summary, and a page without text needs --res
   assert.equal(close(root, "BARE", "--result", "docs only").status, 0);
   assert.equal(decisions(dir).at(-1).subject.result, "docs only");
   assert.equal(resultSummary("# t\n<!--\nmulti-line\nguidance\n-->\n\n## h\nfirst text\n"), "first text");
+  // The same reader drops indented code and a comment that opens mid-line.
+  assert.equal(resultSummary("# t\n\n    an indented example\n\nSo <!-- not this --> the summary.\n"), "So  the summary.");
+  assert.deepEqual(parsePromotions("x\n\n    - AGENTS.md @ abcdef1\n\nnote <!-- hidden\n- AGENTS.md @ abcdef2\n-->\n"), []);
+  // A comment marker in inline code or an indented example is text and hides
+  // neither the summary nor the promotion lines after it.
+  const page = "# r\n\nShipped; `<!--` in text stays text.\n\n    <!-- an example\n\n## Written into the project\n- AGENTS.md @ abcdef1 — fact\n";
+  assert.equal(resultSummary(page), "Shipped; `<!--` in text stays text.");
+  assert.deepEqual(parsePromotions(page), [{ path: "AGENTS.md", commit: "abcdef1" }]);
+  assert.deepEqual(parsePromotions("Note \\` <!-- hidden `\n- AGENTS.md @ abcdef3\n-->\n- AGENTS.md @ abcdef4\n"), [{ path: "AGENTS.md", commit: "abcdef4" }]);
 });
 
 test("a work with a release, or a run config that cannot be read, still needs a passing readback", () => {

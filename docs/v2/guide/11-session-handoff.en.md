@@ -6,6 +6,8 @@ Before closing a session, save the goal, decisions, unverified scope and next st
 
 A new session reads AGENTS.md, work.md (or legacy intent/plan), decisions and status. Verify available facts and reuse still-valid authorization. A new conversation is not permission to start a duplicate run.
 
+To see where a whole piece of work stands, use `buildbeat status --repo . --all-repos --work <ID>`: works whose work.md or result.md carry relation lines (`- follows:`, `- split from:`, `- related:` with a work id) are strung into one thread, listed across repositories with each one's stage; the reverse directions are derived, and an id found nowhere shows as `NOT_FOUND`. Ids merely mentioned in prose are listed apart as mentions and mentioned by, outside the thread. With only a task, decision or merge request id at hand, `--ref <id>` finds the works that carry `- ref: <id>`.
+
 Before changing a piece of code, ask which work it came from with `buildbeat history --repo . --path <file>[:<line>[-<line>]]`: the runtime blames those lines and maps each commit to a work through three facts only, namely a recorded run's base..candidate range, a `Work: <ID>` trailer in the commit message, or a change under `delivery/work/<ID>/`; lines none of these explain are counted, never guessed from commit subjects. Read the result.md and work.md it lists before changing the code.
 
 For a closed work, read its result.md first: what was delivered, what was decided, what is left and where it went, and what was written into the project's documents. Before drafting a new work, search the closed works' result.md for related conclusions and leftovers, and carry the ones that matter into the new work.md's "why now".

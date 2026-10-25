@@ -19,35 +19,91 @@ import { join, posix } from "node:path";
 // "- <path> @ <commit> — <what>". The path may be in backticks (and then
 // may contain spaces); the commit is 7 to 40 hex digits.
 const PROMOTION =
-  /^\s*[-*+]\s+(?:`([^`]+)`|([^\s`]+))\s+@\s+`?([0-9a-fA-F]{7,40})`?(?=\s|$)/;
+  /^ {0,3}[-*+]\s+(?:`([^`]+)`|([^\s`]+))\s+@\s+`?([0-9a-fA-F]{7,40})`?(?=\s|$)/;
 
-// Text lines of a Markdown page outside fenced code and HTML comments, so a
-// template's guidance kept in comments or an example in a code block is
-// neither the summary nor a promotion.
-function textLines(text) {
+// Text lines of a Markdown page outside fenced code, indented code and HTML
+// comments, so a template's guidance kept in comments or an example in a code
+// block is neither the summary nor a promotion (nor a link between works).
+// Code is recognised first: a comment marker inside a code block or an inline
+// code span (or escaped with a backslash) is text, not the start of a comment. A comment may open or close
+// anywhere else on a line and span several lines; what lies outside it is the
+// line's text.
+export function textLines(text) {
   const lines = [];
   let fence = null;
   let comment = false;
+  let indented = false;
+  let blankBefore = true;
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
     if (fence) {
-      if (line.startsWith(fence)) fence = null;
+      if (raw.trim().startsWith(fence)) fence = null;
       continue;
     }
-    if (comment) {
-      if (line.includes("-->")) comment = false;
+    if (!comment) {
+      // An indented code block starts after a blank line and runs on through
+      // further indented lines.
+      if (/^( {4}|\t)/.test(raw) && raw.trim() !== "" && (blankBefore || indented)) {
+        indented = true;
+        blankBefore = false;
+        continue;
+      }
+      const opening = /^ {0,3}(`{3,}|~{3,})/.exec(raw);
+      if (opening) {
+        fence = opening[1];
+        indented = false;
+        blankBefore = false;
+        continue;
+      }
+    }
+    const before = comment;
+    let kept = "";
+    let at = 0;
+    while (at < raw.length) {
+      if (comment) {
+        const end = raw.indexOf("-->", at);
+        if (end < 0) break;
+        comment = false;
+        at = end + 3;
+      } else if (raw[at] === "\\" && /[!-/:-@[-`{-~]/.test(raw[at + 1] ?? "")) {
+        // A backslash-escaped punctuation character is plain text: \` opens
+        // no code span and \<!-- no comment.
+        kept += raw.slice(at, at + 2);
+        at += 2;
+      } else if (raw[at] === "`") {
+        // A code span closes at the next run of exactly as many backticks;
+        // without one, the backticks are plain text.
+        const run = /^`+/.exec(raw.slice(at))[0];
+        const runs = /`+/g;
+        runs.lastIndex = at + run.length;
+        let close = -1;
+        for (let match = runs.exec(raw); match; match = runs.exec(raw)) {
+          if (match[0].length === run.length) {
+            close = match.index;
+            break;
+          }
+        }
+        const stop = close < 0 ? at + run.length : close + run.length;
+        kept += raw.slice(at, stop);
+        at = stop;
+      } else if (raw.startsWith("<!--", at)) {
+        comment = true;
+        at += 4;
+      } else {
+        kept += raw[at];
+        at += 1;
+      }
+    }
+    if (kept.trim() === "") {
+      // A blank line (not one that was all comment) ends a paragraph.
+      if (!before && !comment && raw.trim() === "") {
+        lines.push("");
+        blankBefore = true;
+      }
       continue;
     }
-    const opening = /^(`{3,}|~{3,})/.exec(line);
-    if (opening) {
-      fence = opening[1];
-      continue;
-    }
-    if (line.startsWith("<!--")) {
-      comment = !line.includes("-->");
-      continue;
-    }
-    lines.push(raw);
+    indented = false;
+    blankBefore = false;
+    lines.push(kept);
   }
   return lines;
 }

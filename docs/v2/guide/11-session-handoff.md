@@ -6,6 +6,8 @@
 
 新会话读取项目 AGENTS.md、Work 的 work.md（或旧 intent/plan）、决定与 status。能从记录查到的事实自行核对，沿用仍有效的授权；不把开新会话等同于重开 Run。
 
+问一件事整体到哪了，用 `buildbeat status --repo . --all-repos --work <ID>`：工作说明或 result.md 里写了关系行（`- follows:`、`- split from:`、`- related:` 加工作编号）的工作，会被串成一条线，跨仓列出每项的阶段；反方向的关系自动推出，找不到的标为 `NOT_FOUND`。正文里只是提到的编号单列为 mentions 和 mentioned by，不算进这条线。手里只有任务、决策或合并请求编号时，用 `--ref <编号>` 找写了 `- ref: <编号>` 的工作。
+
 接手一段代码时，先用 `buildbeat history --repo . --path <文件>[:<行>[-<行>]]` 查它来自哪项工作：运行时对这些行做 blame，再按三种确定的线索对上工作——提交落在某一轮运行记录的起点到候选之间、提交信息带 `Work: <ID>`、提交改动了 `delivery/work/<ID>/`；追不到的行单独计数，不按提交标题猜。读列出的 result.md 和 work.md 再动手。
 
 已关窗的工作先读它的 result.md：做成了什么、定了什么、剩下什么转去了哪里、写进了项目哪些文档。起草新工作前，先在已关工作的 result.md 里搜相关的结论和遗留，把用得上的写进新 work.md 的"起因"。

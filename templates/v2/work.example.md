@@ -5,6 +5,12 @@ What people will see when this is done, and why it matters now.
 
 ## Why now
 Who asked, when, and what they said, in their own words; what triggered it (a report, a leftover from another work). Search the closed works' result.md first and name the ones this builds on. Delete this section if there is nothing to say.
+Link related works and external ids one per line; status strings linked works into one thread and finds them again by ref:
+- follows: <work id this one continues, corrects or replaces>
+- split from: <work id this one was split off from>
+- related: <work id>
+- ref: <task, decision or merge request id>
+
 
 ## Facts checked (<date>, on <commit>)
 - Confirmed: what the code, configuration, records or a command showed, each with where it came from (file, commit, command output).
