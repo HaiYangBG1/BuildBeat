@@ -22,9 +22,10 @@ const HEADING = /^ {0,3}(#{1,6})(?:[ \t]+(.*))?$/;
 const COMMIT = /(?<![0-9A-Za-z])[0-9a-fA-F]{7,40}(?![0-9A-Za-z])/g;
 const SPAN = /(?<!`)`([^`\s]+)`(?!`)/g;
 const POINTER = /^(.+?)(?::(\d+)(?:-(\d+))?)?$/;
-// URLs, placeholders, globs, options and absolute paths are never files of
+// URLs, placeholders, globs, options, absolute paths and directories (a
+// trailing slash, whether or not that directory exists) are never files of
 // the repository.
-const NOT_A_PATH = /[<>*?$=(){}[\]|"',;\\]|:\/\/|^[/~-]/;
+const NOT_A_PATH = /[<>*?$=(){}[\]|"',;\\]|:\/\/|^[/~-]|\/$/;
 
 // Sections whose heading names something that looks like a commit, with the
 // code spans written inside them. A section runs to the next heading of the
@@ -99,18 +100,20 @@ export function runBase(repoRoot, workId, runId) {
 }
 
 // A pointer names one file at the commit the facts were checked on: the
-// whole path, or its tail when only one file ends that way. A directory, or
-// a name with neither a slash nor a line that is no file at all (a method,
-// a configuration key), is not a pointer.
+// whole path, or its tail when only one file ends that way. A directory (the
+// whole path, before any tail is tried, or a tail no file has), or a name
+// with neither a slash nor a line that is no file at all (a method, a
+// configuration key), is not a pointer.
 function locate(pointer, files, dirs) {
-  const path = pointer.path.replace(/\/+$/, "");
+  const { path } = pointer;
   if (files.has(path)) return { path };
+  if (dirs.has(path)) return null;
   const tail = `/${path}`;
   const matches = [...files].filter((file) => file.endsWith(tail));
   if (matches.length === 1) return { path: matches[0] };
   if (matches.length > 1) return { reason: `matches ${matches.length} files` };
-  if (dirs.has(path) || [...dirs].some((dir) => dir.endsWith(tail))) return null;
-  return pointer.path.includes("/") || pointer.lines ? { reason: "no file" } : null;
+  if ([...dirs].some((dir) => dir.endsWith(tail))) return null;
+  return path.includes("/") || pointer.lines ? { reason: "no file" } : null;
 }
 
 // The hunks of a -U0 patch for each file in it. The call fixes the a/ and
