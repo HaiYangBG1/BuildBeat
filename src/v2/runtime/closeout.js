@@ -19,35 +19,58 @@ import { join, posix } from "node:path";
 // "- <path> @ <commit> — <what>". The path may be in backticks (and then
 // may contain spaces); the commit is 7 to 40 hex digits.
 const PROMOTION =
-  /^\s*[-*+]\s+(?:`([^`]+)`|([^\s`]+))\s+@\s+`?([0-9a-fA-F]{7,40})`?(?=\s|$)/;
+  /^ {0,3}[-*+]\s+(?:`([^`]+)`|([^\s`]+))\s+@\s+`?([0-9a-fA-F]{7,40})`?(?=\s|$)/;
 
-// Text lines of a Markdown page outside fenced code and HTML comments, so a
-// template's guidance kept in comments or an example in a code block is
-// neither the summary nor a promotion (nor a link between works).
+// Text lines of a Markdown page outside fenced code, indented code and HTML
+// comments, so a template's guidance kept in comments or an example in a code
+// block is neither the summary nor a promotion (nor a link between works). A
+// comment may open or close anywhere on a line and span several lines; what
+// lies outside it is the line's text.
 export function textLines(text) {
   const lines = [];
   let fence = null;
   let comment = false;
+  let indented = false;
+  let blankBefore = true;
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
     if (fence) {
-      if (line.startsWith(fence)) fence = null;
+      if (raw.trim().startsWith(fence)) fence = null;
       continue;
     }
-    if (comment) {
-      if (line.includes("-->")) comment = false;
+    let kept = "";
+    let rest = raw;
+    while (rest.length) {
+      const mark = rest.indexOf(comment ? "-->" : "<!--");
+      if (mark < 0) {
+        if (!comment) kept += rest;
+        break;
+      }
+      if (!comment) kept += rest.slice(0, mark);
+      rest = rest.slice(mark + (comment ? 3 : 4));
+      comment = !comment;
+    }
+    if (kept.trim() === "") {
+      if (kept === raw) {
+        lines.push("");
+        blankBefore = true;
+      }
       continue;
     }
-    const opening = /^(`{3,}|~{3,})/.exec(line);
+    // An indented code block starts after a blank line and runs on through
+    // further indented lines.
+    if (/^( {4}|\t)/.test(kept) && (blankBefore || indented)) {
+      indented = true;
+      blankBefore = false;
+      continue;
+    }
+    indented = false;
+    blankBefore = false;
+    const opening = /^(`{3,}|~{3,})/.exec(kept.trim());
     if (opening) {
       fence = opening[1];
       continue;
     }
-    if (line.startsWith("<!--")) {
-      comment = !line.includes("-->");
-      continue;
-    }
-    lines.push(raw);
+    lines.push(kept);
   }
   return lines;
 }

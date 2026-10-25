@@ -15,8 +15,8 @@ import { textLines } from "./closeout.js";
 import { computeOverview } from "./overview.js";
 import { directory, pathLabel, shellArg } from "./overview-repos.js";
 
-const LINK = /^\s*[-*+]\s+(follows|split\s+from|related)\s*:\s*([A-Za-z0-9][A-Za-z0-9._-]*)\s*$/i;
-const REF = /^\s*[-*+]\s+ref\s*:\s*([^<\s].*?)\s*$/i;
+const LINK = /^ {0,3}[-*+]\s+(follows|split\s+from|related)\s*:\s*([A-Za-z0-9][A-Za-z0-9._-]*)\s*$/i;
+const REF = /^ {0,3}[-*+]\s+ref\s*:\s*([^<\s].*?)\s*$/i;
 const INVERSE = { follows: "followed by", "split from": "split into", related: "related" };
 
 // Relation and ref lines of a page, outside code blocks and HTML comments,
@@ -36,7 +36,8 @@ export function parseLinks(text) {
 }
 
 // Every work folder in the given checkouts, with its links, refs and prose
-// from work.md (or the legacy intent.md) and result.md.
+// from work.md (the legacy intent.md only when there is no work.md) and
+// result.md.
 export function readWorks(roots) {
   const works = [];
   for (const repo of roots) {
@@ -45,7 +46,8 @@ export function readWorks(roots) {
     for (const work of readdirSync(workRoot).sort()) {
       const dir = join(workRoot, work);
       if (!directory(dir)) continue;
-      const pages = ["work.md", "intent.md", "result.md"]
+      const description = existsSync(join(dir, "work.md")) ? "work.md" : "intent.md";
+      const pages = [description, "result.md"]
         .map((name) => join(dir, name))
         .filter((path) => existsSync(path))
         .map((path) => parseLinks(readFileSync(path, "utf8")));

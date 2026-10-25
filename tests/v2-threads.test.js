@@ -63,6 +63,31 @@ test("relation and ref lines are read outside code and comments, in any case", (
   assert.deepEqual(refs, ["MR !60"]);
   assert.match(prose, /this continues WORK-OLD/);
   assert.doesNotMatch(prose, /- follows: WORK-OLD/);
+
+  // Indented code, a comment that opens mid-line and spans lines, and an
+  // indented line continuing a paragraph are not relation lines; a comment
+  // after a real line is dropped and the line still counts.
+  const hidden = parseLinks([
+    "An example:", "", "    - related: WORK-INDENTED", "    - ref: TASK-INDENTED", "",
+    "A note <!-- hidden from readers", "- related: WORK-HIDDEN", "- ref: TASK-HIDDEN", "--> and back to text.",
+    "Text that goes on", "    - related: WORK-LAZY",
+    "- related: WORK-REAL <!-- kept -->",
+  ].join("\n"));
+  assert.deepEqual(hidden.links, [{ kind: "related", to: "WORK-REAL" }]);
+  assert.deepEqual(hidden.refs, []);
+  assert.match(hidden.prose, /and back to text/);
+  assert.doesNotMatch(hidden.prose, /hidden from readers/);
+});
+
+test("a work with both work.md and a legacy intent.md is read from work.md", () => {
+  const root = repo();
+  work(root, "WORK-NEW", ["- follows: WORK-BASE"]);
+  work(root, "WORK-BASE");
+  work(root, "WORK-STALE");
+  writeFileSync(join(root, "delivery", "work", "WORK-NEW", "intent.md"), "# Old intent\n\n- related: WORK-STALE\n- ref: TASK-OLD\n");
+  const [row] = one(root, "--work", "WORK-NEW");
+  assert.deepEqual(row.thread.map((node) => node.work), ["WORK-NEW", "WORK-BASE"]);
+  assert.equal(row.refs, undefined);
 });
 
 test("one work's view strings every linked work into a thread with derived reverse links", () => {
