@@ -103,6 +103,7 @@ test("only the section whose heading names a commit is read, outside code and co
     "### A sub-heading stays in the section",
     "- `./src/d.js`",
     "- `https://example.com/x.js`, `<path>`, `--json`, `/etc/app.env`, `~/x.js`, `src/*.js`, ``src/double.js``",
+    "- `docs/`, `./docs/`, `docs/:3`",
     "```", "- `src/in-code.js:1`", "```",
     "<!-- `src/in-comment.js:1` -->",
     "## Decisions before starting",
@@ -152,6 +153,26 @@ test("status --work compares the code pointed at with HEAD before the first run,
     "    not found  src/gone.js  (not in HEAD)",
     `    not found  config.yml  (matches 2 files at ${short})`,
     `    not found  src/missing.js:3  (no file at ${short})`,
+  ]);
+});
+
+test("a directory is no pointer, even when a file elsewhere ends with its name", () => {
+  const root = realpathSync(tempDir("bb-facts-dirs-"));
+  git(root, "init", "-q", "-b", "main");
+  write(root, "docs/guide.md", "# Guide\n");
+  write(root, "plugin/docs", "a file named like the directory\n");
+  const pin = commit(root, "code");
+  // A trailing slash says directory, whether or not one exists; a whole path
+  // that is a directory is one too, not the tail of plugin/docs.
+  write(root, "delivery/work/W/work.md", ["# W", "", `## Facts checked (2026-10-25, on ${pin.slice(0, 7)})`,
+    "- `docs/`, `./docs/`, `docs/:3`, `docs`, `nowhere/` and `plugin/docs`; `guide.md`.", ""].join("\n"));
+  commit(root, "work");
+  assert.deepEqual(row(root, "W").facts.pointers.map((item) => [item.text, item.path, item.state]), [
+    ["plugin/docs", "plugin/docs", "same"],
+    ["guide.md", "docs/guide.md", "same"],
+  ]);
+  assert.deepEqual(block(cli(root, "status", "--repo", ".", "--work", "W")), [
+    `  facts: checked on ${pin.slice(0, 7)}, compared with HEAD: 2 pointers, 0 changed`,
   ]);
 });
 
