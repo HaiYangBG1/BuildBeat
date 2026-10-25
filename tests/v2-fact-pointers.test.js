@@ -2,7 +2,8 @@
 // commit it was checked on in its heading and points at code as `path`,
 // `path:line` or `path:line-line`; status --work lists the pointers whose code
 // changed since (against HEAD before the first run, the latest run's base
-// after), and accept and check warn. Closed works are left alone.
+// after) with the commits to each changed file, and accept and check warn.
+// Closed works are left alone.
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
@@ -49,6 +50,10 @@ const CONFIG = ["repo: ../../..", "work: W", "run: RUN-W", "allowedPaths:", "  -
 function fixture() {
   const root = realpathSync(tempDir("bb-facts-"));
   git(root, "init", "-q", "-b", "main");
+  // Settings that change what diff and log print must not change the result.
+  for (const [key, value] of [["diff.noprefix", "true"], ["diff.mnemonicPrefix", "true"], ["log.follow", "true"], ["color.ui", "always"]]) {
+    git(root, "config", key, value);
+  }
   write(root, ".gitignore", ".buildbeat/runtime/\n.buildbeat/worktrees/\n");
   write(root, "src/app.js", `${numbered("app", 20).join("\n")}\n`);
   write(root, "src/lib/util.js", `${numbered("util", 5).join("\n")}\n`);
@@ -130,23 +135,20 @@ test("status --work compares the code pointed at with HEAD before the first run,
     ["src/missing.js:3", null, "not found"],
   ]);
   assert.deepEqual(facts.pointers[0].lines, [5, 7]);
-  // Commits are those that changed the lines pointed at, followed as they
-  // move; the later commit edits other lines of the file and is not one of
-  // them for 5-7 and 10-12. Without lines, every commit to the file counts.
-  const by = (text) => facts.pointers.find((item) => item.text === text);
-  assert.deepEqual([by("src/app.js:5-7").commits, by("src/app.js:5-7").latest], [1, { commit: change, subject: "change the code" }]);
-  assert.deepEqual([by("src/app.js:10-12").commits, by("src/app.js:10-12").latest.commit], [1, change]);
-  assert.deepEqual([by("src/app.js:17").commits, by("src/app.js:17").latest.commit], [1, later]);
-  assert.deepEqual([by("src/lib/util.js").commits, by("src/lib/util.js").latest.commit], [2, later]);
+  // A changed pointer comes with the commits to its file in between, the
+  // later one included although it edited other lines than 5-7; whether the
+  // lines changed is decided on the diff alone. Unchanged pointers carry none.
+  const file = { commits: 2, latest: { commit: later, subject: "change line 17 and util again" } };
+  for (const item of facts.pointers) assert.deepEqual(item.file, item.state === "changed" ? file : undefined, item.text);
+  assert.notEqual(change, later);
   const short = pin.slice(0, 7);
-  const first = `(1 commit, latest ${change.slice(0, 7)} change the code)`;
-  const again = `latest ${later.slice(0, 7)} change line 17 and util again)`;
+  const commits = `(2 commits to the file, latest ${later.slice(0, 7)} change line 17 and util again)`;
   assert.deepEqual(block(cli(root, "status", "--repo", ".", "--work", "W")), [
     `  facts: checked on ${short}, compared with HEAD: 10 pointers, 4 changed, 2 changed elsewhere in the file, 3 not found`,
-    `    changed  src/app.js:5-7  ${first}`,
-    `    changed  src/app.js:10-12  ${first}`,
-    `    changed  src/app.js:17  (1 commit, ${again}`,
-    `    changed  src/lib/util.js  (2 commits, ${again}`,
+    `    changed  src/app.js:5-7  ${commits}`,
+    `    changed  src/app.js:10-12  ${commits}`,
+    `    changed  src/app.js:17  ${commits}`,
+    `    changed  src/lib/util.js  ${commits}`,
     "    not found  src/gone.js  (not in HEAD)",
     `    not found  config.yml  (matches 2 files at ${short})`,
     `    not found  src/missing.js:3  (no file at ${short})`,
@@ -215,4 +217,32 @@ test("without a commit of this repository in the heading nothing is compared; wi
   assert.equal("facts" in row(root, "Y"), false);
   assert.equal("facts" in row(root, "Z"), false);
   assert.doesNotMatch(cli(root, "accept", "--repo", ".", "--work", "X", "--by", "owner"), /warning: facts/);
+});
+
+test("a change made only in a merge counts, and both sides of a merge are read", () => {
+  const root = realpathSync(tempDir("bb-facts-merge-"));
+  git(root, "init", "-q", "-b", "main");
+  write(root, "src/app.js", `${numbered("app", 9).join("\n")}\n`);
+  write(root, "src/side.js", "side\n");
+  const pin = commit(root, "code");
+  write(root, "delivery/work/W/work.md", ["# W", "", `## Facts checked (2026-10-25, on ${pin.slice(0, 7)})`,
+    "- `src/app.js:5` is set in the merge; `src/app.js:1` on one side; `src/app.js:9` on the other; `src/side.js` too.", ""].join("\n"));
+  commit(root, "work");
+  git(root, "checkout", "-q", "-b", "side");
+  const app = numbered("app", 9);
+  write(root, "src/app.js", `${[...app.slice(0, 8), "app line 9 on the side"].join("\n")}\n`);
+  write(root, "src/side.js", "side changed\n");
+  const side = commit(root, "change line 9 on a side branch");
+  git(root, "checkout", "-q", "main");
+  write(root, "src/app.js", `${["app line 1 on main", ...app.slice(1)].join("\n")}\n`);
+  commit(root, "change line 1 on main");
+  git(root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "merge", "-q", "--no-ff", "--no-commit", "side");
+  write(root, "src/app.js", `${["app line 1 on main", ...app.slice(1, 4), "app line 5 set in the merge", ...app.slice(5, 8), "app line 9 on the side"].join("\n")}\n`);
+  const merge = commit(root, "merge side, setting line 5");
+  const facts = row(root, "W").facts;
+  const by = (text) => facts.pointers.find((item) => item.path === "src/app.js" && item.lines?.[0] === Number(text));
+  for (const line of ["5", "1", "9"]) assert.equal(by(line).state, "changed", line);
+  assert.deepEqual(by("5").file, { commits: 3, latest: { commit: merge, subject: "merge side, setting line 5" } });
+  const sideFile = facts.pointers.find((item) => item.path === "src/side.js");
+  assert.deepEqual(sideFile.file, { commits: 1, latest: { commit: side, subject: "change line 9 on a side branch" } });
 });

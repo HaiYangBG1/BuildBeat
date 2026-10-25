@@ -58,10 +58,10 @@ export function parseFacts(text) {
 }
 
 // Each Git call costs a process start (about 0.17 s on the pilot's largest
-// checkout), so a work's facts take a fixed handful of calls, not one per
-// pointer.
+// checkout), so a work's facts take four calls plus one per changed file,
+// not one or two per pointer.
 function git(repoRoot, args, input = null) {
-  return execFileSync("git", ["--literal-pathspecs", "-C", repoRoot, "-c", "core.quotePath=false", ...args], {
+  return execFileSync("git", ["--literal-pathspecs", "-C", repoRoot, ...args], {
     encoding: "utf8",
     input: input ?? undefined,
     stdio: [input === null ? "ignore" : "pipe", "pipe", "ignore"],
@@ -113,8 +113,10 @@ function locate(pointer, files, dirs) {
   return pointer.path.includes("/") || pointer.lines ? { reason: "no file" } : null;
 }
 
-// The hunks of a -U0 patch for each file in it. Renames are off, so the
-// header names the same path on both sides ("diff --git a/<p> b/<p>").
+// The hunks of a -U0 patch for each file in it. The call fixes the a/ and
+// b/ prefixes (diff.noprefix and diff.mnemonicPrefix would change them) and
+// turns renames off, so the header names the same path on both sides
+// ("diff --git a/<p> b/<p>").
 function patchFiles(patch) {
   const files = new Map();
   let current = null;
@@ -149,21 +151,6 @@ function patchFiles(patch) {
 function touches(file, [start, end]) {
   if (file.binary) return true;
   return file.hunks.some(({ at, count }) => (count === 0 ? start <= at && at < end : at <= end && at + count - 1 >= start));
-}
-
-// Lines start..end of the old side, carried over to the new side: moved by
-// the hunks above them, widened to a hunk that replaces them.
-function follow(file, [start, end]) {
-  const carry = (line, last) => {
-    let shift = 0;
-    for (const { at, count, to, size } of file.hunks) {
-      if (count > 0 && at <= line && line <= at + count - 1) return last ? to + Math.max(size, 1) - 1 : to;
-      if (count > 0 ? at + count - 1 < line : at < line) shift += size - count;
-    }
-    return line + shift;
-  };
-  const from = carry(start, false);
-  return [from, Math.max(from, carry(end, true))];
 }
 
 // The facts of one work compared with `against`: null when its description
@@ -216,7 +203,10 @@ export function checkFacts(repoRoot, workId, { against = "HEAD", label = "HEAD" 
   // Lines pointed at are compared on the diff between the two commits.
   const lined = [...new Set(pointers.filter((item) => !item.state && item.lines && status.has(item.path) && status.get(item.path) !== "D").map((item) => item.path))];
   const diff = lined.length
-    ? patchFiles(git(repoRoot, ["diff", "-U0", "--no-color", "--no-ext-diff", "--no-renames", pin, target, "--", ...lined]))
+    ? patchFiles(git(repoRoot, [
+      "-c", "core.quotePath=false", "diff", "-U0", "--no-color", "--no-ext-diff", "--no-renames",
+      "--src-prefix=a/", "--dst-prefix=b/", pin, target, "--", ...lined,
+    ]))
     : new Map();
   for (const item of pointers) {
     if (item.state) continue;
@@ -224,35 +214,26 @@ export function checkFacts(repoRoot, workId, { against = "HEAD", label = "HEAD" 
     if (!kind) item.state = "same";
     else if (kind === "D") Object.assign(item, { state: "not found", reason: `not in ${label}` });
     else if (!item.lines) item.state = "changed";
+    // A path Git still quotes in the header (a tab, a quote) is not parsed:
+    // counted as changed rather than missed.
     else item.state = !diff.has(item.path) || touches(diff.get(item.path), item.lines) ? "changed" : "elsewhere";
   }
-  // The commits that changed what each changed pointer names, oldest first:
-  // any commit touching the file, or, with lines, a commit touching those
-  // lines as they stood just before it. A change made only in a merge is
-  // not counted.
-  const changed = pointers.filter((item) => item.state === "changed");
-  if (changed.length) {
-    const walk = git(repoRoot, [
-      "log", "--no-merges", "--topo-order", "--reverse", "-p", "-U0", "--no-color", "--no-ext-diff", "--no-renames",
-      "--format=%x1e%H%x1f%s", `${pin}..${target}`, "--", ...new Set(changed.map((item) => item.path)),
-    ]);
-    const ranges = new Map(changed.map((item) => [item, item.lines]));
-    for (const item of changed) item.commits = 0;
-    for (const record of walk.split("\x1e").slice(1)) {
-      const newline = record.indexOf("\n");
-      const [commit, subject] = (newline < 0 ? record : record.slice(0, newline)).split("\x1f");
-      const touched = patchFiles(newline < 0 ? "" : record.slice(newline + 1));
-      for (const item of changed) {
-        const change = touched.get(item.path);
-        if (!change) continue;
-        const range = ranges.get(item);
-        if (!range || touches(change, range)) {
-          item.commits += 1;
-          item.latest = { commit, subject };
-        }
-        if (range) ranges.set(item, follow(change, range));
-      }
+  // Where to look next: the commits that changed the file in between, as
+  // Git's own log lists them for that path (merges that changed it
+  // included). They are the file's commits, not only those that touched the
+  // lines pointed at; whether those lines changed is the comparison above.
+  const history = new Map();
+  for (const item of pointers) {
+    if (item.state !== "changed") continue;
+    if (!history.has(item.path)) {
+      history.set(item.path, git(repoRoot, [
+        "-c", "log.follow=false", "-c", "log.showSignature=false",
+        "log", "--no-color", "--format=%H%x1f%s", `${pin}..${target}`, "--", item.path,
+      ]).split("\n").filter(Boolean));
     }
+    const commits = history.get(item.path);
+    const [commit, subject] = commits.length ? commits[0].split("\x1f") : [];
+    item.file = { commits: commits.length, ...(commit ? { latest: { commit, subject } } : {}) };
   }
   return { file, checkedOn: pin, against: label, pointers };
 }
@@ -286,7 +267,8 @@ export function renderFacts(row) {
   const lines = [head];
   for (const item of facts.pointers) {
     if (item.state === "changed") {
-      const by = item.latest ? `  (${item.commits} commit${item.commits === 1 ? "" : "s"}, latest ${item.latest.commit.slice(0, 7)} ${item.latest.subject})` : "";
+      const latest = item.file?.latest;
+      const by = latest ? `  (${item.file.commits} commit${item.file.commits === 1 ? "" : "s"} to the file, latest ${latest.commit.slice(0, 7)} ${latest.subject})` : "";
       lines.push(`    changed  ${where(item)}${by}`);
     } else if (item.state === "not found") {
       lines.push(`    not found  ${item.text}  (${item.reason})`);
