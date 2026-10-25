@@ -2,7 +2,9 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
-## Unreleased
+## v5.0.0 — 2026-10-25（主版本：需求级上下文——关窗收口、从代码找回工作、工作串线、现状比对、只用 Skill 和项目文件）
+
+> **行为变化**：`decide --action close` 必须先有 `delivery/work/<ID>/result.md`；决定行记下是人还是 AI 会话做的，AI 编程工具里不带 `--as` 时算会话的决定。升级要点见 [MIGRATION](docs/MIGRATION.md) 的「4.x → 5.0」。
 
 - Decisions now say who made them and whether that was a person or an AI session (WORK-APPROVAL-IDENTITY). Before, every approval, acceptance, adoption, repair request, finding ruling and closure was written as a person's, and the name defaulted to `human`, so an approval the driving AI session gave itself looked the same as one its owner gave. Each decision line in `decisions.jsonl` and each ruling in `review-findings.jsonl` keeps `by` and adds `actor` (`kind` human or agent, `id`, where the name came from, and `via: "agent-session"` when a session passed on a person's decision); run ledgers and run records carry the same identity.
 - New `--as human|agent` on every decision command. Without it the runtime goes by where the command runs: inside an AI coding tool (`CLAUDECODE`, `AI_AGENT`, `CODEX_SANDBOX` / `CODEX_THREAD_ID`, or `BUILDBEAT_ACTOR=agent`) the decision is the session's and named after the tool; otherwise it is a person's, named from `git config user.name`, and without a git name `--by` is required. This is a default, not a safeguard: a session can still claim `--as human`, which the security boundaries page now says.
