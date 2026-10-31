@@ -108,6 +108,54 @@ export function ignoredRecordsWarning(repoRoot, workId) {
   return `warning: delivery/work/${workId}/ is ignored by Git here (.gitignore or .git/info/exclude); its records will not travel with the code`;
 }
 
+// The warning to print when a work's folder holds files that the next commit
+// would add to Git and that would stay in its history for good: screenshots,
+// archives and logs (the template's gitignore keeps them on this machine) or
+// anything of 256 KB or more. Files already in Git are left alone (deleting
+// them would not shrink history), and so are ignored ones. In a pilot
+// workspace the main repository's history reached 36 MB in two months,
+// nearly all evidence screenshots, while five code repositories' text
+// records came to 0.85 MB (WORK-DELIVERY-BINARIES).
+const HEAVY_EXTENSIONS = /\.(png|jpe?g|gif|webp|zip|tgz|gz|log)$/i;
+const HEAVY_BYTES = 256 * 1024;
+const HEAVY_LISTED = 5;
+
+function sizeLabel(bytes) {
+  const kb = Math.max(1, Math.ceil(bytes / 1024));
+  return kb >= 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${kb} KB`;
+}
+
+export function heavyRecordsWarning(repoRoot, workId) {
+  const folder = `delivery/work/${workId}/`;
+  let listed;
+  try {
+    listed = execFileSync("git", ["-C", repoRoot, "ls-files", "--others", "--exclude-standard", "-z", "--", folder], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    return null;
+  }
+  const heavy = [];
+  for (const path of listed.split("\0").filter(Boolean).sort()) {
+    let size;
+    try {
+      const stat = statSync(join(repoRoot, path));
+      if (!stat.isFile()) continue;
+      size = stat.size;
+    } catch {
+      continue;
+    }
+    if (HEAVY_EXTENSIONS.test(path) || size >= HEAVY_BYTES) {
+      heavy.push(`${path.slice(folder.length)} (${sizeLabel(size)})`);
+    }
+  }
+  if (heavy.length === 0) return null;
+  const shown = heavy.slice(0, HEAVY_LISTED);
+  const more = heavy.length > HEAVY_LISTED ? `, and ${heavy.length - HEAVY_LISTED} more` : "";
+  return `warning: ${folder} has ${heavy.length} file(s) that would go into Git and stay in its history for good: ${shown.join(", ")}${more}; keep screenshots, archives and logs on this machine (see templates/gitignore.template)`;
+}
+
 export function discoverRepos(repoRoot, warnings, roots = new Map()) {
   const repos = new Set([repoRoot]);
   const workRoot = join(repoRoot, "delivery", "work");
