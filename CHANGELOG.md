@@ -2,7 +2,7 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
-## Unreleased
+## v5.1.0 — 2026-10-31（次版本：从代码查到的工作写明谁批准、谁关窗；插件介绍换成项目上下文管理）
 
 - `history --path` names who decided (WORK-POSITIONING-ALIGN). Under each work it now prints `approved: <ts> by <who> (<RUN-ID>)` for the merge approval bound to the candidate that reached main, and `closed: <ts> by <who>` (or `cancelled:`) while the work stays closed or cancelled, with the same person / AI session wording as `status --work`; `--json` adds `approved` (`at`, `by`, `who`, `run`, `decisionRef`) and `closed` (`at`, `by`, `who`, `decision`, `decisionRef`) to each work, `null` when there is no such record. The latest merge approval is not enough: a later fix voids the approval of an earlier candidate, and a later run can be approved without ever reaching main. Before, finding out who approved a line of code took a second command.
 - The Claude Code plugin and its marketplace entry describe BuildBeat as Git-based project context management, with the runtime optional, instead of a delivery loop whose runtime had to be installed separately; the plugin README opens the same way (WORK-POSITIONING-ALIGN).
