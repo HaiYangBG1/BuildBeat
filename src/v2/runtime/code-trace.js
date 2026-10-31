@@ -16,8 +16,9 @@ import { promisify } from "node:util";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 
 import { EventLedger } from "../storage/event-ledger.js";
+import { describeActor } from "./actor.js";
 import { readResult } from "./closeout.js";
-import { computeOverview } from "./overview.js";
+import { computeOverview, readJsonl } from "./overview.js";
 import { directory, pathLabel } from "./overview-repos.js";
 
 export class TraceError extends Error {
@@ -194,8 +195,28 @@ function titleOf(dir) {
   return null;
 }
 
-// Stage, title, summary and where to read, from the first checkout that
-// keeps the work's folder.
+// Who decided (WORK-POSITIONING-ALIGN): the merge approval bound to the
+// candidate that reached main, since a later fix voids the approval of an
+// earlier candidate and a later run may be approved without ever merging,
+// and the closing row while the work stays closed or cancelled.
+function deciders(dir, stage, mergedCandidate) {
+  const rows = readJsonl(join(dir, "decisions.jsonl")).reverse();
+  const approval = mergedCandidate
+    ? rows.find((row) => row.transition === "enter-wait-merge" && row.decision === "approved" && row.subject?.candidate === mergedCandidate)
+    : null;
+  const closure = stage === "CLOSED" || stage === "CANCELLED" ? rows.find((row) => row.transition === "close-work") : null;
+  return {
+    approved: approval
+      ? { at: approval.ts ?? null, by: approval.by ?? null, who: describeActor(approval), run: approval.run ?? null, decisionRef: approval.decisionRef ?? null }
+      : null,
+    closed: closure
+      ? { at: closure.ts ?? null, by: closure.by ?? null, who: describeActor(closure), decision: closure.decision ?? null, decisionRef: closure.decisionRef ?? null }
+      : null,
+  };
+}
+
+// Stage, title, summary, who decided and where to read, from the first
+// checkout that keeps the work's folder.
 function workFacts(roots, work, cwd) {
   for (const root of roots) {
     const dir = join(root, "delivery", "work", work);
@@ -210,10 +231,11 @@ function workFacts(roots, work, cwd) {
       stage,
       title: titleOf(dir),
       summary: stage === "CLOSED" && page.exists && page.summary ? page.summary : null,
+      ...deciders(dir, stage, row?.mergedCandidate ?? null),
       read,
     };
   }
-  return { stage: null, title: null, summary: null, read: [] };
+  return { stage: null, title: null, summary: null, approved: null, closed: null, read: [] };
 }
 
 // Traces the lines of a file (all of them at HEAD when no range is given)
@@ -316,6 +338,8 @@ export function renderTrace(trace) {
       ...(row.via.some((item) => item.kind === "folder") ? ["via work folder"] : []),
     ];
     lines.push(`  ${row.work}  ${row.stage ?? "NOT_FOUND"}  ${row.title ?? "(no records in reach)"} (${plural(row.lines, "line")}; ${via.join("; ")})`);
+    if (row.approved) lines.push(`    approved: ${row.approved.at} by ${row.approved.who}${row.approved.run ? ` (${row.approved.run})` : ""}`);
+    if (row.closed) lines.push(`    ${row.closed.decision === "cancelled" ? "cancelled" : "closed"}: ${row.closed.at} by ${row.closed.who}`);
     if (row.summary) lines.push(`    result: ${row.summary}`);
     if (row.read.length) lines.push(`    read: ${row.read.join(", ")}`);
   }
