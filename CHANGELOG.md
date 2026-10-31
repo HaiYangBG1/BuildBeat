@@ -4,6 +4,8 @@
 
 ## v5.1.0 — 2026-10-31（次版本：从代码查到的工作写明谁批准、谁关窗；插件介绍换成项目上下文管理）
 
+> **发布状态**：`@haiyangbg/buildbeat@5.1.0` 已于 2026-10-31 从 `main`（内容 PR #101–#103，release PR #104，merge commit `6b707ca`，tag `v5.1.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 41214816952，publish 与 verify 双 job 一次 success；所有者授权「发版吧」，`npm-publish` 环境由所有者本人在 GitHub 上批准）。独立回读（直连 npmjs.org）：`latest` = 5.1.0、`dist.integrity` 与 shasum 与本地用 Node 24 + npm 11.19.0 打的候选逐字一致（114 个文件）、SLSA v1 provenance、隔离安装 `--version` = 5.1.0、裸调用零写入、`npm audit signatures` 通过；GitHub Release v5.1.0 标 Latest；本机两份全局安装均为 5.1.0；`next` 仍在 5.0.0；证据见 [`V5.1.0-RELEASE-EVIDENCE-2026-10-31.md`](docs/releases/V5.1.0-RELEASE-EVIDENCE-2026-10-31.md)。
+
 - `history --path` names who decided (WORK-POSITIONING-ALIGN). Under each work it now prints `approved: <ts> by <who> (<RUN-ID>)` for the merge approval bound to the candidate that reached main, and `closed: <ts> by <who>` (or `cancelled:`) while the work stays closed or cancelled, with the same person / AI session wording as `status --work`; `--json` adds `approved` (`at`, `by`, `who`, `run`, `decisionRef`) and `closed` (`at`, `by`, `who`, `decision`, `decisionRef`) to each work, `null` when there is no such record. The latest merge approval is not enough: a later fix voids the approval of an earlier candidate, and a later run can be approved without ever reaching main. Before, finding out who approved a line of code took a second command.
 - The Claude Code plugin and its marketplace entry describe BuildBeat as Git-based project context management, with the runtime optional, instead of a delivery loop whose runtime had to be installed separately; the plugin README opens the same way (WORK-POSITIONING-ALIGN).
 
