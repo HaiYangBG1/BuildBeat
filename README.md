@@ -233,7 +233,7 @@ work WORK-CSV-EXPORT:
     └── worktrees/                  只在本机：AI 干活用的隔离副本
 ```
 
-- `delivery/` 进 Git：换会话、换软件、换电脑、换人，拉下代码就能接着干；不要在 `.gitignore` 或 `.git/info/exclude` 里排除它
+- `delivery/` 进 Git：换会话、换软件、换电脑、换人，拉下代码就能接着干；不要在 `.gitignore` 或 `.git/info/exclude` 里排除它。里面的截图、压缩包和日志只留本机，不进 Git
 - `.buildbeat/runtime/`、`.buildbeat/worktrees/` 只在本机：正在跑的那一轮不跟着 Git 走，要在原来那台机器上跑完或停掉
 - 没装 BuildBeat 的人和 AI 也能读这些文件、起草 `work.md`
 
