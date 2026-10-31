@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="448" viewBox="0 0 360 448" role="img">
+<defs><marker id="ctx-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#c2710c"/></marker><marker id="ctx-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#59636e"/></marker></defs>
+<text x="16" y="28" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" font-weight="600" fill="#c2710c">Why is this line here?</text>
+<rect x="16" y="40" width="328" height="130" rx="10" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<line x1="16" y1="68" x2="344" y2="68" stroke="#d0d7de" stroke-width="1"/>
+<circle cx="30" cy="54" r="4" fill="#d0d7de"/>
+<circle cx="42" cy="54" r="4" fill="#d0d7de"/>
+<circle cx="54" cy="54" r="4" fill="#d0d7de"/>
+<text x="72" y="58" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#59636e">src/export.js</text>
+<text x="44" y="89" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#59636e">5</text>
+<text x="56" y="89" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#1f2328" style="white-space:pre">function escapeCell(value) {</text>
+<text x="44" y="111" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#59636e">6</text>
+<text x="56" y="111" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#1f2328" style="white-space:pre">  const text = String(value ?? "");</text>
+<rect x="17" y="118" width="326" height="22" rx="0" fill="#fff3dc"/>
+<rect x="17" y="118" width="3" height="22" rx="0" fill="#c2710c"/>
+<text x="44" y="133" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#59636e">7</text>
+<text x="56" y="133" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#1f2328" style="white-space:pre">  return /[",\n]/.test(text)</text>
+<text x="44" y="155" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#59636e">8</text>
+<text x="56" y="155" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#1f2328" style="white-space:pre">    ? quote(text) : text;</text>
+<line x1="44" y1="180" x2="44" y2="236" stroke="#c2710c" stroke-width="2.5" marker-end="url(#ctx-accent)"/>
+<text x="60" y="204" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="600" fill="#1f2328">buildbeat history --repo .</text>
+<text x="60" y="222" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#59636e">--path src/export.js:7</text>
+<rect x="16" y="246" width="328" height="190" rx="14" fill="#fff8ee" stroke="#e0a43a" stroke-width="1.5"/>
+<text x="34" y="278" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#1f2328">WORK-CSV-EXPORT</text>
+<line x1="16" y1="294" x2="344" y2="294" stroke="#d0d7de" stroke-width="1"/>
+<text x="34" y="322" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" font-weight="600" fill="#59636e">Goal</text>
+<text x="108" y="322" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#1f2328">Export the filtered entries</text>
+<text x="34" y="354" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" font-weight="600" fill="#59636e">Decided</text>
+<text x="108" y="354" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#1f2328">Quote fields that contain commas</text>
+<text x="34" y="386" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" font-weight="600" fill="#59636e">Review</text>
+<text x="108" y="386" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#1f2328">Round 1: missing quotes, fixed</text>
+<text x="34" y="418" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" font-weight="600" fill="#59636e">Decision</text>
+<text x="108" y="418" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#1f2328">approved · you · 10-25 14:02</text>
+</svg>
