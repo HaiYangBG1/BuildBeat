@@ -33,7 +33,11 @@ BuildBeat 面向人和 AI 会话，把每项需求的来龙去脉记在项目和
 
 ## 解决什么问题
 
-### 换会话、换工具，接着干
+<table>
+<tr>
+<td>
+
+### ① 换会话、换工具，接着干
 
 会话越聊越长，AI 开始忘事；开个新会话、换个工具，又得从头讲一遍。BuildBeat 把每项需求的进度和决定写进项目文件，新会话读一遍，就从上次停下的地方接着干。一项工作放了几周再捡起来，如果里面提到的代码已经变了，也会提醒你。
 
@@ -44,7 +48,15 @@ BuildBeat 面向人和 AI 会话，把每项需求的来龙去脉记在项目和
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/handoff-zh-light.png" width="100%" alt="会话 A（Claude Code）做到一半，把断点写进项目文件（work.md、决定、每轮记录）；会话 B（Codex）读到这些文件，从断点接着干；几周后再捡起来时，如果 work.md 提到的 src/export.js:5-8 改过了，会先提醒">
 </picture>
 
-### 上下文归项目，不归某个人
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td>
+
+### ② 上下文归项目，不归某个人
 
 AI 工具自带的记忆，是围着人设计的：记在某个人的账号里、某台电脑上。同事接手你的模块时看不到这些，你离开项目，来龙去脉也跟着没了。BuildBeat 是围着项目重新设计的：上下文是项目的一部分，跟代码放在同一个 Git 仓库里，拉下代码就有；它跟代码一起进 PR 审查、一起留版本历史，用什么 AI 工具都能读。
 
@@ -55,7 +67,15 @@ AI 工具自带的记忆，是围着人设计的：记在某个人的账号里�
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/owner-zh-light.png" width="100%" alt="左边围着人：工具自带的记忆记在你的账号、你的电脑、你的会话里，同事看不到，你离开项目来龙去脉也跟着没了；右边围着项目：项目仓库里有代码和 delivery/，你、同事、新会话、另一个 AI 工具都连到它，拉下代码就有、跟代码一起进 PR、有版本历史">
 </picture>
 
-### 记录是干活时顺手留下的
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td>
+
+### ③ 记录是干活时顺手留下的
 
 需求文档和决定记录，大家都知道该写，但没人有空写，写了也很快过时。在 BuildBeat 里，这些是干活时顺手留下的：AI 先写一份 work.md 给你看，你点头后，决定、测试结果和审查意见都会记下来，做完再留一份结论。
 
@@ -66,7 +86,15 @@ AI 工具自带的记忆，是围着人设计的：记在某个人的账号里�
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-zh-light.png" width="100%" alt="交付循环：work.md 之后依次是实现、验证、审查，审查有问题就修复、重验、再审，最后停下等你拍板；work.md、决定、审查问题和每轮运行的终态记录留在 Git 里">
 </picture>
 
-### 从一行代码查回需求
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td>
+
+### ④ 从一行代码查回需求
 
 三个月后看到一段代码，没人记得当时为什么这么写，问 AI 它也只能猜。用 BuildBeat，指着这行代码就能查出它是为哪项需求写的、当时定了什么；也能按工单号查。
 
@@ -77,7 +105,15 @@ AI 工具自带的记忆，是围着人设计的：记在某个人的账号里�
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/trace-zh-light.png" width="100%" alt="问 src/export.js 第 7 行为什么这么写：buildbeat history --repo . --path src/export.js:7 找到 WORK-CSV-EXPORT，记录里写着目标是导出当前筛选的账目、定了带逗号的字段加引号、第 1 轮审查发现没加引号已修、由你在 10-25 14:02 批准">
 </picture>
 
-### 做没做完，看证据
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td>
+
+### ⑤ 做没做完，看证据
 
 AI 说「改好了，测试都过了」，你不敢全信，只能自己再跑一遍、再看一遍。BuildBeat 自己去读测试结果，再让另一个只读的 AI 审查，有问题就修，修完重新测、重新审，最后停下来等你拍板，什么时候、谁同意的都有记录。
 
@@ -87,6 +123,10 @@ AI 说「改好了，测试都过了」，你不敢全信，只能自己再跑�
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/evidence-zh-dark.png">
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/evidence-zh-light.png" width="100%" alt="AI 说“改好了，测试都过了”不算数；BuildBeat 去核对：测试结果由 BuildBeat 自己读，跑的是项目自己的测试命令；另一个只读的 AI 审查了 2 轮，1 个问题已修并重新测过；最后你拍板，批准人和时间记进 decisions.jsonl">
 </picture>
+
+</td>
+</tr>
+</table>
 
 > 从代码查需求、自己读测试结果、代码变了的提醒，需要装运行时。不装运行时、只让 AI 工具读项目文件，其余部分照样能用，见[只用 Skill 和项目文件](docs/v2/guide/12-without-runtime.md)。
 

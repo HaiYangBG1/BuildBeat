@@ -33,7 +33,11 @@ The code records what changed; the work record says why, what was decided and wh
 
 ## What it solves
 
-### Switch sessions or tools and carry on
+<table>
+<tr>
+<td>
+
+### ① Switch sessions or tools and carry on
 
 Long sessions make the AI forget; open a new session or switch tools and you explain it all again. BuildBeat writes each piece of work's progress and decisions into project files, so a new session reads them and carries on from where the last one stopped. Pick a piece of work up weeks later, and if code it mentions has changed, it tells you.
 
@@ -44,7 +48,15 @@ Long sessions make the AI forget; open a new session or switch tools and you exp
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/handoff-en-light.png" width="100%" alt="Session A (Claude Code), halfway there, writes the checkpoint into project files (work.md, decisions, each run); session B (Codex) reads those files and carries on; picked up weeks later, a heads-up says src/export.js:5-8, mentioned in work.md, has changed">
 </picture>
 
-### Context belongs to the project, not to one person
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td>
+
+### ② Context belongs to the project, not to one person
 
 A tool's own memory is built around a person: it lives in one person's account, on one computer. A colleague taking over your module can't see it, and when you leave the project, the story leaves with you. BuildBeat is built around the project instead: context is part of the project, in the same Git repository as the code, so pulling the code brings it along; it goes through PR review with the code, keeps its version history, and any AI tool can read it.
 
@@ -55,7 +67,15 @@ A tool's own memory is built around a person: it lives in one person's account, 
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/owner-en-light.png" width="100%" alt="Left, built around a person: a tool's own memory sits in your account, your computer and your sessions; a colleague can't see it, and when you leave the story leaves with you. Right, built around the project: the project repo holds the code and delivery/, and you, a colleague, a new session and another AI tool all reach it; it comes with the code, is reviewed in PRs and is versioned">
 </picture>
 
-### The record is left behind as you work
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td>
+
+### ③ The record is left behind as you work
 
 Everyone knows requirement docs and decision logs should be written, but nobody has the time, and what does get written goes stale fast. In BuildBeat they're left behind as the work happens: the AI first writes a work.md for you to read; once you agree, decisions, test results and review findings are all recorded, and a summary is left when it's done.
 
@@ -66,7 +86,15 @@ Everyone knows requirement docs and decision logs should be written, but nobody 
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-light.png" width="100%" alt="The delivery loop: after work.md come build, verify and review; findings go to fix, verify and review again; then the run stops for you to decide; work.md, decisions, findings and each run's final record stay in Git">
 </picture>
 
-### Trace a line of code back to its work
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td>
+
+### ④ Trace a line of code back to its work
 
 Three months later nobody remembers why a piece of code is written the way it is, and an AI can only guess. With BuildBeat, point at that line and find which piece of work it was written for and what was decided; you can also look it up by ticket number.
 
@@ -77,7 +105,15 @@ Three months later nobody remembers why a piece of code is written the way it is
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/trace-en-light.png" width="100%" alt="Asking why line 7 of src/export.js is there: buildbeat history --repo . --path src/export.js:7 finds WORK-CSV-EXPORT, whose record says the goal was exporting the filtered entries, it was decided to quote fields that contain commas, review round 1 found missing quotes and they were fixed, and you approved it at 10-25 14:02">
 </picture>
 
-### Done means evidence, not the AI's word
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td>
+
+### ⑤ Done means evidence, not the AI's word
 
 The AI says "done, all tests pass", and you don't quite trust it, so you run and read everything again yourself. BuildBeat reads the test results itself, has another read-only AI review the change, fixes what's found, tests and reviews again, then stops for your decision, with a record of who approved and when.
 
@@ -87,6 +123,10 @@ The AI says "done, all tests pass", and you don't quite trust it, so you run and
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/evidence-en-dark.png">
   <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/evidence-en-light.png" width="100%" alt="The AI saying &quot;done, all tests pass&quot; doesn't count; BuildBeat checks: test results are read by BuildBeat from your project's own test commands; another read-only AI reviewed it over 2 rounds, 1 finding fixed and retested; then you decide, and who approved and when goes into decisions.jsonl">
 </picture>
+
+</td>
+</tr>
+</table>
 
 > Tracing code back to its work, reading test results itself and the heads-up when code changes need the runtime. Without it, letting your AI tool read the project files covers the rest; see [Skill and project files only](docs/v2/guide/12-without-runtime.en.md).
 
