@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="184" viewBox="0 0 960 184" role="img">
+<defs><marker id="ctx-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#f0a537"/></marker><marker id="ctx-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9198a1"/></marker></defs>
+<path d="M 46 112 L 38 132 L 70 112" fill="#151b23" stroke="#3d444d" stroke-width="1.5" stroke-dasharray="5 4"/>
+<rect x="16" y="52" width="236" height="64" rx="18" fill="#151b23" stroke="#3d444d" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="134" y="89" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="15" fill="#9198a1">“改好了，测试都过了”</text>
+<text x="134" y="160" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">AI 自己说的，不算数</text>
+<line x1="262" y1="84" x2="314" y2="84" stroke="#f0a537" stroke-width="2.5" marker-end="url(#ctx-accent)"/>
+<text x="288" y="72" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">核对</text>
+<rect x="326" y="24" width="340" height="60" rx="12" fill="#1d1810" stroke="#d99a2b" stroke-width="1.5"/>
+<circle cx="354" cy="54" r="11" fill="#12261a" stroke="#3fb950" stroke-width="2"/>
+<path d="M 349 54 l 3.5 3.5 l 6.5 -7" fill="none" stroke="#3fb950" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="376" y="50" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="14" font-weight="600" fill="#e6edf3">测试结果：BuildBeat 自己读</text>
+<text x="376" y="69" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">跑的是项目自己的测试命令</text>
+<rect x="326" y="100" width="340" height="60" rx="12" fill="#1d1810" stroke="#d99a2b" stroke-width="1.5"/>
+<circle cx="354" cy="130" r="11" fill="#12261a" stroke="#3fb950" stroke-width="2"/>
+<path d="M 349 130 l 3.5 3.5 l 6.5 -7" fill="none" stroke="#3fb950" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="376" y="126" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="14" font-weight="600" fill="#e6edf3">审查：另一个只读的 AI</text>
+<text x="376" y="145" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">2 轮 · 1 个问题已修、重新测过</text>
+<path d="M 672 54 C 694 54, 694 92, 704 92 M 672 130 C 694 130, 694 92, 704 92" fill="none" stroke="#f0a537" stroke-width="2"/>
+<line x1="704" y1="92" x2="726" y2="92" stroke="#f0a537" stroke-width="2.5" marker-end="url(#ctx-accent)"/>
+<rect x="736" y="38" width="208" height="108" rx="14" fill="#2a1614" stroke="#ff7b72" stroke-width="2"/>
+<text x="840" y="79" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="16" font-weight="600" fill="#e6edf3">你拍板</text>
+<text x="840" y="98" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">批准 · 谁 · 何时</text>
+<text x="840" y="117" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">记进 decisions.jsonl</text>
+</svg>

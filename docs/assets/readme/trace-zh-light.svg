@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="242" viewBox="0 0 960 242" role="img">
+<defs><marker id="ctx-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#c2710c"/></marker><marker id="ctx-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#59636e"/></marker></defs>
+<text x="16" y="30" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="14" font-weight="600" fill="#c2710c">这行为什么这么写？</text>
+<rect x="16" y="44" width="330" height="138" rx="10" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<line x1="16" y1="72" x2="346" y2="72" stroke="#d0d7de" stroke-width="1"/>
+<circle cx="30" cy="58" r="4" fill="#d0d7de"/>
+<circle cx="42" cy="58" r="4" fill="#d0d7de"/>
+<circle cx="54" cy="58" r="4" fill="#d0d7de"/>
+<text x="72" y="62" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#59636e">src/export.js</text>
+<text x="44" y="95" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#59636e">5</text>
+<text x="56" y="95" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#1f2328" style="white-space:pre">function escapeCell(value) {</text>
+<text x="44" y="119" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#59636e">6</text>
+<text x="56" y="119" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#1f2328" style="white-space:pre">  const text = String(value ?? "");</text>
+<rect x="17" y="126" width="328" height="24" rx="0" fill="#fff3dc"/>
+<rect x="17" y="126" width="3" height="24" rx="0" fill="#c2710c"/>
+<text x="44" y="143" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#59636e">7</text>
+<text x="56" y="143" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#1f2328" style="white-space:pre">  return /[",\n]/.test(text)</text>
+<text x="44" y="167" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#59636e">8</text>
+<text x="56" y="167" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#1f2328" style="white-space:pre">    ? quote(text) : text;</text>
+<line x1="356" y1="138" x2="560" y2="138" stroke="#c2710c" stroke-width="2.5" marker-end="url(#ctx-accent)"/>
+<text x="458" y="124" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="600" fill="#1f2328">buildbeat history --repo .</text>
+<text x="458" y="160" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#59636e">--path src/export.js:7</text>
+<rect x="572" y="30" width="372" height="196" rx="14" fill="#fff8ee" stroke="#e0a43a" stroke-width="1.5"/>
+<text x="590" y="62" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#1f2328">WORK-CSV-EXPORT</text>
+<line x1="572" y1="78" x2="944" y2="78" stroke="#d0d7de" stroke-width="1"/>
+<text x="590" y="110" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" font-weight="600" fill="#59636e">目标</text>
+<text x="672" y="110" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" fill="#1f2328">导出当前筛选的账目</text>
+<text x="590" y="144" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" font-weight="600" fill="#59636e">定了</text>
+<text x="672" y="144" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" fill="#1f2328">带逗号的字段加引号</text>
+<text x="590" y="178" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" font-weight="600" fill="#59636e">审查</text>
+<text x="672" y="178" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" fill="#1f2328">第 1 轮发现没加引号，已修</text>
+<text x="590" y="212" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" font-weight="600" fill="#59636e">拍板</text>
+<text x="672" y="212" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" fill="#1f2328">批准 · 你 · 10-25 14:02</text>
+</svg>

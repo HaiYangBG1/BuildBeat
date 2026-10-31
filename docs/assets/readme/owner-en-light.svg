@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" role="img">
+<defs><marker id="ctx-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#c2710c"/></marker><marker id="ctx-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#59636e"/></marker></defs>
+<rect x="8" y="8" width="464" height="284" rx="16" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1.5" stroke-dasharray="6 5"/>
+<text x="28" y="40" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="14" font-weight="600" fill="#59636e">Built around a person: a tool's own memory</text>
+<circle cx="78" cy="131" r="8" fill="none" stroke="#59636e" stroke-width="2"/>
+<path d="M 64 155 a 14 13 0 0 1 28 0" fill="none" stroke="#59636e" stroke-width="2"/>
+<text x="78" y="174" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" font-weight="600" fill="#59636e">You</text>
+<line x1="100" y1="140" x2="158" y2="107" stroke="#59636e" stroke-width="1.2"/>
+<rect x="158" y="92" width="130" height="30" rx="15" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text x="223" y="111" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">your account</text>
+<line x1="100" y1="140" x2="158" y2="147" stroke="#59636e" stroke-width="1.2"/>
+<rect x="158" y="132" width="130" height="30" rx="15" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text x="223" y="151" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">your computer</text>
+<line x1="100" y1="140" x2="158" y2="187" stroke="#59636e" stroke-width="1.2"/>
+<rect x="158" y="172" width="130" height="30" rx="15" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text x="223" y="191" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">your sessions</text>
+<circle cx="402" cy="131" r="8" fill="none" stroke="#59636e" stroke-width="2"/>
+<path d="M 388 155 a 14 13 0 0 1 28 0" fill="none" stroke="#59636e" stroke-width="2"/>
+<text x="402" y="174" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" font-weight="600" fill="#59636e">Colleague</text>
+<line x1="296" y1="147" x2="376" y2="147" stroke="#59636e" stroke-width="1.5" stroke-dasharray="4 4"/>
+<circle cx="333" cy="147" r="10" fill="#fff1ef" stroke="#cf3f37" stroke-width="1.5"/>
+<path d="M 329 143 l 8 8 m 0 -8 l -8 8" stroke="#cf3f37" stroke-width="2" stroke-linecap="round"/>
+<text x="333" y="128" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">can't see it</text>
+<text x="240" y="270" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" fill="#59636e">When you leave, the story leaves with you</text>
+<rect x="488" y="8" width="464" height="284" rx="16" fill="#f6f8fa" stroke="#c2710c" stroke-width="2"/>
+<text x="508" y="40" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="14" font-weight="600" fill="#1f2328">Built around the project: BuildBeat</text>
+<line x1="582" y1="92" x2="620" y2="126" stroke="#c2710c" stroke-width="1.8"/>
+<line x1="858" y1="92" x2="820" y2="126" stroke="#c2710c" stroke-width="1.8"/>
+<line x1="582" y1="200" x2="620" y2="170" stroke="#c2710c" stroke-width="1.8"/>
+<line x1="858" y1="200" x2="820" y2="170" stroke="#c2710c" stroke-width="1.8"/>
+<rect x="620" y="112" width="200" height="72" rx="14" fill="#fff8ee" stroke="#c2710c" stroke-width="2"/>
+<text x="720" y="144" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="15" font-weight="600" fill="#1f2328">Project repo</text>
+<text x="720" y="163" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">code + delivery/</text>
+<circle cx="558" cy="83" r="8" fill="none" stroke="#c2710c" stroke-width="2"/>
+<path d="M 544 107 a 14 13 0 0 1 28 0" fill="none" stroke="#c2710c" stroke-width="2"/>
+<text x="558" y="126" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" font-weight="600" fill="#1f2328">You</text>
+<circle cx="882" cy="83" r="8" fill="none" stroke="#c2710c" stroke-width="2"/>
+<path d="M 868 107 a 14 13 0 0 1 28 0" fill="none" stroke="#c2710c" stroke-width="2"/>
+<text x="882" y="126" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" font-weight="600" fill="#1f2328">Colleague</text>
+<rect x="541" y="186" width="34" height="28" rx="5" fill="#fff8ee" stroke="#c2710c" stroke-width="2"/>
+<text x="548" y="205" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="700" fill="#c2710c">&gt;_</text>
+<text x="558" y="234" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" font-weight="600" fill="#1f2328">New session</text>
+<rect x="865" y="186" width="34" height="28" rx="5" fill="#fff8ee" stroke="#c2710c" stroke-width="2"/>
+<text x="872" y="205" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="700" fill="#c2710c">&gt;_</text>
+<text x="882" y="234" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" font-weight="600" fill="#1f2328">Another AI tool</text>
+<text x="720" y="270" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" fill="#59636e">Comes with the code · reviewed in PRs · versioned</text>
+</svg>
