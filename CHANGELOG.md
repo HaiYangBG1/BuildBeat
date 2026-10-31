@@ -2,6 +2,10 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- Screenshots, archives and logs under `delivery/` stay out of Git (WORK-DELIVERY-BINARIES). Both `gitignore.template`s now ignore `delivery/**/*.png`, `*.jpg`, `*.jpeg`, `*.gif`, `*.webp`, `*.zip`, `*.tgz`, `*.gz` and `*.log`, while `delivery/` itself still goes into Git. `accept` and `check` warn when a work's folder holds files the next commit would add that are of those kinds or 256 KB or more: `warning: delivery/work/<ID>/ has <n> file(s) that would go into Git and stay in its history for good: <path> (<size>), …; keep screenshots, archives and logs on this machine (see templates/gitignore.template)` (five files at most, then `and <k> more`); files already in Git or ignored are left alone, and nothing is refused. `requireScreenshot` evidence lives under `.buildbeat/runtime/` and is not affected. In a pilot workspace the main repository's history reached 36 MB in two months, nearly all evidence screenshots, while five code repositories' text records came to 0.85 MB compressed. The quickstart, the no-runtime guide (zh/en), the Skill and the README file notes say the same.
+
 ## v5.1.0 — 2026-10-31（次版本：从代码查到的工作写明谁批准、谁关窗；插件介绍换成项目上下文管理）
 
 > **发布状态**：`@haiyangbg/buildbeat@5.1.0` 已于 2026-10-31 从 `main`（内容 PR #101–#103，release PR #104，merge commit `6b707ca`，tag `v5.1.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 41214816952，publish 与 verify 双 job 一次 success；所有者授权「发版吧」，`npm-publish` 环境由所有者本人在 GitHub 上批准）。独立回读（直连 npmjs.org）：`latest` = 5.1.0、`dist.integrity` 与 shasum 与本地用 Node 24 + npm 11.19.0 打的候选逐字一致（114 个文件）、SLSA v1 provenance、隔离安装 `--version` = 5.1.0、裸调用零写入、`npm audit signatures` 通过；GitHub Release v5.1.0 标 Latest；本机两份全局安装均为 5.1.0；`next` 仍在 5.0.0；证据见 [`V5.1.0-RELEASE-EVIDENCE-2026-10-31.md`](docs/releases/V5.1.0-RELEASE-EVIDENCE-2026-10-31.md)。

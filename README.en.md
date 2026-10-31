@@ -233,7 +233,7 @@ your-project/
     └── worktrees/                  this machine only: isolated copies the AI works in
 ```
 
-- `delivery/` goes into Git: switching sessions, tools, computers or people just means pulling the code and carrying on; do not exclude it in `.gitignore` or `.git/info/exclude`
+- `delivery/` goes into Git: switching sessions, tools, computers or people just means pulling the code and carrying on; do not exclude it in `.gitignore` or `.git/info/exclude`. Screenshots, archives and logs under it stay on this machine, out of Git
 - `.buildbeat/runtime/` and `.buildbeat/worktrees/` stay on this machine: a run in progress does not travel with Git, so finish or stop it where it started
 - People and AI tools without BuildBeat installed can still read these files and draft `work.md`
 

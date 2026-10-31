@@ -16,5 +16,20 @@
 .buildbeat/runtime/
 .buildbeat/worktrees/
 
+# delivery/ 要进 Git:工作记录跟代码放在同一个仓,不要在这里或 .git/info/exclude 里排除它
+# (buildbeat accept / check 发现它被忽略会提醒)
+
+# delivery/ 里的截图、压缩包和日志只留本机，不进 Git：二进制文件每改一版都整份留在 Git 历史里，仓库只增不减
+# (buildbeat accept / check 发现工作文件夹里有会进 Git 的这类文件或超过 256 KB 的文件会提醒)
+delivery/**/*.png
+delivery/**/*.jpg
+delivery/**/*.jpeg
+delivery/**/*.gif
+delivery/**/*.webp
+delivery/**/*.zip
+delivery/**/*.tgz
+delivery/**/*.gz
+delivery/**/*.log
+
 # 单仓项目：没有子仓
 node_modules/

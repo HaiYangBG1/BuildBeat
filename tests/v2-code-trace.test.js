@@ -318,3 +318,66 @@ test("accept and check warn when delivery/ is ignored by Git, and stay quiet oth
   assert.doesNotMatch(cli(root, "check", "--config", "delivery/work/W/run-config.yaml"), warning);
   assert.match(readFileSync(join(root, "delivery/work/W/decisions.jsonl"), "utf8"), /accept-work/);
 });
+
+// WORK-DELIVERY-BINARIES: screenshots, archives, logs and big files grow Git
+// history for good. Real cost behind it: in a pilot workspace the main
+// repository's history reached 36 MB in two months, nearly all evidence
+// screenshots, while five code repositories' text records came to 0.85 MB.
+function heavyFixture() {
+  const root = repo();
+  work(root, "W", "Heavy work");
+  write(root, "delivery/work/W/run-config.yaml", [
+    "repo: ../../..", "work: W", "run: RUN-W", "allowedPaths:", "  - src", "workers:", "  verifier:",
+    "    command: bash", "    args:", "      - -lc", "      - \"true\"", "",
+  ].join("\n"));
+  write(root, "delivery/work/W/notes.md", "small notes\n");
+  return root;
+}
+const heavyCheck = (root) => cli(root, "check", "--config", "delivery/work/W/run-config.yaml");
+const heavyLine = (text) => text.split("\n").find((line) => line.startsWith("warning: delivery/work/W/ has ")) ?? null;
+const HEAVY_TAIL = "; keep screenshots, archives and logs on this machine (see templates/gitignore.template)";
+
+test("accept and check warn about screenshots, archives, logs and big files that would go into Git", () => {
+  const root = heavyFixture();
+  assert.equal(heavyLine(heavyCheck(root)), null);
+  write(root, "delivery/work/W/evidence/shot.png", "png-bytes");
+  write(root, "delivery/work/W/evidence/big.json", `${"x".repeat(300 * 1024 - 1)}\n`);
+  const expected = "warning: delivery/work/W/ has 2 file(s) that would go into Git and stay in its history for good: "
+    + `evidence/big.json (300 KB), evidence/shot.png (1 KB)${HEAVY_TAIL}`;
+  assert.equal(heavyLine(heavyCheck(root)), expected);
+  assert.equal(heavyLine(cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner")), expected);
+
+  // With the template's rules the screenshot stays on this machine; the big
+  // file still would go into Git.
+  writeFileSync(join(root, ".gitignore"), readFileSync(join(ROOT, "templates", "gitignore.template"), "utf8"));
+  assert.equal(heavyLine(heavyCheck(root)),
+    `warning: delivery/work/W/ has 1 file(s) that would go into Git and stay in its history for good: evidence/big.json (300 KB)${HEAVY_TAIL}`);
+
+  // Once committed it is history already; deleting it would not shrink Git.
+  git(root, "add", "--", "delivery/work/W/evidence/big.json");
+  git(root, ...IDENTITY, "commit", "-q", "-m", "records");
+  assert.equal(heavyLine(heavyCheck(root)), null);
+});
+
+test("the heavy-file warning names five files, sizes past 1024 KB in MB, and counts the rest", () => {
+  const root = heavyFixture();
+  for (let i = 1; i <= 6; i += 1) write(root, `delivery/work/W/logs/run-${i}.log`, "line\n");
+  write(root, "delivery/work/W/bundle.tgz", "x".repeat(1536 * 1024));
+  assert.equal(heavyLine(heavyCheck(root)),
+    "warning: delivery/work/W/ has 7 file(s) that would go into Git and stay in its history for good: "
+    + `bundle.tgz (1.5 MB), logs/run-1.log (1 KB), logs/run-2.log (1 KB), logs/run-3.log (1 KB), logs/run-4.log (1 KB), and 2 more${HEAVY_TAIL}`);
+});
+
+test("both gitignore templates keep delivery/ in Git and its screenshots, archives and logs out", () => {
+  for (const template of ["templates/gitignore.template", "example/gitignore.template"]) {
+    const root = repo();
+    writeFileSync(join(root, ".gitignore"), readFileSync(join(ROOT, template), "utf8"));
+    const ignored = (path) => spawnSync("git", ["-C", root, "check-ignore", "-q", "--no-index", path], { env: fixtureEnv() }).status === 0;
+    for (const path of ["delivery/work/W/work.md", "delivery/work/W/runs/RUN-W-01/run-record.json", "delivery/work/W/decisions.jsonl"]) {
+      assert.equal(ignored(path), false, `${template} ignores ${path}`);
+    }
+    for (const path of ["delivery/work/W/a.png", "delivery/work/W/evidence/b.jpg", "delivery/work/W/c.zip", "delivery/work/W/d.tgz", "delivery/work/W/e.log"]) {
+      assert.equal(ignored(path), true, `${template} keeps ${path} in Git`);
+    }
+  }
+});
