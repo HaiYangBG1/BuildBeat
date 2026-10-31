@@ -2,6 +2,11 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- `history --path` names who decided (WORK-POSITIONING-ALIGN). Under each work it now prints `approved: <ts> by <who> (<RUN-ID>)` for the merge approval bound to the candidate that reached main, and `closed: <ts> by <who>` (or `cancelled:`) while the work stays closed or cancelled, with the same person / AI session wording as `status --work`; `--json` adds `approved` (`at`, `by`, `who`, `run`, `decisionRef`) and `closed` (`at`, `by`, `who`, `decision`, `decisionRef`) to each work, `null` when there is no such record. The latest merge approval is not enough: a later fix voids the approval of an earlier candidate, and a later run can be approved without ever reaching main. Before, finding out who approved a line of code took a second command.
+- The Claude Code plugin and its marketplace entry describe BuildBeat as Git-based project context management, with the runtime optional, instead of a delivery loop whose runtime had to be installed separately; the plugin README opens the same way (WORK-POSITIONING-ALIGN).
+
 ## v5.0.0 — 2026-10-25（主版本：需求级上下文——关窗收口、从代码找回工作、工作串线、现状比对、只用 Skill 和项目文件）
 
 > **发布状态**：`@haiyangbg/buildbeat@5.0.0` 已于 2026-10-25 从 `main`（内容 PR #94–#97，release PR #98，merge commit `e09c257`，tag `v5.0.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 40175517125，publish 与 verify 双 job 一次 success；所有者授权「发版」并选定 5.0.0）。独立回读（直连 npmjs.org）：`latest` = 5.0.0、`dist.integrity` 与 shasum 与本地用 Node 24 + npm 11.19.0 打的候选逐字一致、SLSA v1 provenance、隔离安装 `--version` = 5.0.0、裸调用零写入、`npm audit signatures` 通过；GitHub Release v5.0.0 标 Latest；本机两份全局安装均为 5.0.0；同日所有者用 npm 两步验证把 `next` 从 4.2.3 挪到 5.0.0；证据见 [`V5.0.0-RELEASE-EVIDENCE-2026-10-25.md`](docs/releases/V5.0.0-RELEASE-EVIDENCE-2026-10-25.md)。

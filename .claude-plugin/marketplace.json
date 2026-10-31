@@ -4,12 +4,12 @@
     "name": "HaiYangBG",
     "url": "https://github.com/HaiYangBG1"
   },
-  "description": "Official BuildBeat plugins: context in project files and Git-based delivery across AI models, tools, sessions, and people.",
+  "description": "Official BuildBeat plugins: Git-based project context management, with each piece of work's context kept in Git next to the code.",
   "plugins": [
     {
       "name": "buildbeat",
       "source": "./plugins/buildbeat",
-      "description": "Load BuildBeat guidance for project context, session handoffs, specialist collaboration, and evidence-based delivery, for individuals and teams. Install the runtime separately.",
+      "description": "Git-based project context management for people and AI sessions: each piece of work's goal, decisions and progress live in the project with the code, so any session, tool or person can carry on. The runtime is optional.",
       "category": "productivity",
       "tags": [
         "ai-coding",

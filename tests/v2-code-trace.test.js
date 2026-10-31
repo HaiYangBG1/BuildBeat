@@ -145,6 +145,70 @@ test("works are listed most recent first, with stage, title, summary and where t
   assert.match(text, /^ {4}[0-9a-f]{7} chore: start, see WORK-RUN$/m);
 });
 
+// WORK-POSITIONING-ALIGN: each work says who approved the version that
+// reached main and who closed it. The latest merge approval here is for a
+// candidate that never reached main, so only the bound one may show.
+test("each work names who approved its merged candidate and who closed or cancelled it", () => {
+  const root = repo();
+  const base = commit(root, "chore: start", { "src/b.js": lines("one") });
+  const stale = commit(root, "feat: two", { "src/b.js": lines("one", "two") });
+  const merged = commit(root, "fix: two, quoted", { "src/b.js": lines("one", "two!") });
+  const dropped = commit(root, "feat: three", { "src/b.js": lines("one", "two!", "three") }, "Work: WORK-DROPPED");
+  git(root, "checkout", "-q", "-b", "side");
+  const side = commit(root, "feat: side", { "src/b.js": lines("one", "two!", "three", "side") });
+  git(root, "checkout", "-q", "main");
+  work(root, "WORK-APPROVED", "Approved work");
+  record(root, "WORK-APPROVED", "RUN-B-01", base, stale, "SUPERSEDED");
+  record(root, "WORK-APPROVED", "RUN-B-02", stale, merged);
+  record(root, "WORK-APPROVED", "RUN-B-03", merged, side, "SUPERSEDED");
+  const human = { kind: "human", id: "owner", source: "flag" };
+  const agent = { kind: "agent", id: "claude-code", source: "env" };
+  const approval = (run, candidate, ts, actor) => JSON.stringify({
+    ts, run, decisionRef: `D-${run}-1`, decision: "approved", transition: "enter-wait-merge",
+    subject: { candidate }, by: actor.id, actor,
+  });
+  write(root, "delivery/work/WORK-APPROVED/decisions.jsonl", lines(
+    approval("RUN-B-01", stale, "2026-10-03T00:00:00Z", human),
+    approval("RUN-B-02", merged, "2026-10-04T00:00:00Z", human),
+    approval("RUN-B-03", side, "2026-10-05T00:00:00Z", agent),
+  ));
+  work(root, "WORK-DROPPED", "Dropped work");
+  write(root, "delivery/work/WORK-DROPPED/decisions.jsonl", lines(JSON.stringify({
+    ts: "2026-10-06T00:00:00Z", decisionRef: "C-WORK-DROPPED-1", decision: "cancelled", transition: "close-work",
+    subject: { result: "not needed" }, by: "claude-code", actor: agent,
+  })));
+
+  const trace = traced(root, "src/b.js");
+  const byWork = Object.fromEntries(trace.works.map((row) => [row.work, row]));
+  assert.deepEqual(byWork["WORK-APPROVED"].approved, {
+    at: "2026-10-04T00:00:00Z", by: "owner", who: "owner (person)", run: "RUN-B-02", decisionRef: "D-RUN-B-02-1",
+  });
+  assert.equal(byWork["WORK-APPROVED"].closed, null);
+  assert.equal(byWork["WORK-DROPPED"].approved, null);
+  assert.deepEqual(byWork["WORK-DROPPED"].closed, {
+    at: "2026-10-06T00:00:00Z", by: "claude-code", who: "claude-code (AI session)", decision: "cancelled", decisionRef: "C-WORK-DROPPED-1",
+  });
+
+  const text = cli(root, "history", "--repo", ".", "--path", "src/b.js");
+  assert.match(text, /^ {2}WORK-APPROVED .*\n {4}approved: 2026-10-04T00:00:00Z by owner \(person\) \(RUN-B-02\)\n {4}read: /m);
+  assert.doesNotMatch(text, /approved: .*(RUN-B-0[13]|2026-10-0[35])/);
+  assert.match(text, /^ {2}WORK-DROPPED .*\n {4}cancelled: 2026-10-06T00:00:00Z by claude-code \(AI session\)\n {4}read: /m);
+
+  // A closing row written before identities were recorded says so.
+  const folder = traced(traceFixture().root, "src/a.js").works.find((row) => row.work === "WORK-FOLDER");
+  assert.deepEqual(folder.closed, {
+    at: "2026-10-02T00:00:00Z", by: "owner", who: "owner (identity not recorded)", decision: "closed", decisionRef: null,
+  });
+  assert.equal(folder.approved, null);
+  const folderText = cli(traceFixture().root, "history", "--repo", ".", "--path", "src/a.js");
+  assert.match(folderText, /^ {4}closed: 2026-10-02T00:00:00Z by owner \(identity not recorded\)\n {4}result: Five lines and notes shipped\.$/m);
+  // Works with neither record keep their rows as before.
+  const run = traced(traceFixture().root, "src/a.js").works.find((row) => row.work === "WORK-RUN");
+  assert.equal(run.approved, null);
+  assert.equal(run.closed, null);
+  assert.match(folderText, /^ {2}WORK-RUN .*\n {4}read: delivery\/work\/WORK-RUN\/work\.md$/m);
+});
+
 test("a line or a range narrows the trace; bad ranges and untracked files are refused", () => {
   const { root } = traceFixture();
   const one = traced(root, "src/a.js:4");
