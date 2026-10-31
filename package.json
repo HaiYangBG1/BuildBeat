@@ -1,6 +1,6 @@
 {
   "name": "@haiyangbg/buildbeat",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "BuildBeat: Git-based project context management. Why each piece of work was done, what was decided and where it stands live in Git with the code, so any session, tool or person can pick it up; AI build-test-review loops stop for a human decision.",
   "type": "module",
   "bin": {

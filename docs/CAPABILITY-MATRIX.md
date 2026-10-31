@@ -1,6 +1,6 @@
 # BuildBeat capability matrix / 能力矩阵
 
-Current release: 5.0.0. Two ways to use it. Skill → project records keeps each
+Current release: 5.1.0. Two ways to use it. Skill → project records keeps each
 work's context in Git with no runtime: [Skill and project files only](v2/guide/12-without-runtime.en.md)
 states what is written by hand and what must not be claimed. Skill → local
 runtime → project records adds the automatic loop, isolation, budgets, approval
