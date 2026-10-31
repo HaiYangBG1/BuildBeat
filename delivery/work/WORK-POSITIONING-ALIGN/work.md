@@ -23,7 +23,7 @@ README 换了新定位（基于 Git 的项目上下文管理）以后，有两�
 - `src/v2/runtime/code-trace.js:199-217`（`workFacts`）：每项工作只取阶段、标题、已关窗时的结论和要读的文件；`computeOverview` 返回的行里已有 `decisions`、`mergedCandidate`，没有用到。
 - `src/v2/runtime/code-trace.js:307-329`（`renderTrace`）：每项工作一行标题，下面只有 `result:` 和 `read:` 两行。
 - `src/v2/runtime/overview.js:279-286`：进了主干的那一轮（`mergedRun`）是候选落在主干上的最近一轮，`mergedCandidate` 是它的候选。
-- `src/v2/runtime/overview.js:296-298`：关窗是 `decisions.jsonl` 里最近一条 `close-work`。
+- `src/v2/runtime/overview.js:296-298`：关窗是决定记录里最近一条 `close-work`。
 - `src/v2/runtime/actor.js:115-122`（`describeActor`）：决定行的「人还是 AI 会话」说法，`status --work` 的决定列表用的就是它；没记身份的老记录写 `identity not recorded`。
 - 合并批准在每项工作的决定记录（decisions.jsonl）里是 `transition: "enter-wait-merge"`、`decision: "approved"`，`subject.candidate` 是批准时绑定的候选（本仓 WORK-THREADS、WORK-FACT-DIR-POINTERS 的记录都是这样）。修复后旧候选的批准失效，所以同一项工作可能有几条合并批准，只有绑定进主干那一版的那条才是「这段代码是谁批的」。
 - `tests/v2-code-trace.test.js:74-98`：夹具里 WORK-FOLDER 有一条没记身份的关窗行，WORK-RUN 有两轮运行记录，没有合并批准行。
