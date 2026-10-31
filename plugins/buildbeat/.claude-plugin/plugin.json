@@ -3,7 +3,7 @@
   "name": "buildbeat",
   "version": "0.6.0",
   "displayName": "BuildBeat",
-  "description": "Guides AI sessions through project context in files, handoffs across tools and people, and BuildBeat delivery loops with human decisions. Runtime installed separately.",
+  "description": "Git-based project context management for Claude Code: keeps why each piece of work was done, what was decided and where it stands in the project with the code. The runtime, which adds the build-test-review loop and its checks, is optional.",
   "author": {
     "name": "HaiYangBG",
     "url": "https://github.com/HaiYangBG1"
