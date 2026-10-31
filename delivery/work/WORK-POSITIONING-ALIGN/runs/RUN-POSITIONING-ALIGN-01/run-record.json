@@ -1,0 +1,150 @@
+{
+  "run": "RUN-POSITIONING-ALIGN-01",
+  "work": "WORK-POSITIONING-ALIGN",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 26,
+    "lastDigest": "sha256:7f2e2a4c483a2a1854ec2b9ce3c6316e0e5b49f29a03f7961ef3808c51c949bc"
+  },
+  "startedAt": "2026-10-31T14:31:53.901Z",
+  "finishedAt": "2026-10-31T14:52:35.047Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 1,
+      "remaining": 5
+    }
+  },
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 2,
+    "waits": {
+      "decided": {
+        "count": 2,
+        "ms": 880287
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 360273
+  },
+  "workspaces": {
+    "RUN-POSITIONING-ALIGN-01": {
+      "repo": ".",
+      "branch": "run/RUN-POSITIONING-ALIGN-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-POSITIONING-ALIGN-01",
+      "base": "916b4c255dafee7b3c587423d9a6aa84222dbe88",
+      "candidate": "f1bdf1df439ec53beb5e5190fc2b9087d3ba3687"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-POSITIONING-ALIGN-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "f1bdf1df439ec53beb5e5190fc2b9087d3ba3687",
+      "digest": "sha256:c126fb5ff77899e5d00608a54650f453f721de8c47ea8cd11293faae14c07083",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:e0305684abeb654ce0970b59c11c6e26a6484c9daf7100bd481d725dcdf580ab"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-POSITIONING-ALIGN-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "f1bdf1df439ec53beb5e5190fc2b9087d3ba3687",
+      "digest": "sha256:5b2a4a61c3c168bb866d6c11b81a78d3f0c79e469d594de5fa967ee465a306ba",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-POSITIONING-ALIGN-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "f1bdf1df439ec53beb5e5190fc2b9087d3ba3687",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "f1bdf1df439ec53beb5e5190fc2b9087d3ba3687",
+        "planDigest": "sha256:e6057e3229300a30a9a3b66f1bf3f481dce98a1ff2fcc8d95dc84961b40563f5",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-POSITIONING-ALIGN-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "f1bdf1df439ec53beb5e5190fc2b9087d3ba3687",
+        "planDigest": "sha256:e6057e3229300a30a9a3b66f1bf3f481dce98a1ff2fcc8d95dc84961b40563f5",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-POSITIONING-ALIGN-01-2",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-POSITIONING-ALIGN-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "f1bdf1df439ec53beb5e5190fc2b9087d3ba3687",
+        "planDigest": "sha256:e6057e3229300a30a9a3b66f1bf3f481dce98a1ff2fcc8d95dc84961b40563f5",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-POSITIONING-ALIGN-01-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "f1bdf1df439ec53beb5e5190fc2b9087d3ba3687",
+        "planDigest": "sha256:e6057e3229300a30a9a3b66f1bf3f481dce98a1ff2fcc8d95dc84961b40563f5",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
