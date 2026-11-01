@@ -1,0 +1,150 @@
+{
+  "run": "RUN-LIVE-FACTS-02",
+  "work": "WORK-LIVE-FACTS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 26,
+    "lastDigest": "sha256:e6e35741562b5992fb115ba85a85262ebb52fc309fb699519cc62d4098c24389"
+  },
+  "startedAt": "2026-11-01T08:10:11.649Z",
+  "finishedAt": "2026-11-01T09:56:04.835Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 1,
+      "remaining": 5
+    }
+  },
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 2,
+    "waits": {
+      "decided": {
+        "count": 2,
+        "ms": 6050013
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 302706
+  },
+  "workspaces": {
+    "RUN-LIVE-FACTS-02": {
+      "repo": ".",
+      "branch": "run/RUN-LIVE-FACTS-02",
+      "worktreePath": ".buildbeat/worktrees/RUN-LIVE-FACTS-02",
+      "base": "97105daed8f9ae10276eb77815d2d85b9bcfac80",
+      "candidate": "d85c417b392f8e1e67e5ec9d215e25d2a95bd1fe"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-LIVE-FACTS-02/logs/verify-1.log",
+      "kind": "command",
+      "subject": "d85c417b392f8e1e67e5ec9d215e25d2a95bd1fe",
+      "digest": "sha256:48d574b7d1027f37942ca16a0e2d0224934d7e93a647ff4490b9e7a40c93c294",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:eb587a64206f98a7ee1040a0e6dc575f485584c7adb51cc13e978322cd2766b5"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-LIVE-FACTS-02/logs/review-1.log",
+      "kind": "command",
+      "subject": "d85c417b392f8e1e67e5ec9d215e25d2a95bd1fe",
+      "digest": "sha256:0ed6d2f43b5020ffdefc8d325b0403d79bac710b9c7cc7917334bfd856da0b23",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-LIVE-FACTS-02/outputs/review-1.json",
+      "kind": "review",
+      "subject": "d85c417b392f8e1e67e5ec9d215e25d2a95bd1fe",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "d85c417b392f8e1e67e5ec9d215e25d2a95bd1fe",
+        "planDigest": "sha256:b9abb5789f50e9196da992d4e0be1ecdcbacde5fbe95fc574ff15d42d97c4ca1",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-LIVE-FACTS-02-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d85c417b392f8e1e67e5ec9d215e25d2a95bd1fe",
+        "planDigest": "sha256:b9abb5789f50e9196da992d4e0be1ecdcbacde5fbe95fc574ff15d42d97c4ca1",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-LIVE-FACTS-02-2",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-LIVE-FACTS-02-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "d85c417b392f8e1e67e5ec9d215e25d2a95bd1fe",
+        "planDigest": "sha256:b9abb5789f50e9196da992d4e0be1ecdcbacde5fbe95fc574ff15d42d97c4ca1",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-LIVE-FACTS-02-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d85c417b392f8e1e67e5ec9d215e25d2a95bd1fe",
+        "planDigest": "sha256:b9abb5789f50e9196da992d4e0be1ecdcbacde5fbe95fc574ff15d42d97c4ca1",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
