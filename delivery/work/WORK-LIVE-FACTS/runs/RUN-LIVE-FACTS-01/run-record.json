@@ -1,0 +1,61 @@
+{
+  "run": "RUN-LIVE-FACTS-01",
+  "work": "WORK-LIVE-FACTS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "CANCELLED",
+    "reason": "scope amended before build: a history page links the removed template, so its link must be pinned to v5.2.0; work.md said history stays untouched"
+  },
+  "events": {
+    "from": 1,
+    "to": 5,
+    "lastDigest": "sha256:be4e432809c7d7284f47be5f830296cfb2cf102fa28c3e629ca039daeada7d4d"
+  },
+  "startedAt": "2026-11-01T08:07:55.440Z",
+  "finishedAt": "2026-11-01T08:09:43.724Z",
+  "attempts": {},
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 0,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 1,
+        "ms": 108283
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 0
+  },
+  "workspaces": {
+    "RUN-LIVE-FACTS-01": {
+      "repo": ".",
+      "branch": "run/RUN-LIVE-FACTS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-LIVE-FACTS-01",
+      "base": "fde5704d8c8eb7c89985d248cda70f07d308bce8",
+      "candidate": null
+    }
+  },
+  "evidence": [],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

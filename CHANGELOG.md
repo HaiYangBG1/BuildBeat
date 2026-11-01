@@ -2,6 +2,10 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- Project files keep rules and where to look, not facts that change (WORK-LIVE-FACTS). `templates/v2/BUILDBEAT.md` and the example project's `BUILDBEAT.md` are gone: the runtime never read them, no guide asked anyone to copy them, and their main content was a runtime version to keep up to date. In a pilot workspace that page had stacked five "runtime = …" lines, once named 4.0.0 while 4.2.3 was installed, and a line written the morning of a release was wrong by the afternoon; the example's copy still named 3.0.0. The `AGENTS.md` template (and the example's copy) now says: `Keep this file to rules and where to look. Do not copy facts that change, such as the runtime version, what is in progress, who is doing what or what is deployed: check them with buildbeat --version, buildbeat status and Git. A wrong line here misleads every session that reads it; delete it when you find it.` The Skill's close-out rules and step 4 of the no-runtime guide (zh/en) say the same. The docs check refuses a pinned `@haiyangbg/buildbeat@<version>` anywhere under `templates/` or `example/`, and both pages may not return. A project that copied `BUILDBEAT.md` can delete it, or keep it without the version line; a release never rewrites project files.
+
 ## v5.2.0 — 2026-11-01（次版本：delivery/ 里的截图、压缩包和日志不进 Git，要进时提醒）
 
 > **发布状态**：`@haiyangbg/buildbeat@5.2.0` 已于 2026-11-01 从 `main`（内容 PR #106–#107，release PR #108，merge commit `81eb5cb`，tag `v5.2.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 41282453770，publish 与 verify 双 job 一次 success；所有者授权「发」，`npm-publish` 环境按所有者「你自己批准」由驾驶会话用所有者的 GitHub 账号批准）。独立回读（直连 npmjs.org）：`latest` = 5.2.0、`dist.integrity` 与 shasum 与本地用 Node 24 + npm 11.19.0 打的候选逐字一致（114 个文件）、SLSA v1 provenance、隔离安装 `--version` = 5.2.0、裸调用零写入、`npm audit signatures` 通过；GitHub Release v5.2.0 标 Latest；本机两份全局安装均为 5.2.0；`next` 仍在 5.0.0；证据见 [`V5.2.0-RELEASE-EVIDENCE-2026-11-01.md`](docs/releases/V5.2.0-RELEASE-EVIDENCE-2026-11-01.md)。

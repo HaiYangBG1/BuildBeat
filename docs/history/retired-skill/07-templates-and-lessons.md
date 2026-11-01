@@ -7,7 +7,7 @@
 | 模板 | 用途 |
 |---|---|
 | [templates/v2/AGENTS.md](../../../templates/v2/AGENTS.md) / [templates/v2/指挥台.md](../../../templates/v2/指挥台.md) | **项目装载入口**:一页流程 + 视角路由 + 十一条规则(含可见命名进决策卡)+ 红线;指挥台是"用户一句话 → 会话调什么"的操作卡 |
-| [templates/v2/CLAUDE.md](../../../templates/v2/CLAUDE.md) / [templates/v2/BUILDBEAT.md](../../../templates/v2/BUILDBEAT.md) | 一行指针与版本标记(运行时版本、装载方式、升级 = 升级 CLI、回灌通道) |
+| [templates/v2/CLAUDE.md](../../../templates/v2/CLAUDE.md) / [templates/v2/BUILDBEAT.md](https://github.com/HaiYangBG1/BuildBeat/blob/v5.2.0/templates/v2/BUILDBEAT.md) | 一行指针与版本标记(运行时版本、装载方式、升级 = 升级 CLI、回灌通道) |
 | [templates/v2/run-config.example.yaml](../../../templates/v2/run-config.example.yaml) | 可原样解析的 run 配置样板(含 fixer、reviewTriage、budgets、cache、envelope、redact);机器验证见 `tests/v2-templates-firstrun.test.js` |
 | [templates/v2/envelope/worker.sh](../../../templates/v2/envelope/worker.sh) + [prompts/](../../../templates/v2/envelope/prompts/builder.md) | worker 包装(工具缺失 exit 75、喂 prompt、写入步机械 commit、只读步落信封)与 builder / reviewer / fixer 三份 prompt;拷到仓级 `delivery/envelope/` |
 | [templates/pm/decisions.md](../retired-templates/pm/decisions.md) | 平台级决策包台账(全工作区唯一决策单点;Run 级批准由内核落 `decisions.jsonl`) |

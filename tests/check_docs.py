@@ -54,14 +54,12 @@ ACTIVE_DOCS = (
     "docs/v2/guide/12-without-runtime.en.md",
     "templates/v2/AGENTS.md",
     "templates/v2/指挥台.md",
-    "templates/v2/BUILDBEAT.md",
     "templates/v2/CLAUDE.md",
     "plugins/buildbeat/README.md",
     "tests/README.md",
     "example/README.md",
     "example/AGENTS.md",
     "example/指挥台.md",
-    "example/BUILDBEAT.md",
     "example/pm/decisions.md",
     "example/delivery/work/WORK-EXPORT-DATE-FILTER/intent.md",
     "example/delivery/work/WORK-EXPORT-DATE-FILTER/plan.md",
@@ -90,7 +88,6 @@ CRITICAL_TEMPLATE_FILES = (
     "templates/gitignore.template",
     "templates/v2/AGENTS.md",
     "templates/v2/CLAUDE.md",
-    "templates/v2/BUILDBEAT.md",
     "templates/v2/指挥台.md",
     "templates/v2/run-config.example.yaml",
     "templates/v2/work.example.md",
@@ -166,6 +163,10 @@ REMOVED_PATHS = (
     "team/APPROVALS.md",
     "templates/team/TEAM.md",
     "templates/team/APPROVALS.md",
+    # A page whose only content was a runtime version to keep up to date
+    # (WORK-LIVE-FACTS); AGENTS.md says where to look instead.
+    "templates/v2/BUILDBEAT.md",
+    "example/BUILDBEAT.md",
 )
 
 
@@ -758,6 +759,49 @@ def check_active_docs_currency() -> list[str]:
     return errors
 
 
+PINNED_RUNTIME = re.compile(r"@haiyangbg/buildbeat@\d[0-9A-Za-z.\-]*")
+
+
+def check_no_pinned_runtime() -> list[str]:
+    """Templates and the example are copied into projects, where a runtime
+    version written down goes stale with the next release: the example's
+    marker page still named 3.0.0 two majors later (WORK-LIVE-FACTS). They say
+    where to look (`buildbeat --version`) instead."""
+    result = subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.quotepath=false",
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "--",
+            "templates",
+            "example",
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    errors: list[str] = []
+    for relative in sorted(set(result.stdout.splitlines())):
+        path = ROOT / relative
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for match in PINNED_RUNTIME.finditer(text):
+            errors.append(
+                f"{relative}: pins a runtime version ({match.group(0)}); "
+                "templates and the example say where to look (buildbeat --version), not which version"
+            )
+    return errors
+
+
 NUMBERED_LESSON = re.compile(r"lessons?(?:\.md)?`?\s*(?:#\s*\d|第\s*\d+\s*条)|教训\s*\d+", re.IGNORECASE)
 
 
@@ -848,6 +892,7 @@ def main() -> int:
     errors.extend(check_workflow_action_pins())
     errors.extend(check_repository_governance())
     errors.extend(check_active_docs_currency())
+    errors.extend(check_no_pinned_runtime())
     errors.extend(check_lesson_citations())
     errors.extend(check_without_runtime_guide())
     errors.extend(check_final_repair_contract())
