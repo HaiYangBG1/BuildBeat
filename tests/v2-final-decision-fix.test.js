@@ -33,7 +33,7 @@ const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const git = (cwd, ...args) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
 const clean = () => ({ behavior: "succeed", envelope: { status: "succeeded", findings: [] } });
 
-function fixture({ fixer = true, legacy = false, rounds = 6, entry = "build", buildCommit = true } = {}) {
+function fixture({ fixer = true, legacy = false, rounds = 6, entry = "build", buildCommit = true, allowedPaths = ["feature.txt"], baseline = {} } = {}) {
   const root = tempDir("bb-final-fix-");
   git(root, "init", "-q", "-b", "main");
   git(root, "config", "user.name", "Test");
@@ -41,6 +41,10 @@ function fixture({ fixer = true, legacy = false, rounds = 6, entry = "build", bu
   git(root, "config", "commit.gpgSign", "false");
   git(root, "config", "core.hooksPath", "/dev/null");
   writeFileSync(join(root, "feature.txt"), "baseline\n");
+  for (const [path, text] of Object.entries(baseline)) {
+    mkdirSync(join(root, path, ".."), { recursive: true });
+    writeFileSync(join(root, path), text);
+  }
   git(root, "add", ".");
   git(root, "commit", "-qm", "baseline");
   const worktree = join(root, ".buildbeat", "worktrees", "RUN-F");
@@ -62,7 +66,7 @@ function fixture({ fixer = true, legacy = false, rounds = 6, entry = "build", bu
   }
   const options = {
     repoRoot: root, workId: "WORK-F", runId: "RUN-F", entry, workflow: deliveryWorkflow(),
-    workflowDigest: sha256Text(DELIVERY_TEXT), allowedPaths: ["feature.txt"],
+    workflowDigest: sha256Text(DELIVERY_TEXT), allowedPaths,
     budgets: { reviewRoundsPerWork: rounds },
     ...(!legacy ? { deliveryChecks: { artifact: "work", requireAcceptance: false } } : {}),
     adapters: { builder: adapter, verifier: adapter, reviewer: adapter, ...(fixer ? { fixer: adapter } : {}) },
@@ -119,6 +123,19 @@ for (const scenario of ["dirty", "non-descendant", "scope", "same-head", "wrong-
     assert.equal(f.ledger().events.length, before);
   });
 }
+
+// WORK-SCOPE-RENAMES: a move counts on both sides, so a file moved in from
+// outside the scope is refused by the path it left.
+test("final adopt refuses a file moved in from outside the scope, naming the path it left", () => {
+  const f = fixture({ allowedPaths: ["feature.txt", "src"], baseline: { "secret/x.txt": "secret\n" } });
+  const before = f.ledger().events.length;
+  mkdirSync(join(f.worktree, "src"), { recursive: true });
+  git(f.worktree, "mv", "secret/x.txt", "src/x.txt");
+  git(f.worktree, "commit", "-qm", "move in");
+  const sha = git(f.worktree, "rev-parse", "HEAD");
+  assert.throws(() => f.adopt(sha), { message: "out-of-scope changes: secret/x.txt" });
+  assert.equal(f.ledger().events.length, before);
+});
 
 test("human fix records an accepted P1, feeds its complete reason to fixer and returns through verify/review", () => {
   const f = fixture();

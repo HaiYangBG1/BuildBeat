@@ -438,3 +438,45 @@ test("files already in Git count toward the folder warning, ignored and deleted 
   execFileSync("rm", [join(root, "delivery/work/W/out/f10.txt")]);
   assert.equal(extrasLine(heavyCheck(root)), null);
 });
+
+// WORK-SCOPE-RENAMES: history --path reads the same on every machine.
+test("history --path reads the same whatever the user's blame and log settings", () => {
+  const { root } = traceFixture();
+  const config = join(realpathSync(tempDir("bb-trace-cfg-")), "config");
+  writeFileSync(config, "[blame]\n\tignoreRevsFile = .git-blame-ignore-revs\n[log]\n\tshowSignature = true\n");
+  for (const args of [["--json"], []]) {
+    const plain = cli(root, "history", "--repo", ".", "--path", "src/a.js", ...args);
+    const out = spawnSync(process.execPath, [CLI, "history", "--repo", ".", "--path", "src/a.js", ...args], {
+      cwd: root, encoding: "utf8", env: fixtureEnv({ GIT_CONFIG_GLOBAL: config }),
+    });
+    assert.equal(out.status, 0, out.stderr);
+    assert.equal(out.stdout, plain);
+  }
+});
+
+test("a commit that moves a file out of a work's folder still traces to that work", () => {
+  const root = repo();
+  commit(root, "docs: notes", { "delivery/work/WORK-MOVED/notes.md": "notes kept for a while\n", "src/b.js": lines("one") });
+  write(root, "src/b.js", lines("one", "two"));
+  mkdirSync(join(root, "docs"), { recursive: true });
+  git(root, "add", "--", "src/b.js");
+  git(root, "mv", "delivery/work/WORK-MOVED/notes.md", "docs/moved-notes.md");
+  git(root, ...IDENTITY, "commit", "-q", "-m", "chore: two, notes moved out");
+  work(root, "WORK-MOVED", "Moved work");
+  const trace = traced(root, "src/b.js:2");
+  assert.deepEqual(trace.works.map((row) => [row.work, row.via]), [["WORK-MOVED", [{ kind: "folder" }]]]);
+  assert.equal(trace.untraced.lines, 0);
+});
+
+test("history --path reads paths holding any byte but NUL, including Git's own field marks", () => {
+  const root = repo();
+  // \x1d, \x1e and \x1f are legal in file names; with -z Git prints them as
+  // they are, so only NUL may separate what the log prints.
+  const odd = "delivery/work/WORK-ODD/a\x1db\x1ec\x1fd\n.md";
+  commit(root, "docs: odd notes and one", { [odd]: "notes\n", "src/c.js": lines("one") });
+  commit(root, "\x1fsubject with a mark", { "src/c.js": lines("one", "two"), "\x1ftop.txt": "top\n" }, "Work: WORK-ODD");
+  work(root, "WORK-ODD", "Odd work");
+  const trace = traced(root, "src/c.js");
+  assert.deepEqual(trace.works.map((row) => [row.work, row.lines, row.via]), [["WORK-ODD", 2, [{ kind: "folder" }, { kind: "trailer" }]]]);
+  assert.equal(trace.untraced.lines, 0);
+});
