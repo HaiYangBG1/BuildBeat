@@ -51,7 +51,7 @@ import {
   renderOverview,
   runsFor,
 } from "../runtime/overview.js";
-import { configTargets, discoverRepos, heavyRecordsWarning, ignoredRecordsWarning, workConfigs, pathLabel, shellArg } from "../runtime/overview-repos.js";
+import { configTargets, discoverRepos, extraFilesWarning, heavyRecordsWarning, ignoredRecordsWarning, workConfigs, pathLabel, shellArg } from "../runtime/overview-repos.js";
 import { renderTrace, traceLines } from "../runtime/code-trace.js";
 import { attachThreads, readWorks, renderThread, worksWithRef } from "../runtime/threads.js";
 import { attachFacts, factsWarning, renderFacts } from "../runtime/facts.js";
@@ -1120,6 +1120,8 @@ function commandAccept(flags) {
   if (ignored) console.log(ignored);
   const heavy = heavyRecordsWarning(resolve(flags.repo), flags.work);
   if (heavy) console.log(heavy);
+  const extras = extraFilesWarning(resolve(flags.repo), flags.work);
+  if (extras) console.log(extras);
   const facts = factsWarning(resolve(flags.repo), flags.work);
   if (facts) console.log(facts);
   console.log(
@@ -1246,6 +1248,8 @@ function commandDoctor(flags) {
   if (ignored) console.log(ignored);
   const heavy = heavyRecordsWarning(options.repoRoot, options.workId);
   if (heavy) console.log(heavy);
+  const extras = extraFilesWarning(options.repoRoot, options.workId);
+  if (extras) console.log(extras);
   // Facts compared with the base the next run would start from.
   const facts = factsWarning(options.repoRoot, options.workId, { against: options.base, label: options.base });
   if (facts) console.log(facts);

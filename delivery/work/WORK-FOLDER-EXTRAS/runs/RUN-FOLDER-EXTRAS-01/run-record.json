@@ -1,0 +1,150 @@
+{
+  "run": "RUN-FOLDER-EXTRAS-01",
+  "work": "WORK-FOLDER-EXTRAS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 26,
+    "lastDigest": "sha256:efbf582e288136489129c7267cc6e624846cad8df23916104e2210dbca8c2f78"
+  },
+  "startedAt": "2026-11-01T09:56:31.921Z",
+  "finishedAt": "2026-11-01T10:17:58.695Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 1,
+      "remaining": 5
+    }
+  },
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 2,
+    "waits": {
+      "decided": {
+        "count": 2,
+        "ms": 986144
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 300033
+  },
+  "workspaces": {
+    "RUN-FOLDER-EXTRAS-01": {
+      "repo": ".",
+      "branch": "run/RUN-FOLDER-EXTRAS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-FOLDER-EXTRAS-01",
+      "base": "fce3a408836fcdffe711f6106952c76d1ed8fb77",
+      "candidate": "a644819fe9b23370d4047bb2c18189128ca36178"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FOLDER-EXTRAS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "a644819fe9b23370d4047bb2c18189128ca36178",
+      "digest": "sha256:048e1fa40ebc2868e90bd374c7d0861ddbe8d0c6e79c445cfff9b9068bde5118",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:0d1ac6b246852a2223d8f70f766658efcf200083c24634a138eaf80572359111"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FOLDER-EXTRAS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "a644819fe9b23370d4047bb2c18189128ca36178",
+      "digest": "sha256:737a0947507b65c1dbe2b58a7844ff7d5fde80a25659fd7730b8e82d2a3e35d4",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-FOLDER-EXTRAS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "a644819fe9b23370d4047bb2c18189128ca36178",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "a644819fe9b23370d4047bb2c18189128ca36178",
+        "planDigest": "sha256:1e9bbc5dca469be7da8dbb4841aeff55a4bd9c335733c05a31f7f1deed2353e3",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-FOLDER-EXTRAS-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "a644819fe9b23370d4047bb2c18189128ca36178",
+        "planDigest": "sha256:1e9bbc5dca469be7da8dbb4841aeff55a4bd9c335733c05a31f7f1deed2353e3",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-FOLDER-EXTRAS-01-2",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-FOLDER-EXTRAS-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "a644819fe9b23370d4047bb2c18189128ca36178",
+        "planDigest": "sha256:1e9bbc5dca469be7da8dbb4841aeff55a4bd9c335733c05a31f7f1deed2353e3",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-FOLDER-EXTRAS-01-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "a644819fe9b23370d4047bb2c18189128ca36178",
+        "planDigest": "sha256:1e9bbc5dca469be7da8dbb4841aeff55a4bd9c335733c05a31f7f1deed2353e3",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

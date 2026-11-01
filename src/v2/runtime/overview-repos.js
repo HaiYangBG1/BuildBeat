@@ -156,6 +156,45 @@ export function heavyRecordsWarning(repoRoot, workId) {
   return `warning: ${folder} has ${heavy.length} file(s) that would go into Git and stay in its history for good: ${shown.join(", ")}${more}; keep screenshots, archives and logs on this machine (see templates/gitignore.template)`;
 }
 
+// The warning to print when a work's folder holds more than 10 files besides
+// its records (the files the runtime writes or reads there), or null. Files
+// already in Git count as well as those the next commit would add: the next
+// reader sees the whole folder. Ignored files and files gone from disk do
+// not. In a pilot workspace's main repository 55 of 93 works held more than
+// 10 such files (one held 699), mostly command output, readback results and
+// one-off scripts, while four code repositories' 46 works held 3 at most
+// (WORK-FOLDER-EXTRAS).
+const RECORD_FILES = /^(?:work\.md|intent\.md|plan\.md|result\.md|env-facts\.md|run-config[^/]*\.ya?ml|decisions\.jsonl|review-findings\.jsonl|releases\.jsonl|runs\/[^/]+\/run-record\.json)$/;
+const EXTRA_FILES_LIMIT = 10;
+
+export function extraFilesWarning(repoRoot, workId) {
+  const folder = `delivery/work/${workId}/`;
+  let listed;
+  try {
+    listed = execFileSync("git", ["-C", repoRoot, "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", folder], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    return null;
+  }
+  const extras = [];
+  for (const path of new Set(listed.split("\0").filter(Boolean))) {
+    const inside = path.slice(folder.length);
+    if (RECORD_FILES.test(inside)) continue;
+    try {
+      if (!statSync(join(repoRoot, path)).isFile()) continue;
+    } catch {
+      continue;
+    }
+    extras.push(inside);
+  }
+  if (extras.length <= EXTRA_FILES_LIMIT) return null;
+  extras.sort();
+  const shown = extras.slice(0, HEAVY_LISTED);
+  return `warning: ${folder} holds ${extras.length} files besides its records: ${shown.join(", ")}, and ${extras.length - shown.length} more; keep command output, readback results and one-off scripts out of it (the runtime keeps verify, review and readback output on this machine) and write the conclusions into result.md`;
+}
+
 export function discoverRepos(repoRoot, warnings, roots = new Map()) {
   const repos = new Set([repoRoot]);
   const workRoot = join(repoRoot, "delivery", "work");

@@ -57,7 +57,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 - 只在目标确认、真正例外和最终决定处请求用户。review 默认不分诊；不收敛、环境故障、预算耗尽照常停人，不能由驾驶会话冒充人批准。
 - Work review 预算默认 6 轮，跨所有 Run 累计；保留缓存、增量审查、人工修复接管和环境故障分类。
 - 长运行脱离宿主短超时启动。状态、最近输出、耗时和通知用于发现停顿；STALLED 不等于进程已终止。
-- `delivery/` 跟代码一起进 Git：不要用 `.gitignore` 或 `.git/info/exclude` 排除它，`accept` 和 `check` 发现被忽略会提醒。其中的截图、压缩包和日志不进 Git，模板 `gitignore.template` 已写好规则；`accept` 和 `check` 发现工作文件夹里有会进 Git 的这类文件或 256 KB 以上的文件也会提醒（需要包含这项改动的运行时）。为某项工作手工提交（手修后 `--adopt`、只改文档的工作）时，提交信息末尾空一行写 `Work: <ID>`；随包信封的机械提交会自动带。
+- `delivery/` 跟代码一起进 Git：不要用 `.gitignore` 或 `.git/info/exclude` 排除它，`accept` 和 `check` 发现被忽略会提醒。其中的截图、压缩包和日志不进 Git，模板 `gitignore.template` 已写好规则；`accept` 和 `check` 发现工作文件夹里有会进 Git 的这类文件或 256 KB 以上的文件也会提醒（需要包含这项改动的运行时）。工作文件夹只放这项工作的记录，外加它确实要用的少量文件（比如验证脚本）；命令输出、回读结果、一次性脚本不放进去，结论写进 `result.md`，以后还要用的脚本放进项目自己的目录。记录以外的文件超过 10 个时，`accept` 和 `check` 也会提醒（同样需要包含这项改动的运行时）。为某项工作手工提交（手修后 `--adopt`、只改文档的工作）时，提交信息末尾空一行写 `Work: <ID>`；随包信封的机械提交会自动带。
 - 新会话先读项目入口、work.md、Git 与状态。旧的 intent/plan 和历史记录继续读取；活动运行不能随意删除或重复启动。
 - 既有项目规范由项目所有者维护，不覆盖；项目治理模板不在 BuildBeat 范围内。生产监控与部署放在项目工具中。有 UI 的交付在 run-config 写 `requireScreenshot: true`，verify 把真渲染截图以 PNG 写进 `BUILDBEAT_SCREENSHOT_DIR`。
 - merge、push、发布、部署需要对应授权；最终批准只表示候选具备合并条件。不要用 `git add -A`，只提交本次具体文件。

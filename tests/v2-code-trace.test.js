@@ -381,3 +381,60 @@ test("both gitignore templates keep delivery/ in Git and its screenshots, archiv
     }
   }
 });
+
+// WORK-FOLDER-EXTRAS: a work's folder holds its records, not the process
+// material around them. Real cost behind it: in a pilot workspace's main
+// repository 55 of 93 works held more than 10 files besides their records
+// (one held 699), mostly command output, readback results and one-off
+// scripts, while four code repositories' 46 works held 3 at most.
+function extrasFixture() {
+  const root = repo();
+  work(root, "W", "Busy work");
+  const config = [
+    "repo: ../../..", "work: W", "run: RUN-W", "allowedPaths:", "  - src", "workers:", "  verifier:",
+    "    command: bash", "    args:", "      - -lc", "      - \"true\"", "",
+  ].join("\n");
+  write(root, "delivery/work/W/run-config.yaml", config);
+  write(root, "delivery/work/W/run-config-staging.yml", config);
+  for (const path of ["intent.md", "plan.md", "result.md", "env-facts.md"]) write(root, `delivery/work/W/${path}`, "# record\n");
+  for (const path of ["decisions.jsonl", "review-findings.jsonl", "releases.jsonl"]) write(root, `delivery/work/W/${path}`, "");
+  write(root, "delivery/work/W/runs/RUN-W-01/run-record.json", "{}\n");
+  for (let i = 1; i <= 10; i += 1) write(root, `delivery/work/W/out/f${String(i).padStart(2, "0")}.txt`, "output\n");
+  return root;
+}
+const extrasLine = (text) => text.split("\n").find((line) => line.startsWith("warning: delivery/work/W/ holds ")) ?? null;
+const EXTRAS_TAIL = "; keep command output, readback results and one-off scripts out of it "
+  + "(the runtime keeps verify, review and readback output on this machine) and write the conclusions into result.md";
+
+test("accept and check warn when a work's folder holds more than 10 files besides its records", () => {
+  const root = extrasFixture();
+  assert.equal(extrasLine(heavyCheck(root)), null);
+  assert.equal(extrasLine(cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner")), null);
+
+  write(root, "delivery/work/W/runs/RUN-W-01/dump.txt", "output\n");
+  const expected = "warning: delivery/work/W/ holds 11 files besides its records: "
+    + `out/f01.txt, out/f02.txt, out/f03.txt, out/f04.txt, out/f05.txt, and 6 more${EXTRAS_TAIL}`;
+  assert.equal(extrasLine(heavyCheck(root)), expected);
+  assert.equal(extrasLine(cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner")), expected);
+});
+
+test("files already in Git count toward the folder warning, ignored and deleted ones do not", () => {
+  const root = extrasFixture();
+  write(root, "delivery/work/W/out/f11.txt", "output\n");
+  git(root, "add", "--", "delivery");
+  git(root, ...IDENTITY, "commit", "-q", "-m", "records and output");
+  assert.match(extrasLine(heavyCheck(root)) ?? "", /holds 11 files besides its records/);
+
+  // A screenshot the template keeps on this machine is not in the folder Git shows.
+  writeFileSync(join(root, ".gitignore"), readFileSync(join(ROOT, "templates", "gitignore.template"), "utf8"));
+  write(root, "delivery/work/W/out/shot.png", "png-bytes");
+  assert.match(extrasLine(heavyCheck(root)) ?? "", /holds 11 files besides its records/);
+
+  // Deleting one from the folder brings it back to 10, before the deletion is committed.
+  git(root, "rm", "-q", "--cached", "--", "delivery/work/W/out/f11.txt");
+  execFileSync("rm", [join(root, "delivery/work/W/out/f11.txt")]);
+  assert.equal(extrasLine(heavyCheck(root)), null);
+  write(root, "delivery/work/W/out/f11.txt", "output\n");
+  execFileSync("rm", [join(root, "delivery/work/W/out/f10.txt")]);
+  assert.equal(extrasLine(heavyCheck(root)), null);
+});
