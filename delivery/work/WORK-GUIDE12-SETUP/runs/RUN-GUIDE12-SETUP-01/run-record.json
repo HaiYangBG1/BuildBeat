@@ -1,0 +1,150 @@
+{
+  "run": "RUN-GUIDE12-SETUP-01",
+  "work": "WORK-GUIDE12-SETUP",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 26,
+    "lastDigest": "sha256:9935c0c7f30bb2b7f558a00144dd0c780291cda4e92f7145a88753a7fc1a1bcf"
+  },
+  "startedAt": "2026-11-01T14:16:16.234Z",
+  "finishedAt": "2026-11-01T14:58:54.769Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 1,
+      "remaining": 5
+    }
+  },
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 2,
+    "waits": {
+      "decided": {
+        "count": 2,
+        "ms": 2187166
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 370852
+  },
+  "workspaces": {
+    "RUN-GUIDE12-SETUP-01": {
+      "repo": ".",
+      "branch": "run/RUN-GUIDE12-SETUP-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-GUIDE12-SETUP-01",
+      "base": "a39343b0e2514675da4392d86f5556a37eb849ae",
+      "candidate": "3b97cd875b566b67897b13ed002696d87dadb507"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-GUIDE12-SETUP-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "3b97cd875b566b67897b13ed002696d87dadb507",
+      "digest": "sha256:355d09c8fbec03818271644633366cae885c92257899787a330103dc18477004",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:84ec0413bb4888a480c79375b2e3c0ff3da9f7ea841758e39372bd2edfb4cd3e"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-GUIDE12-SETUP-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "3b97cd875b566b67897b13ed002696d87dadb507",
+      "digest": "sha256:3f68ef62360689916c0dca1a9d25cabb150933c3df9d769f9e88a1c79680e3bb",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-GUIDE12-SETUP-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "3b97cd875b566b67897b13ed002696d87dadb507",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "3b97cd875b566b67897b13ed002696d87dadb507",
+        "planDigest": "sha256:ffeb1f898f8c8e7abb3b130cb35dd86b50992ba88f09e89dee95ad331eb1c89b",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-GUIDE12-SETUP-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "3b97cd875b566b67897b13ed002696d87dadb507",
+        "planDigest": "sha256:ffeb1f898f8c8e7abb3b130cb35dd86b50992ba88f09e89dee95ad331eb1c89b",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-GUIDE12-SETUP-01-2",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-GUIDE12-SETUP-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "3b97cd875b566b67897b13ed002696d87dadb507",
+        "planDigest": "sha256:ffeb1f898f8c8e7abb3b130cb35dd86b50992ba88f09e89dee95ad331eb1c89b",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-GUIDE12-SETUP-01-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "3b97cd875b566b67897b13ed002696d87dadb507",
+        "planDigest": "sha256:ffeb1f898f8c8e7abb3b130cb35dd86b50992ba88f09e89dee95ad331eb1c89b",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
