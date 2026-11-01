@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { describeActor, selfMergeApproval } from "./actor.js";
 import { checkPromotions, readResult } from "./closeout.js";
 import { listInbox } from "./decisions.js";
-import { configTargets, directory, discoverRepos, pathLabel, shellArg, workConfigs } from "./overview-repos.js";
+import { configTargets, directory, discoverRepos, pathLabel, readRunLedgers, shellArg, workConfigs } from "./overview-repos.js";
 
 import { EventLedger } from "../storage/event-ledger.js";
 import { latestAdjudications, readFindingsAccount } from "./findings.js";
@@ -70,9 +70,41 @@ export function artifactStatus(workDir, decisions, artifact) {
   };
 }
 
+// The commits on ref, from one `git rev-list` per repository and ref, or
+// null when Git cannot list them (or the list passes 64 MB, about a million
+// and a half commits). In a pilot workspace one cross-repository status
+// spawned a merge-base process for each of 102 candidates (WORK-OVERVIEW-SPEED).
+const FULL_COMMIT = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+
+function commitsOn(repoRoot, ref, context) {
+  const key = JSON.stringify([repoRoot, ref]);
+  if (!context.reach.has(key)) {
+    let commits = null;
+    try {
+      const out = execFileSync("git", ["-C", repoRoot, "rev-list", ref, "--"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+        maxBuffer: 64 * 1024 * 1024,
+      });
+      commits = new Set(out.split("\n").filter(Boolean));
+    } catch {
+      commits = null;
+    }
+    context.reach.set(key, commits);
+  }
+  return context.reach.get(key);
+}
+
+// A full commit id is looked up in the list of commits on ref; anything
+// else (a short id, a ref Git cannot list) asks merge-base, as before.
 function isAncestor(repoRoot, sha, ref, context) {
   const key = JSON.stringify([repoRoot, sha, ref]);
   if (context.ancestry.has(key)) return context.ancestry.get(key);
+  const commits = FULL_COMMIT.test(sha) ? commitsOn(repoRoot, ref, context) : null;
+  if (commits) {
+    context.ancestry.set(key, commits.has(sha));
+    return commits.has(sha);
+  }
   try {
     execFileSync(
       "git",
@@ -104,34 +136,28 @@ function headRef(repoRoot, context) {
 }
 
 // Runs for a work: runtime ledgers first, run-records for the rest.
-export function runsFor(repoRoot, workId) {
+// ledgers: the repository's run ledgers already read for this call
+// (readRunLedgers); without them every ledger is read here.
+export function runsFor(repoRoot, workId, ledgers = null) {
   const runs = new Map();
-  const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
-  if (existsSync(runsDir)) {
-    for (const entry of readdirSync(runsDir)) {
-      const path = join(runsDir, entry, "events.jsonl");
-      if (!existsSync(path)) {
-        continue;
-      }
-      const ledger = EventLedger.open(path);
-      const state = ledger.state;
-      if (!state.run || state.run.work !== workId) {
-        continue;
-      }
-      runs.set(state.run.id, {
-        id: state.run.id,
-        status: state.run.status,
-        terminal: state.terminal,
-        pendingHuman: state.pendingHuman,
-        candidate: state.workspaces[state.run.id]?.candidate ?? null,
-        createdAt: ledger.events[0]?.ts ?? null,
-        lastAt: ledger.events[ledger.events.length - 1]?.ts ?? null,
-        workflow: state.run.workflowRef ?? null,
-        steps: Object.keys(state.steps),
-        state,
-        source: "runtime",
-      });
+  for (const { ledger } of ledgers ?? readRunLedgers(repoRoot)) {
+    const state = ledger.state;
+    if (!state.run || state.run.work !== workId) {
+      continue;
     }
+    runs.set(state.run.id, {
+      id: state.run.id,
+      status: state.run.status,
+      terminal: state.terminal,
+      pendingHuman: state.pendingHuman,
+      candidate: state.workspaces[state.run.id]?.candidate ?? null,
+      createdAt: ledger.events[0]?.ts ?? null,
+      lastAt: ledger.events[ledger.events.length - 1]?.ts ?? null,
+      workflow: state.run.workflowRef ?? null,
+      steps: Object.keys(state.steps),
+      state,
+      source: "runtime",
+    });
   }
   const recordsDir = join(repoRoot, "delivery", "work", workId, "runs");
   if (existsSync(recordsDir)) {
@@ -170,8 +196,23 @@ export function runsFor(repoRoot, workId) {
 
 // Per status invocation: known local roots need no validation subprocess,
 // and forwarded works share repository facts with the later target scan.
+// ledgers and reach are read-only caches for this one call: every work's
+// runs, its cost and the work-id scan read the same ledgers, and in a pilot
+// workspace one cross-repository status opened 245 ledgers 20,390 times
+// (WORK-OVERVIEW-SPEED).
 function overviewContext(repoRoot) {
-  return { roots: new Map([[realpathSync(repoRoot), realpathSync(repoRoot)]]), heads: new Map(), ancestry: new Map() };
+  return {
+    roots: new Map([[realpathSync(repoRoot), realpathSync(repoRoot)]]),
+    heads: new Map(),
+    ancestry: new Map(),
+    ledgers: new Map(),
+    reach: new Map(),
+  };
+}
+
+function ledgersOf(repoRoot, context) {
+  if (!context.ledgers.has(repoRoot)) context.ledgers.set(repoRoot, readRunLedgers(repoRoot));
+  return context.ledgers.get(repoRoot);
 }
 
 export function computeOverview(
@@ -181,14 +222,9 @@ export function computeOverview(
   const workRoot = join(repoRoot, "delivery", "work");
   const rows = [];
   const workIds = new Set(directory(workRoot) ? readdirSync(workRoot).filter((id) => directory(join(workRoot, id))) : []);
-  const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
-  if (directory(runsDir)) {
-    for (const id of readdirSync(runsDir)) {
-      const file = join(runsDir, id, "events.jsonl");
-      if (!existsSync(file)) continue;
-      const run = EventLedger.open(file).state.run;
-      if (run?.work) workIds.add(run.work);
-    }
+  for (const { ledger } of ledgersOf(repoRoot, context)) {
+    const run = ledger.state.run;
+    if (run?.work) workIds.add(run.work);
   }
   const mainRef = headRef(repoRoot, context);
   // Resolve once; do not spawn another Git process for each local work.
@@ -201,7 +237,7 @@ export function computeOverview(
     const configs = configsOverride ?? workConfigs(repoRoot, workId, warnings);
     const resolved = followTargets ? configTargets(configs, warnings, context.roots) : configs;
     const owner = followTargets ? resolved.find((item) => item.repo && item.repo !== currentRoot &&
-      (directory(join(item.repo, "delivery", "work", workId)) || runsFor(item.repo, workId).length)) : null;
+      (directory(join(item.repo, "delivery", "work", workId)) || runsFor(item.repo, workId, ledgersOf(item.repo, context)).length)) : null;
     const usable = resolved.filter((item) => !item.error);
     const selected = owner ?? usable[0] ?? resolved[0] ?? null;
     const applicable = selected?.repo ? resolved.filter((item) => item.repo === selected.repo) : usable;
@@ -224,7 +260,7 @@ export function computeOverview(
     const pathFor = (item) =>
       shellArg(cwd && !local ? pathLabel(cwd, item.path) : `delivery/work/${workId}/${item.path.split("/").at(-1)}`);
     const configPath = config ? pathFor(config) : "<run-config.yaml>";
-    const runs = runsFor(repoRoot, workId);
+    const runs = runsFor(repoRoot, workId, ledgersOf(repoRoot, context));
     if (!configs.length && !runs.length && !["work.md", "intent.md", "plan.md", "decisions.jsonl", "runs"].some((name) => existsSync(join(workDir, name)))) continue;
     const decisions = readJsonl(join(workDir, "decisions.jsonl"));
     const unified = existsSync(join(workDir, "work.md"));
@@ -457,7 +493,7 @@ export function computeOverview(
           }
         : {}),
       runs: runs.length,
-      cost: runs.length > 0 ? computeWorkCost(repoRoot, workId) : null,
+      cost: runs.length > 0 ? computeWorkCost(repoRoot, workId, { ledgers: ledgersOf(repoRoot, context) }) : null,
       latest: latest
         ? {
             id: latest.id,
