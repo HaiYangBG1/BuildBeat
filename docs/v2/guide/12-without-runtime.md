@@ -23,9 +23,10 @@
 
 1. 读那个仓库里的 SKILL.md 和 docs/v2/guide/12-without-runtime.md，之后按"只用 Skill 和项目文件"的方式干活。
 2. 把那个仓库里的 templates/v2/work.example.md 和 templates/v2/result.example.md 拷到这个项目的 delivery/templates/ 下。
-3. 在这个项目的 AGENTS.md（没有就新建）里加一句：需求按 BuildBeat 的写法记在 delivery/work/<编号>/，模板在 delivery/templates/，规则见 https://github.com/HaiYangBG1/BuildBeat/blob/main/docs/v2/guide/12-without-runtime.md
-4. 确认 delivery/ 没有被 .gitignore 或 .git/info/exclude 排除，然后把这些改动提交。
-5. 弄好后用一两句话告诉我可以开始了。之后我只用平常的话说要做什么。
+3. 把那个仓库里 templates/gitignore.template 中 delivery/ 那一段（截图、压缩包、日志的忽略规则和上面的说明）加进这个项目的 .gitignore（没有就新建）。
+4. 在这个项目的 AGENTS.md（没有就新建）里加一句：需求按 BuildBeat 的写法记在 delivery/work/<编号>/，模板在 delivery/templates/，规则见 https://github.com/HaiYangBG1/BuildBeat/blob/main/docs/v2/guide/12-without-runtime.md
+5. 确认 delivery/ 没有被 .gitignore 或 .git/info/exclude 排除，然后把这些改动提交。
+6. 弄好后用一两句话告诉我可以开始了。之后我只用平常的话说要做什么。
 ```
 
 用 Claude Code 的，还可以装上插件，以后每个会话都会自动加载 Skill；插件里也带着模板和这份指南，不用装 npm 包。
@@ -75,7 +76,7 @@
 
 - **写 `result.md`**：照 `templates/v2/result.example.md` 写。以后还用得上的结论先写进项目自己的文档并提交（提交要已经在主干上），再在 result.md 里每条写成 `- <路径> @ <提交> — <写了什么>`。
 
-- **关窗**（凡是没有设上线回读的 Work 都这样关，不管上没上线，比如只改文档的，或者团队没装运行时的）：写好 `result.md` 后追加 `{"ts":"2026-10-04T09:00:00.000Z","decision":"closed","transition":"close-work","subject":{"result":"<结论>","resultDigest":"sha256:<64 位十六进制>","promotions":[]},"by":"<姓名>","actor":{"kind":"human","id":"<姓名>","source":"flag"}}`。`resultDigest` 是 `result.md` 文件内容的 SHA-256（例如 `shasum -a 256 result.md`）；`promotions` 按 result.md 的写回行逐条填 `{"path":"<路径>","commit":"<完整提交号>"}`，没有写回就是 `[]`。run 配置里设了上线回读（`release:`）的 Work，用运行时的 `release` 与 `decide --action close` 关窗，关窗会绑定回读记录。
+- **关窗**（凡是没有设上线回读的 Work 都这样关，不管上没上线，比如只改文档的，或者团队没装运行时的）：写好 `result.md` 后追加 `{"ts":"2026-10-04T09:00:00.000Z","decisionRef":"C-<ID>-<当前行数+1>","decision":"closed","transition":"close-work","subject":{"result":"<结论>","resultDigest":"sha256:<64 位十六进制>","promotions":[]},"by":"<姓名>","actor":{"kind":"human","id":"<姓名>","source":"flag"}}`。`resultDigest` 是 `result.md` 文件内容的 SHA-256（例如 `shasum -a 256 result.md`）；`promotions` 按 result.md 的写回行逐条填 `{"path":"<路径>","commit":"<完整提交号>"}`，没有写回就是 `[]`。`decisionRef` 和接受行一样，用 `C-<ID>-<当前行数+1>`。run 配置里设了上线回读（`release:`）的 Work，用运行时的 `release` 与 `decide --action close` 关窗，关窗会绑定回读记录。
 
 - **写关系行**：在起草中的 `work.md`（接受前）或 `result.md` 里一行一个写 `- follows: <编号>`、`- split from: <编号>`、`- related: <编号>`、`- ref: <外部编号>`。它们是纯文本，装有运行时的一方用 `status --work` 会把相连的工作串成一条线。
 

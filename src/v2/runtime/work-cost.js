@@ -9,8 +9,8 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-import { EventLedger } from "../storage/event-ledger.js";
 import { readFindingsAccount } from "./findings.js";
+import { readRunLedgers } from "./overview-repos.js";
 
 // How each human wait ended. Counting waits alone hid where the time went:
 // one work showed 32 minutes of decided waits while 11 hours had passed on
@@ -113,34 +113,28 @@ function addWaits(total, waits) {
   }
 }
 
-export function computeWorkCost(repoRoot, workId, { excludeRun = null, now = Date.now() } = {}) {
+// ledgers: the repository's run ledgers already read for this call
+// (readRunLedgers); without them every ledger is read here.
+export function computeWorkCost(repoRoot, workId, { excludeRun = null, now = Date.now(), ledgers = null } = {}) {
   const cost = emptyCost();
   const seen = new Set();
-  const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
-  if (existsSync(runsDir)) {
-    for (const entry of readdirSync(runsDir)) {
-      const path = join(runsDir, entry, "events.jsonl");
-      if (!existsSync(path)) {
-        continue;
-      }
-      const ledger = EventLedger.open(path);
-      const state = ledger.state;
-      if (ledger.corruption || !state.run || state.run.work !== workId) {
-        continue;
-      }
-      seen.add(state.run.id);
-      if (state.run.id === excludeRun) {
-        continue;
-      }
-      const row = ledgerCost(ledger, { now });
-      cost.runs += 1;
-      cost.reviewRounds += row.reviewRounds;
-      cost.humanWaits += row.humanWaits;
-      addWaits(cost.waits, row.waits);
-      cost.infraFailures += row.infraFailures;
-      cost.workerMs += row.workerMs;
-      track(cost, ledger.events[0]?.ts, ledger.events[ledger.events.length - 1]?.ts);
+  for (const { ledger } of ledgers ?? readRunLedgers(repoRoot)) {
+    const state = ledger.state;
+    if (ledger.corruption || !state.run || state.run.work !== workId) {
+      continue;
     }
+    seen.add(state.run.id);
+    if (state.run.id === excludeRun) {
+      continue;
+    }
+    const row = ledgerCost(ledger, { now });
+    cost.runs += 1;
+    cost.reviewRounds += row.reviewRounds;
+    cost.humanWaits += row.humanWaits;
+    addWaits(cost.waits, row.waits);
+    cost.infraFailures += row.infraFailures;
+    cost.workerMs += row.workerMs;
+    track(cost, ledger.events[0]?.ts, ledger.events[ledger.events.length - 1]?.ts);
   }
   const recordsDir = join(repoRoot, "delivery", "work", workId, "runs");
   if (existsSync(recordsDir)) {

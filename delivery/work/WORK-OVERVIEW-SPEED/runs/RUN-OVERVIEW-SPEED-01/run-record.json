@@ -1,0 +1,150 @@
+{
+  "run": "RUN-OVERVIEW-SPEED-01",
+  "work": "WORK-OVERVIEW-SPEED",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 26,
+    "lastDigest": "sha256:341742665f4599fd4e27bbce399b9d6e7c7131007603248c992ae593aab38fe1"
+  },
+  "startedAt": "2026-11-01T14:20:40.954Z",
+  "finishedAt": "2026-11-01T14:58:37.479Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 1,
+      "remaining": 5
+    }
+  },
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 2,
+    "waits": {
+      "decided": {
+        "count": 2,
+        "ms": 1877750
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 398251
+  },
+  "workspaces": {
+    "RUN-OVERVIEW-SPEED-01": {
+      "repo": ".",
+      "branch": "run/RUN-OVERVIEW-SPEED-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-OVERVIEW-SPEED-01",
+      "base": "307ecc83b1d2bde8a88a8369203adfa2e515074a",
+      "candidate": "8d06449a2dc35803054c410a61dba8be1535cf20"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-OVERVIEW-SPEED-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "8d06449a2dc35803054c410a61dba8be1535cf20",
+      "digest": "sha256:14c261cf5a3800c28bc7ec26060391a11ecfd2c754234688b0a7198176e40129",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:e175583bc5b0cc19a3d948927bae9ee7be4b00ce869bf4975817adcb672eadc3"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-OVERVIEW-SPEED-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "8d06449a2dc35803054c410a61dba8be1535cf20",
+      "digest": "sha256:8911965988ef411f645397bd4a9cf56adc730ad69f47c8f5a04a965d58343b77",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-OVERVIEW-SPEED-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "8d06449a2dc35803054c410a61dba8be1535cf20",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "8d06449a2dc35803054c410a61dba8be1535cf20",
+        "planDigest": "sha256:91002c9d0227452b79cdfa19a04aa6e7e8bfc835fc5554d888d13c0f0e78d661",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-OVERVIEW-SPEED-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "8d06449a2dc35803054c410a61dba8be1535cf20",
+        "planDigest": "sha256:91002c9d0227452b79cdfa19a04aa6e7e8bfc835fc5554d888d13c0f0e78d661",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-OVERVIEW-SPEED-01-2",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-OVERVIEW-SPEED-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "8d06449a2dc35803054c410a61dba8be1535cf20",
+        "planDigest": "sha256:91002c9d0227452b79cdfa19a04aa6e7e8bfc835fc5554d888d13c0f0e78d661",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-OVERVIEW-SPEED-01-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "8d06449a2dc35803054c410a61dba8be1535cf20",
+        "planDigest": "sha256:91002c9d0227452b79cdfa19a04aa6e7e8bfc835fc5554d888d13c0f0e78d661",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
