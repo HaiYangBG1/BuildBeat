@@ -85,7 +85,7 @@ The ledger of a run in progress lives in `.buildbeat/runtime/` on the machine ru
 
 `actor` says truthfully who decided: a person writes `"kind":"human"`; an AI tool deciding on its own writes `"kind":"agent"` with the tool's name as `id`; an AI tool passing on what a person said in the conversation writes the person's name with `"kind":"human"` and adds `"via":"agent-session"`. Older lines with `by` and no `actor` stay valid; status shows them as "identity not recorded".
 
-Each line must be one complete JSON object; only append, never edit earlier lines. Commit the files. `delivery/` belongs in Git: do not exclude it in `.gitignore` or `.git/info/exclude`. Screenshots, archives and logs under it stay out of Git; the template already has the rules.
+Each line must be one complete JSON object; only append, never edit earlier lines. Commit the files. `delivery/` belongs in Git: do not exclude it in `.gitignore` or `.git/info/exclude`. Screenshots, archives and logs under it stay out of Git; the template already has the rules. A work's folder holds its records and the few files the work itself needs, such as its verify script. Command output, readback results and one-off scripts stay out: write the conclusions into `result.md` and keep scripts you will run again in the project's own directories. `accept` and `check` warn when more than 10 files besides the records are there.
 
 ## What you must not do
 
