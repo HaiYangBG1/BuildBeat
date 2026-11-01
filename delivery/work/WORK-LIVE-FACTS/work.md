@@ -30,6 +30,7 @@ BuildBeat 的模板在教人把会变的事实抄进项目文件：`templates/v2
 - `example/BUILDBEAT.md:3` 写着运行时 3.0.0。`example/BUILDBEAT.md:9` 说「升级后更新上面的版本行」。这一页还写着 intent / plan 和 `SKILL.md §0.5`，现在都不对了。
 - 运行时不读 `BUILDBEAT.md`：在 `src`、`bin`、`plugins`、`.claude-plugin` 里用 `git grep` 搜不到。
 - 没有现行指南让人复制 `BUILDBEAT.md`：`docs/v2/guide/01-quickstart.md:6` 只让人复制 `v2/AGENTS.md` 和 `v2/CLAUDE.md`，`docs/v2/guide/12-without-runtime.md:20-32` 只让人复制 work 和 result 两个样板。提到它的只剩 `docs/history/` 下的历史文档。
+- 其中 `docs/history/retired-skill/07-templates-and-lessons.md:10` 用相对链接指向模板那份。文件删掉后链接检查会失败。这页开头写明「原文与原节号不变，只调整了相对链接」。（RUN-LIVE-FACTS-01 开工后发现，补记）
 - `tests/check_docs.py:57` 和 `tests/check_docs.py:64` 把这两个文件列为现行文档，`tests/check_docs.py:93` 把模板那份列为必须存在的模板。`tests/check_docs.py:145-170` 是「删掉后不能回来」的清单。
 - `tests/support/package-files.txt:43` 和 `tests/support/package-files.txt:105` 是 npm 包文件清单里的这两行，现在包里一共 114 个文件。
 - `templates/v2/AGENTS.md:1-20` 和 `example/AGENTS.md` 里都没有「不抄会变的事实」这一条。
@@ -46,12 +47,13 @@ BuildBeat 的模板在教人把会变的事实抄进项目文件：`templates/v2
 - `tests/check_docs.py`：从现行文档和必需模板里去掉这两个文件，加进删除清单；新增「模板和示例不写死运行时版本」检查。
 - `tests/support/package-files.txt` 去掉两行。
 - CHANGELOG `## Unreleased`。
+- `docs/history/retired-skill/07-templates-and-lessons.md:10` 指向 `templates/v2/BUILDBEAT.md` 的链接改指 v5.2.0 版本的 GitHub 地址（`https://github.com/HaiYangBG1/BuildBeat/blob/v5.2.0/templates/v2/BUILDBEAT.md`），文字不改。
 
 不包含：
 
 - 试点工作区自己的那份文件：它在另一个仓，要所有者另行授权。
 - `templates/v2/指挥台.md`：它写的是做事的步骤，不含会变的事实。
-- `docs/history/` 下的历史文档：保持原样。
+- `docs/history/` 下的历史文档：除上面那一个链接外保持原样。
 - 给 AGENTS.md 加指针比对：等真踩到坑再说。
 - 发版、推送。
 

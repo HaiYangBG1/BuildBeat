@@ -13,6 +13,7 @@ allowedPaths:
   - example/BUILDBEAT.md
   - example/AGENTS.md
   - docs/v2/guide
+  - docs/history/retired-skill/07-templates-and-lessons.md
   - SKILL.md
 reviewTriage: off
 budgets:
