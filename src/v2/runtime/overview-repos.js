@@ -1,8 +1,9 @@
 // Read-only repository/config discovery shared by single- and multi-repo status.
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { parseYamlSubset } from "../engine/yaml-subset.js";
+import { EventLedger } from "../storage/event-ledger.js";
 
 export const pathLabel = (cwd, path) => relative(cwd, path) || ".";
 export const shellArg = (value) => /^[a-zA-Z0-9_./:-]+$/.test(value)
@@ -30,6 +31,21 @@ export function repositoryRoot(path, cache = new Map()) {
     cache.set(real, error);
     throw error;
   }
+}
+
+// Every run ledger of a repository, freshly parsed: { entry, path, ledger }
+// in directory order. Read-only callers that look at many works share one
+// list (see overview.js); writers open their own ledgers.
+export function readRunLedgers(repoRoot) {
+  const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
+  if (!directory(runsDir)) return [];
+  const ledgers = [];
+  for (const entry of readdirSync(runsDir)) {
+    const path = join(runsDir, entry, "events.jsonl");
+    if (!existsSync(path)) continue;
+    ledgers.push({ entry, path, ledger: EventLedger.open(path) });
+  }
+  return ledgers;
 }
 
 export function workConfigs(repoRoot, workId, warnings = []) {
