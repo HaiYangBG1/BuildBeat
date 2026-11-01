@@ -2,7 +2,7 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
-## Unreleased
+## v5.4.0 — 2026-11-01（次版本：范围检查看得到挪动的两边；跨仓总览快了七倍；只用文件的团队也拿到截图忽略规则）
 
 - The no-runtime guide hands teams the ignore rules too (WORK-GUIDE12-SETUP). Its setup prompt copied only the work and result templates, while the rules later said screenshots, archives and logs stay out of Git because the template ignores them; a new step adds the `delivery/` block of `templates/gitignore.template` to the project's `.gitignore`. The hand-written close line now carries `decisionRef` (`C-<ID>-<current line count + 1>`, the same rule as the acceptance line), so `status` shows it instead of `-`. Found by following the guide from an empty repository: everything else the runtime read back as written (zh/en).
 - The scope check sees both sides of a move (WORK-SCOPE-RENAMES). **Behaviour change:** moving a file from outside `allowedPaths` into it is now out of scope, because the old path is deleted; before, only the new path was checked. Paths are read with `-z`, so names with quotes, tabs or leading spaces are compared as they are, and untracked files are listed one by one whatever `status.showUntrackedFiles` says; the clean-tree check that pins candidates counts new files under that setting too. It needs Git 2.18 or later (`status --no-renames`). In this repository's 35 recorded runs, 45 moves and copies all stayed inside their scope, so no past run would have been stopped.
