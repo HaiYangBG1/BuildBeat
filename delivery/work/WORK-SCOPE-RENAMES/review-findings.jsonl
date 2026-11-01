@@ -1,0 +1,1 @@
+{"ts":"2026-11-01T12:32:28.164Z","kind":"finding","run":"RUN-SCOPE-RENAMES-01","step":"review","attempt":1,"id":"F-RUN-SCOPE-RENAMES-01-review-1-1","severity":"P1","summary":"src/v2/runtime/code-trace.js:180-188 启用 -z 后仍以 0x1e/0x1f 切分整个 log 输出，合法文件名包含这些字节时会导致 history --path 抛出 TypeError 或截断路径、遗漏工作归属，需按 NUL 隔离路径与元数据并补充回归测试。","fingerprint":"595f545a6c8bc8ab"}
