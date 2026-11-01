@@ -2,7 +2,7 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
-## Unreleased
+## v5.2.0 — 2026-11-01（次版本：delivery/ 里的截图、压缩包和日志不进 Git，要进时提醒）
 
 - Screenshots, archives and logs under `delivery/` stay out of Git (WORK-DELIVERY-BINARIES). Both `gitignore.template`s now ignore `delivery/**/*.png`, `*.jpg`, `*.jpeg`, `*.gif`, `*.webp`, `*.zip`, `*.tgz`, `*.gz` and `*.log`, while `delivery/` itself still goes into Git. `accept` and `check` warn when a work's folder holds files the next commit would add that are of those kinds or 256 KB or more: `warning: delivery/work/<ID>/ has <n> file(s) that would go into Git and stay in its history for good: <path> (<size>), …; keep screenshots, archives and logs on this machine (see templates/gitignore.template)` (five files at most, then `and <k> more`); files already in Git or ignored are left alone, and nothing is refused. `requireScreenshot` evidence lives under `.buildbeat/runtime/` and is not affected. In a pilot workspace the main repository's history reached 36 MB in two months, nearly all evidence screenshots, while five code repositories' text records came to 0.85 MB compressed. The quickstart, the no-runtime guide (zh/en), the Skill and the README file notes say the same.
 
