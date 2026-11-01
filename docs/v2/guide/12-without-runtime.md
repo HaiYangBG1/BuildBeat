@@ -85,7 +85,7 @@
 
 `actor` 如实写是谁做的决定：人写 `"kind":"human"`；AI 工具自己做的决定写 `"kind":"agent"`，`id` 写工具名；AI 工具转达人在对话里说的决定，写人的名字和 `"kind":"human"`，再加 `"via":"agent-session"`。只有 `by`、没有 `actor` 的旧行照常有效，status 显示为"身份未记录"。
 
-每行必须是完整的一行 JSON，只追加不改旧行。写完后提交（commit）。`delivery/` 要进 Git，不要在 `.gitignore` 或 `.git/info/exclude` 里排除它；其中的截图、压缩包和日志不进 Git，模板里已写好忽略规则。
+每行必须是完整的一行 JSON，只追加不改旧行。写完后提交（commit）。`delivery/` 要进 Git，不要在 `.gitignore` 或 `.git/info/exclude` 里排除它；其中的截图、压缩包和日志不进 Git，模板里已写好忽略规则。工作文件夹只放这项工作的记录，外加它确实要用的少量文件（比如验证脚本）；命令输出、回读结果、一次性脚本不放进去，结论写进 `result.md`，以后还要用的脚本放进项目自己的目录。记录以外的文件超过 10 个时，`accept` 和 `check` 会提醒。
 
 ## 不得做
 
