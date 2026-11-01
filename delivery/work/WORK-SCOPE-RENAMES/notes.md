@@ -1,0 +1,23 @@
+# 驾驶记录
+
+- 本说明由驾驶 WORK-FACT-POINTERS 的会话在 2026-10-25 起草，所有者当天接受（A-WORK-SCOPE-RENAMES-1，「I accept WORK-SCOPE-RENAMES as drafted, recommendations included.」）。说明和接受记录一直留在那个会话的分支 `claude/vibrant-gauss-df8e62` 上，没开过 Run，那个会话也已不活跃。
+- 2026-11-01 所有者盘点待办后说「先修漏洞」。驾驶会话把那两个提交原样拣到 `claude/scope-renames`（基于 main `e8cbe41`），work.md 没改，接受摘要不变。
+- 开工条件第 7 项：WORK-FACT-POINTERS 已于 10-25 合入 main（PR #95），可以从 main 开工。`status --work` 比对现状：14 处指针 0 处变动，4 个文件别处有改动。人工读过 `listChangedPaths`、`readback`、blame 和 log 的现行代码，和现状一节一致。
+- 驱动运行时：本机全局 CLI 5.3.0（与 main `e8cbe41` 的运行时代码相同）。builder 和 fixer 不配 worker：驾驶会话在 Run 工作树里亲自写，以 `run --adopt` 交给 verify 和只读 reviewer。
+- 待核两项，开跑时核对：
+  - Git 版本：`status --no-renames` 从 Git 2.18 起有（Git 仓库 v2.18.0 的 `Documentation/git-status.txt` 有这两个选项，v2.17.0 没有；2.18.0 的发布说明只提到 `status.renames` 配置）。`blame --ignore-revs-file` 从 2.23 起有（v2.22.0 的 `blame-options.txt` 没有），所以 `--no-ignore-revs-file` 也要 2.23 或更高。两条都写进了 CHANGELOG。本机 Git 2.54。
+  - 耗时：在 RUN-SCOPE-RENAMES-01 工作树（673 个已跟踪文件）里各跑 20 次。旧的 `status --porcelain` 平均 108.6 ms，新的 `status --porcelain -z --no-renames --untracked-files=all` 平均 116.3 ms，多 7.7 ms，远低于停止条件的 1 秒。
+- 停止条件第 2 项：扫了本仓 35 个带起点和候选的运行记录，范围内共有 45 处改名或复制，没有一处是从范围外挪进来的。改完不会让以前放行的真实挪动被拦，第 1 项照推荐执行。
+- 交 Run 前，在工作树里先写测试、不改代码跑：
+  - `tests/v2-invariants.test.js` 新增 5 条，全部失败：挪动只列新路径；新目录只列成 `newdir/`；奇怪的文件名被引号包住、` -> ` 被切开；worker 的挪动混过范围检查，一直走到 verifier。
+  - `tests/v2-final-decision-fix.test.js` 新增 1 条，失败：合并决定点上 `--adopt` 收下了挪进来的文件。
+  - `tests/v2-code-trace.test.js` 新增 2 条，都失败：设了 `blame.ignoreRevsFile` 后 `history` 退出 1；挪走工作文件夹里文件的提交认不出那项工作。
+  - 改完后三个文件 49 条全过，中文文件名那条老测试照过。
+- 实现时实测了 `git log --name-only -z` 配自定义格式的输出：格式部分以 NUL 结束，第一个路径前有一个换行，每个路径以 NUL 结束；没有路径的提交只有那个 NUL。解析照这个写，代码注释里也写了。
+- CHANGELOG 两条照接受的原文写，代码名加了反引号。另外补了三句：Git 最低版本；`readback` 也照样数新文件（范围一节已列这项，原文没提）；挪出工作文件夹的提交现在也能找回工作（第 5 项的效果）。
+- 候选 `ecd10c9` 本地跑完 verify.sh 全过（405 条测试、文档检查、信封 20/20、插件 7/7、安装后首跑 17/17、`git diff --check`），然后以 `run --adopt` 交给 Run。
+- RUN-SCOPE-RENAMES-01 第 1 轮：verify 一次通过（3 分钟），codex 只读审查提了 1 条 P1：`history --path` 加了 `-z` 后，日志仍按 0x1e、0x1f 切分；文件名里含这两个字节（合法）时会抛 TypeError 或截断路径。判断成立，而且是本次改动引出来的：没加 `-z` 时，Git 会把控制字符转义成八进制，不会原样出现。Run 停在 enter-fix（没配 fixer，交给人接手）。
+- 修复：先补一条测试，用含 0x1d/0x1e/0x1f 和换行的工作文件夹路径，外加一个以 0x1f 开头的提交标题。在候选 `ecd10c9` 上复现到同样的 TypeError。然后改成只用 NUL 分隔：每个提交以一个空字段开头，接着是哈希、时间、标题、`Work:` 标记，再接路径；路径不会为空，所以空字段一定是下一个提交的开头。标题里含 0x1f 也不会再错位。`tests/v2-code-trace.test.js` 17 条全过。
+- 修复 `4e8236b` 本地跑完 verify.sh 全过（406 条测试），以 `run --adopt` 交给 Run 重验、再审。
+- 第 2 轮：verify 通过（4 分钟），codex 只读审查 0 条。停在合并决定，等所有者批准；work.md 要求所有者看一眼 CONTRIBUTING.md 补的两项措辞。
+- 所有者 2026-11-01 看过 CONTRIBUTING.md 补的两项措辞后说「批准并开 PR」，记为合并批准 `D-RUN-SCOPE-RENAMES-01-3`（人，经 AI 会话录入）；Run 终态 SUCCEEDED。候选以 merge commit `b219496` 合入会话分支 `claude/scope-renames`。规则里「`-z` or `-c core.quotePath=false` for paths」这句没有顺手改。

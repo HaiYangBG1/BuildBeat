@@ -1,0 +1,50 @@
+# Run config for WORK-LIVE-FACTS. Paths resolve relative to this file.
+# Builder and fixer are deliberately absent: the driving session writes the
+# change and hands each commit over with --adopt. Verify runs the full local
+# gate; review is the shipped reviewer prompt on codex, read-only.
+repo: ../../..
+work: WORK-LIVE-FACTS
+run: RUN-LIVE-FACTS
+allowedPaths:
+  - tests
+  - CHANGELOG.md
+  - templates/v2/BUILDBEAT.md
+  - templates/v2/AGENTS.md
+  - example/BUILDBEAT.md
+  - example/AGENTS.md
+  - docs/v2/guide
+  - docs/history/retired-skill/07-templates-and-lessons.md
+  - SKILL.md
+reviewTriage: off
+budgets:
+  reviewRoundsPerWork: 6
+parallel: true
+cache:
+  verify: tree
+envelope:
+  prompts: ../../../templates/v2/envelope/prompts
+  vars:
+    component: buildbeat
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+requires:
+  - command: node
+    min: "20"
+  - command: codex
+workers:
+  verifier:
+    command: bash
+    timeoutMs: 1800000
+    args:
+      - delivery/work/WORK-LIVE-FACTS/verify.sh
+  reviewer:
+    command: bash
+    timeoutMs: 3600000
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only

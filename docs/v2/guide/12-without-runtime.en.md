@@ -40,7 +40,7 @@ With Claude Code you can also install the plugin, so every session loads the Ski
 1. **Draft:** say what you want; the AI drafts `delivery/work/<id>/work.md` in the eight sections of `delivery/templates/work.example.md`, naming the commit it checked on in the facts heading and pointing at code as `path:<start>-<end>`.
 2. **Accept:** once you have read and agreed, the AI appends one line to `decisions.jsonl` in the "Accept `work.md`" format below and computes the digest.
 3. **Do the work:** edit, test and commit as usual, ending each commit message with `Work: <id>`; merging follows the project's own process.
-4. **Close out:** after the merge, write `result.md` from `delivery/templates/result.example.md`. Conclusions later work needs go into the project's own documents first and are committed; `result.md` then records each as `path @ commit`. The AI can check with Git that the commit is on the main branch and changes that file.
+4. **Close out:** after the merge, write `result.md` from `delivery/templates/result.example.md`. Conclusions later work needs go into the project's own documents first and are committed; `result.md` then records each as `path @ commit`. The AI can check with Git that the commit is on the main branch and changes that file. Facts that change (versions, progress, who is doing what) stay out; write where to look them up instead.
 5. **Close:** append the close line in the format below and commit `result.md` with `decisions.jsonl`.
 
 When a new session or another person picks a work up, they read `work.md`, `decisions.jsonl` and `result.md` first; `git diff <commit in the facts heading> HEAD -- <path>` shows whether the code a fact points at has changed.
@@ -85,7 +85,7 @@ The ledger of a run in progress lives in `.buildbeat/runtime/` on the machine ru
 
 `actor` says truthfully who decided: a person writes `"kind":"human"`; an AI tool deciding on its own writes `"kind":"agent"` with the tool's name as `id`; an AI tool passing on what a person said in the conversation writes the person's name with `"kind":"human"` and adds `"via":"agent-session"`. Older lines with `by` and no `actor` stay valid; status shows them as "identity not recorded".
 
-Each line must be one complete JSON object; only append, never edit earlier lines. Commit the files. `delivery/` belongs in Git: do not exclude it in `.gitignore` or `.git/info/exclude`.
+Each line must be one complete JSON object; only append, never edit earlier lines. Commit the files. `delivery/` belongs in Git: do not exclude it in `.gitignore` or `.git/info/exclude`. Screenshots, archives and logs under it stay out of Git; the template already has the rules. A work's folder holds its records and the few files the work itself needs, such as its verify script. Command output, readback results and one-off scripts stay out: write the conclusions into `result.md` and keep scripts you will run again in the project's own directories. `accept` and `check` warn when more than 10 files besides the records are there.
 
 ## What you must not do
 

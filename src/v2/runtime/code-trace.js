@@ -16,8 +16,9 @@ import { promisify } from "node:util";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 
 import { EventLedger } from "../storage/event-ledger.js";
+import { describeActor } from "./actor.js";
 import { readResult } from "./closeout.js";
-import { computeOverview } from "./overview.js";
+import { computeOverview, readJsonl } from "./overview.js";
 import { directory, pathLabel } from "./overview-repos.js";
 
 export class TraceError extends Error {
@@ -56,12 +57,15 @@ function checkoutOf(path) {
 }
 
 // Line -> commit at HEAD, from git blame's porcelain output.
+// --no-ignore-revs-file: every line goes to the commit that wrote it on any
+// machine, and a user's blame.ignoreRevsFile naming a file this repository
+// lacks no longer makes git fail (WORK-SCOPE-RENAMES).
 function blameLines(root, file, from, to) {
   const range = from === null ? [] : ["-L", `${from},${to}`];
   const lines = [];
   let commit = null;
   let line = null;
-  for (const raw of git(root, ["blame", "--line-porcelain", ...range, "HEAD", "--", file]).split("\n")) {
+  for (const raw of git(root, ["blame", "--no-ignore-revs-file", "--line-porcelain", ...range, "HEAD", "--", file]).split("\n")) {
     if (raw.startsWith("\t")) {
       lines.push({ line, commit });
       continue;
@@ -164,21 +168,39 @@ async function runRanges(root, runs) {
 // one call. Trailers come from Git's own parser, so a subject or a body line
 // that happens to start with "Work:" is not one. A merge commit's paths are
 // read against its first parent, which is what a line resolved in the merge
-// was written into.
+// was written into. A move counts on both sides (--no-renames), so a commit
+// that moves files out of delivery/work/<ID>/ still belongs to that work; -z
+// keeps paths as they are, and the pinned log settings keep signature text
+// out of the path list (WORK-SCOPE-RENAMES).
+//
+// With -z a path may hold any byte but NUL, so NUL is the only separator:
+// each commit opens with an empty field, then its hash, time, subject and
+// Work: trailers; its paths follow, the first one after a newline. Paths are
+// never empty, so an empty field always opens the next commit.
+const COMMIT_FIELDS = 4;
+
 function commitFacts(root, commits) {
   const facts = new Map();
   if (commits.length === 0) return facts;
-  const out = git(root, [
-    "-c", "core.quotePath=false", "log", "--no-walk=unsorted", "--name-only", "--diff-merges=first-parent",
-    "--format=%x1e%H%x1f%ct%x1f%s%x1f%(trailers:key=Work,valueonly,separator=%x1d)%x1f", ...commits,
-  ]);
-  for (const chunk of out.split("\x1e").slice(1)) {
-    const [commit, time, subject, trailers, names = ""] = chunk.split("\x1f");
+  const fields = git(root, [
+    "-c", "log.showSignature=false", "-c", "log.follow=false",
+    "log", "--no-walk=unsorted", "--name-only", "--no-renames", "-z", "--diff-merges=first-parent",
+    "--format=%x00%H%x00%ct%x00%s%x00%(trailers:key=Work,valueonly,separator=%x1d)", ...commits,
+  ]).split("\0");
+  let at = fields.indexOf("");
+  while (at !== -1 && at + COMMIT_FIELDS < fields.length) {
+    const [commit, time, subject, trailers] = fields.slice(at + 1, at + 1 + COMMIT_FIELDS);
+    at += 1 + COMMIT_FIELDS;
+    const paths = [];
+    for (; at < fields.length && fields[at] !== ""; at += 1) {
+      const path = paths.length === 0 ? fields[at].replace(/^\n/, "") : fields[at];
+      if (path) paths.push(path);
+    }
     facts.set(commit, {
       time: Number(time),
       subject,
       trailers: trailers.split("\x1d").map((value) => value.trim().split(/\s+/)[0]).filter(Boolean),
-      paths: names.split("\n").map((name) => name.trim()).filter(Boolean),
+      paths,
     });
   }
   return facts;
@@ -194,8 +216,28 @@ function titleOf(dir) {
   return null;
 }
 
-// Stage, title, summary and where to read, from the first checkout that
-// keeps the work's folder.
+// Who decided (WORK-POSITIONING-ALIGN): the merge approval bound to the
+// candidate that reached main, since a later fix voids the approval of an
+// earlier candidate and a later run may be approved without ever merging,
+// and the closing row while the work stays closed or cancelled.
+function deciders(dir, stage, mergedCandidate) {
+  const rows = readJsonl(join(dir, "decisions.jsonl")).reverse();
+  const approval = mergedCandidate
+    ? rows.find((row) => row.transition === "enter-wait-merge" && row.decision === "approved" && row.subject?.candidate === mergedCandidate)
+    : null;
+  const closure = stage === "CLOSED" || stage === "CANCELLED" ? rows.find((row) => row.transition === "close-work") : null;
+  return {
+    approved: approval
+      ? { at: approval.ts ?? null, by: approval.by ?? null, who: describeActor(approval), run: approval.run ?? null, decisionRef: approval.decisionRef ?? null }
+      : null,
+    closed: closure
+      ? { at: closure.ts ?? null, by: closure.by ?? null, who: describeActor(closure), decision: closure.decision ?? null, decisionRef: closure.decisionRef ?? null }
+      : null,
+  };
+}
+
+// Stage, title, summary, who decided and where to read, from the first
+// checkout that keeps the work's folder.
 function workFacts(roots, work, cwd) {
   for (const root of roots) {
     const dir = join(root, "delivery", "work", work);
@@ -210,10 +252,11 @@ function workFacts(roots, work, cwd) {
       stage,
       title: titleOf(dir),
       summary: stage === "CLOSED" && page.exists && page.summary ? page.summary : null,
+      ...deciders(dir, stage, row?.mergedCandidate ?? null),
       read,
     };
   }
-  return { stage: null, title: null, summary: null, read: [] };
+  return { stage: null, title: null, summary: null, approved: null, closed: null, read: [] };
 }
 
 // Traces the lines of a file (all of them at HEAD when no range is given)
@@ -316,6 +359,8 @@ export function renderTrace(trace) {
       ...(row.via.some((item) => item.kind === "folder") ? ["via work folder"] : []),
     ];
     lines.push(`  ${row.work}  ${row.stage ?? "NOT_FOUND"}  ${row.title ?? "(no records in reach)"} (${plural(row.lines, "line")}; ${via.join("; ")})`);
+    if (row.approved) lines.push(`    approved: ${row.approved.at} by ${row.approved.who}${row.approved.run ? ` (${row.approved.run})` : ""}`);
+    if (row.closed) lines.push(`    ${row.closed.decision === "cancelled" ? "cancelled" : "closed"}: ${row.closed.at} by ${row.closed.who}`);
     if (row.summary) lines.push(`    result: ${row.summary}`);
     if (row.read.length) lines.push(`    read: ${row.read.join(", ")}`);
   }

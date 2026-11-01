@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="352" viewBox="0 0 960 352" role="img">
+<defs><marker id="ctx-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#c2710c"/></marker><marker id="ctx-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#59636e"/></marker></defs>
+<rect x="8" y="8" width="944" height="336" rx="18" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+<text x="32" y="42" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="16" font-weight="600" fill="#1f2328">Your project: one Git repository</text>
+<text x="32" y="76" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" font-weight="600" fill="#59636e">Code: what changed</text>
+<text x="556" y="76" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" font-weight="600" fill="#59636e">Work record: why, what was decided, where it stands</text>
+<rect x="32" y="90" width="372" height="130" rx="10" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<line x1="32" y1="118" x2="404" y2="118" stroke="#d0d7de" stroke-width="1"/>
+<circle cx="46" cy="104" r="4" fill="#d0d7de"/>
+<circle cx="58" cy="104" r="4" fill="#d0d7de"/>
+<circle cx="70" cy="104" r="4" fill="#d0d7de"/>
+<text x="88" y="108" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#59636e">src/export.js</text>
+<text x="60" y="139" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#59636e">5</text>
+<text x="72" y="139" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#1f2328" style="white-space:pre">function escapeCell(value) {</text>
+<text x="60" y="161" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#59636e">6</text>
+<text x="72" y="161" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#1f2328" style="white-space:pre">  const text = String(value ?? "");</text>
+<rect x="33" y="168" width="370" height="22" rx="0" fill="#fff3dc"/>
+<rect x="33" y="168" width="3" height="22" rx="0" fill="#c2710c"/>
+<text x="60" y="183" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#59636e">7</text>
+<text x="72" y="183" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#1f2328" style="white-space:pre">  return /[",\n]/.test(text)</text>
+<rect x="33" y="190" width="370" height="22" rx="0" fill="#fff3dc"/>
+<rect x="33" y="190" width="3" height="22" rx="0" fill="#c2710c"/>
+<text x="60" y="205" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#59636e">8</text>
+<text x="72" y="205" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#1f2328" style="white-space:pre">    ? quote(text) : text;</text>
+<rect x="32" y="230" width="372" height="52" rx="9" fill="#fff8ee" stroke="#e0a43a" stroke-width="1"/>
+<text x="44" y="252" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#1f2328" style="white-space:pre">a1b2c3d  csv: quote fields with commas</text>
+<text x="44" y="270" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="600" fill="#c2710c">Work: WORK-CSV-EXPORT</text>
+<text x="556" y="104" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#1f2328">delivery/work/WORK-CSV-EXPORT/</text>
+<rect x="556" y="116" width="372" height="36" rx="9" fill="#fff8ee" stroke="#e0a43a" stroke-width="1"/>
+<text x="568" y="139" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="600" fill="#1f2328">work.md</text>
+<text x="732" y="139" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">why · what counts as done</text>
+<rect x="556" y="158" width="372" height="36" rx="9" fill="#fff8ee" stroke="#e0a43a" stroke-width="1"/>
+<text x="568" y="181" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="600" fill="#1f2328">decisions.jsonl</text>
+<text x="732" y="181" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">what was decided · by whom</text>
+<rect x="556" y="200" width="372" height="36" rx="9" fill="#fff8ee" stroke="#e0a43a" stroke-width="1"/>
+<text x="568" y="223" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="600" fill="#1f2328">review-findings.jsonl</text>
+<text x="732" y="223" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">findings · how handled</text>
+<rect x="556" y="242" width="372" height="36" rx="9" fill="#fff8ee" stroke="#e0a43a" stroke-width="1"/>
+<text x="568" y="265" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="600" fill="#1f2328">result.md</text>
+<text x="732" y="265" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">what got done · what's left</text>
+<line x1="418" y1="184" x2="542" y2="184" stroke="#c2710c" stroke-width="2.5" marker-end="url(#ctx-accent)" marker-start="url(#ctx-accent)"/>
+<text x="480" y="168" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">commits carry Work:</text>
+<text x="480" y="206" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">trace either way</text>
+<line x1="40" y1="302" x2="920" y2="302" stroke="#d0d7de" stroke-width="2"/>
+<circle cx="73.84615384615384" cy="302" r="5" fill="#f6f8fa" stroke="#e0a43a" stroke-width="1.5"/>
+<circle cx="141.53846153846155" cy="302" r="5" fill="#f6f8fa" stroke="#e0a43a" stroke-width="1.5"/>
+<circle cx="209.23076923076923" cy="302" r="5" fill="#f6f8fa" stroke="#e0a43a" stroke-width="1.5"/>
+<circle cx="276.9230769230769" cy="302" r="5" fill="#f6f8fa" stroke="#e0a43a" stroke-width="1.5"/>
+<circle cx="344.61538461538464" cy="302" r="5" fill="#f6f8fa" stroke="#e0a43a" stroke-width="1.5"/>
+<circle cx="412.3076923076923" cy="302" r="5" fill="#f6f8fa" stroke="#e0a43a" stroke-width="1.5"/>
+<circle cx="480" cy="302" r="5" fill="#f6f8fa" stroke="#e0a43a" stroke-width="1.5"/>
+<circle cx="547.6923076923076" cy="302" r="5" fill="#c2710c" stroke="#c2710c" stroke-width="1.5"/>
+<circle cx="615.3846153846154" cy="302" r="5" fill="#f6f8fa" stroke="#e0a43a" stroke-width="1.5"/>
+<circle cx="683.0769230769231" cy="302" r="5" fill="#c2710c" stroke="#c2710c" stroke-width="1.5"/>
+<circle cx="750.7692307692307" cy="302" r="5" fill="#f6f8fa" stroke="#e0a43a" stroke-width="1.5"/>
+<circle cx="818.4615384615385" cy="302" r="5" fill="#f6f8fa" stroke="#e0a43a" stroke-width="1.5"/>
+<circle cx="886.1538461538462" cy="302" r="5" fill="#f6f8fa" stroke="#e0a43a" stroke-width="1.5"/>
+<text x="480" y="330" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" fill="#59636e">One Git history: pull the code and you get both</text>
+</svg>

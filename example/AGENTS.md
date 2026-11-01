@@ -17,3 +17,9 @@ own authorization. Existing project standards stay under project ownership.
 
 Preserve active runtime files and worktrees when switching sessions. Candidates
 and terminal records must remain reachable before cleanup.
+
+Keep this file to rules and where to look. Do not copy facts that change,
+such as the runtime version, what is in progress, who is doing what or what
+is deployed: check them with `buildbeat --version`, `buildbeat status` and
+Git. A wrong line here misleads every session that reads it; delete it when
+you find it.

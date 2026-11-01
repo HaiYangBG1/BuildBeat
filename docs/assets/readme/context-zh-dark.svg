@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="352" viewBox="0 0 960 352" role="img">
+<defs><marker id="ctx-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#f0a537"/></marker><marker id="ctx-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9198a1"/></marker></defs>
+<rect x="8" y="8" width="944" height="336" rx="18" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+<text x="32" y="42" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="16" font-weight="600" fill="#e6edf3">你的项目：一个 Git 仓库</text>
+<text x="32" y="76" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" font-weight="600" fill="#9198a1">代码：改了什么</text>
+<text x="556" y="76" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" font-weight="600" fill="#9198a1">工作记录：为什么改、定了什么、做到哪</text>
+<rect x="32" y="90" width="372" height="130" rx="10" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+<line x1="32" y1="118" x2="404" y2="118" stroke="#3d444d" stroke-width="1"/>
+<circle cx="46" cy="104" r="4" fill="#3d444d"/>
+<circle cx="58" cy="104" r="4" fill="#3d444d"/>
+<circle cx="70" cy="104" r="4" fill="#3d444d"/>
+<text x="88" y="108" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#9198a1">src/export.js</text>
+<text x="60" y="139" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#9198a1">5</text>
+<text x="72" y="139" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#e6edf3" style="white-space:pre">function escapeCell(value) {</text>
+<text x="60" y="161" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#9198a1">6</text>
+<text x="72" y="161" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#e6edf3" style="white-space:pre">  const text = String(value ?? "");</text>
+<rect x="33" y="168" width="370" height="22" rx="0" fill="#2b2111"/>
+<rect x="33" y="168" width="3" height="22" rx="0" fill="#f0a537"/>
+<text x="60" y="183" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#9198a1">7</text>
+<text x="72" y="183" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#e6edf3" style="white-space:pre">  return /[",\n]/.test(text)</text>
+<rect x="33" y="190" width="370" height="22" rx="0" fill="#2b2111"/>
+<rect x="33" y="190" width="3" height="22" rx="0" fill="#f0a537"/>
+<text x="60" y="205" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#9198a1">8</text>
+<text x="72" y="205" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#e6edf3" style="white-space:pre">    ? quote(text) : text;</text>
+<rect x="32" y="230" width="372" height="52" rx="9" fill="#1d1810" stroke="#d99a2b" stroke-width="1"/>
+<text x="44" y="252" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#e6edf3" style="white-space:pre">a1b2c3d  csv: quote fields with commas</text>
+<text x="44" y="270" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="600" fill="#f0a537">Work: WORK-CSV-EXPORT</text>
+<text x="556" y="104" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#e6edf3">delivery/work/WORK-CSV-EXPORT/</text>
+<rect x="556" y="116" width="372" height="36" rx="9" fill="#1d1810" stroke="#d99a2b" stroke-width="1"/>
+<text x="568" y="139" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="600" fill="#e6edf3">work.md</text>
+<text x="732" y="139" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">为什么做 · 做到什么算完</text>
+<rect x="556" y="158" width="372" height="36" rx="9" fill="#1d1810" stroke="#d99a2b" stroke-width="1"/>
+<text x="568" y="181" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="600" fill="#e6edf3">decisions.jsonl</text>
+<text x="732" y="181" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">定了什么 · 谁定的</text>
+<rect x="556" y="200" width="372" height="36" rx="9" fill="#1d1810" stroke="#d99a2b" stroke-width="1"/>
+<text x="568" y="223" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="600" fill="#e6edf3">review-findings.jsonl</text>
+<text x="732" y="223" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">审出的问题 · 怎么处理的</text>
+<rect x="556" y="242" width="372" height="36" rx="9" fill="#1d1810" stroke="#d99a2b" stroke-width="1"/>
+<text x="568" y="265" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="600" fill="#e6edf3">result.md</text>
+<text x="732" y="265" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">做成了什么 · 还剩什么</text>
+<line x1="418" y1="184" x2="542" y2="184" stroke="#f0a537" stroke-width="2.5" marker-end="url(#ctx-accent)" marker-start="url(#ctx-accent)"/>
+<text x="480" y="168" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">提交带 Work 标记</text>
+<text x="480" y="206" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#9198a1">两头互查</text>
+<line x1="40" y1="302" x2="920" y2="302" stroke="#3d444d" stroke-width="2"/>
+<circle cx="73.84615384615384" cy="302" r="5" fill="#151b23" stroke="#d99a2b" stroke-width="1.5"/>
+<circle cx="141.53846153846155" cy="302" r="5" fill="#151b23" stroke="#d99a2b" stroke-width="1.5"/>
+<circle cx="209.23076923076923" cy="302" r="5" fill="#151b23" stroke="#d99a2b" stroke-width="1.5"/>
+<circle cx="276.9230769230769" cy="302" r="5" fill="#151b23" stroke="#d99a2b" stroke-width="1.5"/>
+<circle cx="344.61538461538464" cy="302" r="5" fill="#151b23" stroke="#d99a2b" stroke-width="1.5"/>
+<circle cx="412.3076923076923" cy="302" r="5" fill="#151b23" stroke="#d99a2b" stroke-width="1.5"/>
+<circle cx="480" cy="302" r="5" fill="#151b23" stroke="#d99a2b" stroke-width="1.5"/>
+<circle cx="547.6923076923076" cy="302" r="5" fill="#f0a537" stroke="#f0a537" stroke-width="1.5"/>
+<circle cx="615.3846153846154" cy="302" r="5" fill="#151b23" stroke="#d99a2b" stroke-width="1.5"/>
+<circle cx="683.0769230769231" cy="302" r="5" fill="#f0a537" stroke="#f0a537" stroke-width="1.5"/>
+<circle cx="750.7692307692307" cy="302" r="5" fill="#151b23" stroke="#d99a2b" stroke-width="1.5"/>
+<circle cx="818.4615384615385" cy="302" r="5" fill="#151b23" stroke="#d99a2b" stroke-width="1.5"/>
+<circle cx="886.1538461538462" cy="302" r="5" fill="#151b23" stroke="#d99a2b" stroke-width="1.5"/>
+<text x="480" y="330" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="13" fill="#9198a1">同一段 Git 历史：拉下代码，两样都在</text>
+</svg>

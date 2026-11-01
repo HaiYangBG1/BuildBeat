@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="466" viewBox="0 0 360 466" role="img">
+<defs><marker id="ctx-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#c2710c"/></marker><marker id="ctx-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#59636e"/></marker></defs>
+<rect x="44" y="24" width="296" height="70" rx="14" fill="#fff8ee" stroke="#e0a43a" stroke-width="1.5"/>
+<text x="192" y="55" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="15" font-weight="600" fill="#1f2328">会话 A · Claude Code</text>
+<text x="192" y="74" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">做到一半，会话太长了</text>
+<rect x="44" y="140" width="296" height="70" rx="14" fill="#fff8ee" stroke="#c2710c" stroke-width="2"/>
+<text x="192" y="171" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="15" font-weight="600" fill="#1f2328">项目文件里的断点</text>
+<text x="192" y="190" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">work.md · 决定 · 每轮记录</text>
+<rect x="44" y="256" width="296" height="70" rx="14" fill="#fff8ee" stroke="#e0a43a" stroke-width="1.5"/>
+<text x="192" y="287" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="15" font-weight="600" fill="#1f2328">会话 B · Codex</text>
+<text x="192" y="306" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">读完文件，从断点接着干</text>
+<line x1="192" y1="100" x2="192" y2="132" stroke="#c2710c" stroke-width="2.5" marker-end="url(#ctx-accent)"/>
+<text x="206" y="121" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">写下</text>
+<line x1="192" y1="216" x2="192" y2="248" stroke="#c2710c" stroke-width="2.5" marker-end="url(#ctx-accent)"/>
+<text x="206" y="237" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">读到</text>
+<path d="M 40 175 H 22 V 406 H 36" fill="none" stroke="#59636e" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#ctx-muted)"/>
+<rect x="44" y="362" width="296" height="88" rx="14" fill="#fff8ee" stroke="#c2710c" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="192" y="392.5" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="15" font-weight="600" fill="#1f2328">几周后再捡起来</text>
+<text x="192" y="411.5" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">提醒：work.md 提到的</text>
+<text x="192" y="430.5" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">src/export.js:5-8 改过了</text>
+</svg>

@@ -145,6 +145,70 @@ test("works are listed most recent first, with stage, title, summary and where t
   assert.match(text, /^ {4}[0-9a-f]{7} chore: start, see WORK-RUN$/m);
 });
 
+// WORK-POSITIONING-ALIGN: each work says who approved the version that
+// reached main and who closed it. The latest merge approval here is for a
+// candidate that never reached main, so only the bound one may show.
+test("each work names who approved its merged candidate and who closed or cancelled it", () => {
+  const root = repo();
+  const base = commit(root, "chore: start", { "src/b.js": lines("one") });
+  const stale = commit(root, "feat: two", { "src/b.js": lines("one", "two") });
+  const merged = commit(root, "fix: two, quoted", { "src/b.js": lines("one", "two!") });
+  const dropped = commit(root, "feat: three", { "src/b.js": lines("one", "two!", "three") }, "Work: WORK-DROPPED");
+  git(root, "checkout", "-q", "-b", "side");
+  const side = commit(root, "feat: side", { "src/b.js": lines("one", "two!", "three", "side") });
+  git(root, "checkout", "-q", "main");
+  work(root, "WORK-APPROVED", "Approved work");
+  record(root, "WORK-APPROVED", "RUN-B-01", base, stale, "SUPERSEDED");
+  record(root, "WORK-APPROVED", "RUN-B-02", stale, merged);
+  record(root, "WORK-APPROVED", "RUN-B-03", merged, side, "SUPERSEDED");
+  const human = { kind: "human", id: "owner", source: "flag" };
+  const agent = { kind: "agent", id: "claude-code", source: "env" };
+  const approval = (run, candidate, ts, actor) => JSON.stringify({
+    ts, run, decisionRef: `D-${run}-1`, decision: "approved", transition: "enter-wait-merge",
+    subject: { candidate }, by: actor.id, actor,
+  });
+  write(root, "delivery/work/WORK-APPROVED/decisions.jsonl", lines(
+    approval("RUN-B-01", stale, "2026-10-03T00:00:00Z", human),
+    approval("RUN-B-02", merged, "2026-10-04T00:00:00Z", human),
+    approval("RUN-B-03", side, "2026-10-05T00:00:00Z", agent),
+  ));
+  work(root, "WORK-DROPPED", "Dropped work");
+  write(root, "delivery/work/WORK-DROPPED/decisions.jsonl", lines(JSON.stringify({
+    ts: "2026-10-06T00:00:00Z", decisionRef: "C-WORK-DROPPED-1", decision: "cancelled", transition: "close-work",
+    subject: { result: "not needed" }, by: "claude-code", actor: agent,
+  })));
+
+  const trace = traced(root, "src/b.js");
+  const byWork = Object.fromEntries(trace.works.map((row) => [row.work, row]));
+  assert.deepEqual(byWork["WORK-APPROVED"].approved, {
+    at: "2026-10-04T00:00:00Z", by: "owner", who: "owner (person)", run: "RUN-B-02", decisionRef: "D-RUN-B-02-1",
+  });
+  assert.equal(byWork["WORK-APPROVED"].closed, null);
+  assert.equal(byWork["WORK-DROPPED"].approved, null);
+  assert.deepEqual(byWork["WORK-DROPPED"].closed, {
+    at: "2026-10-06T00:00:00Z", by: "claude-code", who: "claude-code (AI session)", decision: "cancelled", decisionRef: "C-WORK-DROPPED-1",
+  });
+
+  const text = cli(root, "history", "--repo", ".", "--path", "src/b.js");
+  assert.match(text, /^ {2}WORK-APPROVED .*\n {4}approved: 2026-10-04T00:00:00Z by owner \(person\) \(RUN-B-02\)\n {4}read: /m);
+  assert.doesNotMatch(text, /approved: .*(RUN-B-0[13]|2026-10-0[35])/);
+  assert.match(text, /^ {2}WORK-DROPPED .*\n {4}cancelled: 2026-10-06T00:00:00Z by claude-code \(AI session\)\n {4}read: /m);
+
+  // A closing row written before identities were recorded says so.
+  const folder = traced(traceFixture().root, "src/a.js").works.find((row) => row.work === "WORK-FOLDER");
+  assert.deepEqual(folder.closed, {
+    at: "2026-10-02T00:00:00Z", by: "owner", who: "owner (identity not recorded)", decision: "closed", decisionRef: null,
+  });
+  assert.equal(folder.approved, null);
+  const folderText = cli(traceFixture().root, "history", "--repo", ".", "--path", "src/a.js");
+  assert.match(folderText, /^ {4}closed: 2026-10-02T00:00:00Z by owner \(identity not recorded\)\n {4}result: Five lines and notes shipped\.$/m);
+  // Works with neither record keep their rows as before.
+  const run = traced(traceFixture().root, "src/a.js").works.find((row) => row.work === "WORK-RUN");
+  assert.equal(run.approved, null);
+  assert.equal(run.closed, null);
+  assert.match(folderText, /^ {2}WORK-RUN .*\n {4}read: delivery\/work\/WORK-RUN\/work\.md$/m);
+});
+
 test("a line or a range narrows the trace; bad ranges and untracked files are refused", () => {
   const { root } = traceFixture();
   const one = traced(root, "src/a.js:4");
@@ -253,4 +317,166 @@ test("accept and check warn when delivery/ is ignored by Git, and stay quiet oth
   writeFileSync(join(root, ".gitignore"), "");
   assert.doesNotMatch(cli(root, "check", "--config", "delivery/work/W/run-config.yaml"), warning);
   assert.match(readFileSync(join(root, "delivery/work/W/decisions.jsonl"), "utf8"), /accept-work/);
+});
+
+// WORK-DELIVERY-BINARIES: screenshots, archives, logs and big files grow Git
+// history for good. Real cost behind it: in a pilot workspace the main
+// repository's history reached 36 MB in two months, nearly all evidence
+// screenshots, while five code repositories' text records came to 0.85 MB.
+function heavyFixture() {
+  const root = repo();
+  work(root, "W", "Heavy work");
+  write(root, "delivery/work/W/run-config.yaml", [
+    "repo: ../../..", "work: W", "run: RUN-W", "allowedPaths:", "  - src", "workers:", "  verifier:",
+    "    command: bash", "    args:", "      - -lc", "      - \"true\"", "",
+  ].join("\n"));
+  write(root, "delivery/work/W/notes.md", "small notes\n");
+  return root;
+}
+const heavyCheck = (root) => cli(root, "check", "--config", "delivery/work/W/run-config.yaml");
+const heavyLine = (text) => text.split("\n").find((line) => line.startsWith("warning: delivery/work/W/ has ")) ?? null;
+const HEAVY_TAIL = "; keep screenshots, archives and logs on this machine (see templates/gitignore.template)";
+
+test("accept and check warn about screenshots, archives, logs and big files that would go into Git", () => {
+  const root = heavyFixture();
+  assert.equal(heavyLine(heavyCheck(root)), null);
+  write(root, "delivery/work/W/evidence/shot.png", "png-bytes");
+  write(root, "delivery/work/W/evidence/big.json", `${"x".repeat(300 * 1024 - 1)}\n`);
+  const expected = "warning: delivery/work/W/ has 2 file(s) that would go into Git and stay in its history for good: "
+    + `evidence/big.json (300 KB), evidence/shot.png (1 KB)${HEAVY_TAIL}`;
+  assert.equal(heavyLine(heavyCheck(root)), expected);
+  assert.equal(heavyLine(cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner")), expected);
+
+  // With the template's rules the screenshot stays on this machine; the big
+  // file still would go into Git.
+  writeFileSync(join(root, ".gitignore"), readFileSync(join(ROOT, "templates", "gitignore.template"), "utf8"));
+  assert.equal(heavyLine(heavyCheck(root)),
+    `warning: delivery/work/W/ has 1 file(s) that would go into Git and stay in its history for good: evidence/big.json (300 KB)${HEAVY_TAIL}`);
+
+  // Once committed it is history already; deleting it would not shrink Git.
+  git(root, "add", "--", "delivery/work/W/evidence/big.json");
+  git(root, ...IDENTITY, "commit", "-q", "-m", "records");
+  assert.equal(heavyLine(heavyCheck(root)), null);
+});
+
+test("the heavy-file warning names five files, sizes past 1024 KB in MB, and counts the rest", () => {
+  const root = heavyFixture();
+  for (let i = 1; i <= 6; i += 1) write(root, `delivery/work/W/logs/run-${i}.log`, "line\n");
+  write(root, "delivery/work/W/bundle.tgz", "x".repeat(1536 * 1024));
+  assert.equal(heavyLine(heavyCheck(root)),
+    "warning: delivery/work/W/ has 7 file(s) that would go into Git and stay in its history for good: "
+    + `bundle.tgz (1.5 MB), logs/run-1.log (1 KB), logs/run-2.log (1 KB), logs/run-3.log (1 KB), logs/run-4.log (1 KB), and 2 more${HEAVY_TAIL}`);
+});
+
+test("both gitignore templates keep delivery/ in Git and its screenshots, archives and logs out", () => {
+  for (const template of ["templates/gitignore.template", "example/gitignore.template"]) {
+    const root = repo();
+    writeFileSync(join(root, ".gitignore"), readFileSync(join(ROOT, template), "utf8"));
+    const ignored = (path) => spawnSync("git", ["-C", root, "check-ignore", "-q", "--no-index", path], { env: fixtureEnv() }).status === 0;
+    for (const path of ["delivery/work/W/work.md", "delivery/work/W/runs/RUN-W-01/run-record.json", "delivery/work/W/decisions.jsonl"]) {
+      assert.equal(ignored(path), false, `${template} ignores ${path}`);
+    }
+    for (const path of ["delivery/work/W/a.png", "delivery/work/W/evidence/b.jpg", "delivery/work/W/c.zip", "delivery/work/W/d.tgz", "delivery/work/W/e.log"]) {
+      assert.equal(ignored(path), true, `${template} keeps ${path} in Git`);
+    }
+  }
+});
+
+// WORK-FOLDER-EXTRAS: a work's folder holds its records, not the process
+// material around them. Real cost behind it: in a pilot workspace's main
+// repository 55 of 93 works held more than 10 files besides their records
+// (one held 699), mostly command output, readback results and one-off
+// scripts, while four code repositories' 46 works held 3 at most.
+function extrasFixture() {
+  const root = repo();
+  work(root, "W", "Busy work");
+  const config = [
+    "repo: ../../..", "work: W", "run: RUN-W", "allowedPaths:", "  - src", "workers:", "  verifier:",
+    "    command: bash", "    args:", "      - -lc", "      - \"true\"", "",
+  ].join("\n");
+  write(root, "delivery/work/W/run-config.yaml", config);
+  write(root, "delivery/work/W/run-config-staging.yml", config);
+  for (const path of ["intent.md", "plan.md", "result.md", "env-facts.md"]) write(root, `delivery/work/W/${path}`, "# record\n");
+  for (const path of ["decisions.jsonl", "review-findings.jsonl", "releases.jsonl"]) write(root, `delivery/work/W/${path}`, "");
+  write(root, "delivery/work/W/runs/RUN-W-01/run-record.json", "{}\n");
+  for (let i = 1; i <= 10; i += 1) write(root, `delivery/work/W/out/f${String(i).padStart(2, "0")}.txt`, "output\n");
+  return root;
+}
+const extrasLine = (text) => text.split("\n").find((line) => line.startsWith("warning: delivery/work/W/ holds ")) ?? null;
+const EXTRAS_TAIL = "; keep command output, readback results and one-off scripts out of it "
+  + "(the runtime keeps verify, review and readback output on this machine) and write the conclusions into result.md";
+
+test("accept and check warn when a work's folder holds more than 10 files besides its records", () => {
+  const root = extrasFixture();
+  assert.equal(extrasLine(heavyCheck(root)), null);
+  assert.equal(extrasLine(cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner")), null);
+
+  write(root, "delivery/work/W/runs/RUN-W-01/dump.txt", "output\n");
+  const expected = "warning: delivery/work/W/ holds 11 files besides its records: "
+    + `out/f01.txt, out/f02.txt, out/f03.txt, out/f04.txt, out/f05.txt, and 6 more${EXTRAS_TAIL}`;
+  assert.equal(extrasLine(heavyCheck(root)), expected);
+  assert.equal(extrasLine(cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner")), expected);
+});
+
+test("files already in Git count toward the folder warning, ignored and deleted ones do not", () => {
+  const root = extrasFixture();
+  write(root, "delivery/work/W/out/f11.txt", "output\n");
+  git(root, "add", "--", "delivery");
+  git(root, ...IDENTITY, "commit", "-q", "-m", "records and output");
+  assert.match(extrasLine(heavyCheck(root)) ?? "", /holds 11 files besides its records/);
+
+  // A screenshot the template keeps on this machine is not in the folder Git shows.
+  writeFileSync(join(root, ".gitignore"), readFileSync(join(ROOT, "templates", "gitignore.template"), "utf8"));
+  write(root, "delivery/work/W/out/shot.png", "png-bytes");
+  assert.match(extrasLine(heavyCheck(root)) ?? "", /holds 11 files besides its records/);
+
+  // Deleting one from the folder brings it back to 10, before the deletion is committed.
+  git(root, "rm", "-q", "--cached", "--", "delivery/work/W/out/f11.txt");
+  execFileSync("rm", [join(root, "delivery/work/W/out/f11.txt")]);
+  assert.equal(extrasLine(heavyCheck(root)), null);
+  write(root, "delivery/work/W/out/f11.txt", "output\n");
+  execFileSync("rm", [join(root, "delivery/work/W/out/f10.txt")]);
+  assert.equal(extrasLine(heavyCheck(root)), null);
+});
+
+// WORK-SCOPE-RENAMES: history --path reads the same on every machine.
+test("history --path reads the same whatever the user's blame and log settings", () => {
+  const { root } = traceFixture();
+  const config = join(realpathSync(tempDir("bb-trace-cfg-")), "config");
+  writeFileSync(config, "[blame]\n\tignoreRevsFile = .git-blame-ignore-revs\n[log]\n\tshowSignature = true\n");
+  for (const args of [["--json"], []]) {
+    const plain = cli(root, "history", "--repo", ".", "--path", "src/a.js", ...args);
+    const out = spawnSync(process.execPath, [CLI, "history", "--repo", ".", "--path", "src/a.js", ...args], {
+      cwd: root, encoding: "utf8", env: fixtureEnv({ GIT_CONFIG_GLOBAL: config }),
+    });
+    assert.equal(out.status, 0, out.stderr);
+    assert.equal(out.stdout, plain);
+  }
+});
+
+test("a commit that moves a file out of a work's folder still traces to that work", () => {
+  const root = repo();
+  commit(root, "docs: notes", { "delivery/work/WORK-MOVED/notes.md": "notes kept for a while\n", "src/b.js": lines("one") });
+  write(root, "src/b.js", lines("one", "two"));
+  mkdirSync(join(root, "docs"), { recursive: true });
+  git(root, "add", "--", "src/b.js");
+  git(root, "mv", "delivery/work/WORK-MOVED/notes.md", "docs/moved-notes.md");
+  git(root, ...IDENTITY, "commit", "-q", "-m", "chore: two, notes moved out");
+  work(root, "WORK-MOVED", "Moved work");
+  const trace = traced(root, "src/b.js:2");
+  assert.deepEqual(trace.works.map((row) => [row.work, row.via]), [["WORK-MOVED", [{ kind: "folder" }]]]);
+  assert.equal(trace.untraced.lines, 0);
+});
+
+test("history --path reads paths holding any byte but NUL, including Git's own field marks", () => {
+  const root = repo();
+  // \x1d, \x1e and \x1f are legal in file names; with -z Git prints them as
+  // they are, so only NUL may separate what the log prints.
+  const odd = "delivery/work/WORK-ODD/a\x1db\x1ec\x1fd\n.md";
+  commit(root, "docs: odd notes and one", { [odd]: "notes\n", "src/c.js": lines("one") });
+  commit(root, "\x1fsubject with a mark", { "src/c.js": lines("one", "two"), "\x1ftop.txt": "top\n" }, "Work: WORK-ODD");
+  work(root, "WORK-ODD", "Odd work");
+  const trace = traced(root, "src/c.js");
+  assert.deepEqual(trace.works.map((row) => [row.work, row.lines, row.via]), [["WORK-ODD", 2, [{ kind: "folder" }, { kind: "trailer" }]]]);
+  assert.equal(trace.untraced.lines, 0);
 });

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="450" viewBox="0 0 360 450" role="img">
+<defs><marker id="ctx-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#c2710c"/></marker><marker id="ctx-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#59636e"/></marker></defs>
+<path d="M 80 72 L 72 92 L 104 72" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1.5" stroke-dasharray="5 4"/>
+<rect x="50" y="16" width="260" height="60" rx="18" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="180" y="51" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="14" fill="#59636e">“Done, all tests pass”</text>
+<text x="180" y="112" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">The AI's own word doesn't count</text>
+<line x1="180" y1="122" x2="180" y2="152" stroke="#c2710c" stroke-width="2.5" marker-end="url(#ctx-accent)"/>
+<text x="194" y="142" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">checked</text>
+<rect x="16" y="160" width="328" height="60" rx="12" fill="#fff8ee" stroke="#e0a43a" stroke-width="1.5"/>
+<circle cx="44" cy="190" r="11" fill="#eef8f0" stroke="#1a7f37" stroke-width="2"/>
+<path d="M 39 190 l 3.5 3.5 l 6.5 -7" fill="none" stroke="#1a7f37" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="66" y="186" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="14" font-weight="600" fill="#1f2328">Test results: read by BuildBeat</text>
+<text x="66" y="205" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">your project's own test commands</text>
+<rect x="16" y="228" width="328" height="60" rx="12" fill="#fff8ee" stroke="#e0a43a" stroke-width="1.5"/>
+<circle cx="44" cy="258" r="11" fill="#eef8f0" stroke="#1a7f37" stroke-width="2"/>
+<path d="M 39 258 l 3.5 3.5 l 6.5 -7" fill="none" stroke="#1a7f37" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="66" y="254" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="14" font-weight="600" fill="#1f2328">Review: another read-only AI</text>
+<text x="66" y="273" text-anchor="start" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">2 rounds · 1 finding fixed and retested</text>
+<line x1="180" y1="294" x2="180" y2="324" stroke="#c2710c" stroke-width="2.5" marker-end="url(#ctx-accent)"/>
+<rect x="60" y="334" width="240" height="100" rx="14" fill="#fff1ef" stroke="#cf3f37" stroke-width="2"/>
+<text x="180" y="371" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="16" font-weight="600" fill="#1f2328">You decide</text>
+<text x="180" y="390" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">approved · by whom · when</text>
+<text x="180" y="409" text-anchor="middle" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif" font-size="12" fill="#59636e">kept in decisions.jsonl</text>
+</svg>

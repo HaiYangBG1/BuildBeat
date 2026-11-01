@@ -40,7 +40,7 @@
 1. **起草**：说清要做什么，AI 照 `delivery/templates/work.example.md` 的八节在 `delivery/work/<编号>/work.md` 起草；"已核实的现状"的标题写核实时的提交号，引用代码写成 `路径:起-止`。
 2. **接受**：你看过、同意后，AI 照下面"接受 `work.md`"的格式在 `decisions.jsonl` 末尾记一行，摘要由它算。
 3. **动手**：照平常的方式改代码、跑测试、提交，提交信息末尾带 `Work: <编号>`；合并走项目原来的流程。
-4. **收口**：合并后照 `delivery/templates/result.example.md` 写 `result.md`。以后还用得上的结论，先写进项目自己的文档并提交，再在 `result.md` 里记成 `路径 @ 提交`；AI 可以用 Git 自查这个提交在主干上、确实改了那个文件。
+4. **收口**：合并后照 `delivery/templates/result.example.md` 写 `result.md`。以后还用得上的结论，先写进项目自己的文档并提交，再在 `result.md` 里记成 `路径 @ 提交`；AI 可以用 Git 自查这个提交在主干上、确实改了那个文件。会变的事实（版本、进度、谁在做）不写进去，只写去哪查。
 5. **关窗**：照下面的格式记一行关窗，把 `result.md` 和 `decisions.jsonl` 一起提交。
 
 换会话或换人接手时，先读 `work.md`、`decisions.jsonl` 和 `result.md`；现状里的指针用 `git diff <标题里的提交> HEAD -- <路径>` 看代码变没变。
@@ -85,7 +85,7 @@
 
 `actor` 如实写是谁做的决定：人写 `"kind":"human"`；AI 工具自己做的决定写 `"kind":"agent"`，`id` 写工具名；AI 工具转达人在对话里说的决定，写人的名字和 `"kind":"human"`，再加 `"via":"agent-session"`。只有 `by`、没有 `actor` 的旧行照常有效，status 显示为"身份未记录"。
 
-每行必须是完整的一行 JSON，只追加不改旧行。写完后提交（commit）。`delivery/` 要进 Git，不要在 `.gitignore` 或 `.git/info/exclude` 里排除它。
+每行必须是完整的一行 JSON，只追加不改旧行。写完后提交（commit）。`delivery/` 要进 Git，不要在 `.gitignore` 或 `.git/info/exclude` 里排除它；其中的截图、压缩包和日志不进 Git，模板里已写好忽略规则。工作文件夹只放这项工作的记录，外加它确实要用的少量文件（比如验证脚本）；命令输出、回读结果、一次性脚本不放进去，结论写进 `result.md`，以后还要用的脚本放进项目自己的目录。记录以外的文件超过 10 个时，`accept` 和 `check` 会提醒。
 
 ## 不得做
 

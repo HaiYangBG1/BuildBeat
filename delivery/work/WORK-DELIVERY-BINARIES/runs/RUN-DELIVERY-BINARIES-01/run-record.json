@@ -1,0 +1,150 @@
+{
+  "run": "RUN-DELIVERY-BINARIES-01",
+  "work": "WORK-DELIVERY-BINARIES",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 26,
+    "lastDigest": "sha256:d92f9d2ae2da96bf36da49901dba89aa209ba02e00dac9f9ea70ed2fa23b99d5"
+  },
+  "startedAt": "2026-10-31T16:48:00.473Z",
+  "finishedAt": "2026-10-31T17:03:14.174Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 1,
+      "remaining": 5
+    }
+  },
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 2,
+    "waits": {
+      "decided": {
+        "count": 2,
+        "ms": 574391
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 338772
+  },
+  "workspaces": {
+    "RUN-DELIVERY-BINARIES-01": {
+      "repo": ".",
+      "branch": "run/RUN-DELIVERY-BINARIES-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-DELIVERY-BINARIES-01",
+      "base": "9cc04201f9b33b501b3271d5c8a0f4cffd12f9ed",
+      "candidate": "5d0cf894d6bfe2d367a5a7a5c477ea25984a3933"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-DELIVERY-BINARIES-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "5d0cf894d6bfe2d367a5a7a5c477ea25984a3933",
+      "digest": "sha256:15fad7db0cc309e749027d6cb6e54fe5f34139e760daaf0e579f96a181ae9f3b",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:bb61fd32a9c8551aca002f78af30343aed8403a4297eb54827cef2bbcf1950ce"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-DELIVERY-BINARIES-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "5d0cf894d6bfe2d367a5a7a5c477ea25984a3933",
+      "digest": "sha256:8a4a6f0be89be688ec8299ef331dfa9be3ab14ec3600c7e84c3145d2ad6320e3",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-DELIVERY-BINARIES-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "5d0cf894d6bfe2d367a5a7a5c477ea25984a3933",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "5d0cf894d6bfe2d367a5a7a5c477ea25984a3933",
+        "planDigest": "sha256:f491b836a401647123d1353bea463cda02b04cfdcb4d1640a59dd5eb3fe6c785",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-DELIVERY-BINARIES-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "5d0cf894d6bfe2d367a5a7a5c477ea25984a3933",
+        "planDigest": "sha256:f491b836a401647123d1353bea463cda02b04cfdcb4d1640a59dd5eb3fe6c785",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-DELIVERY-BINARIES-01-2",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-DELIVERY-BINARIES-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "5d0cf894d6bfe2d367a5a7a5c477ea25984a3933",
+        "planDigest": "sha256:f491b836a401647123d1353bea463cda02b04cfdcb4d1640a59dd5eb3fe6c785",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-DELIVERY-BINARIES-01-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "5d0cf894d6bfe2d367a5a7a5c477ea25984a3933",
+        "planDigest": "sha256:f491b836a401647123d1353bea463cda02b04cfdcb4d1640a59dd5eb3fe6c785",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

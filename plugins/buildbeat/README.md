@@ -1,6 +1,6 @@
 # BuildBeat Claude Code plugin
 
-Switch sessions. Keep building. This plugin guides people and AI sessions through project context in files, handoffs across models, tools, and people, specialist collaboration, and BuildBeat's build–verify–review–fix loop. Human decisions remain tied to the work and its evidence.
+Git-based project context management. This plugin guides people and AI sessions to keep why each piece of work was done, what was decided and where it stands in the project's Git, next to the code, so any session, tool or person can carry on. With the optional runtime, BuildBeat also builds, tests, reviews and fixes the change, then stops for a human decision.
 
 ## Install and use
 

@@ -335,32 +335,33 @@ export function createWorkspace({ repoRoot, runId, base, branch, protectPush = t
 
 export function readback(worktreePath) {
   const head = git(worktreePath, ["rev-parse", "HEAD"]);
-  const status = git(worktreePath, ["status", "--porcelain"]);
+  // --untracked-files=normal: a user's status.showUntrackedFiles=no would
+  // otherwise hide new files and call a changed tree clean.
+  const status = git(worktreePath, ["status", "--porcelain", "--untracked-files=normal"]);
   return { head, dirty: status !== "" };
 }
 
 // Paths changed relative to base: committed diff plus anything dirty in the
-// tree. Rename lines keep only the new path.
+// tree. A move counts on both sides (--no-renames): its old path is deleted,
+// so moving a file in from outside allowedPaths is out of scope
+// (WORK-SCOPE-RENAMES). --no-renames on the command line wins over
+// diff.renames and status.renames.
 export function listChangedPaths(worktreePath, base) {
-  // core.quotepath=off: git otherwise octal-escapes and quotes non-ASCII
-  // paths, which would defeat the allowedPaths prefix check (real incident:
-  // a Chinese board filename was reported as out of scope).
-  const committed = git(worktreePath, [
-    "-c",
-    "core.quotepath=off",
-    "diff",
-    "--name-only",
-    `${base}..HEAD`,
-  ])
-    .split("\n")
+  // -z: paths come back as they are. Without it git quotes and escapes
+  // names, which defeats the allowedPaths prefix check (real incident: a
+  // Chinese board filename was reported as out of scope; quotes, tabs and
+  // " -> " in a name are quoted even with core.quotepath=off). Colour and
+  // external diff tools do not touch --name-only or --porcelain, so they are
+  // not pinned.
+  const committed = git(worktreePath, ["diff", "--name-only", "--no-renames", "-z", `${base}..HEAD`])
+    .split("\0")
     .filter(Boolean);
-  const dirty = git(worktreePath, ["-c", "core.quotepath=off", "status", "--porcelain"])
-    .split("\n")
+  // --untracked-files=all lists each new file, whatever
+  // status.showUntrackedFiles says; a new directory is not one opaque entry.
+  const dirty = git(worktreePath, ["status", "--porcelain", "-z", "--no-renames", "--untracked-files=all"])
+    .split("\0")
     .filter(Boolean)
-    .map((line) => {
-      const path = line.slice(3);
-      return path.includes(" -> ") ? path.split(" -> ")[1] : path;
-    });
+    .map((entry) => entry.slice(3));
   return [...new Set([...committed, ...dirty])];
 }
 
