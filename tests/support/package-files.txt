@@ -40,7 +40,6 @@ docs/v2/guide/README.en.md
 docs/v2/guide/README.md
 example/.buildbeat/notify.yaml
 example/AGENTS.md
-example/BUILDBEAT.md
 example/CLAUDE.md
 example/README.md
 example/delivery/envelope/prompts/builder.md
@@ -102,7 +101,6 @@ src/v2/storage/event-ledger.js
 src/v2/workspace/workspace-manager.js
 templates/gitignore.template
 templates/v2/AGENTS.md
-templates/v2/BUILDBEAT.md
 templates/v2/CLAUDE.md
 templates/v2/envelope/prompts/builder.md
 templates/v2/envelope/prompts/fixer.md
