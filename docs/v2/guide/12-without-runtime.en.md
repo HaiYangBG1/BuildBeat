@@ -23,9 +23,10 @@ Please set up this project to record requirements the BuildBeat way, without the
 
 1. Read SKILL.md and docs/v2/guide/12-without-runtime.en.md in that repository, and from then on work the "Skill and project files only" way.
 2. Copy templates/v2/work.example.md and templates/v2/result.example.md from that repository into this project's delivery/templates/.
-3. Add one line to this project's AGENTS.md (create it if missing): requirements are recorded the BuildBeat way under delivery/work/<id>/, templates are in delivery/templates/, rules at https://github.com/HaiYangBG1/BuildBeat/blob/main/docs/v2/guide/12-without-runtime.en.md
-4. Make sure delivery/ is not excluded by .gitignore or .git/info/exclude, then commit these changes.
-5. Tell me in a sentence or two when it is ready. From then on I will just say what I want done.
+3. Add the delivery/ block of templates/gitignore.template in that repository (the ignore rules for screenshots, archives and logs, with the comment above them) to this project's .gitignore, creating it if missing.
+4. Add one line to this project's AGENTS.md (create it if missing): requirements are recorded the BuildBeat way under delivery/work/<id>/, templates are in delivery/templates/, rules at https://github.com/HaiYangBG1/BuildBeat/blob/main/docs/v2/guide/12-without-runtime.en.md
+5. Make sure delivery/ is not excluded by .gitignore or .git/info/exclude, then commit these changes.
+6. Tell me in a sentence or two when it is ready. From then on I will just say what I want done.
 ```
 
 With Claude Code you can also install the plugin, so every session loads the Skill on its own; the plugin carries the templates and this guide too, so no npm package is needed.
@@ -75,7 +76,7 @@ The ledger of a run in progress lives in `.buildbeat/runtime/` on the machine ru
 
 - **Write `result.md`** from `templates/v2/result.example.md`. Conclusions that later work needs go into the project's own documents first and are committed (the commit must already be on the main branch); result.md then records each one as `- <path> @ <commit> — <what was written>`.
 
-- **Close a Work** that has no release readback set up (a documentation change, say, or any work in a team without the runtime, released or not): once `result.md` is written, append `{"ts":"2026-10-04T09:00:00.000Z","decision":"closed","transition":"close-work","subject":{"result":"<outcome>","resultDigest":"sha256:<64 hex digits>","promotions":[]},"by":"<name>","actor":{"kind":"human","id":"<name>","source":"flag"}}`. `resultDigest` is the SHA-256 of the `result.md` file content (for example `shasum -a 256 result.md`); `promotions` lists each promotion line of result.md as `{"path":"<path>","commit":"<full commit hash>"}`, or `[]` when there is none. A Work whose run config sets up a release readback (`release:`) closes through the runtime's `release` and `decide --action close`, which bind the closure to a readback.
+- **Close a Work** that has no release readback set up (a documentation change, say, or any work in a team without the runtime, released or not): once `result.md` is written, append `{"ts":"2026-10-04T09:00:00.000Z","decisionRef":"C-<ID>-<current line count + 1>","decision":"closed","transition":"close-work","subject":{"result":"<outcome>","resultDigest":"sha256:<64 hex digits>","promotions":[]},"by":"<name>","actor":{"kind":"human","id":"<name>","source":"flag"}}`. `resultDigest` is the SHA-256 of the `result.md` file content (for example `shasum -a 256 result.md`); `promotions` lists each promotion line of result.md as `{"path":"<path>","commit":"<full commit hash>"}`, or `[]` when there is none. `decisionRef` follows the same rule as the acceptance line: `C-<ID>-<current line count + 1>`. A Work whose run config sets up a release readback (`release:`) closes through the runtime's `release` and `decide --action close`, which bind the closure to a readback.
 
 - **Write relation lines** in a `work.md` you are drafting (before acceptance) or in `result.md`, one per line: `- follows: <id>`, `- split from: <id>`, `- related: <id>`, `- ref: <external id>`. They are plain text; someone with the runtime sees the linked works strung into one thread with `status --work`.
 
