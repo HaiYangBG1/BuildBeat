@@ -327,8 +327,11 @@ test("status caches target validation, HEAD and ancestry and reuses forwarded wo
     assert.equal(validations.length, 2, "only the two distinct target repositories are validated");
     const heads = calls.filter((args) => args.includes("--abbrev-ref"));
     assert.equal(heads.length, 3, "HEAD is read once per repository");
-    const ancestry = calls.filter((args) => args.includes("merge-base"));
-    assert.equal(ancestry.length, 2, "the shared candidate is checked once in each owning repository");
+    // WORK-OVERVIEW-SPEED: one rev-list of the main branch per owning
+    // repository answers every full candidate id; no merge-base process.
+    assert.equal(calls.filter((args) => args.includes("merge-base")).length, 0);
+    const ancestry = calls.filter((args) => args.includes("rev-list"));
+    assert.equal(ancestry.length, 2, "the main branch is listed once in each owning repository");
     assert.equal(new Set(calls.map((args) => JSON.stringify(args))).size, calls.length, "no Git query repeats");
   } finally {
     childProcess.execFileSync = original;
@@ -408,4 +411,73 @@ test("fixture Git and CLI children ignore hostile inherited config and Git envir
       else process.env[key] = value;
     }
   }
+});
+
+// WORK-OVERVIEW-SPEED: in a pilot workspace one cross-repository status
+// opened 245 run ledgers 20,390 times (19 s) and spawned 102 merge-base
+// processes (11 s); both are now done once per repository per call.
+test("one status call opens each run ledger at most twice, whatever the number of works", () => {
+  const root = repo(realpathSync(tempDir("bb-ledger-once-")));
+  // Finished runs, as nearly all are in a real workspace; a running run
+  // also reads every ledger for its typical step durations.
+  for (let i = 0; i < 6; i++) {
+    work(root, `W-${i}`, root);
+    ledger(root, `W-${i}`, false).append({ type: "RUN_TERMINAL", actor, data: { status: "SUCCEEDED", reason: "test" } });
+  }
+  const opened = new Map();
+  const original = EventLedger.open;
+  EventLedger.open = function (path, ...rest) {
+    opened.set(path, (opened.get(path) ?? 0) + 1);
+    return original.call(this, path, ...rest);
+  };
+  try {
+    const result = computeRepositoryOverview(root, { allRepos: true, cwd: root });
+    assert.equal(result.repos.flatMap((group) => group.works).length, 6);
+  } finally {
+    EventLedger.open = original;
+  }
+  assert.equal(opened.size, 6);
+  // Once for the overview, once for the pending-decision list.
+  assert.ok(Math.max(...opened.values()) <= 2, JSON.stringify([...opened.values()]));
+});
+
+test("merged candidates are answered from one rev-list; a short id falls back to merge-base with the same answer", () => {
+  const root = repo(realpathSync(tempDir("bb-ancestry-")));
+  const merged = git(root, "rev-parse", "HEAD");
+  git(root, "checkout", "-q", "-b", "side");
+  git(root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-q", "--allow-empty", "-m", "unmerged");
+  const unmerged = git(root, "rev-parse", "HEAD");
+  git(root, "checkout", "-q", "main");
+  const record = (id, candidate) => {
+    work(root, id, root);
+    const dir = join(root, "delivery", "work", id, "runs", `RUN-${id}`);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "run-record.json"), JSON.stringify({ startedAt: "2026-10-01T00:00:00Z", terminal: { status: "SUCCEEDED" }, workspaces: { [`RUN-${id}`]: { candidate } } }));
+  };
+  record("FULL-IN", merged);
+  record("FULL-OUT", unmerged);
+  record("SHORT-IN", merged.slice(0, 7));
+  record("SHORT-OUT", unmerged.slice(0, 7));
+  const calls = [];
+  const original = childProcess.execFileSync;
+  childProcess.execFileSync = (command, args, options) => {
+    if (command === "git") calls.push(args);
+    return original(command, args, { ...options, env: fixtureEnv() });
+  };
+  syncBuiltinESMExports();
+  let rows;
+  try {
+    rows = computeRepositoryOverview(root, { allRepos: true, cwd: root }).repos.flatMap((group) => group.works);
+  } finally {
+    childProcess.execFileSync = original;
+    syncBuiltinESMExports();
+  }
+  const stage = Object.fromEntries(rows.map((row) => [row.work, row.stage]));
+  assert.equal(stage["FULL-IN"], "MERGED");
+  assert.equal(stage["SHORT-IN"], "MERGED");
+  assert.notEqual(stage["FULL-OUT"], "MERGED");
+  assert.notEqual(stage["SHORT-OUT"], "MERGED");
+  assert.equal(calls.filter((args) => args.includes("rev-list")).length, 1);
+  const bases = calls.filter((args) => args.includes("merge-base"));
+  assert.deepEqual(bases.map((args) => args.at(-2)).sort(), [merged.slice(0, 7), unmerged.slice(0, 7)].sort());
 });
