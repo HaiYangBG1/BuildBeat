@@ -1,0 +1,207 @@
+{
+  "run": "RUN-SCOPE-RENAMES-01",
+  "work": "WORK-SCOPE-RENAMES",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 45,
+    "lastDigest": "sha256:0da6adbadd9a3c7e8187961d089e19852d18245bfa6f8096950b26648c4b27c1"
+  },
+  "startedAt": "2026-11-01T12:10:43.154Z",
+  "finishedAt": "2026-11-01T12:59:21.563Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 4
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "waits": {
+      "decided": {
+        "count": 3,
+        "ms": 2086399
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 830885
+  },
+  "workspaces": {
+    "RUN-SCOPE-RENAMES-01": {
+      "repo": ".",
+      "branch": "run/RUN-SCOPE-RENAMES-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-SCOPE-RENAMES-01",
+      "base": "6db83fa3e9862e42b7eaa9e5843196c9b9d3ded9",
+      "candidate": "4e8236b3484c42a9299020fc1da40ca4a0579a8e"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SCOPE-RENAMES-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "ecd10c91ef2d0278efcf68d3fee2632009654111",
+      "digest": "sha256:ef2efda56cd9a6b9023b0c111ea3355ed0b12b5c3e7b28ccca3d40ff015fe086",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:86ce5b6e9a731f5f94d5ec1679df267ebe5a308972c4ba51344c03ccdc775af5"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SCOPE-RENAMES-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "ecd10c91ef2d0278efcf68d3fee2632009654111",
+      "digest": "sha256:094e388580c8139057f0c3312df4a4be12c885b41067847a7ad42cdeceb8bc31",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SCOPE-RENAMES-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "ecd10c91ef2d0278efcf68d3fee2632009654111",
+      "digest": "sha256:80920bbc4b1991e29b0f1a1f6550929e879d03b718cda230c5c8aa988b692cec",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/code-trace.js:180-188 启用 -z 后仍以 0x1e/0x1f 切分整个 log 输出，合法文件名包含这些字节时会导致 history --path 抛出 TypeError 或截断路径、遗漏工作归属，需按 NUL 隔离路径与元数据并补充回归测试。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SCOPE-RENAMES-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "4e8236b3484c42a9299020fc1da40ca4a0579a8e",
+      "digest": "sha256:903c3aeb4e2358f2c999f8513731bc6fd37e5b84456da060f2a96216efbb30db",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:96df697a982f794e6113706922eb250612ce9331a9c9ec15afb6ee45bf66221e"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SCOPE-RENAMES-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "4e8236b3484c42a9299020fc1da40ca4a0579a8e",
+      "digest": "sha256:0790428e5b411765b8e147f58881d3015123d41a47e19ae23ae6b691272dcc62",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SCOPE-RENAMES-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "4e8236b3484c42a9299020fc1da40ca4a0579a8e",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "ecd10c91ef2d0278efcf68d3fee2632009654111",
+        "planDigest": "sha256:af61785629e48bbf2bba42ab57e95980488fe003c13332e9dc6f56840f98bc8e",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-SCOPE-RENAMES-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "4e8236b3484c42a9299020fc1da40ca4a0579a8e",
+        "planDigest": "sha256:af61785629e48bbf2bba42ab57e95980488fe003c13332e9dc6f56840f98bc8e",
+        "evidenceDigest": "sha256:80920bbc4b1991e29b0f1a1f6550929e879d03b718cda230c5c8aa988b692cec"
+      },
+      "decisionRef": "D-RUN-SCOPE-RENAMES-01-2",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "4e8236b3484c42a9299020fc1da40ca4a0579a8e",
+        "planDigest": "sha256:af61785629e48bbf2bba42ab57e95980488fe003c13332e9dc6f56840f98bc8e",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-SCOPE-RENAMES-01-3",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-SCOPE-RENAMES-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "ecd10c91ef2d0278efcf68d3fee2632009654111",
+        "planDigest": "sha256:af61785629e48bbf2bba42ab57e95980488fe003c13332e9dc6f56840f98bc8e",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-SCOPE-RENAMES-01-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "4e8236b3484c42a9299020fc1da40ca4a0579a8e",
+        "planDigest": "sha256:af61785629e48bbf2bba42ab57e95980488fe003c13332e9dc6f56840f98bc8e",
+        "evidenceDigest": "sha256:80920bbc4b1991e29b0f1a1f6550929e879d03b718cda230c5c8aa988b692cec"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-SCOPE-RENAMES-01-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "4e8236b3484c42a9299020fc1da40ca4a0579a8e",
+        "planDigest": "sha256:af61785629e48bbf2bba42ab57e95980488fe003c13332e9dc6f56840f98bc8e",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

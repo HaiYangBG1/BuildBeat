@@ -2,6 +2,11 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
+## Unreleased
+
+- The scope check sees both sides of a move (WORK-SCOPE-RENAMES). **Behaviour change:** moving a file from outside `allowedPaths` into it is now out of scope, because the old path is deleted; before, only the new path was checked. Paths are read with `-z`, so names with quotes, tabs or leading spaces are compared as they are, and untracked files are listed one by one whatever `status.showUntrackedFiles` says; the clean-tree check that pins candidates counts new files under that setting too. It needs Git 2.18 or later (`status --no-renames`). In this repository's 35 recorded runs, 45 moves and copies all stayed inside their scope, so no past run would have been stopped.
+- `history --path` no longer fails when your Git config sets `blame.ignoreRevsFile` to a file the repository does not have, and ignores that setting, so a line traces to the commit that wrote it on every machine; `log.showSignature` no longer adds stray paths. A commit that moves files out of `delivery/work/<ID>/` now traces to that work too. It needs Git 2.23 or later (`blame --no-ignore-revs-file`).
+
 ## v5.3.0 — 2026-11-01（次版本：项目文件不抄会变的事实；工作文件夹只放记录，太多时提醒）
 
 > **发布状态**：`@haiyangbg/buildbeat@5.3.0` 已于 2026-11-01 从 `main`（内容 PR #110–#112，release PR #113，merge commit `d3cc06c`，tag `v5.3.0`）经 OIDC Trusted Publishing 发布到 dist-tag **`latest`**（run 41299230383，publish 与 verify 双 job 一次 success；所有者授权「发布吧」，`npm-publish` 环境按所有者「你自己批准」由驾驶会话用所有者的 GitHub 账号批准）。独立回读（直连 npmjs.org）：`latest` = 5.3.0、`dist.integrity` 与 shasum 与本地用 Node 24 + npm 11.19.0 打的候选逐字一致（112 个文件）、SLSA v1 provenance、隔离安装 `--version` = 5.3.0、裸调用零写入、`npm audit signatures` 通过；GitHub Release v5.3.0 标 Latest；本机两份全局安装均为 5.3.0；同日 `next` 也从 5.0.0 挪到 5.3.0（驾驶会话在本机发起 npm 网页登录和改标签，所有者本人在浏览器里确认登录和两步验证，改完已退出登录），直连 npmjs.org 回读 `next` = `latest` = 5.3.0；证据见 [`V5.3.0-RELEASE-EVIDENCE-2026-11-01.md`](docs/releases/V5.3.0-RELEASE-EVIDENCE-2026-11-01.md)。
