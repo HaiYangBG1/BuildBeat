@@ -467,3 +467,16 @@ test("a commit that moves a file out of a work's folder still traces to that wor
   assert.deepEqual(trace.works.map((row) => [row.work, row.via]), [["WORK-MOVED", [{ kind: "folder" }]]]);
   assert.equal(trace.untraced.lines, 0);
 });
+
+test("history --path reads paths holding any byte but NUL, including Git's own field marks", () => {
+  const root = repo();
+  // \x1d, \x1e and \x1f are legal in file names; with -z Git prints them as
+  // they are, so only NUL may separate what the log prints.
+  const odd = "delivery/work/WORK-ODD/a\x1db\x1ec\x1fd\n.md";
+  commit(root, "docs: odd notes and one", { [odd]: "notes\n", "src/c.js": lines("one") });
+  commit(root, "\x1fsubject with a mark", { "src/c.js": lines("one", "two"), "\x1ftop.txt": "top\n" }, "Work: WORK-ODD");
+  work(root, "WORK-ODD", "Odd work");
+  const trace = traced(root, "src/c.js");
+  assert.deepEqual(trace.works.map((row) => [row.work, row.lines, row.via]), [["WORK-ODD", 2, [{ kind: "folder" }, { kind: "trailer" }]]]);
+  assert.equal(trace.untraced.lines, 0);
+});

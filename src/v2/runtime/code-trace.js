@@ -172,24 +172,35 @@ async function runRanges(root, runs) {
 // that moves files out of delivery/work/<ID>/ still belongs to that work; -z
 // keeps paths as they are, and the pinned log settings keep signature text
 // out of the path list (WORK-SCOPE-RENAMES).
+//
+// With -z a path may hold any byte but NUL, so NUL is the only separator:
+// each commit opens with an empty field, then its hash, time, subject and
+// Work: trailers; its paths follow, the first one after a newline. Paths are
+// never empty, so an empty field always opens the next commit.
+const COMMIT_FIELDS = 4;
+
 function commitFacts(root, commits) {
   const facts = new Map();
   if (commits.length === 0) return facts;
-  const out = git(root, [
+  const fields = git(root, [
     "-c", "log.showSignature=false", "-c", "log.follow=false",
     "log", "--no-walk=unsorted", "--name-only", "--no-renames", "-z", "--diff-merges=first-parent",
-    "--format=%x1e%H%x1f%ct%x1f%s%x1f%(trailers:key=Work,valueonly,separator=%x1d)%x1f", ...commits,
-  ]);
-  for (const chunk of out.split("\x1e").slice(1)) {
-    const [commit, time, subject, trailers, names = ""] = chunk.split("\x1f");
+    "--format=%x00%H%x00%ct%x00%s%x00%(trailers:key=Work,valueonly,separator=%x1d)", ...commits,
+  ]).split("\0");
+  let at = fields.indexOf("");
+  while (at !== -1 && at + COMMIT_FIELDS < fields.length) {
+    const [commit, time, subject, trailers] = fields.slice(at + 1, at + 1 + COMMIT_FIELDS);
+    at += 1 + COMMIT_FIELDS;
+    const paths = [];
+    for (; at < fields.length && fields[at] !== ""; at += 1) {
+      const path = paths.length === 0 ? fields[at].replace(/^\n/, "") : fields[at];
+      if (path) paths.push(path);
+    }
     facts.set(commit, {
       time: Number(time),
       subject,
       trailers: trailers.split("\x1d").map((value) => value.trim().split(/\s+/)[0]).filter(Boolean),
-      // With -z the formatted part ends in NUL, a newline comes before the
-      // first path, and every path ends in NUL; a commit without paths has
-      // the NUL alone.
-      paths: names.replace(/^\0\n?/, "").split("\0").filter(Boolean),
+      paths,
     });
   }
   return facts;
