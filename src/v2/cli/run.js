@@ -57,6 +57,7 @@ import { attachThreads, readWorks, renderThread, worksWithRef } from "../runtime
 import { attachFacts, factsWarning, renderFacts } from "../runtime/facts.js";
 import { closeWork, runReadback } from "../runtime/release.js";
 import { writeResultDraft } from "../runtime/closeout.js";
+import { installCommitHook, trailerWarning } from "../runtime/hooks.js";
 import {
   DEFAULT_STALL_AFTER_MS,
   describeLiveness,
@@ -115,6 +116,7 @@ Usage:
   buildbeat gc --repo <path> [--apply] [--force]
   buildbeat history --repo <path> --run <RUN-ID> [--verify]
   buildbeat history --repo <path> --path <file>[:<line>[-<line>]] [--json]
+  buildbeat hooks install --repo <path>
 
 Core legacy command spellings remain aliases; see docs/MIGRATION.md.
 Decisions record who made them: --by names the person or session (default:
@@ -1126,6 +1128,8 @@ function commandAccept(flags) {
   if (extras) console.log(extras);
   const facts = factsWarning(resolve(flags.repo), flags.work);
   if (facts) console.log(facts);
+  const trailers = trailerWarning(resolve(flags.repo), repoLabelFor(resolve(flags.repo), flags.repo));
+  if (trailers) console.log(trailers);
   console.log(
     "  note: editing an artifact after acceptance makes its acceptance stale",
   );
@@ -1255,6 +1259,8 @@ function commandDoctor(flags) {
   // Facts compared with the base the next run would start from.
   const facts = factsWarning(options.repoRoot, options.workId, { against: options.base, label: options.base });
   if (facts) console.log(facts);
+  const trailers = trailerWarning(options.repoRoot, repoLabelFor(options.repoRoot));
+  if (trailers) console.log(trailers);
   for (const policy of options.policies) {
     for (const artifact of policy.kind === "artifact"
       ? [policy.artifact]
@@ -1997,6 +2003,19 @@ async function main() {
   if (command === "findings") {
     try {
       commandFindings(rest);
+    } catch (error) {
+      console.error(`error: ${error.message}`);
+      process.exitCode = 1;
+    }
+    return;
+  }
+  if (command === "hooks") {
+    try {
+      const [action, ...more] = rest;
+      if (action !== "install") throw new Error("usage: buildbeat hooks install --repo <path>");
+      const flags = parseFlags(more);
+      if (!flags.repo) throw new Error("hooks install requires --repo");
+      console.log(installCommitHook(resolve(flags.repo)).message);
     } catch (error) {
       console.error(`error: ${error.message}`);
       process.exitCode = 1;

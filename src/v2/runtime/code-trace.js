@@ -2,9 +2,11 @@
 // blamed at HEAD and each commit is mapped to a work through three facts
 // only: the commit lies in a recorded run's base..candidate range (run
 // records in Git, run ledgers on this machine), its message carries a
-// "Work: <ID>" trailer, or it changes files under delivery/work/<ID>/. A
-// subject that merely names a work does not count, because subjects often
-// cite another work. Lines none of these explain are counted, never guessed.
+// "Work: <ID>" trailer, or it changes files under delivery/work/<ID>/. Only
+// a commit none of these explain is read by its subject, and only when the
+// subject names exactly one work that has a folder (WORK-COMMIT-TRAILERS):
+// reported "via subject", since subjects often cite another work beside
+// their own. Lines nothing explains are counted, never guessed.
 // Real cost behind it: in a pilot workspace, run records alone traced 20% to
 // 82% of two months of lines in three code repositories; the largest
 // untraced block was a 2,949-line feature commit with no work id anywhere.
@@ -20,7 +22,7 @@ import { describeActor } from "./actor.js";
 import { readResult } from "./closeout.js";
 import { computeOverview, readJsonl } from "./overview.js";
 import { directory, pathLabel } from "./overview-repos.js";
-import { commitClues, commitFacts } from "./work-commits.js";
+import { commitClues, commitFacts, knownWorks, namedWork } from "./work-commits.js";
 
 export class TraceError extends Error {
   constructor(message) {
@@ -250,6 +252,7 @@ export async function traceLines(spec, { repo = process.cwd(), callers = [], cwd
     if (other && !roots.includes(other)) roots.push(other);
   }
   const ranges = await runRanges(root, recordedRuns(roots));
+  const known = new Set(roots.flatMap((item) => [...knownWorks(item)]));
   const commits = [...new Set(blamed.map((item) => item.commit))];
   const facts = commitFacts(root, commits);
 
@@ -264,6 +267,11 @@ export async function traceLines(spec, { repo = process.cwd(), callers = [], cwd
     };
     for (const item of ranges.get(commit) ?? []) add(item.work, "run", item.run);
     for (const clue of commitClues(fact)) add(clue.work, clue.kind);
+    // Only a commit nothing else explains is read by its subject.
+    if (found.size === 0) {
+      const work = namedWork(fact.subject, known);
+      if (work) add(work, "subject");
+    }
     if (found.size === 0) {
       const entry = untraced.get(commit) ?? { commit, subject: fact.subject, lines: 0 };
       entry.lines += 1;
@@ -314,6 +322,7 @@ export function renderTrace(trace) {
       ...(runs.length ? [`via run ${runs.join(", ")}`] : []),
       ...(row.via.some((item) => item.kind === "trailer") ? ["via Work trailer"] : []),
       ...(row.via.some((item) => item.kind === "folder") ? ["via work folder"] : []),
+      ...(row.via.some((item) => item.kind === "subject") ? ["via subject"] : []),
     ];
     lines.push(`  ${row.work}  ${row.stage ?? "NOT_FOUND"}  ${row.title ?? "(no records in reach)"} (${plural(row.lines, "line")}; ${via.join("; ")})`);
     if (row.approved) lines.push(`    approved: ${row.approved.at} by ${row.approved.who}${row.approved.run ? ` (${row.approved.run})` : ""}`);
