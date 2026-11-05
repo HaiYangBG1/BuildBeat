@@ -184,7 +184,7 @@ function titleOf(dir) {
 function deciders(dir, stage, mergedCandidate) {
   const rows = readJsonl(join(dir, "decisions.jsonl")).reverse();
   const approval = mergedCandidate
-    ? rows.find((row) => row.transition === "enter-wait-merge" && row.decision === "approved" && row.subject?.candidate === mergedCandidate)
+    ? rows.find((row) => row.transition === "enter-wait-merge" && row.decision === "approved" && !row.adopted && row.subject?.candidate === mergedCandidate)
     : null;
   const closure = stage === "CLOSED" || stage === "CANCELLED" ? rows.find((row) => row.transition === "close-work") : null;
   return {

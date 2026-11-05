@@ -44,6 +44,7 @@ import {
 import { loadEnvelope, nextAttemptId } from "../runtime/envelope.js";
 import { applyGc, planGc } from "../runtime/gc.js";
 import {
+  adoptedNote,
   artifactStatus,
   computeOverview,
   computeRepositoryOverview,
@@ -303,7 +304,7 @@ function printState(state, ledger, view = {}) {
   // Who answered each request, as the ledger recorded it.
   for (const item of state.decisions) {
     console.log(
-      `decision ${item.decisionRef} ${item.transition} ${item.decision} by ${describeActor(item)}`,
+      `decision ${item.decisionRef} ${item.transition} ${item.decision} by ${describeActor(item)}${adoptedNote(item)}`,
     );
   }
   const selfMerge = selfMergeApproval(state.decisions);

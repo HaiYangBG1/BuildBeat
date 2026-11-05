@@ -102,10 +102,13 @@ export function actorFrom({ actor, by, as, repoRoot, env } = {}) {
 }
 
 // The merge approval to call out on every status view: the latest one,
-// when an AI session gave it under a recorded identity.
+// when an AI session gave it under a recorded identity. A repair handed in
+// with --adopt at the merge decision is recorded as an approved
+// enter-wait-merge carrying `adopted`; it sends the run back to verify and
+// review and approves no merge, so it is skipped (WORK-ADOPT-NOT-APPROVAL).
 export function selfMergeApproval(decisions) {
   const latest = [...(decisions ?? [])].reverse().find((item) =>
-    item.transition === "enter-wait-merge" && item.decision === "approved");
+    item.transition === "enter-wait-merge" && item.decision === "approved" && !item.adopted);
   return latest?.actor?.kind === "agent" && latest.actor.source ? latest : null;
 }
 

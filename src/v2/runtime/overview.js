@@ -288,6 +288,7 @@ export function computeOverview(
         by: item.by ?? null,
         actor: item.actor ?? null,
         who: describeActor(item),
+        ...(item.adopted ? { adopted: item.adopted, resumeAt: item.resumeAt ?? null } : {}),
         ...(typeof item.note === "string" && item.note ? { note: item.note } : {}),
       })),
       ...findingRows.filter((item) => item.kind === "adjudication").map((item) => ({
@@ -562,6 +563,12 @@ function markCommitted(repoRoot, branch, unrun) {
   }
 }
 
+// What a decision line adds for a repair handed in with --adopt: the
+// commit it adopted and where the run resumed.
+export function adoptedNote(item) {
+  return item.adopted ? ` — adopted ${String(item.adopted).slice(0, 7)}, resumed at ${item.resumeAt ?? "?"}` : "";
+}
+
 function mark(status) {
   if (!status.exists) {
     return "–";
@@ -642,7 +649,7 @@ export function renderOverview(rows, { decisions = false, extra = null } = {}) {
       for (const item of row.decisions) {
         const what = [item.transition, item.fingerprint, item.decision].filter(Boolean).join(" ");
         lines.push(
-          `    ${item.ts ?? "?"} ${item.decisionRef ?? "-"} ${what} by ${item.who}${item.note ? ` — ${item.note}` : ""}`,
+          `    ${item.ts ?? "?"} ${item.decisionRef ?? "-"} ${what} by ${item.who}${adoptedNote(item)}${item.note ? ` — ${item.note}` : ""}`,
         );
       }
     }
