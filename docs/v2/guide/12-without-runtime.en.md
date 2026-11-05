@@ -22,7 +22,7 @@ Paste this to your AI coding tool (Claude Code, Codex and Cursor all work) and i
 Please set up this project to record requirements the BuildBeat way, without the runtime for now (https://github.com/HaiYangBG1/BuildBeat):
 
 1. Read SKILL.md and docs/v2/guide/12-without-runtime.en.md in that repository, and from then on work the "Skill and project files only" way.
-2. Copy templates/v2/work.example.md and templates/v2/result.example.md from that repository into this project's delivery/templates/.
+2. Copy templates/v2/work.example.md and templates/v2/result.example.md from that repository into this project's delivery/templates/; if the project has no operations manual yet, copy templates/v2/operations.example.md to docs/operations.md for its release rules and the traps found so far.
 3. Add the delivery/ block of templates/gitignore.template in that repository (the ignore rules for screenshots, archives and logs, with the comment above them) to this project's .gitignore, creating it if missing.
 4. Add one line to this project's AGENTS.md (create it if missing): requirements are recorded the BuildBeat way under delivery/work/<id>/, templates are in delivery/templates/, rules at https://github.com/HaiYangBG1/BuildBeat/blob/main/docs/v2/guide/12-without-runtime.en.md
 5. Make sure delivery/ is not excluded by .gitignore or .git/info/exclude, then commit these changes.

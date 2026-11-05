@@ -21,6 +21,8 @@ and terminal records must remain reachable before cleanup.
 
 Keep this file to rules and where to look. Do not copy facts that change,
 such as the runtime version, what is in progress, who is doing what or what
-is deployed: check them with `buildbeat --version`, `buildbeat status` and
-Git. A wrong line here misleads every session that reads it; delete it when
-you find it.
+is deployed: check them with `buildbeat --version`, `buildbeat status`
+(`buildbeat status --releases` for what is deployed where) and Git. A wrong
+line here misleads every session that reads it; delete it when you find it.
+Operating rules and traps belong in the project's operations manual
+(docs/operations.md, template templates/v2/operations.example.md).

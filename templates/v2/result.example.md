@@ -12,4 +12,6 @@ What was delivered and where (merge commit, version, release), and who confirmed
 Conclusions that outlive this work, written into the project's own documents and committed before closing: a changed interface or format, a decision later works must follow, an environment fact that will bite again, a project document found wrong or stale, a worker prompt that should change. One line each, in this form:
 - AGENTS.md @ <commit> — what was added or corrected
 
+If the project has no place for an operating rule or a trap, write it into docs/operations.md (template: templates/v2/operations.example.md).
+
 Closing checks every such line: the commit is on the branch, it changes the file, and the file is outside this work's folder. If nothing needed writing, say "none" and why.

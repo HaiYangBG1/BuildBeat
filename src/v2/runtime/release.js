@@ -13,7 +13,9 @@ import {
   appendFileSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -23,6 +25,7 @@ import { actorFrom } from "./actor.js";
 import { checkPromotions, readResult } from "./closeout.js";
 import { governingConfigs } from "./overview-repos.js";
 import { toRepoRef } from "./repo-ref.js";
+import { codeCommitsOf } from "./work-commits.js";
 
 const TAIL_LINES = 20;
 
@@ -71,9 +74,20 @@ function isAncestor(repoRoot, sha, commit) {
   }
 }
 
+// An environment name: it goes into the record and into the readback
+// command's BUILDBEAT_RELEASE_ENV (WORK-RELEASE-ENVS).
+const ENV_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
 // Runs the configured readback in the main checkout once and records it.
 // `runs` are the Work's runs (overview's runsFor); the newest SUCCEEDED one
 // whose candidate the release ref contains is what this readback is about.
+// A work done in a session (WORK-RELEASE-ENVS) is read back through a
+// config that only records releases (withoutRun): with no succeeded run it
+// is bound to its newest code commit the release ref contains, found the
+// way status finds COMMITTED works; with none, there is nothing to read
+// back. A config with workers is meant to run, so its work still needs a
+// succeeded run first. `env` names the environment released to: one config serves every
+// environment, and a release in steps reads each step back with --note.
 export function runReadback({
   repoRoot,
   workId,
@@ -81,9 +95,14 @@ export function runReadback({
   redact = [],
   runs,
   ref = "HEAD",
+  env = null,
   note = null,
+  withoutRun = false,
   ts = new Date().toISOString(),
 }) {
+  if (env !== null && !ENV_NAME.test(env)) {
+    throw new ReleaseError(`--env ${env}: an environment name is letters, digits, ".", "_" and "-", starting with a letter or digit`);
+  }
   const resolveCommit = (name) =>
     execFileSync(
       "git",
@@ -102,14 +121,25 @@ export function runReadback({
   const succeeded = runs
     .filter((run) => run.status === "SUCCEEDED" && run.candidate)
     .sort((a, b) => String(a.lastAt).localeCompare(String(b.lastAt)));
-  if (succeeded.length === 0) {
+  let released;
+  if (succeeded.length === 0 && !withoutRun) {
     throw new ReleaseError(
-      `${workId} has no succeeded run; approve its merge decision first`,
+      `${workId} has no succeeded run; approve its merge decision first (a work done without a run reads back through a config with release: and no workers:)`,
     );
   }
-  const released = [...succeeded]
-    .reverse()
-    .find((run) => isAncestor(repoRoot, run.candidate, commit));
+  if (succeeded.length === 0) {
+    const latest = codeCommitsOf(repoRoot, commit, [workId]).get(workId)?.[0] ?? null;
+    if (!latest) {
+      throw new ReleaseError(
+        `${workId} has no succeeded run and no commits in ${ref} trace to it; nothing to read back`,
+      );
+    }
+    released = { id: null, candidate: latest.commit };
+  } else {
+    released = [...succeeded]
+      .reverse()
+      .find((run) => isAncestor(repoRoot, run.candidate, commit));
+  }
   if (!released) {
     const latest = succeeded.at(-1);
     throw new ReleaseError(
@@ -123,13 +153,13 @@ export function runReadback({
     args: spec.args ?? [],
     timeoutMs: spec.timeoutMs,
     inheritEnv: spec.inheritEnv === true,
-    env: spec.env ?? {},
+    env: { ...(spec.env ?? {}), ...(env !== null ? { BUILDBEAT_RELEASE_ENV: env } : {}) },
   });
   const exec = adapter.execute({
     step: "release",
     worker: "release",
     workspacePath: repoRoot,
-    input: { workId, run: released.id, candidate: released.candidate, ref, commit },
+    input: { workId, run: released.id, candidate: released.candidate, ref, commit, ...(env !== null ? { env } : {}) },
   });
   const scrub = (text) => {
     let out = String(text ?? "");
@@ -170,6 +200,7 @@ export function runReadback({
     ref,
     commit,
     checkout,
+    ...(env !== null ? { env } : {}),
     ...(note ? { note } : {}),
     command: scrub(exec.command),
     exitCode: exec.exitCode,
@@ -289,4 +320,71 @@ export function closeWork({
   };
   appendFileSync(decisionsPath, `${JSON.stringify(row)}\n`, "utf8");
   return row;
+}
+
+// What runs where (WORK-RELEASE-ENVS): for each environment, the latest
+// passing readback across every work in the given checkouts, and the latest
+// failing one recorded after it. Readbacks recorded without --env share the
+// environment null. This answers "what is deployed" from the records the
+// readbacks left, so no project file has to carry it.
+export function summarizeReleases(roots) {
+  const rows = [];
+  for (const repo of roots) {
+    const workRoot = join(repo, "delivery", "work");
+    let works = [];
+    try {
+      works = readdirSync(workRoot).filter((name) => statSync(join(workRoot, name)).isDirectory());
+    } catch {
+      continue;
+    }
+    for (const work of works) {
+      for (const row of readReleases(repo, work)) {
+        if (typeof row.ts !== "string" || (row.status !== "passed" && row.status !== "failed")) continue;
+        rows.push({ ...row, work: row.work ?? work, repo });
+      }
+    }
+  }
+  const byEnv = new Map();
+  for (const row of rows) {
+    const env = typeof row.env === "string" && row.env ? row.env : null;
+    if (!byEnv.has(env)) byEnv.set(env, []);
+    byEnv.get(env).push(row);
+  }
+  const summary = [];
+  for (const [env, list] of byEnv) {
+    list.sort((a, b) => a.ts.localeCompare(b.ts));
+    const passed = list.filter((row) => row.status === "passed").at(-1) ?? null;
+    const failed = list.filter((row) => row.status === "failed" && (!passed || row.ts > passed.ts)).at(-1) ?? null;
+    summary.push({
+      env,
+      work: passed?.work ?? null,
+      repo: passed?.repo ?? null,
+      commit: passed?.commit ?? null,
+      candidate: passed?.candidate ?? null,
+      run: passed?.run ?? null,
+      at: passed?.ts ?? null,
+      note: passed?.note ?? null,
+      laterFailure: failed ? { work: failed.work, at: failed.ts, exitCode: failed.exitCode ?? null } : null,
+    });
+  }
+  return summary.sort((a, b) => (a.env === null) - (b.env === null) || String(a.env).localeCompare(String(b.env)));
+}
+
+export function renderReleases(summary) {
+  if (summary.length === 0) {
+    return "releases: none recorded (buildbeat release --config <run-config.yaml> --env <name>)";
+  }
+  const width = Math.max(...summary.map((item) => (item.env ?? "-").length));
+  const lines = ["releases (latest passing readback per environment):"];
+  for (const item of summary) {
+    const env = (item.env ?? "-").padEnd(width);
+    const later = item.laterFailure
+      ? ` · ${item.commit ? "later" : "latest"} readback failed @ ${item.laterFailure.at} (${item.laterFailure.work}, exit ${item.laterFailure.exitCode})`
+      : "";
+    const head = item.commit
+      ? `${item.work}  ${item.commit.slice(0, 7)} @ ${item.at}${item.note ? ` — ${item.note}` : ""}`
+      : "no passing readback";
+    lines.push(`  ${env}  ${head}${later}${item.env === null ? "   (recorded without --env)" : ""}`);
+  }
+  return lines.join("\n");
 }

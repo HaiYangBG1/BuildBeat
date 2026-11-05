@@ -55,7 +55,7 @@ import { configTargets, discoverRepos, extraFilesWarning, heavyRecordsWarning, i
 import { renderTrace, traceLines } from "../runtime/code-trace.js";
 import { attachThreads, readWorks, renderThread, worksWithRef } from "../runtime/threads.js";
 import { attachFacts, factsWarning, renderFacts } from "../runtime/facts.js";
-import { closeWork, runReadback } from "../runtime/release.js";
+import { closeWork, renderReleases, runReadback, summarizeReleases } from "../runtime/release.js";
 import { writeResultDraft } from "../runtime/closeout.js";
 import { installCommitHook, trailerWarning } from "../runtime/hooks.js";
 import {
@@ -92,6 +92,7 @@ import {
 import {
   checkRunConfigAgainstWorkflow,
   checkRunConfigShape,
+  releaseOnly,
   RunConfigError,
 } from "./run-config-check.js";
 
@@ -105,10 +106,11 @@ Usage:
   buildbeat run --config <run-config.yaml> [--run <RUN-ID>] [--new] [--adopt <sha> [--by <name>] [--as human|agent]]
   buildbeat status --repo <path> [--work <WORK-ID> | --run <RUN-ID>] [--all-repos] [--json]
   buildbeat status --repo <path> [--all-repos] --ref <id> [--json]
+  buildbeat status --repo <path> --releases [--all-repos] [--json]
   buildbeat decide --repo <path> --run <RUN-ID> --action approve|reject --transition <t> [--candidate <sha>] [--by <name>] [--as human|agent] [--reason <text>]
   buildbeat decide --repo <path> --run <RUN-ID> --action fix --reason <text> [--by <name>] [--as human|agent]
   buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--as human|agent] [--note <text>]
-  buildbeat release --config <run-config.yaml> [--ref <ref>] [--note <text>]
+  buildbeat release --config <run-config.yaml> [--env <name>] [--ref <ref>] [--note <text>]
   buildbeat decide --repo <path> --work <WORK-ID> --action close [--result <text>] [--note <text>] [--by <name>] [--as human|agent]
   buildbeat decide --repo <path> --work <WORK-ID> --action close --draft
   buildbeat check --config <run-config.yaml> [--step <id>]
@@ -127,7 +129,7 @@ check --step executes that worker in the main checkout, outside the evidence led
 
 // Switches may stand alone (`--json`) or take an explicit true/false
 // (`--json true`, the older spelling); every other flag needs a value.
-const SWITCHES = new Set(["json", "apply", "force", "once", "new", "verify", "all-repos", "draft"]);
+const SWITCHES = new Set(["json", "apply", "force", "once", "new", "verify", "all-repos", "draft", "releases"]);
 
 function parseFlags(argv) {
   const flags = {};
@@ -553,6 +555,7 @@ function loadRunConfig(flags, command) {
     workflowDigest,
     workId: config.work,
     runId: config.run,
+    releaseOnly: releaseOnly(config),
     base: config.base ?? "HEAD",
     entry,
     stopAt: config.stopAt ?? presetStopAt ?? [],
@@ -1548,7 +1551,18 @@ function commandStatus(flags) {
     throw new Error("status: choose --run or --work");
   if (flags.ref && (flags.run || flags.work))
     throw new Error("status: choose --ref, --work or --run");
+  if (flags.ref && flags.releases === "true") throw new Error("status: choose --ref or --releases");
   if (flags.ref) return commandStatusByRef(flags, repoRoot);
+  // What runs where (WORK-RELEASE-ENVS): the latest passing readback per
+  // environment, across this repository's works (and its code repositories
+  // with --all-repos).
+  if (flags.releases === "true") {
+    if (flags.run || flags.work) throw new Error("status: --releases cannot be combined with --work or --run");
+    const roots = flags["all-repos"] === "true" ? discoverRepos(repoRoot, []) : [repoRoot];
+    const summary = summarizeReleases(roots);
+    console.log(flags.json === "true" ? JSON.stringify({ releases: summary }, null, 2) : renderReleases(summary));
+    return;
+  }
   if (!flags.run) {
     const allRepos = flags["all-repos"] === "true";
     const result = computeRepositoryOverview(repoRoot, { work: flags.work ?? null, allRepos, localRepoLabel: repoLabelFor(repoRoot, flags.repo) });
@@ -1631,6 +1645,8 @@ function commandStatus(flags) {
 
 async function commandRun(flags) {
   const options = loadRunConfig(flags, "run");
+  if (options.releaseOnly)
+    throw new Error(`${flags.config} has no workers: it only records releases (buildbeat release); add workers to run it`);
   if (flags.new === "true" && (flags.run || flags.adopt))
     throw new Error("--new cannot be combined with --run or --adopt");
   if (flags.new === "true")
@@ -1680,11 +1696,14 @@ function commandRelease(flags) {
     redact: options.redact,
     runs: runsFor(options.repoRoot, options.workId),
     ref: flags.ref ?? "HEAD",
+    env: flags.env ?? null,
     note: flags.note ?? null,
+    withoutRun: options.releaseOnly,
   });
   const repoLabel = repoLabelFor(options.repoRoot);
+  const bound = row.run ? `(${row.run})` : `(no run: latest commit of ${options.workId} in ${row.ref})`;
   console.log(
-    `readback ${row.status} (exit ${row.exitCode}) for ${row.ref} at ${row.commit.slice(0, 7)}, candidate ${row.candidate.slice(0, 7)} (${row.run})${row.note ? ` — ${row.note}` : ""}`,
+    `readback ${row.status} (exit ${row.exitCode}) for ${row.ref} at ${row.commit.slice(0, 7)}${row.env ? ` in ${row.env}` : ""}, candidate ${row.candidate.slice(0, 7)} ${bound}${row.note ? ` — ${row.note}` : ""}`,
   );
   if (row.checkout !== row.commit) {
     console.log(

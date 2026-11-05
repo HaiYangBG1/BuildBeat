@@ -22,7 +22,7 @@
 请帮我在这个项目里用 BuildBeat 的写法记录需求，先不装运行时（https://github.com/HaiYangBG1/BuildBeat）：
 
 1. 读那个仓库里的 SKILL.md 和 docs/v2/guide/12-without-runtime.md，之后按"只用 Skill 和项目文件"的方式干活。
-2. 把那个仓库里的 templates/v2/work.example.md 和 templates/v2/result.example.md 拷到这个项目的 delivery/templates/ 下。
+2. 把那个仓库里的 templates/v2/work.example.md 和 templates/v2/result.example.md 拷到这个项目的 delivery/templates/ 下；项目还没有操作手册的，把 templates/v2/operations.example.md 拷成 docs/operations.md，上线的规矩和踩过的坑写在那里。
 3. 把那个仓库里 templates/gitignore.template 中 delivery/ 那一段（截图、压缩包、日志的忽略规则和上面的说明）加进这个项目的 .gitignore（没有就新建）。
 4. 在这个项目的 AGENTS.md（没有就新建）里加一句：需求按 BuildBeat 的写法记在 delivery/work/<编号>/，模板在 delivery/templates/，规则见 https://github.com/HaiYangBG1/BuildBeat/blob/main/docs/v2/guide/12-without-runtime.md
 5. 确认 delivery/ 没有被 .gitignore 或 .git/info/exclude 排除，然后把这些改动提交。

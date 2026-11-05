@@ -32,6 +32,8 @@ redact:
 # 有 UI 的交付：verify 把真渲染截图以 PNG 写进 $BUILDBEAT_SCREENSHOT_DIR（只收可解码的 PNG），合并检查要求当前候选有截图
 # requireScreenshot: true
 # 合并并上线后由 buildbeat release 在主检出运行的只读回读命令（形状同 worker）；回读通过后才能关窗
+# 一份配置管所有环境：buildbeat release --config <本文件> --env <环境> [--note <第几步>]，命令从 $BUILDBEAT_RELEASE_ENV 读环境名；
+# 没跑 Run 就做完的工作，可以只写 repo、work 和 release:（不写 workers:），只用来记回读
 # release:
 #   command: bash
 #   args:
