@@ -156,15 +156,20 @@ export function readResult(repoRoot, workId) {
 // A result page drafted from commits (WORK-COMMITTED-WORKS): `decide --action
 // close --draft` writes it, and closing refuses it until someone has read
 // it, deleted its first line and filled in or deleted every "<fill in"
-// placeholder. The marker is an HTML comment, so it is never the summary,
-// and it counts only as the page's first line, where the draft writes it:
-// a hand-written page may quote it in a code block, as it may quote a
-// placeholder, and still close.
+// placeholder. The marker is an HTML comment, so it is never the summary.
+// Both count wherever they stand outside code, so moving the marker below a
+// blank line or a heading does not hide it, while a hand-written page may
+// quote either in a code block and still close. textLines drops comments,
+// so the marker is first turned into visible text and then read the same
+// way as the placeholders.
 const DRAFT_MARKER = "<!-- buildbeat draft: check every section against Git and the work, then delete this line -->";
 const DRAFT_SHOWN = 20;
 
+const DRAFT_SEEN = "\u0001buildbeat-draft\u0001";
+
 export function isDraft(text) {
-  return /^\uFEFF?\s*<!-- buildbeat draft:/.test(text.split(/\r?\n/, 1)[0]) || textLines(text).some((line) => line.includes("<fill in"));
+  const shown = text.replace(/<!--\s*buildbeat draft:/g, (marker) => `${DRAFT_SEEN}${marker}`);
+  return textLines(shown).some((line) => line.includes(DRAFT_SEEN) || line.includes("<fill in"));
 }
 
 export class DraftError extends Error {

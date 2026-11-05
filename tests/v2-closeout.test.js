@@ -390,6 +390,15 @@ test("close --draft writes a result page from the commits, and closing refuses i
   const asWritten = close(root, "DRAFTED");
   assert.notEqual(asWritten.status, 0);
   assert.match(asWritten.stderr, refusal);
+  // Moving the marker below a heading, or anywhere else outside code, does
+  // not hide it once every placeholder is filled in.
+  const filled = page
+    .replace("Confirmed by <fill in: who checked it, and where it runs>.", "Confirmed by the owner.")
+    .replace(/^- <fill in:.*$/gm, "- none");
+  writeFileSync(join(dir, "result.md"), `${lines[1]}\n\n${lines[0]}\n${filled.split("\n").slice(2).join("\n")}`);
+  const moved = close(root, "DRAFTED");
+  assert.notEqual(moved.status, 0);
+  assert.match(moved.stderr, refusal);
   writeFileSync(join(dir, "result.md"), lines.slice(1).join("\n"));
   const placeholders = close(root, "DRAFTED");
   assert.notEqual(placeholders.status, 0);
