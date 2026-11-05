@@ -2,7 +2,7 @@
 
 > 本项目吃自己的狗粮(红线④:必更 CHANGELOG)。格式循 Keep a Changelog,倒序。
 
-## Unreleased
+## v5.5.0 — 2026-11-05（次版本：没跑 Run 就做完的工作认得出、能起草结果页；提交自动带工作编号；各环境线上是哪个版本一条命令查到；合并决定点交回修复不再被当成批准；两处检查不再误伤正确的文字）
 
 - Two checks no longer reject correct text (WORK-FALSE-POSITIVES). Closing a work counted a draft placeholder or the draft's first line quoted in inline code as an unread draft, so a result page describing the check could not close; inline code now counts as code there, as code blocks already did, while a placeholder or the marker in prose is still refused (escaped backticks and a backtick with no closing run are prose). The docs check's rule for citation markers left by AI tools matched a three-letter word inside ordinary English words, so correct prose had to be reworded; it now matches only the exported marker shapes (the file and turn citation tokens and the private-use delimiters around them), and tests cover both sides.
 
