@@ -26,7 +26,8 @@
 3. 把那个仓库里 templates/gitignore.template 中 delivery/ 那一段（截图、压缩包、日志的忽略规则和上面的说明）加进这个项目的 .gitignore（没有就新建）。
 4. 在这个项目的 AGENTS.md（没有就新建）里加一句：需求按 BuildBeat 的写法记在 delivery/work/<编号>/，模板在 delivery/templates/，规则见 https://github.com/HaiYangBG1/BuildBeat/blob/main/docs/v2/guide/12-without-runtime.md
 5. 确认 delivery/ 没有被 .gitignore 或 .git/info/exclude 排除，然后把这些改动提交。
-6. 弄好后用一两句话告诉我可以开始了。之后我只用平常的话说要做什么。
+6. 把那个仓库里的 templates/v2/hooks/commit-msg 拷成这个克隆的 .git/hooks/commit-msg 并加上执行权限；这里已经有 commit-msg 钩子的，不要覆盖，在原钩子里加一行调用它。它在提交标题只写了一个工作编号时自动补上 Work: 标记。钩子不进 Git，每个人在自己的克隆里做一次。
+7. 弄好后用一两句话告诉我可以开始了。之后我只用平常的话说要做什么。
 ```
 
 用 Claude Code 的，还可以装上插件，以后每个会话都会自动加载 Skill；插件里也带着模板和这份指南，不用装 npm 包。
@@ -40,7 +41,7 @@
 
 1. **起草**：说清要做什么，AI 照 `delivery/templates/work.example.md` 的八节在 `delivery/work/<编号>/work.md` 起草；"已核实的现状"的标题写核实时的提交号，引用代码写成 `路径:起-止`。
 2. **接受**：你看过、同意后，AI 照下面"接受 `work.md`"的格式在 `decisions.jsonl` 末尾记一行，摘要由它算。
-3. **动手**：照平常的方式改代码、跑测试、提交，提交信息末尾带 `Work: <编号>`；合并走项目原来的流程。
+3. **动手**：照平常的方式改代码、跑测试、提交，提交信息末尾带 `Work: <编号>`（装了上面的钩子，标题写了编号就会自动补上）；合并走项目原来的流程。
 4. **收口**：合并后照 `delivery/templates/result.example.md` 写 `result.md`。以后还用得上的结论，先写进项目自己的文档并提交，再在 `result.md` 里记成 `路径 @ 提交`；AI 可以用 Git 自查这个提交在主干上、确实改了那个文件。会变的事实（版本、进度、谁在做）不写进去，只写去哪查。
 5. **关窗**：照下面的格式记一行关窗，把 `result.md` 和 `decisions.jsonl` 一起提交。
 
@@ -82,7 +83,7 @@
 
 - **写已核实的现状**：标题写核实时的提交号，引用代码写成反引号里的 `路径:起-止`。这也是纯文本；没有运行时时，用 `git diff <那个提交> HEAD -- <路径>` 自己看代码变了没有。装有运行时的一方用 `status --work` 会列出变了的地方。
 
-- **为某项工作提交代码或文档时**，提交信息末尾空一行写 `Work: <ID>`。装有运行时的一方用 `buildbeat history --path` 就能从代码找回这项工作。
+- **为某项工作提交代码或文档时**，提交信息末尾空一行写 `Work: <ID>`；装了 `templates/v2/hooks/commit-msg` 钩子的，标题里只写了一个工作编号时会自动补上。装有运行时的一方用 `buildbeat history --path` 就能从代码找回这项工作；没带标记的老提交，标题里只写了一个工作编号、又没有别的线索时，也会认出来，标成 `via subject`。
 
 `actor` 如实写是谁做的决定：人写 `"kind":"human"`；AI 工具自己做的决定写 `"kind":"agent"`，`id` 写工具名；AI 工具转达人在对话里说的决定，写人的名字和 `"kind":"human"`，再加 `"via":"agent-session"`。只有 `by`、没有 `actor` 的旧行照常有效，status 显示为"身份未记录"。
 

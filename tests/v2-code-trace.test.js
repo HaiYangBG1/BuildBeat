@@ -1,7 +1,9 @@
 // Code trace (WORK-CODE-TRACE): `history --path` names the works behind
 // lines of code through three facts only (a recorded run's base..candidate
-// range, a "Work: <ID>" trailer, a change under delivery/work/<ID>/), counts
-// the rest as untraced, and accept / check warn when delivery/ is ignored by
+// range, a "Work: <ID>" trailer, a change under delivery/work/<ID>/; since
+// WORK-COMMIT-TRAILERS also a subject naming exactly one work, when nothing
+// else explains the commit), counts the rest as untraced, and accept /
+// check warn when delivery/ is ignored by
 // Git. Real cost behind it: in a pilot workspace run records alone traced
 // 20% to 82% of two months of lines, and all five code repositories kept
 // delivery/ out of Git.
@@ -75,14 +77,14 @@ const lines = (...items) => `${items.join("\n")}\n`;
 // subject that only mentions a work, and a trailer naming no known work.
 function traceFixture() {
   const root = repo();
-  const start = commit(root, "chore: start, see WORK-RUN", { "src/a.js": lines("one", "two") });
+  const start = commit(root, "chore: start, see WORK-RUN and WORK-FOLDER", { "src/a.js": lines("one", "two") });
   const first = commit(root, "builder: RUN-A-01 attempt 1", { "src/a.js": lines("one", "two", "three") });
   const second = commit(root, "feat: four", { "src/a.js": lines("one", "two", "three", "four") }, "Work: WORK-TRAILER");
   const third = commit(root, "docs: five with notes", {
     "src/a.js": lines("one", "two", "three", "four", "five"),
     "delivery/work/WORK-FOLDER/notes.md": "notes\n",
   });
-  const mention = commit(root, "fix: six, as WORK-TRAILER asked", { "src/a.js": lines("one", "two", "three", "four", "five", "six") });
+  const mention = commit(root, "fix: six, as WORK-TRAILER and WORK-FOLDER asked", { "src/a.js": lines("one", "two", "three", "four", "five", "six") });
   const gone = commit(root, "feat: seven", { "src/a.js": lines("one", "two", "three", "four", "five", "six", "seven") }, "Work: WORK-GONE");
   work(root, "WORK-RUN", "Run work");
   record(root, "WORK-RUN", "RUN-A-01", start, first);
@@ -97,7 +99,7 @@ function traceFixture() {
   return { root, start, first, second, third, mention, gone };
 }
 
-test("each of the three facts traces lines to a work; a subject that only names one does not", () => {
+test("each of the three facts traces lines to a work; a subject naming two works counts for neither", () => {
   const { root, start, mention } = traceFixture();
   const trace = traced(root, "src/a.js");
   assert.equal(trace.path, "src/a.js");
@@ -109,8 +111,10 @@ test("each of the three facts traces lines to a work; a subject that only names 
   // "three" lies in both runs' ranges, "four" only in the superseded one.
   assert.deepEqual(byWork["WORK-RUN"].via, [{ kind: "run", run: "RUN-A-01" }, { kind: "run", run: "RUN-A-02" }]);
   assert.equal(byWork["WORK-RUN"].lines, 2);
-  // Lines one, two (the start) and six (a subject that only mentions a
-  // work) are untraced; nothing is guessed.
+  // Lines one, two (the start) and six are untraced: their subjects each
+  // name two works, and a subject counts only when it names exactly one
+  // (WORK-COMMIT-TRAILERS, tests/v2-commit-trailers.test.js); nothing is
+  // guessed.
   assert.equal(trace.untraced.lines, 3);
   assert.deepEqual(trace.untraced.commits.map((item) => item.commit), [start, mention]);
   // A trailer naming a work with no folder in reach is listed, not dropped.
@@ -142,7 +146,7 @@ test("works are listed most recent first, with stage, title, summary and where t
   assert.match(text, /^ {2}WORK-TRAILER {2}WORK_DRAFT {2}Trailer work \(1 line; via Work trailer\)$/m);
   assert.match(text, /^ {2}WORK-GONE {2}NOT_FOUND {2}\(no records in reach\) \(1 line; via Work trailer\)$/m);
   assert.match(text, /^ {2}not traced to a work: 3 lines in 2 commits$/m);
-  assert.match(text, /^ {4}[0-9a-f]{7} chore: start, see WORK-RUN$/m);
+  assert.match(text, /^ {4}[0-9a-f]{7} chore: start, see WORK-RUN and WORK-FOLDER$/m);
 });
 
 // WORK-POSITIONING-ALIGN: each work says who approved the version that

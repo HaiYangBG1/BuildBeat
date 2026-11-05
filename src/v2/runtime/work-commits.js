@@ -2,13 +2,16 @@
 // (WORK-COMMITTED-WORKS). A commit names a work through a "Work: <ID>"
 // trailer or by changing files under delivery/work/<ID>/; recorded run
 // ranges, the third fact, are added by callers that hold run records
-// (code-trace.js). `history --path` maps blamed lines to works with this,
+// (code-trace.js). A commit none of these explain may still name one work
+// in its subject (WORK-COMMIT-TRAILERS), a weaker clue reported as such. `history --path` maps blamed lines to works with this,
 // and status uses it to see that a work nobody ran has commits behind it.
 // Real cost behind it: in a pilot repository 127 of 164 works were done in
 // sessions without a run; status showed every one of them as a draft to
 // accept, while 110 had code commits that changed the work's own folder.
 
 import { execFileSync } from "node:child_process";
+import { readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 function git(root, args) {
   return execFileSync("git", ["-C", root, ...args], {
@@ -79,6 +82,47 @@ export function commitClues(fact) {
   return clues;
 }
 
+// The work folders a checkout keeps: the names a subject may use.
+export function knownWorks(root) {
+  const dir = join(root, "delivery", "work");
+  try {
+    return new Set(readdirSync(dir).filter((name) => {
+      try {
+        return statSync(join(dir, name)).isDirectory();
+      } catch {
+        return false;
+      }
+    }));
+  } catch {
+    return new Set();
+  }
+}
+
+// The one work a line of text names, or null (WORK-COMMIT-TRAILERS): the
+// text is cut at every character other than letters, digits, ".", "_" and
+// "-", dots, dashes and underscores at either end of a piece are dropped,
+// and exactly one piece must be a known work. Subjects often cite another work beside their
+// own, so two names count as none. templates/v2/hooks/commit-msg applies
+// the same rule when it adds the trailer.
+export function namedWork(text, known) {
+  const found = new Set();
+  for (const raw of String(text ?? "").split(/[^A-Za-z0-9._-]+/)) {
+    const piece = raw.replace(/^[._-]+|[._-]+$/g, "");
+    if (piece && known.has(piece)) found.add(piece);
+  }
+  return found.size === 1 ? [...found][0] : null;
+}
+
+// What a commit names: its own clues, or, when it has none, the one work its
+// subject names (kind "subject"). Callers holding run ranges ask
+// namedWork themselves once the ranges have been looked at.
+export function commitWorks(fact, known) {
+  const clues = commitClues(fact);
+  if (clues.length > 0) return clues;
+  const work = namedWork(fact.subject, known);
+  return work ? [{ work, kind: "subject" }] : [];
+}
+
 // A commit that changes something besides work records: at least one path
 // outside delivery/.
 export function changesCode(fact) {
@@ -97,6 +141,7 @@ export function codeCommitsOf(root, ref, works) {
   const found = new Map();
   if (works.length === 0) return found;
   const wanted = new Set(works);
+  const known = knownWorks(root);
   let since = null;
   try {
     const added = git(root, [
@@ -115,7 +160,7 @@ export function codeCommitsOf(root, ref, works) {
   }
   for (const fact of facts.values()) {
     if (!changesCode(fact)) continue;
-    const named = new Set(commitClues(fact).map((clue) => clue.work).filter((work) => wanted.has(work)));
+    const named = new Set(commitWorks(fact, known).map((clue) => clue.work).filter((work) => wanted.has(work)));
     for (const work of named) {
       if (!found.has(work)) found.set(work, []);
       found.get(work).push({ commit: fact.commit, time: fact.time, subject: fact.subject });
