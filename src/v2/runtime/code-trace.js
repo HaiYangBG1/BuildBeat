@@ -20,6 +20,7 @@ import { describeActor } from "./actor.js";
 import { readResult } from "./closeout.js";
 import { computeOverview, readJsonl } from "./overview.js";
 import { directory, pathLabel } from "./overview-repos.js";
+import { commitClues, commitFacts } from "./work-commits.js";
 
 export class TraceError extends Error {
   constructor(message) {
@@ -164,48 +165,6 @@ async function runRanges(root, runs) {
   return map;
 }
 
-// Commit time, subject, Work: trailers and changed paths of each commit, in
-// one call. Trailers come from Git's own parser, so a subject or a body line
-// that happens to start with "Work:" is not one. A merge commit's paths are
-// read against its first parent, which is what a line resolved in the merge
-// was written into. A move counts on both sides (--no-renames), so a commit
-// that moves files out of delivery/work/<ID>/ still belongs to that work; -z
-// keeps paths as they are, and the pinned log settings keep signature text
-// out of the path list (WORK-SCOPE-RENAMES).
-//
-// With -z a path may hold any byte but NUL, so NUL is the only separator:
-// each commit opens with an empty field, then its hash, time, subject and
-// Work: trailers; its paths follow, the first one after a newline. Paths are
-// never empty, so an empty field always opens the next commit.
-const COMMIT_FIELDS = 4;
-
-function commitFacts(root, commits) {
-  const facts = new Map();
-  if (commits.length === 0) return facts;
-  const fields = git(root, [
-    "-c", "log.showSignature=false", "-c", "log.follow=false",
-    "log", "--no-walk=unsorted", "--name-only", "--no-renames", "-z", "--diff-merges=first-parent",
-    "--format=%x00%H%x00%ct%x00%s%x00%(trailers:key=Work,valueonly,separator=%x1d)", ...commits,
-  ]).split("\0");
-  let at = fields.indexOf("");
-  while (at !== -1 && at + COMMIT_FIELDS < fields.length) {
-    const [commit, time, subject, trailers] = fields.slice(at + 1, at + 1 + COMMIT_FIELDS);
-    at += 1 + COMMIT_FIELDS;
-    const paths = [];
-    for (; at < fields.length && fields[at] !== ""; at += 1) {
-      const path = paths.length === 0 ? fields[at].replace(/^\n/, "") : fields[at];
-      if (path) paths.push(path);
-    }
-    facts.set(commit, {
-      time: Number(time),
-      subject,
-      trailers: trailers.split("\x1d").map((value) => value.trim().split(/\s+/)[0]).filter(Boolean),
-      paths,
-    });
-  }
-  return facts;
-}
-
 function titleOf(dir) {
   for (const name of ["work.md", "intent.md"]) {
     const path = join(dir, name);
@@ -242,7 +201,9 @@ function workFacts(roots, work, cwd) {
   for (const root of roots) {
     const dir = join(root, "delivery", "work", work);
     if (!directory(dir)) continue;
-    const row = computeOverview(root, { work, followTargets: false })[0] ?? null;
+    // The stage as the work's records give it: history --path keeps its
+    // output, and COMMITTED would only repeat the commits it already lists.
+    const row = computeOverview(root, { work, followTargets: false, committed: false })[0] ?? null;
     const stage = row?.stage ?? null;
     const page = readResult(root, work);
     const read = [join(dir, "work.md"), join(dir, "intent.md"), join(dir, "result.md")]
@@ -302,11 +263,7 @@ export async function traceLines(spec, { repo = process.cwd(), callers = [], cwd
       found.get(work).push(run ? { kind, run } : { kind });
     };
     for (const item of ranges.get(commit) ?? []) add(item.work, "run", item.run);
-    for (const work of fact.trailers) add(work, "trailer");
-    for (const changed of fact.paths) {
-      const match = /^delivery\/work\/([^/]+)\//.exec(changed);
-      if (match) add(match[1], "folder");
-    }
+    for (const clue of commitClues(fact)) add(clue.work, clue.kind);
     if (found.size === 0) {
       const entry = untraced.get(commit) ?? { commit, subject: fact.subject, lines: 0 };
       entry.lines += 1;

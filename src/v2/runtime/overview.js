@@ -23,6 +23,7 @@ import { nextReply } from "./notify.js";
 import { readReleases } from "./release.js";
 import { describeLiveness } from "./liveness.js";
 import { computeWorkCost, renderWorkCost } from "./work-cost.js";
+import { codeCommitsOf } from "./work-commits.js";
 
 function sha256File(path) {
   return `sha256:${createHash("sha256").update(readFileSync(path, "utf8"), "utf8").digest("hex")}`;
@@ -217,7 +218,7 @@ function ledgersOf(repoRoot, context) {
 
 export function computeOverview(
   repoRoot,
-  { work = null, repoLabel: defaultRepoLabel = ".", cwd = null, followTargets = true, warnings = [], configsOverride = null, context = overviewContext(repoRoot), skipWorks = new Set(), localCompatibility = false } = {},
+  { work = null, repoLabel: defaultRepoLabel = ".", cwd = null, followTargets = true, warnings = [], configsOverride = null, context = overviewContext(repoRoot), skipWorks = new Set(), localCompatibility = false, committed: findCommitted = true } = {},
 ) {
   const workRoot = join(repoRoot, "delivery", "work");
   const rows = [];
@@ -229,6 +230,9 @@ export function computeOverview(
   const mainRef = headRef(repoRoot, context);
   // Resolve once; do not spawn another Git process for each local work.
   const currentRoot = realpathSync(repoRoot);
+  // Works nobody ran that may have commits behind them; looked up together
+  // after the loop, with one git log for all of them.
+  const unrun = [];
   for (const workId of [...workIds].sort()) {
     if ((work && workId !== work) || skipWorks.has(workId)) {
       continue;
@@ -351,6 +355,7 @@ export function computeOverview(
 
     let stage;
     let next;
+    let maybeCommitted = false;
     if (closure && !liveRun) {
       stage = closure.decision === "cancelled" ? "CANCELLED" : "CLOSED";
       const result =
@@ -373,6 +378,10 @@ export function computeOverview(
       stage = "NO_INTENT";
       next = `write delivery/work/${workId}/work.md (goal, scope, acceptance, implementation plan)`;
     } else if (!latest) {
+      // A work with a run config is waiting for its run (a session may have
+      // committed the change it will adopt); only works without one can have
+      // been finished in a session.
+      maybeCommitted = findCommitted && configs.length === 0;
       if (!plan.exists) {
         stage = intent.accepted ? "INTENT_ACCEPTED" : "INTENT_DRAFT";
         next = intent.accepted
@@ -449,7 +458,7 @@ export function computeOverview(
         ? `decide: retry (buildbeat run --config ${configPath} --new) or close the work`
         : `${unified ? "work.md" : "plan"} not accepted (${plan.exists ? "draft" : "missing"}); fix that before another run`;
     }
-    rows.push({
+    const row = {
       work: workId,
       ...(config ? { config: config.path, hasRelease: configs.some((item) => item.release) ? true : configs.some((item) => item.error) ? null : false } : { hasRelease: false }),
       ...(config?.target && (!config.repo || config.repo !== currentRoot) && followTargets ? { targetRepo: config.repo ?? config.target, targetLabel: pathLabel(cwd ?? process.cwd(), config.repo ?? config.target) } : {}),
@@ -519,9 +528,31 @@ export function computeOverview(
           }
         : {}),
       next: local ? next : next.replaceAll("--config <run-config.yaml>", `--config ${configPath}`),
-    });
+    };
+    rows.push(row);
+    if (maybeCommitted) unrun.push({ row, workId, repoLabel, hasResult: page.exists });
   }
+  markCommitted(repoRoot, mainRef, unrun);
   return rows;
+}
+
+// COMMITTED (WORK-COMMITTED-WORKS): a work with no run and no run config,
+// not closed, whose code commits are on the branch. It says there are
+// commits, not that the work is done; the next step is the close-out.
+function markCommitted(repoRoot, branch, unrun) {
+  if (unrun.length === 0) return;
+  const found = codeCommitsOf(repoRoot, branch, unrun.map((item) => item.workId));
+  for (const { row, workId, repoLabel, hasResult } of unrun) {
+    const commits = found.get(workId);
+    if (!commits?.length) continue;
+    const describe = (item) => ({ commit: item.commit, at: new Date(item.time * 1000).toISOString(), subject: item.subject });
+    row.stage = "COMMITTED";
+    row.committed = { commits: commits.length, branch, first: describe(commits.at(-1)), latest: describe(commits[0]) };
+    const close = `buildbeat decide --repo ${repoLabel} --work ${workId} --action close`;
+    row.next = hasResult
+      ? `if it is done, close it out: ${close} --by <you>`
+      : `if it is done, close it out: ${close} --draft, edit delivery/work/${workId}/result.md, then ${close} --by <you>`;
+  }
 }
 
 function mark(status) {
@@ -571,6 +602,11 @@ export function renderOverview(rows, { decisions = false, extra = null } = {}) {
       parts.push("env-facts ✓");
     }
     lines.push(`  ${parts.join(" · ")}`);
+    if (row.committed) {
+      const { commits, branch, latest } = row.committed;
+      const subject = latest.subject.length > 80 ? `${latest.subject.slice(0, 80)}…` : latest.subject;
+      lines.push(`  committed: ${commits} commit${commits === 1 ? "" : "s"} on ${branch} outside its folder, latest ${latest.commit.slice(0, 7)} @ ${latest.at.slice(0, 10)} ${subject}`);
+    }
     if (row.cost) {
       // What this work has already consumed across every run, superseded
       // ones included: the number a "continue or cut" decision needs.

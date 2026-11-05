@@ -96,6 +96,7 @@ src/v2/runtime/release.js
 src/v2/runtime/repo-ref.js
 src/v2/runtime/run-record.js
 src/v2/runtime/threads.js
+src/v2/runtime/work-commits.js
 src/v2/runtime/work-cost.js
 src/v2/storage/event-ledger.js
 src/v2/workspace/workspace-manager.js

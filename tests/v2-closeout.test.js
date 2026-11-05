@@ -270,3 +270,150 @@ test("the templates carry the documented sections", () => {
   // for a recorded conclusion.
   assert.deepEqual(parsePromotions(read("result.example.md")), []);
 });
+
+// Works finished in a session without a run (WORK-COMMITTED-WORKS): status
+// shows COMMITTED once code commits on the branch name the work, and close
+// --draft writes a result page from them that closing refuses until it has
+// been read. Real cost behind it: in a pilot repository 127 of 164 works
+// were done without a run and status listed every one as a draft to accept.
+function commitFiles(root, files, ...message) {
+  for (const [path, text] of Object.entries(files)) write(root, path, text);
+  git(root, "add", "--", ...Object.keys(files));
+  git(root, ...IDENTITY, "commit", "-q", ...message.flatMap((paragraph) => ["-m", paragraph]));
+  return git(root, "rev-parse", "HEAD");
+}
+const draft = (root, id) => call(root, "decide", "--repo", ".", "--work", id, "--action", "close", "--draft");
+
+test("a work nobody ran shows COMMITTED once code commits on the branch name it", () => {
+  const root = repo();
+  work(root, "FOLDER");
+  work(root, "TRAILER");
+  work(root, "RECORDS");
+  commitFiles(root, {
+    "delivery/work/FOLDER/work.md": "# FOLDER\n", "delivery/work/TRAILER/work.md": "# TRAILER\n", "delivery/work/RECORDS/work.md": "# RECORDS\n",
+  }, "docs: three drafts");
+  const viaFolder = commitFiles(root, { "src/a.js": "a\n", "delivery/work/FOLDER/work.md": "# FOLDER\nshipped\n" }, "feat: a and its work");
+  const viaTrailer = commitFiles(root, { "src/b.js": "b\n" }, "feat: b", "Work: TRAILER");
+  commitFiles(root, { "delivery/work/RECORDS/notes.md": "notes\n" }, "docs: records only", "Work: RECORDS");
+
+  const folder = statusRow(root, "FOLDER");
+  assert.equal(folder.stage, "COMMITTED");
+  assert.equal(folder.committed.commits, 1);
+  assert.equal(folder.committed.latest.commit, viaFolder);
+  assert.equal(folder.committed.first.commit, viaFolder);
+  assert.equal(folder.committed.latest.subject, "feat: a and its work");
+  assert.match(folder.committed.latest.at, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(folder.next,
+    "if it is done, close it out: buildbeat decide --repo . --work FOLDER --action close --draft, edit delivery/work/FOLDER/result.md, then buildbeat decide --repo . --work FOLDER --action close --by <you>");
+  const trailer = statusRow(root, "TRAILER");
+  assert.equal(trailer.stage, "COMMITTED");
+  assert.equal(trailer.committed.latest.commit, viaTrailer);
+  // A commit that only changes work records is no code commit.
+  const records = statusRow(root, "RECORDS");
+  assert.equal(records.stage, "WORK_DRAFT");
+  assert.equal(records.committed, undefined);
+
+  const text = cli(root, "status", "--repo", ".");
+  assert.match(text, new RegExp(`^FOLDER {2}COMMITTED$`, "m"));
+  assert.match(text, new RegExp(`^ {2}committed: 1 commit on main outside its folder, latest ${viaFolder.slice(0, 7)} @ \\d{4}-\\d{2}-\\d{2} feat: a and its work$`, "m"));
+  assert.match(text, /^RECORDS {2}WORK_DRAFT$/m);
+  // Accepting changes nothing: the commits are what count.
+  cli(root, "accept", "--repo", ".", "--work", "TRAILER", "--by", "owner");
+  assert.equal(statusRow(root, "TRAILER").stage, "COMMITTED");
+});
+
+test("a work with a run config, a run or a close keeps its stage", () => {
+  const root = repo();
+  work(root, "CONFIGURED", { "run-config.yaml": config("CONFIGURED") });
+  work(root, "RAN");
+  work(root, "SHUT", { "result.md": "# SHUT result\n\nDone.\n" });
+  commitFiles(root, {
+    "delivery/work/CONFIGURED/work.md": "# CONFIGURED\n", "delivery/work/CONFIGURED/run-config.yaml": config("CONFIGURED"),
+    "delivery/work/RAN/work.md": "# RAN\n", "delivery/work/SHUT/work.md": "# SHUT\n", "delivery/work/SHUT/result.md": "# SHUT result\n\nDone.\n",
+  }, "docs: works");
+  const base = git(root, "rev-parse", "HEAD");
+  const code = commitFiles(root, { "src/c.js": "c\n" }, "feat: c", "Work: CONFIGURED", "Work: RAN", "Work: SHUT");
+  write(root, "delivery/work/RAN/runs/RUN-RAN-01/run-record.json", JSON.stringify({
+    startedAt: "2026-10-01T00:00:00Z", terminal: { status: "SUCCEEDED" }, workspaces: { "RUN-RAN-01": { base, candidate: code } },
+  }));
+  const shut = close(root, "SHUT");
+  assert.equal(shut.status, 0, shut.stderr);
+
+  const configured = statusRow(root, "CONFIGURED");
+  assert.equal(configured.stage, "WORK_DRAFT");
+  assert.equal(configured.committed, undefined);
+  const ran = statusRow(root, "RAN");
+  assert.equal(ran.stage, "MERGED");
+  assert.equal(ran.committed, undefined);
+  assert.equal(statusRow(root, "SHUT").stage, "CLOSED");
+});
+
+test("close --draft writes a result page from the commits, and closing refuses it until it is read", () => {
+  const root = repo();
+  const dir = work(root, "DRAFTED");
+  work(root, "EMPTY");
+  commitFiles(root, { "delivery/work/DRAFTED/work.md": "# DRAFTED\n", "delivery/work/EMPTY/work.md": "# EMPTY\n" }, "docs: drafts");
+  const shas = [];
+  for (let index = 1; index <= 22; index += 1) {
+    shas.push(commitFiles(root, { [`src/f${index}.js`]: `${index}\n` }, `feat: part ${index}`, "Work: DRAFTED"));
+  }
+
+  const none = draft(root, "EMPTY");
+  assert.notEqual(none.status, 0);
+  assert.match(none.stderr, /no commits on main outside delivery\/ trace to EMPTY; write delivery\/work\/EMPTY\/result\.md by hand \(template: templates\/v2\/result\.example\.md\)/);
+  assert.equal(existsSync(join(root, "delivery", "work", "EMPTY", "result.md")), false);
+
+  const wrote = draft(root, "DRAFTED");
+  assert.equal(wrote.status, 0, wrote.stderr);
+  assert.match(wrote.stdout, /^wrote delivery\/work\/DRAFTED\/result\.md \(a draft from 22 commits\); check it against Git and the work, delete its first line, then buildbeat decide --repo \. --work DRAFTED --action close --by <you>$/m);
+  const page = readFileSync(join(dir, "result.md"), "utf8");
+  const lines = page.split("\n");
+  assert.equal(lines[0], "<!-- buildbeat draft: check every section against Git and the work, then delete this line -->");
+  assert.equal(lines[1], "# DRAFTED result");
+  assert.match(lines[3], new RegExp(`^Delivered in 22 commits on main(?: on \\d{4}-\\d{2}-\\d{2}|, \\d{4}-\\d{2}-\\d{2} to \\d{4}-\\d{2}-\\d{2}); latest ${shas[21].slice(0, 7)} "feat: part 22"\\. Confirmed by <fill in: who checked it, and where it runs>\\.$`));
+  const listed = lines.filter((line) => /^- [0-9a-f]{7} /.test(line));
+  assert.equal(listed.length, 20);
+  assert.match(listed[0], new RegExp(`^- ${shas[21].slice(0, 7)} \\d{4}-\\d{2}-\\d{2} feat: part 22$`));
+  assert.ok(lines.includes("- and 2 more"));
+  assert.deepEqual(page.match(/^## .+$/gm), ["## Decided", "## Left over", "## Written into the project"]);
+  // The summary status will show is the delivery line, not the marker.
+  assert.match(resultSummary(page), /^Delivered in 22 commits/);
+  assert.deepEqual(parsePromotions(page), []);
+
+  const again = draft(root, "DRAFTED");
+  assert.notEqual(again.status, 0);
+  assert.match(again.stderr, /delivery\/work\/DRAFTED\/result\.md already exists; edit it instead/);
+  assert.equal(readFileSync(join(dir, "result.md"), "utf8"), page);
+  assert.equal(statusRow(root, "DRAFTED").next, "if it is done, close it out: buildbeat decide --repo . --work DRAFTED --action close --by <you>");
+
+  const refusal = /delivery\/work\/DRAFTED\/result\.md is still the generated draft; check it, fill in or delete every "<fill in" line and its first line, then close/;
+  const asWritten = close(root, "DRAFTED");
+  assert.notEqual(asWritten.status, 0);
+  assert.match(asWritten.stderr, refusal);
+  writeFileSync(join(dir, "result.md"), lines.slice(1).join("\n"));
+  const placeholders = close(root, "DRAFTED");
+  assert.notEqual(placeholders.status, 0);
+  assert.match(placeholders.stderr, refusal);
+  assert.equal(existsSync(join(dir, "decisions.jsonl")), false);
+
+  const edited = lines.slice(1).join("\n")
+    .replace("Confirmed by <fill in: who checked it, and where it runs>.", "Confirmed by the owner in production.")
+    .replace(/^- <fill in: decisions.*$/m, "- none")
+    .replace(/^- <fill in: what was not done.*$/m, "- none")
+    .replace(/^- <fill in: "path @ commit.*$/m, "- none: nothing outlives this work");
+  writeFileSync(join(dir, "result.md"), edited);
+  const closed = close(root, "DRAFTED");
+  assert.equal(closed.status, 0, closed.stderr);
+  assert.match(decisions(dir).at(-1).subject.result, /^Delivered in 22 commits on main.*Confirmed by the owner in production\.$/);
+  const after = draft(root, "DRAFTED");
+  assert.notEqual(after.status, 0);
+  assert.match(after.stderr, /DRAFTED is already closed/);
+});
+
+test("a hand-written page that quotes the placeholder in code still closes", () => {
+  const root = repo();
+  const dir = work(root, "QUOTED", { "result.md": "# QUOTED result\n\nDraft guard documented.\n\n```\n- <fill in: example>\n```\n" });
+  const closed = close(root, "QUOTED");
+  assert.equal(closed.status, 0, closed.stderr);
+  assert.equal(decisions(dir).at(-1).subject.result, "Draft guard documented.");
+});

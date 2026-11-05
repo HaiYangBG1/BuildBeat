@@ -250,6 +250,11 @@ export function closeWork({
       `closing a work needs delivery/work/${workId}/result.md (template: templates/v2/result.example.md)`,
     );
   }
+  if (page.draft) {
+    throw new ReleaseError(
+      `delivery/work/${workId}/result.md is still the generated draft; check it, fill in or delete every "<fill in" line and its first line, then close`,
+    );
+  }
   const summary =
     typeof result === "string" && result.trim() !== "" ? result.trim() : page.summary;
   if (!summary) {

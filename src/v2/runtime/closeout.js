@@ -12,8 +12,10 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, posix } from "node:path";
+
+import { branchName, codeCommitsOf } from "./work-commits.js";
 
 // A line in result.md that records a conclusion written into the project:
 // "- <path> @ <commit> — <what>". The path may be in backticks (and then
@@ -147,7 +149,68 @@ export function readResult(repoRoot, workId) {
     digest: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
     summary: resultSummary(text),
     promotions: parsePromotions(text),
+    draft: isDraft(text),
   };
+}
+
+// A result page drafted from commits (WORK-COMMITTED-WORKS): `decide --action
+// close --draft` writes it, and closing refuses it until someone has read
+// it, deleted its first line and filled in or deleted every "<fill in"
+// placeholder. The marker is an HTML comment, so it is never the summary.
+const DRAFT_MARKER = "<!-- buildbeat draft: check every section against Git and the work, then delete this line -->";
+const DRAFT_SHOWN = 20;
+
+export function isDraft(text) {
+  return /^\s*<!-- buildbeat draft:/m.test(text) || textLines(text).some((line) => line.includes("<fill in"));
+}
+
+export class DraftError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "DraftError";
+  }
+}
+
+// Writes delivery/work/<ID>/result.md from the code commits on the current
+// branch that name the work. It never overwrites a page and never closes.
+export function writeResultDraft({ repoRoot, workId, closed = false }) {
+  const path = resultPath(repoRoot, workId);
+  if (closed) throw new DraftError(`${workId} is already closed`);
+  if (existsSync(path)) throw new DraftError(`delivery/work/${workId}/result.md already exists; edit it instead`);
+  const branch = branchName(repoRoot);
+  const commits = codeCommitsOf(repoRoot, branch, [workId]).get(workId) ?? [];
+  if (commits.length === 0) {
+    throw new DraftError(
+      `no commits on ${branch} outside delivery/ trace to ${workId}; write delivery/work/${workId}/result.md by hand (template: templates/v2/result.example.md)`,
+    );
+  }
+  const day = (item) => new Date(item.time * 1000).toISOString().slice(0, 10);
+  const latest = commits[0];
+  const first = commits.at(-1);
+  const span = day(first) === day(latest) ? ` on ${day(latest)}` : `, ${day(first)} to ${day(latest)}`;
+  const count = `${commits.length} commit${commits.length === 1 ? "" : "s"}`;
+  const listed = commits.slice(0, DRAFT_SHOWN).map((item) => `- ${item.commit.slice(0, 7)} ${day(item)} ${item.subject}`);
+  if (commits.length > DRAFT_SHOWN) listed.push(`- and ${commits.length - DRAFT_SHOWN} more`);
+  const text = [
+    DRAFT_MARKER,
+    `# ${workId} result`,
+    "",
+    `Delivered in ${count} on ${branch}${span}; latest ${latest.commit.slice(0, 7)} "${latest.subject}". Confirmed by <fill in: who checked it, and where it runs>.`,
+    "",
+    ...listed,
+    "",
+    "## Decided",
+    '- <fill in: decisions later readers need, or "none">',
+    "",
+    "## Left over",
+    '- <fill in: what was not done and where it went, or "none">',
+    "",
+    "## Written into the project",
+    '- <fill in: "path @ commit — what was added or corrected", or "none" and why>',
+    "",
+  ].join("\n");
+  writeFileSync(path, text, { encoding: "utf8", flag: "wx" });
+  return { path, commits: commits.length, branch };
 }
 
 function git(repoRoot, args) {
