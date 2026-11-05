@@ -13,7 +13,13 @@ from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(([^)\n]+)\)")
-INTERNAL_CITATION = re.compile(r"(?:filecite|cite)")
+# Citation markers some AI tools leave in exported text: the file citation
+# token, the turn citation token (the word followed by "turn" and a digit)
+# and the private-use delimiters U+E200..U+E202 those tokens sit between.
+# Ordinary English words that
+# merely contain the letters are not markers (WORK-FALSE-POSITIVES: the
+# earlier pattern matched the bare word, so prose had to be reworded).
+INTERNAL_CITATION = re.compile(r"filecite|cite(?=turn\d)|[\ue200-\ue202]")
 # Documents users read today. History (release evidence, iteration records,
 # plans, RFC bodies) is exempt: it must keep the facts of its own date.
 ACTIVE_DOCS = (
