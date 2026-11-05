@@ -3,7 +3,7 @@
 - 驱动运行时：本机全局 CLI 5.4.0（与 main `1be6ff7` 的运行时代码相同）。
 - builder 和 fixer 不配 worker：驾驶会话在 Run 工作树里亲自写，再以 `run --adopt <sha>` 交给 verify 和只读 reviewer。
 - 所有者 2026-11-05 转来一个业务试点项目的 12 条使用反馈；会话核实后建议先做第 1、2、3 条，所有者说「按推荐起草」，看过三份说明的摘要后说「全部接受并开工」。接受记为 `A-WORK-COMMITTED-WORKS-1`（人，经 AI 会话录入）；所有者没有说逐项看过 work.md。
-- RUN-COMMITTED-WORKS-01 起点 `ee670cf`（会话分支 `claude/caixiaozhi-feedback-00d1e3`，接受记录已提交）。
+- RUN-COMMITTED-WORKS-01 起点 `ee670cf`（会话分支，接受记录已提交）。
 - 和说明不完全一样的地方，写在这里供审查和所有者对照：
   - `history --path` 的输出不变（说明的验收要求），所以它对这类工作仍显示记录里的阶段（比如 `WORK_DRAFT`），不显示 `COMMITTED`。已有测试 `tests/v2-code-trace.test.js` 断言 `WORK-TRAILER  WORK_DRAFT`，按停止条件不改已有断言。
   - `--json` 的 `committed` 多了一个 `branch` 字段（文本那行要用分支名，顺带给出）。
@@ -24,4 +24,4 @@
 - 审查不收敛（本轮 1 条阻断、上轮 0 条），Run 停在 `enter-fix` 等人；按规则由所有者决定是否让 `be9c463` 重验、再审。
 - 顺带发现（不在本工作范围）：在合并决定点用 `run --adopt` 交回修复时，运行时记一行 `enter-wait-merge approved`（带 `adopted` 字段），`status` 因此提示"merge approved by an AI session"，其实不是合并批准。人真正批准后提示会消失；`selfMergeApproval`（`src/v2/runtime/actor.js:106-110`）应跳过带 `adopted` 的行。
 - 所有者说「批准重验再审」，`be9c463` 以 `run --adopt` 交回（`D-RUN-COMMITTED-WORKS-01-3`，人，经 AI 会话录入）。第 3 轮 verify 通过（约 4 分钟），codex 只读审查 0 条问题。Run 停在合并决定，等所有者批准。
-- 所有者 2026-11-05 说「批准合并并继续」，记为合并批准 `D-RUN-COMMITTED-WORKS-01-4`（人，经 AI 会话录入）；Run 终态 SUCCEEDED。候选 `be9c463` 以 merge commit 合入会话分支 `claude/caixiaozhi-feedback-00d1e3`。未推送、未发版、未关窗。
+- 所有者 2026-11-05 说「批准合并并继续」，记为合并批准 `D-RUN-COMMITTED-WORKS-01-4`（人，经 AI 会话录入）；Run 终态 SUCCEEDED。候选 `be9c463` 以 merge commit 合入会话分支。未推送、未发版、未关窗。

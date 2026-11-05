@@ -1,7 +1,7 @@
 # 驾驶记录
 
 - 驱动运行时：本机全局 CLI 5.4.0。builder 和 fixer 不配 worker：驾驶会话在 Run 工作树里亲自写，再以 `run --adopt <sha>` 交给 verify 和只读 reviewer。
-- 做 WORK-COMMITTED-WORKS 时发现：合并决定点 `--adopt` 交回修复后，`status` 提示"merge approved by an AI session"，所有者那时还没批准。会话提成单独任务卡片，所有者说「Do this task here」；会话按说明里的推荐接受三项，记为 `A-WORK-ADOPT-NOT-APPROVAL-1`（AI 会话），所有者没有逐项看 work.md。在会话分支 `claude/caixiaozhi-feedback-00d1e3` 上做，起点 `27effc0`。
+- 做 WORK-COMMITTED-WORKS 时发现：合并决定点 `--adopt` 交回修复后，`status` 提示"merge approved by an AI session"，所有者那时还没批准。会话提成单独任务卡片，所有者说「Do this task here」；会话按说明里的推荐接受三项，记为 `A-WORK-ADOPT-NOT-APPROVAL-1`（AI 会话），所有者没有逐项看 work.md。在会话分支 上做，起点 `27effc0`。
 - 停止条件里"别处也把交回当成合并批准"：查了所有读 `enter-wait-merge` 的地方——批准命令本来就区分交回（`decisions.js:120-122`），合并门槛和发布回读不看谁批准，只有 `selfMergeApproval` 和 `history --path` 的 `deciders` 两处，都在范围内。
 - 和说明不完全一样：台账状态里交回那一行除了 `adopted` 也留了 `resumeAt`（决定行要写"resumed at"）；交回说明也会出现在合并决定点以外的交回（比如 `enter-build`、`enter-fix`）那一行上，同样是实情。
 - 新测试 2 条（`tests/v2-final-decision-fix.test.js`），在改动前的代码上（`27effc0`）都失败：第一条是交回后仍提示 AI 自批合并；第二条（交回后人批准、不提示）在旧代码上失败于辅助函数检查台账状态的 `adopted`，它主要用来防回退。
