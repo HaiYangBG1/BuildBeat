@@ -43,7 +43,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 | 问题接受、驳回 | `buildbeat decide --repo . --work <ID> --action accept|dismiss --fingerprint <fp> --as human --by <owner> --note <reason>` |
 | 已手修并提交 | `buildbeat run --config <config> --run <RUN> --adopt <sha> --by <name>`；检查干净工作树与实际 HEAD 后从 verify 继续；合并决定点也可用，此时须为当前候选的新后代且改动不越界 |
 | 配置或环境有问题 | `buildbeat check --config <config>`；显式 `--step <step>` 会在主检出执行 worker，只有用户任务需要才调用，结果不是正式证据 |
-| 收口、关窗 | 合并后起草 `delivery/work/<ID>/result.md`（模板 `templates/v2/result.example.md`），按下面的清单准备要写回项目文档的改动，把改动和 `result.md` 摘要放在一屏给用户看；用户同意后提交写回改动，在 `result.md` 里填 `路径 @ 提交`，`status --repo . --work <ID>` 核对通过后 `buildbeat decide --repo . --work <ID> --action close --as human --by <owner> [--note <原话>]`，再把 `result.md` 与 `decisions.jsonl` 一起提交。设了 `release:` 的工作，人完成上线后先 `buildbeat release --config <config> [--note <text>]`，最近一次回读通过才能关窗。run 配置在主仓、记录在代码仓时，从主仓执行关窗 |
+| 收口、关窗 | 合并后起草 `delivery/work/<ID>/result.md`（模板 `templates/v2/result.example.md`），按下面的清单准备要写回项目文档的改动，把改动和 `result.md` 摘要放在一屏给用户看；用户同意后提交写回改动，在 `result.md` 里填 `路径 @ 提交`，`status --repo . --work <ID>` 核对通过后 `buildbeat decide --repo . --work <ID> --action close --as human --by <owner> [--note <原话>]`，再把 `result.md` 与 `decisions.jsonl` 一起提交。设了 `release:` 的工作，人完成上线后先 `buildbeat release --config <config> [--env <环境>] [--note <text>]`，最近一次回读通过才能关窗；一份配置管所有环境，分几步上线的每步回读一次、用 `--note` 写第几步；没跑 Run 的工作，配置只写 `repo`、`work`、`release:` 就能记回读。问"现在线上是哪个版本"用 `buildbeat status --repo . --releases`，不要把版本抄进项目文件；上线的规矩和坑默认写回项目的 `docs/operations.md`（模板 `templates/v2/operations.example.md`）（这几点需要包含这项改动的运行时）。run 配置在主仓、记录在代码仓时，从主仓执行关窗。会话里直接做完、没跑 Run 的工作，status 显示 `COMMITTED`：先 `buildbeat decide --repo . --work <ID> --action close --draft` 按提交写 `result.md` 初稿，对照 Git 改好、删掉第一行和每一处 `<fill in`，再走上面的流程；初稿没改完时关窗会被拒绝（这两点需要包含这项改动的运行时） |
 | 结束一轮 | `buildbeat stop --repo . --run <RUN> --reason <reason>`；活动驱动持锁时先处理进程，不能把 stop 当作进程杀手 |
 | 清理 | `buildbeat gc --repo .` 查看计划，授权范围内再加 `--apply`；不得丢唯一候选或脏工作树 |
 
@@ -57,7 +57,7 @@ description: BuildBeat 用项目文件接续上下文，在隔离工作树内自
 - 只在目标确认、真正例外和最终决定处请求用户。review 默认不分诊；不收敛、环境故障、预算耗尽照常停人，不能由驾驶会话冒充人批准。
 - Work review 预算默认 6 轮，跨所有 Run 累计；保留缓存、增量审查、人工修复接管和环境故障分类。
 - 长运行脱离宿主短超时启动。状态、最近输出、耗时和通知用于发现停顿；STALLED 不等于进程已终止。
-- `delivery/` 跟代码一起进 Git：不要用 `.gitignore` 或 `.git/info/exclude` 排除它，`accept` 和 `check` 发现被忽略会提醒。其中的截图、压缩包和日志不进 Git，模板 `gitignore.template` 已写好规则；`accept` 和 `check` 发现工作文件夹里有会进 Git 的这类文件或 256 KB 以上的文件也会提醒（需要包含这项改动的运行时）。工作文件夹只放这项工作的记录，外加它确实要用的少量文件（比如验证脚本）；命令输出、回读结果、一次性脚本不放进去，结论写进 `result.md`，以后还要用的脚本放进项目自己的目录。记录以外的文件超过 10 个时，`accept` 和 `check` 也会提醒（同样需要包含这项改动的运行时）。为某项工作手工提交（手修后 `--adopt`、只改文档的工作）时，提交信息末尾空一行写 `Work: <ID>`；随包信封的机械提交会自动带。
+- `delivery/` 跟代码一起进 Git：不要用 `.gitignore` 或 `.git/info/exclude` 排除它，`accept` 和 `check` 发现被忽略会提醒。其中的截图、压缩包和日志不进 Git，模板 `gitignore.template` 已写好规则；`accept` 和 `check` 发现工作文件夹里有会进 Git 的这类文件或 256 KB 以上的文件也会提醒（需要包含这项改动的运行时）。工作文件夹只放这项工作的记录，外加它确实要用的少量文件（比如验证脚本）；命令输出、回读结果、一次性脚本不放进去，结论写进 `result.md`，以后还要用的脚本放进项目自己的目录。记录以外的文件超过 10 个时，`accept` 和 `check` 也会提醒（同样需要包含这项改动的运行时）。为某项工作手工提交（手修后 `--adopt`、只改文档的工作）时，提交信息末尾空一行写 `Work: <ID>`；随包信封的机械提交会自动带。`buildbeat hooks install --repo .` 装一个 commit-msg 钩子，标题里只写了一个有文件夹的工作编号时自动补标记，不覆盖项目已有的钩子；没装运行时的照指南 12 把 `templates/v2/hooks/commit-msg` 拷进 `.git/hooks/`。`accept`、`check` 发现最近的提交标题写了编号却没带标记时会提醒（这几点需要包含这项改动的运行时）。
 - 新会话先读项目入口、work.md、Git 与状态。旧的 intent/plan 和历史记录继续读取；活动运行不能随意删除或重复启动。
 - 既有项目规范由项目所有者维护，不覆盖；项目治理模板不在 BuildBeat 范围内。生产监控与部署放在项目工具中。有 UI 的交付在 run-config 写 `requireScreenshot: true`，verify 把真渲染截图以 PNG 写进 `BUILDBEAT_SCREENSHOT_DIR`。
 - merge、push、发布、部署需要对应授权；最终批准只表示候选具备合并条件。不要用 `git add -A`，只提交本次具体文件。
@@ -111,6 +111,8 @@ redact:
 # 有 UI 的交付：verify 把真渲染截图以 PNG 写进 $BUILDBEAT_SCREENSHOT_DIR（只收可解码的 PNG），合并检查要求当前候选有截图
 # requireScreenshot: true
 # 合并并上线后由 buildbeat release 在主检出运行的只读回读命令（形状同 worker）；回读通过后才能关窗
+# 一份配置管所有环境：buildbeat release --config <本文件> --env <环境> [--note <第几步>]，命令从 $BUILDBEAT_RELEASE_ENV 读环境名；
+# 没跑 Run 就做完的工作，可以只写 repo、work 和 release:（不写 workers:），只用来记回读
 # release:
 #   command: bash
 #   args:

@@ -22,11 +22,12 @@ Paste this to your AI coding tool (Claude Code, Codex and Cursor all work) and i
 Please set up this project to record requirements the BuildBeat way, without the runtime for now (https://github.com/HaiYangBG1/BuildBeat):
 
 1. Read SKILL.md and docs/v2/guide/12-without-runtime.en.md in that repository, and from then on work the "Skill and project files only" way.
-2. Copy templates/v2/work.example.md and templates/v2/result.example.md from that repository into this project's delivery/templates/.
+2. Copy templates/v2/work.example.md and templates/v2/result.example.md from that repository into this project's delivery/templates/; if the project has no operations manual yet, copy templates/v2/operations.example.md to docs/operations.md for its release rules and the traps found so far.
 3. Add the delivery/ block of templates/gitignore.template in that repository (the ignore rules for screenshots, archives and logs, with the comment above them) to this project's .gitignore, creating it if missing.
 4. Add one line to this project's AGENTS.md (create it if missing): requirements are recorded the BuildBeat way under delivery/work/<id>/, templates are in delivery/templates/, rules at https://github.com/HaiYangBG1/BuildBeat/blob/main/docs/v2/guide/12-without-runtime.en.md
 5. Make sure delivery/ is not excluded by .gitignore or .git/info/exclude, then commit these changes.
-6. Tell me in a sentence or two when it is ready. From then on I will just say what I want done.
+6. Copy templates/v2/hooks/commit-msg from that repository to this clone's .git/hooks/commit-msg and make it executable; if a commit-msg hook is already there, do not overwrite it, add a line to it that calls this one. It adds the Work: trailer when a commit subject names exactly one work. Hooks do not travel with Git, so each person does this once in their own clone.
+7. Tell me in a sentence or two when it is ready. From then on I will just say what I want done.
 ```
 
 With Claude Code you can also install the plugin, so every session loads the Skill on its own; the plugin carries the templates and this guide too, so no npm package is needed.
@@ -40,7 +41,7 @@ With Claude Code you can also install the plugin, so every session loads the Ski
 
 1. **Draft:** say what you want; the AI drafts `delivery/work/<id>/work.md` in the eight sections of `delivery/templates/work.example.md`, naming the commit it checked on in the facts heading and pointing at code as `path:<start>-<end>`.
 2. **Accept:** once you have read and agreed, the AI appends one line to `decisions.jsonl` in the "Accept `work.md`" format below and computes the digest.
-3. **Do the work:** edit, test and commit as usual, ending each commit message with `Work: <id>`; merging follows the project's own process.
+3. **Do the work:** edit, test and commit as usual, ending each commit message with `Work: <id>` (with the hook above, naming the work in the subject adds it); merging follows the project's own process.
 4. **Close out:** after the merge, write `result.md` from `delivery/templates/result.example.md`. Conclusions later work needs go into the project's own documents first and are committed; `result.md` then records each as `path @ commit`. The AI can check with Git that the commit is on the main branch and changes that file. Facts that change (versions, progress, who is doing what) stay out; write where to look them up instead.
 5. **Close:** append the close line in the format below and commit `result.md` with `decisions.jsonl`.
 
@@ -82,7 +83,7 @@ The ledger of a run in progress lives in `.buildbeat/runtime/` on the machine ru
 
 - **Write the facts section** with the commit you checked on in its heading and code pointed at as `path:<start>-<end>` in backticks. This is plain text too; without the runtime, `git diff <that commit> HEAD -- <path>` shows whether the code changed. Someone with the runtime sees what changed in `status --work`.
 
-- **When you commit code or documents for a work**, end the commit message with a blank line and `Work: <ID>`. Someone with the runtime can then find the work from the code with `buildbeat history --path`.
+- **When you commit code or documents for a work**, end the commit message with a blank line and `Work: <ID>`; with the `templates/v2/hooks/commit-msg` hook installed, a subject that names exactly one work adds it for you. Someone with the runtime can then find the work from the code with `buildbeat history --path`; an older commit without the trailer is found too when nothing else explains it and its subject names exactly one work, reported `via subject`.
 
 `actor` says truthfully who decided: a person writes `"kind":"human"`; an AI tool deciding on its own writes `"kind":"agent"` with the tool's name as `id`; an AI tool passing on what a person said in the conversation writes the person's name with `"kind":"human"` and adds `"via":"agent-session"`. Older lines with `by` and no `actor` stay valid; status shows them as "identity not recorded".
 
@@ -98,4 +99,4 @@ Each line must be one complete JSON object; only append, never edit earlier line
 
 When you want the AI to build, verify, review and fix in isolated worktrees, want a machine to check the records above, or have enough works that you need everything in one view, install the runtime as in the [quickstart](01-quickstart.en.md). The files you already wrote stay as they are:
 
-Run `buildbeat status --repo . --work <ID>`: a newly edited `work.md` shows as awaiting acceptance, and hand-written acceptance and adjudication lines take effect under the same digest and fingerprint rules; the promotion lines in `result.md` are checked live (✓/✗), and a `result.md` changed after the close is flagged. Then `buildbeat run --config <config>` carries delivery on. In one project, people with the runtime and people without it share the same files.
+Run `buildbeat status --repo . --work <ID>`: a newly edited `work.md` shows as awaiting acceptance, and hand-written acceptance and adjudication lines take effect under the same digest and fingerprint rules; the promotion lines in `result.md` are checked live (✓/✗), and a `result.md` changed after the close is flagged. A work with code commits but no run shows as `COMMITTED`; `buildbeat decide --repo . --work <ID> --action close --draft` writes a `result.md` draft from its commits to edit before closing. Then `buildbeat run --config <config>` carries delivery on. In one project, people with the runtime and people without it share the same files.

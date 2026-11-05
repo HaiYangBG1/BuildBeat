@@ -1,0 +1,223 @@
+{
+  "run": "RUN-COMMIT-TRAILERS-01",
+  "work": "WORK-COMMIT-TRAILERS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 45,
+    "lastDigest": "sha256:c1407caceb03e6847a5e3ad52c874823d39f16dfa352a89769726e6a45d512c3"
+  },
+  "startedAt": "2026-11-05T05:28:47.939Z",
+  "finishedAt": "2026-11-05T06:11:35.531Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 4
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "waits": {
+      "decided": {
+        "count": 3,
+        "ms": 1751914
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 814564
+  },
+  "workspaces": {
+    "RUN-COMMIT-TRAILERS-01": {
+      "repo": ".",
+      "branch": "run/RUN-COMMIT-TRAILERS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-COMMIT-TRAILERS-01",
+      "base": "2824ba840f22cab9b6ada0c9cf451122b04a78da",
+      "candidate": "820ed21f4b8a877a8a2f28459c9d213329ece370"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-COMMIT-TRAILERS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "1b02abf97d4fe7b79af95ab4a83cd6193ee7d533",
+      "digest": "sha256:79965ef419be5ea89a30e1e8ea8dc562d578b433759001cea05d027c453badf2",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:4c02923ccdd65acf5eded4b8f214e092c50d1023e5fab3dbba031e51e51b019f"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-COMMIT-TRAILERS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "1b02abf97d4fe7b79af95ab4a83cd6193ee7d533",
+      "digest": "sha256:b434a9c0b3595a5502fea8dbcc8245f19e497d6c5dfda1678c795d3a48a3cf18",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-COMMIT-TRAILERS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "1b02abf97d4fe7b79af95ab4a83cd6193ee7d533",
+      "digest": "sha256:18e25e29106c8d532537913efde92131f9060e31d755f8d993faa415aeacb424",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "templates/v2/hooks/commit-msg:46 将标题匹配多个工作与未匹配工作同样回退到分支名，导致标题包含两个已有编号、分支包含一个编号时仍补写 Work:，违反歧义标题不修改的验收要求；现有测试未覆盖该组合。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/work-commits.js:112 与 templates/v2/hooks/commit-msg:33 擅自排除不足四字符的工作编号，导致已有 ABC 文件夹时无法识别 ABC，且标题同时包含 ABC 和 WORK-ONE 时错误认定唯一工作为 WORK-ONE；已确认规则没有编号长度限制。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/hooks.js:49 仅凭 buildbeat-commit-msg 旁存文件存在便判定钩子已安装，导致已有项目 commit-msg 尚未接入旁存脚本时 accept/check 就停止提醒，而实际提交仍不会自动添加 Work:。"
+        },
+        {
+          "severity": "P2",
+          "summary": "tests/v2-code-trace.test.js:80、87、149 修改了既有测试输入和断言，但 work.md 明确要求既有断言保持不变、需要修改时先停下确认，当前决策记录没有该变更授权。"
+        },
+        {
+          "severity": "P2",
+          "summary": "src/v2/runtime/hooks.js:71 将已确认的对外提示 is tracked by Git 改为 is in the working tree，未在工作说明或决策记录中取得可见文案变更确认。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-COMMIT-TRAILERS-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "820ed21f4b8a877a8a2f28459c9d213329ece370",
+      "digest": "sha256:af4d0df3a62dc0cfdf356ed98a93d2c24a9bb9ee67214c63e81c18b00723ea00",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:47a07020ebd63b1ed2d1695c686d5989d85afb1821972b3c5ee05c6edd77e3c6"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-COMMIT-TRAILERS-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "820ed21f4b8a877a8a2f28459c9d213329ece370",
+      "digest": "sha256:95ee6fe186a3756c39779ff39433d25a14353c8233589354471b1c2bd14d5145",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-COMMIT-TRAILERS-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "820ed21f4b8a877a8a2f28459c9d213329ece370",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "1b02abf97d4fe7b79af95ab4a83cd6193ee7d533",
+        "planDigest": "sha256:adb7303e71ae24b1039fce83651be874d191b792e04c0818eb85772f3e6aa4cd",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-COMMIT-TRAILERS-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "820ed21f4b8a877a8a2f28459c9d213329ece370",
+        "planDigest": "sha256:adb7303e71ae24b1039fce83651be874d191b792e04c0818eb85772f3e6aa4cd",
+        "evidenceDigest": "sha256:18e25e29106c8d532537913efde92131f9060e31d755f8d993faa415aeacb424"
+      },
+      "decisionRef": "D-RUN-COMMIT-TRAILERS-01-2",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "820ed21f4b8a877a8a2f28459c9d213329ece370",
+        "planDigest": "sha256:adb7303e71ae24b1039fce83651be874d191b792e04c0818eb85772f3e6aa4cd",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-COMMIT-TRAILERS-01-3",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-COMMIT-TRAILERS-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "1b02abf97d4fe7b79af95ab4a83cd6193ee7d533",
+        "planDigest": "sha256:adb7303e71ae24b1039fce83651be874d191b792e04c0818eb85772f3e6aa4cd",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-COMMIT-TRAILERS-01-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "820ed21f4b8a877a8a2f28459c9d213329ece370",
+        "planDigest": "sha256:adb7303e71ae24b1039fce83651be874d191b792e04c0818eb85772f3e6aa4cd",
+        "evidenceDigest": "sha256:18e25e29106c8d532537913efde92131f9060e31d755f8d993faa415aeacb424"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-COMMIT-TRAILERS-01-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "820ed21f4b8a877a8a2f28459c9d213329ece370",
+        "planDigest": "sha256:adb7303e71ae24b1039fce83651be874d191b792e04c0818eb85772f3e6aa4cd",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

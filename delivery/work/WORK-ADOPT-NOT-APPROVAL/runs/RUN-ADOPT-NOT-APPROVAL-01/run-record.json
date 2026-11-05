@@ -1,0 +1,207 @@
+{
+  "run": "RUN-ADOPT-NOT-APPROVAL-01",
+  "work": "WORK-ADOPT-NOT-APPROVAL",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 45,
+    "lastDigest": "sha256:6e64ba6186b897d67b6d7d6ba830ddaaadc5af8e253097130c458041b1dd9874"
+  },
+  "startedAt": "2026-11-05T07:40:11.590Z",
+  "finishedAt": "2026-11-05T08:05:20.826Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 4
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "waits": {
+      "decided": {
+        "count": 3,
+        "ms": 766871
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 741274
+  },
+  "workspaces": {
+    "RUN-ADOPT-NOT-APPROVAL-01": {
+      "repo": ".",
+      "branch": "run/RUN-ADOPT-NOT-APPROVAL-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-ADOPT-NOT-APPROVAL-01",
+      "base": "27effc02f56561ad5df8e8106257413f399c4165",
+      "candidate": "6777c2f4a217c67862f187edc0d9992e7cf51395"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-ADOPT-NOT-APPROVAL-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "8839274cc948e5bf1b66948910453119048c4501",
+      "digest": "sha256:35eb85b31b8f2783bb30a79151779a919fdbdd376b02845c7a6347f6efa901f8",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:5d707f53d3dbfa4a176ad9535728b551e760692dc73c3deb68c4637b725ce4a2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-ADOPT-NOT-APPROVAL-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "8839274cc948e5bf1b66948910453119048c4501",
+      "digest": "sha256:35f0e8b3a7cb5096d113c43614d0903b48a5339e51f28b25f73da557da1b6717",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-ADOPT-NOT-APPROVAL-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "8839274cc948e5bf1b66948910453119048c4501",
+      "digest": "sha256:1eb109799615badb18f581b346f1beb568d42985a4d4da74512ef69e76865ce1",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "tests/v2-final-decision-fix.test.js:444–460 的两处 history 回归检查都先追加真正批准，倒序查找即使移除 !row.adopted 过滤也会通过，未覆盖计划要求的“交回不算批准”；需补充候选已合并但只有 adopted 记录的场景，断言 approved 为 null、文本不显示批准人，并确认旧逻辑会失败。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-ADOPT-NOT-APPROVAL-01/logs/verify-2.log",
+      "kind": "command",
+      "subject": "6777c2f4a217c67862f187edc0d9992e7cf51395",
+      "digest": "sha256:3960c263903c39d065146aff5bafa58b3d2a9d118e6a1c5849f4bdd1fb1d1017",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:0d8a6e10d513c07edc4c0792585c027d9e827901fb0833c3e3d68d93c312246a"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-ADOPT-NOT-APPROVAL-01/logs/review-2.log",
+      "kind": "command",
+      "subject": "6777c2f4a217c67862f187edc0d9992e7cf51395",
+      "digest": "sha256:8a4e5a99444a12998e873f71975efd249b75555e6460153addcae7d3e268a767",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-ADOPT-NOT-APPROVAL-01/outputs/review-2.json",
+      "kind": "review",
+      "subject": "6777c2f4a217c67862f187edc0d9992e7cf51395",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "8839274cc948e5bf1b66948910453119048c4501",
+        "planDigest": "sha256:f5e2cf16d7b77c0de0a7f050f77c489c38f9fb2804788b3b195f95054c5cb97d",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-ADOPT-NOT-APPROVAL-01-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "6777c2f4a217c67862f187edc0d9992e7cf51395",
+        "planDigest": "sha256:f5e2cf16d7b77c0de0a7f050f77c489c38f9fb2804788b3b195f95054c5cb97d",
+        "evidenceDigest": "sha256:1eb109799615badb18f581b346f1beb568d42985a4d4da74512ef69e76865ce1"
+      },
+      "decisionRef": "D-RUN-ADOPT-NOT-APPROVAL-01-2",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "6777c2f4a217c67862f187edc0d9992e7cf51395",
+        "planDigest": "sha256:f5e2cf16d7b77c0de0a7f050f77c489c38f9fb2804788b3b195f95054c5cb97d",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-ADOPT-NOT-APPROVAL-01-3",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-ADOPT-NOT-APPROVAL-01-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "8839274cc948e5bf1b66948910453119048c4501",
+        "planDigest": "sha256:f5e2cf16d7b77c0de0a7f050f77c489c38f9fb2804788b3b195f95054c5cb97d",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-ADOPT-NOT-APPROVAL-01-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "6777c2f4a217c67862f187edc0d9992e7cf51395",
+        "planDigest": "sha256:f5e2cf16d7b77c0de0a7f050f77c489c38f9fb2804788b3b195f95054c5cb97d",
+        "evidenceDigest": "sha256:1eb109799615badb18f581b346f1beb568d42985a4d4da74512ef69e76865ce1"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-ADOPT-NOT-APPROVAL-01-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "6777c2f4a217c67862f187edc0d9992e7cf51395",
+        "planDigest": "sha256:f5e2cf16d7b77c0de0a7f050f77c489c38f9fb2804788b3b195f95054c5cb97d",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

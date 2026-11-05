@@ -1,0 +1,61 @@
+{
+  "run": "RUN-RELEASE-ENVS-01",
+  "work": "WORK-RELEASE-ENVS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "CANCELLED",
+    "reason": "base 70a11c7 fails check:docs on WORK-COMMIT-TRAILERS notes outside this work's scope; fixed on the session branch in dec1452, starting a new run from there with the same work-in-progress"
+  },
+  "events": {
+    "from": 1,
+    "to": 5,
+    "lastDigest": "sha256:acf00c3a88f34af4fcbe207e2f35b8f31c75bd400ec4c95226cd8575a857ca25"
+  },
+  "startedAt": "2026-11-05T06:11:47.019Z",
+  "finishedAt": "2026-11-05T06:17:01.324Z",
+  "attempts": {},
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 0,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 1,
+        "ms": 314304
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 0
+  },
+  "workspaces": {
+    "RUN-RELEASE-ENVS-01": {
+      "repo": ".",
+      "branch": "run/RUN-RELEASE-ENVS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-RELEASE-ENVS-01",
+      "base": "70a11c767bec6600ccd5fa4b9e7572c629adcae4",
+      "candidate": null
+    }
+  },
+  "evidence": [],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

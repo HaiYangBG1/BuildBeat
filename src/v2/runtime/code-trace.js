@@ -2,9 +2,11 @@
 // blamed at HEAD and each commit is mapped to a work through three facts
 // only: the commit lies in a recorded run's base..candidate range (run
 // records in Git, run ledgers on this machine), its message carries a
-// "Work: <ID>" trailer, or it changes files under delivery/work/<ID>/. A
-// subject that merely names a work does not count, because subjects often
-// cite another work. Lines none of these explain are counted, never guessed.
+// "Work: <ID>" trailer, or it changes files under delivery/work/<ID>/. Only
+// a commit none of these explain is read by its subject, and only when the
+// subject names exactly one work that has a folder (WORK-COMMIT-TRAILERS):
+// reported "via subject", since subjects often cite another work beside
+// their own. Lines nothing explains are counted, never guessed.
 // Real cost behind it: in a pilot workspace, run records alone traced 20% to
 // 82% of two months of lines in three code repositories; the largest
 // untraced block was a 2,949-line feature commit with no work id anywhere.
@@ -20,6 +22,7 @@ import { describeActor } from "./actor.js";
 import { readResult } from "./closeout.js";
 import { computeOverview, readJsonl } from "./overview.js";
 import { directory, pathLabel } from "./overview-repos.js";
+import { commitClues, commitFacts, knownWorks, namedWork } from "./work-commits.js";
 
 export class TraceError extends Error {
   constructor(message) {
@@ -164,48 +167,6 @@ async function runRanges(root, runs) {
   return map;
 }
 
-// Commit time, subject, Work: trailers and changed paths of each commit, in
-// one call. Trailers come from Git's own parser, so a subject or a body line
-// that happens to start with "Work:" is not one. A merge commit's paths are
-// read against its first parent, which is what a line resolved in the merge
-// was written into. A move counts on both sides (--no-renames), so a commit
-// that moves files out of delivery/work/<ID>/ still belongs to that work; -z
-// keeps paths as they are, and the pinned log settings keep signature text
-// out of the path list (WORK-SCOPE-RENAMES).
-//
-// With -z a path may hold any byte but NUL, so NUL is the only separator:
-// each commit opens with an empty field, then its hash, time, subject and
-// Work: trailers; its paths follow, the first one after a newline. Paths are
-// never empty, so an empty field always opens the next commit.
-const COMMIT_FIELDS = 4;
-
-function commitFacts(root, commits) {
-  const facts = new Map();
-  if (commits.length === 0) return facts;
-  const fields = git(root, [
-    "-c", "log.showSignature=false", "-c", "log.follow=false",
-    "log", "--no-walk=unsorted", "--name-only", "--no-renames", "-z", "--diff-merges=first-parent",
-    "--format=%x00%H%x00%ct%x00%s%x00%(trailers:key=Work,valueonly,separator=%x1d)", ...commits,
-  ]).split("\0");
-  let at = fields.indexOf("");
-  while (at !== -1 && at + COMMIT_FIELDS < fields.length) {
-    const [commit, time, subject, trailers] = fields.slice(at + 1, at + 1 + COMMIT_FIELDS);
-    at += 1 + COMMIT_FIELDS;
-    const paths = [];
-    for (; at < fields.length && fields[at] !== ""; at += 1) {
-      const path = paths.length === 0 ? fields[at].replace(/^\n/, "") : fields[at];
-      if (path) paths.push(path);
-    }
-    facts.set(commit, {
-      time: Number(time),
-      subject,
-      trailers: trailers.split("\x1d").map((value) => value.trim().split(/\s+/)[0]).filter(Boolean),
-      paths,
-    });
-  }
-  return facts;
-}
-
 function titleOf(dir) {
   for (const name of ["work.md", "intent.md"]) {
     const path = join(dir, name);
@@ -223,7 +184,7 @@ function titleOf(dir) {
 function deciders(dir, stage, mergedCandidate) {
   const rows = readJsonl(join(dir, "decisions.jsonl")).reverse();
   const approval = mergedCandidate
-    ? rows.find((row) => row.transition === "enter-wait-merge" && row.decision === "approved" && row.subject?.candidate === mergedCandidate)
+    ? rows.find((row) => row.transition === "enter-wait-merge" && row.decision === "approved" && !row.adopted && row.subject?.candidate === mergedCandidate)
     : null;
   const closure = stage === "CLOSED" || stage === "CANCELLED" ? rows.find((row) => row.transition === "close-work") : null;
   return {
@@ -242,7 +203,9 @@ function workFacts(roots, work, cwd) {
   for (const root of roots) {
     const dir = join(root, "delivery", "work", work);
     if (!directory(dir)) continue;
-    const row = computeOverview(root, { work, followTargets: false })[0] ?? null;
+    // The stage as the work's records give it: history --path keeps its
+    // output, and COMMITTED would only repeat the commits it already lists.
+    const row = computeOverview(root, { work, followTargets: false, committed: false })[0] ?? null;
     const stage = row?.stage ?? null;
     const page = readResult(root, work);
     const read = [join(dir, "work.md"), join(dir, "intent.md"), join(dir, "result.md")]
@@ -289,6 +252,7 @@ export async function traceLines(spec, { repo = process.cwd(), callers = [], cwd
     if (other && !roots.includes(other)) roots.push(other);
   }
   const ranges = await runRanges(root, recordedRuns(roots));
+  const known = new Set(roots.flatMap((item) => [...knownWorks(item)]));
   const commits = [...new Set(blamed.map((item) => item.commit))];
   const facts = commitFacts(root, commits);
 
@@ -302,10 +266,11 @@ export async function traceLines(spec, { repo = process.cwd(), callers = [], cwd
       found.get(work).push(run ? { kind, run } : { kind });
     };
     for (const item of ranges.get(commit) ?? []) add(item.work, "run", item.run);
-    for (const work of fact.trailers) add(work, "trailer");
-    for (const changed of fact.paths) {
-      const match = /^delivery\/work\/([^/]+)\//.exec(changed);
-      if (match) add(match[1], "folder");
+    for (const clue of commitClues(fact)) add(clue.work, clue.kind);
+    // Only a commit nothing else explains is read by its subject.
+    if (found.size === 0) {
+      const work = namedWork(fact.subject, known);
+      if (work) add(work, "subject");
     }
     if (found.size === 0) {
       const entry = untraced.get(commit) ?? { commit, subject: fact.subject, lines: 0 };
@@ -357,6 +322,7 @@ export function renderTrace(trace) {
       ...(runs.length ? [`via run ${runs.join(", ")}`] : []),
       ...(row.via.some((item) => item.kind === "trailer") ? ["via Work trailer"] : []),
       ...(row.via.some((item) => item.kind === "folder") ? ["via work folder"] : []),
+      ...(row.via.some((item) => item.kind === "subject") ? ["via subject"] : []),
     ];
     lines.push(`  ${row.work}  ${row.stage ?? "NOT_FOUND"}  ${row.title ?? "(no records in reach)"} (${plural(row.lines, "line")}; ${via.join("; ")})`);
     if (row.approved) lines.push(`    approved: ${row.approved.at} by ${row.approved.who}${row.approved.run ? ` (${row.approved.run})` : ""}`);

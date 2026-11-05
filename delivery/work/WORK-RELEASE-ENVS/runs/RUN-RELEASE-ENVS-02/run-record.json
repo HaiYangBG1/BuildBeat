@@ -1,0 +1,207 @@
+{
+  "run": "RUN-RELEASE-ENVS-02",
+  "work": "WORK-RELEASE-ENVS",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 45,
+    "lastDigest": "sha256:bc0da059d2bca9a5c480174a6a485738a23e10b1837970cce6b8a5929a7b7328"
+  },
+  "startedAt": "2026-11-05T06:17:06.212Z",
+  "finishedAt": "2026-11-05T07:37:07.750Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 4
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "waits": {
+      "decided": {
+        "count": 3,
+        "ms": 3911128
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 889082
+  },
+  "workspaces": {
+    "RUN-RELEASE-ENVS-02": {
+      "repo": ".",
+      "branch": "run/RUN-RELEASE-ENVS-02",
+      "worktreePath": ".buildbeat/worktrees/RUN-RELEASE-ENVS-02",
+      "base": "dec1452cd26b2bebebc04f90da2811fe64f33825",
+      "candidate": "71fe1e7b368bb9c055c411955a653dec9bd2535c"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-RELEASE-ENVS-02/logs/verify-1.log",
+      "kind": "command",
+      "subject": "c205c592963ddf6e71a28713ab19fdf8ae6097bb",
+      "digest": "sha256:0aaf4c7b055c2c728b5b915b6e919d33d226c551c8738ba1bc907ce004f09c23",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:c28fdc779d5acb1a4e5b661573454e0bc130cf9b059f7bc06ac27283de57af97"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-RELEASE-ENVS-02/logs/review-1.log",
+      "kind": "command",
+      "subject": "c205c592963ddf6e71a28713ab19fdf8ae6097bb",
+      "digest": "sha256:ff0506ac1e7bbaf73b7b5df8f33f2c0d2bf080ee9d0475ca83484dc3ee9c6df5",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-RELEASE-ENVS-02/outputs/review-1.json",
+      "kind": "review",
+      "subject": "c205c592963ddf6e71a28713ab19fdf8ae6097bb",
+      "digest": "sha256:81065d59b1bd746af03546ee53e99c4b374d9ed9b947b9383b5eb3166527f4bb",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/release.js:155-156 在省略 --env 时仍保留 release.env 或 inheritEnv 带入的 BUILDBEAT_RELEASE_ENV，导致回读命令实际查询 prod/preprod，而记录没有 env、汇总归入未指定环境，违反已确认的省略参数时变量不设契约；应清除该变量并补充两种来源的回归测试。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-RELEASE-ENVS-02/logs/verify-2.log",
+      "kind": "command",
+      "subject": "71fe1e7b368bb9c055c411955a653dec9bd2535c",
+      "digest": "sha256:afb766031f4689cc0634736012e59b4541f80e0cfc9ff79a5f497db047ac6be8",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:13bc982eeb66c10295a64f52a7bffb428e48d2ff31384bdbbb7f04b5e6e369d2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-RELEASE-ENVS-02/logs/review-2.log",
+      "kind": "command",
+      "subject": "71fe1e7b368bb9c055c411955a653dec9bd2535c",
+      "digest": "sha256:6478819f0cacf73d0e92808cd711682af25369de1b517a203725a49e089806c9",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-RELEASE-ENVS-02/outputs/review-2.json",
+      "kind": "review",
+      "subject": "71fe1e7b368bb9c055c411955a653dec9bd2535c",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "c205c592963ddf6e71a28713ab19fdf8ae6097bb",
+        "planDigest": "sha256:1c12f8f4ace9bf3514626af5fb070b2f84e6c1cb7bb899575600c8e955a2d19a",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-RELEASE-ENVS-02-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "71fe1e7b368bb9c055c411955a653dec9bd2535c",
+        "planDigest": "sha256:1c12f8f4ace9bf3514626af5fb070b2f84e6c1cb7bb899575600c8e955a2d19a",
+        "evidenceDigest": "sha256:81065d59b1bd746af03546ee53e99c4b374d9ed9b947b9383b5eb3166527f4bb"
+      },
+      "decisionRef": "D-RUN-RELEASE-ENVS-02-2",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "env"
+      }
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "71fe1e7b368bb9c055c411955a653dec9bd2535c",
+        "planDigest": "sha256:1c12f8f4ace9bf3514626af5fb070b2f84e6c1cb7bb899575600c8e955a2d19a",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-RELEASE-ENVS-02-3",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-RELEASE-ENVS-02-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "c205c592963ddf6e71a28713ab19fdf8ae6097bb",
+        "planDigest": "sha256:1c12f8f4ace9bf3514626af5fb070b2f84e6c1cb7bb899575600c8e955a2d19a",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-RELEASE-ENVS-02-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "71fe1e7b368bb9c055c411955a653dec9bd2535c",
+        "planDigest": "sha256:1c12f8f4ace9bf3514626af5fb070b2f84e6c1cb7bb899575600c8e955a2d19a",
+        "evidenceDigest": "sha256:81065d59b1bd746af03546ee53e99c4b374d9ed9b947b9383b5eb3166527f4bb"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-RELEASE-ENVS-02-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "71fe1e7b368bb9c055c411955a653dec9bd2535c",
+        "planDigest": "sha256:1c12f8f4ace9bf3514626af5fb070b2f84e6c1cb7bb899575600c8e955a2d19a",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

@@ -21,7 +21,9 @@ status 的决定卡包含 transition、候选、计划摘要、证据、原因�
 
 正常修复自动继续；重复问题、阻断数增加、环境故障或预算耗尽才形成例外决定。预算批准一次放行对应修复、重验和再审；扩额记录可以重放，驾驶会话不能自行冒充用户批准。
 
-合并和上线仍由人完成。上线后运行 `buildbeat release --config <config> [--note <text>]`：它确认该 Work 已成功 Run 的候选包含在 `--ref`（默认当前 HEAD）中，在主检出执行 run-config `release:` 段配置的只读回读命令（形状、环境白名单与脱敏同 worker），把结果、退出码、提交、输出摘要和末尾若干行追加到 `delivery/work/<ID>/releases.jsonl`。
+合并和上线仍由人完成。上线后运行 `buildbeat release --config <config> [--env <环境>] [--note <text>]`：它确认该 Work 已成功 Run 的候选包含在 `--ref`（默认当前 HEAD）中，在主检出执行 run-config `release:` 段配置的只读回读命令（形状、环境白名单与脱敏同 worker），把结果、退出码、提交、环境、输出摘要和末尾若干行追加到 `delivery/work/<ID>/releases.jsonl`。
+
+一份配置管所有环境：`--env` 记进回读记录，也作为 `BUILDBEAT_RELEASE_ENV` 传给回读命令，由项目脚本按环境去查；分几步上线的（比如几台机器逐台换），每一步各回读一次，用 `--note` 写是第几步，不必每步复制一份配置。没跑过 Run、在会话里直接做完的工作也能记回读：配置只写 `repo`、`work` 和 `release:`（不写 `workers:`，`run` 会拒绝它），用这份配置回读时绑定到这项工作在发布 ref 里最新的代码提交；一个都追不到就拒绝。写了 `workers:` 的配置是要跑 Run 的，照旧先有成功的 Run 才能回读。`buildbeat status --repo . --releases [--all-repos] [--json]` 按环境列出最近一次通过的回读是哪项工作、哪个提交、什么时候、第几步，之后又失败的同一行标出，回答"现在线上是什么"；这类会变的事实不要抄进项目文件。
 
 每项工作都以一页结果收口。照 `templates/v2/result.example.md` 写 `delivery/work/<ID>/result.md`：做成了什么、在哪个提交和版本，定了什么，剩下什么、转去了哪里，写进了项目哪些文档。以后还用得上的结论先写进项目自己的文档并提交，再在 result.md 里每条写成 `- <路径> @ <提交> — <写了什么>`。然后用 `decide --repo . --work <ID> --action close [--result <text>] [--note <text>]` 关窗：
 

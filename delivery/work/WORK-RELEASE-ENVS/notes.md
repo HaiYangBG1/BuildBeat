@@ -1,0 +1,22 @@
+# 驾驶记录
+
+- 驱动运行时：本机全局 CLI 5.4.0。builder 和 fixer 不配 worker：驾驶会话在 Run 工作树里亲自写，再以 `run --adopt <sha>` 交给 verify 和只读 reviewer。
+- 接受记为 `A-WORK-RELEASE-ENVS-1`（人，经 AI 会话录入，所有者「全部接受并开工」）。WORK-COMMIT-TRAILERS 合入会话分支（`70a11c7`）后开 RUN-RELEASE-ENVS-01。
+- RUN-RELEASE-ENVS-01 停掉（`buildbeat stop`，没跑过任何一步）：起点 `70a11c7` 上 `npm run check:docs` 就失败，原因是 WORK-COMMIT-TRAILERS 的驾驶记录引了一个会被文档检查当成内部引用标记的英文词，那个文件不在本工作范围内。在会话分支上改掉（`dec1452`），从那里开 RUN-RELEASE-ENVS-02，已写的改动原样搬过去。
+- 待确认项已确认：回读命令读 `BUILDBEAT_RELEASE_ENV` 不用改环境变量白名单——回读适配器显式给的 `env` 本来就会传进去（临时仓库实测 `env=preprod`）。
+- 和说明不完全一样、或说明没写到的地方：
+  - `--env` 的名字限定为字母、数字、`.`、`_`、`-`，以字母或数字开头（它要进环境变量），否则拒绝。
+  - 某个环境从没通过过回读时，`status --releases` 那行写 `no passing readback · latest readback failed @ …`；JSON 里 `work`/`commit` 为 `null`。没写 `--env` 的老记录在 JSON 里 `env` 为 `null`，文本里是 `-` 行。
+  - `--releases` 不能和 `--work`、`--run`、`--ref` 一起用。
+  - 只记回读的配置也不挡 `COMMITTED`；这时下一步提示先说"上线后回读"，最近一次回读通过后才只提示收口（说明的对外名字里没写这句，照 MERGED 的回读提示写的）。
+  - `templates/v2/AGENTS.md` 加了 `status --releases` 和操作手册的指向；示例项目 `example/AGENTS.md` 不在范围内，没改（原句仍然成立）。
+  - "不跑 Run 也能回读"只对只写回读的配置生效：写了 `workers:` 的配置是要跑 Run 的，照旧先有成功的 Run 才能回读。第一版对所有配置都放开，旧测试"还没跑 Run 不能先回读"（`tests/v2-screenshot-release.test.js`）因此失败——那项工作的第一个提交同时改了它的文件夹和代码，会被当成"做完的提交"拿去回读，等于没跑 Run 就能回读、关窗。按说明"有 Run 的工作回读、关窗的行为和现在一样"那条验收收窄，旧测试一字未改即通过，新测试补了"写了 workers 的配置照旧拒绝"一步。
+  - 关窗仍看"最近一次回读"，不分环境：在别的环境回读失败也会挡住关窗。这是原有规则，没改；分环境上线多了以后要不要按环境看，留给以后。
+- 新测试 `tests/v2-release-envs.test.js` 6 条，在改动前的代码上（`dec1452`）全部失败；改后通过。
+- 试点只读试跑（同前两项的本地克隆）：已有 64 条回读记录都没有环境，`status --releases` 只有一行 `-`（最近一次通过是 10-13）。要等试点改用 `--env` 记回读后才答得出"现在线上是什么"；要不要改由试点所有者决定。`status` 的阶段分布和 WORK-COMMIT-TRAILERS 之后一样（`COMMITTED` 120）。
+- 第一次本地全量 `npm test`：424 条 2 条失败、跑了 30 分钟——当时机器负载 44～91（别的进程）。一条是上面那个真问题；另一条 `tests/v2-stale-locks.test.js` 的 SIGKILL 恢复测试报"driver never reached verify"，单独重跑通过，是负载拖慢计时造成的偶发失败。
+- 修正后本地全量 `npm test`：424 条全过（366 秒，负载仍偏高）；`npm run check:docs` 通过。候选 `c205c59` 以 `run --adopt` 交给 RUN-RELEASE-ENVS-02。
+- RUN-RELEASE-ENVS-02 第 1 轮：verify 通过（约 5 分钟），codex 只读审查 1 条 P1（`051e1ccfa85790b8`）：不给 `--env` 时，配置里的 `env:` 或 `inheritEnv` 继承的宿主变量仍会把 `BUILDBEAT_RELEASE_ENV` 带给回读命令，命令查了某个环境、记录却没写。成立。
+- 手修 `71fe1e7`：这个变量只来自 `--env`，最后设、盖过配置和宿主；不给 `--env` 时不传给进程。测试补了两种来源，在 `c205c59` 上失败、修后通过。按"成立、已修"记为 accept（会话）。以 `run --adopt` 交回，重验、再审。
+- `71fe1e7` 以 `run --adopt` 交回（`D-RUN-RELEASE-ENVS-02-2`，回答 enter-fix）。第 2 轮 verify 通过（约 4 分钟），codex 只读审查 0 条问题。Run 停在合并决定，等所有者批准。
+- 所有者 2026-11-05 说「批准合并」，记为合并批准 `D-RUN-RELEASE-ENVS-02-3`（人，经 AI 会话录入），Run 终态 SUCCEEDED。候选 `71fe1e7` 以 merge commit 合入会话分支。未推送、未发版、未关窗。

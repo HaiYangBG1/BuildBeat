@@ -222,6 +222,10 @@ export function applyEvent(state, event) {
         subject: data.subject,
         decisionRef: data.decisionRef,
         ...(event.actor ? { actor: event.actor } : {}),
+        // A hand repair handed in with --adopt answers the request as
+        // approved; it is not an approval of what it answers
+        // (WORK-ADOPT-NOT-APPROVAL), so the decision says so.
+        ...(data.adopted ? { adopted: data.adopted, ...(data.resumeAt ? { resumeAt: data.resumeAt } : {}) } : {}),
       });
       if (data.decision === "approved" || data.decision === "fix") {
         next.approvals.push({

@@ -57,7 +57,8 @@ export function workConfigs(repoRoot, workId, warnings = []) {
       const doc = parseYamlSubset(readFileSync(path, "utf8"));
       if (typeof doc.repo !== "string" || !doc.repo.trim()) throw new Error("repo must be a non-empty path");
       const target = resolve(dirname(path), doc.repo);
-      return { path, target, release: Object.hasOwn(doc, "release") };
+      const release = Object.hasOwn(doc, "release");
+      return { path, target, release, releaseOnly: release && (doc.workers === undefined || doc.workers === null) };
     } catch (error) {
       warnings.push(`${path}: ${error.message.replaceAll("\n", " ")}`);
       return { path, error: true, release: null };

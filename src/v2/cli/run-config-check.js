@@ -33,6 +33,13 @@ const TOP_KEYS = [
   "release",
 ];
 const REQUIRED = ["repo", "work", "run"];
+
+// A config with release: and no workers: only records release readbacks,
+// for a work done without a run (WORK-RELEASE-ENVS): it needs no run family
+// and no workers, and `run` refuses it.
+export function releaseOnly(config) {
+  return isMap(config) && config.release !== undefined && (config.workers === undefined || config.workers === null);
+}
 const NULL_REPORTED = [
   "workflow",
   "base",
@@ -125,7 +132,7 @@ export function checkRunConfigShape(config) {
       problems.push(unknownKey("", key, TOP_KEYS));
     }
   }
-  for (const key of REQUIRED) {
+  for (const key of releaseOnly(config) ? ["repo", "work"] : REQUIRED) {
     if (config[key] === undefined || config[key] === null) {
       problems.push(`${key}: required and missing`);
     }
@@ -213,7 +220,9 @@ export function checkRunConfigShape(config) {
       }
     }
   }
-  if (config.workers === undefined || config.workers === null) {
+  if (releaseOnly(config)) {
+    // nothing to run: the readback is checked below
+  } else if (config.workers === undefined || config.workers === null) {
     problems.push(
       "workers: required and missing (at least the verifier; see templates/v2/run-config.example.yaml)",
     );

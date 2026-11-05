@@ -399,3 +399,69 @@ test("fixtures, runtime and shell workers ignore hostile host Git configuration"
   assert.match(result.stdout, /# pass 2\b/, "both runtime and CLI fixture regressions must actually run");
   assert.equal(existsSync(marker), false, "host hooks must never execute");
 });
+
+// A hand repair adopted at the merge decision answers the request as an
+// approved enter-wait-merge carrying `adopted`; it approves no merge
+// (WORK-ADOPT-NOT-APPROVAL). Real cost behind it: status reported a merge
+// "approved by an AI session, not by a person" while the owner had not
+// decided yet.
+const SESSION = { kind: "agent", id: "claude-code", source: "env" };
+function statusOf(root, ...args) {
+  const out = spawnSync(process.execPath, [CLI, "status", "--repo", root, ...args], { encoding: "utf8" });
+  assert.equal(out.status, 0, out.stderr);
+  return out.stdout;
+}
+function adoptedBySession(f) {
+  const sha = f.commit("session repair\n");
+  adoptCandidate(f.root, "RUN-F", { sha, actor: SESSION, resumeAt: "verify" });
+  resumeRun(f.options);
+  const handIn = f.ledger().state.decisions.find((item) => item.adopted);
+  assert.equal(handIn.adopted, sha);
+  assert.equal(handIn.resumeAt, "verify");
+  return { sha, ref: handIn.decisionRef };
+}
+
+test("a repair adopted at the merge decision is shown as a hand-in, not as a merge approval", () => {
+  const f = fixture();
+  const { sha, ref } = adoptedBySession(f);
+  const views = [statusOf(f.root), statusOf(f.root, "--work", "WORK-F"), statusOf(f.root, "--run", "RUN-F")];
+  for (const view of views) assert.doesNotMatch(view, /merge approved by an AI session/);
+  const line = `${ref} enter-wait-merge approved by claude-code \\(AI session\\) — adopted ${sha.slice(0, 7)}, resumed at verify$`;
+  assert.match(views[2], new RegExp(`^decision ${line}`, "m"));
+  assert.match(views[1], new RegExp(` ${line}`, "m"));
+  assert.equal(JSON.parse(statusOf(f.root, "--work", "WORK-F", "--json")).works[0].selfMergeApproval, undefined);
+
+  // Merged by hand with only the hand-in on record: history --path names no
+  // approver (the hand-in carries the merged candidate, so taking it for an
+  // approval would name the session).
+  git(f.root, "merge", "-q", "--ff-only", sha);
+  const history = (json) => spawnSync(process.execPath, [CLI, "history", "--repo", f.root, "--path", "feature.txt", ...(json ? ["--json"] : [])], { encoding: "utf8" }).stdout;
+  assert.equal(JSON.parse(history(true)).works.find((item) => item.work === "WORK-F").approved, null);
+  assert.doesNotMatch(history(false), /^ {4}approved: /m);
+
+  // The session approving the merge itself is still called out, by that
+  // approval's reference.
+  const approval = approveRun(f.root, "RUN-F", { actor: SESSION, transition: "enter-wait-merge", candidate: sha });
+  assert.equal(approval.terminal, true);
+  const approved = f.ledger().state.decisions.at(-1).decisionRef;
+  assert.notEqual(approved, ref);
+  for (const view of [statusOf(f.root, "--work", "WORK-F"), statusOf(f.root, "--run", "RUN-F")]) {
+    assert.match(view, new RegExp(`note: merge approved by an AI session \\(claude-code, ${approved}\\), not by a person`));
+  }
+
+  // Once approved, history --path names that approval.
+  assert.equal(JSON.parse(history(true)).works.find((item) => item.work === "WORK-F").approved.decisionRef, approved);
+  assert.match(history(false), /^ {4}approved: \S+ by claude-code \(AI session\) \(RUN-F\)$/m);
+});
+
+test("after a hand-in, a person's merge approval leaves no AI-approval note", () => {
+  const f = fixture();
+  const { sha } = adoptedBySession(f);
+  approveRun(f.root, "RUN-F", { by: "owner", as: "human", transition: "enter-wait-merge", candidate: sha });
+  for (const view of [statusOf(f.root), statusOf(f.root, "--work", "WORK-F"), statusOf(f.root, "--run", "RUN-F")]) {
+    assert.doesNotMatch(view, /merge approved by an AI session/);
+  }
+  git(f.root, "merge", "-q", "--ff-only", sha);
+  const trace = JSON.parse(spawnSync(process.execPath, [CLI, "history", "--repo", f.root, "--path", "feature.txt", "--json"], { encoding: "utf8" }).stdout);
+  assert.equal(trace.works.find((item) => item.work === "WORK-F").approved.who, "owner (person)");
+});

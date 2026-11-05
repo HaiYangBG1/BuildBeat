@@ -44,6 +44,7 @@ import {
 import { loadEnvelope, nextAttemptId } from "../runtime/envelope.js";
 import { applyGc, planGc } from "../runtime/gc.js";
 import {
+  adoptedNote,
   artifactStatus,
   computeOverview,
   computeRepositoryOverview,
@@ -55,7 +56,9 @@ import { configTargets, discoverRepos, extraFilesWarning, heavyRecordsWarning, i
 import { renderTrace, traceLines } from "../runtime/code-trace.js";
 import { attachThreads, readWorks, renderThread, worksWithRef } from "../runtime/threads.js";
 import { attachFacts, factsWarning, renderFacts } from "../runtime/facts.js";
-import { closeWork, runReadback } from "../runtime/release.js";
+import { closeWork, renderReleases, runReadback, summarizeReleases } from "../runtime/release.js";
+import { writeResultDraft } from "../runtime/closeout.js";
+import { installCommitHook, trailerWarning } from "../runtime/hooks.js";
 import {
   DEFAULT_STALL_AFTER_MS,
   describeLiveness,
@@ -90,6 +93,7 @@ import {
 import {
   checkRunConfigAgainstWorkflow,
   checkRunConfigShape,
+  releaseOnly,
   RunConfigError,
 } from "./run-config-check.js";
 
@@ -103,16 +107,19 @@ Usage:
   buildbeat run --config <run-config.yaml> [--run <RUN-ID>] [--new] [--adopt <sha> [--by <name>] [--as human|agent]]
   buildbeat status --repo <path> [--work <WORK-ID> | --run <RUN-ID>] [--all-repos] [--json]
   buildbeat status --repo <path> [--all-repos] --ref <id> [--json]
+  buildbeat status --repo <path> --releases [--all-repos] [--json]
   buildbeat decide --repo <path> --run <RUN-ID> --action approve|reject --transition <t> [--candidate <sha>] [--by <name>] [--as human|agent] [--reason <text>]
   buildbeat decide --repo <path> --run <RUN-ID> --action fix --reason <text> [--by <name>] [--as human|agent]
   buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--as human|agent] [--note <text>]
-  buildbeat release --config <run-config.yaml> [--ref <ref>] [--note <text>]
+  buildbeat release --config <run-config.yaml> [--env <name>] [--ref <ref>] [--note <text>]
   buildbeat decide --repo <path> --work <WORK-ID> --action close [--result <text>] [--note <text>] [--by <name>] [--as human|agent]
+  buildbeat decide --repo <path> --work <WORK-ID> --action close --draft
   buildbeat check --config <run-config.yaml> [--step <id>]
   buildbeat stop --repo <path> --run <RUN-ID> --reason <text>
   buildbeat gc --repo <path> [--apply] [--force]
   buildbeat history --repo <path> --run <RUN-ID> [--verify]
   buildbeat history --repo <path> --path <file>[:<line>[-<line>]] [--json]
+  buildbeat hooks install --repo <path>
 
 Core legacy command spellings remain aliases; see docs/MIGRATION.md.
 Decisions record who made them: --by names the person or session (default:
@@ -123,7 +130,7 @@ check --step executes that worker in the main checkout, outside the evidence led
 
 // Switches may stand alone (`--json`) or take an explicit true/false
 // (`--json true`, the older spelling); every other flag needs a value.
-const SWITCHES = new Set(["json", "apply", "force", "once", "new", "verify", "all-repos"]);
+const SWITCHES = new Set(["json", "apply", "force", "once", "new", "verify", "all-repos", "draft", "releases"]);
 
 function parseFlags(argv) {
   const flags = {};
@@ -297,7 +304,7 @@ function printState(state, ledger, view = {}) {
   // Who answered each request, as the ledger recorded it.
   for (const item of state.decisions) {
     console.log(
-      `decision ${item.decisionRef} ${item.transition} ${item.decision} by ${describeActor(item)}`,
+      `decision ${item.decisionRef} ${item.transition} ${item.decision} by ${describeActor(item)}${adoptedNote(item)}`,
     );
   }
   const selfMerge = selfMergeApproval(state.decisions);
@@ -549,6 +556,7 @@ function loadRunConfig(flags, command) {
     workflowDigest,
     workId: config.work,
     runId: config.run,
+    releaseOnly: releaseOnly(config),
     base: config.base ?? "HEAD",
     entry,
     stopAt: config.stopAt ?? presetStopAt ?? [],
@@ -1124,6 +1132,8 @@ function commandAccept(flags) {
   if (extras) console.log(extras);
   const facts = factsWarning(resolve(flags.repo), flags.work);
   if (facts) console.log(facts);
+  const trailers = trailerWarning(resolve(flags.repo), repoLabelFor(resolve(flags.repo), flags.repo));
+  if (trailers) console.log(trailers);
   console.log(
     "  note: editing an artifact after acceptance makes its acceptance stale",
   );
@@ -1253,6 +1263,8 @@ function commandDoctor(flags) {
   // Facts compared with the base the next run would start from.
   const facts = factsWarning(options.repoRoot, options.workId, { against: options.base, label: options.base });
   if (facts) console.log(facts);
+  const trailers = trailerWarning(options.repoRoot, repoLabelFor(options.repoRoot));
+  if (trailers) console.log(trailers);
   for (const policy of options.policies) {
     for (const artifact of policy.kind === "artifact"
       ? [policy.artifact]
@@ -1540,7 +1552,18 @@ function commandStatus(flags) {
     throw new Error("status: choose --run or --work");
   if (flags.ref && (flags.run || flags.work))
     throw new Error("status: choose --ref, --work or --run");
+  if (flags.ref && flags.releases === "true") throw new Error("status: choose --ref or --releases");
   if (flags.ref) return commandStatusByRef(flags, repoRoot);
+  // What runs where (WORK-RELEASE-ENVS): the latest passing readback per
+  // environment, across this repository's works (and its code repositories
+  // with --all-repos).
+  if (flags.releases === "true") {
+    if (flags.run || flags.work) throw new Error("status: --releases cannot be combined with --work or --run");
+    const roots = flags["all-repos"] === "true" ? discoverRepos(repoRoot, []) : [repoRoot];
+    const summary = summarizeReleases(roots);
+    console.log(flags.json === "true" ? JSON.stringify({ releases: summary }, null, 2) : renderReleases(summary));
+    return;
+  }
   if (!flags.run) {
     const allRepos = flags["all-repos"] === "true";
     const result = computeRepositoryOverview(repoRoot, { work: flags.work ?? null, allRepos, localRepoLabel: repoLabelFor(repoRoot, flags.repo) });
@@ -1623,6 +1646,8 @@ function commandStatus(flags) {
 
 async function commandRun(flags) {
   const options = loadRunConfig(flags, "run");
+  if (options.releaseOnly)
+    throw new Error(`${flags.config} has no workers: it only records releases (buildbeat release); add workers to run it`);
   if (flags.new === "true" && (flags.run || flags.adopt))
     throw new Error("--new cannot be combined with --run or --adopt");
   if (flags.new === "true")
@@ -1672,11 +1697,14 @@ function commandRelease(flags) {
     redact: options.redact,
     runs: runsFor(options.repoRoot, options.workId),
     ref: flags.ref ?? "HEAD",
+    env: flags.env ?? null,
     note: flags.note ?? null,
+    withoutRun: options.releaseOnly,
   });
   const repoLabel = repoLabelFor(options.repoRoot);
+  const bound = row.run ? `(${row.run})` : `(no run: latest commit of ${options.workId} in ${row.ref})`;
   console.log(
-    `readback ${row.status} (exit ${row.exitCode}) for ${row.ref} at ${row.commit.slice(0, 7)}, candidate ${row.candidate.slice(0, 7)} (${row.run})${row.note ? ` — ${row.note}` : ""}`,
+    `readback ${row.status} (exit ${row.exitCode}) for ${row.ref} at ${row.commit.slice(0, 7)}${row.env ? ` in ${row.env}` : ""}, candidate ${row.candidate.slice(0, 7)} ${bound}${row.note ? ` — ${row.note}` : ""}`,
   );
   if (row.checkout !== row.commit) {
     console.log(
@@ -1702,6 +1730,17 @@ function commandDecide(flags) {
   if (flags.action === "close") {
     if (!flags.repo || !flags.work)
       throw new Error("closing a work requires --repo and --work");
+    if (flags.draft === "true") {
+      const repoRoot = resolve(flags.repo);
+      const closed = readJsonl(join(repoRoot, "delivery", "work", flags.work, "decisions.jsonl"))
+        .some((row) => row.transition === "close-work");
+      const draft = writeResultDraft({ repoRoot, workId: flags.work, closed });
+      const close = `buildbeat decide --repo ${repoLabelFor(repoRoot, flags.repo)} --work ${flags.work} --action close`;
+      console.log(
+        `wrote delivery/work/${flags.work}/result.md (a draft from ${draft.commits} commit${draft.commits === 1 ? "" : "s"}); check it against Git and the work, delete its first line, then ${close} --by <you>`,
+      );
+      return;
+    }
     const row = closeWork({
       repoRoot: resolve(flags.repo),
       workId: flags.work,
@@ -1984,6 +2023,19 @@ async function main() {
   if (command === "findings") {
     try {
       commandFindings(rest);
+    } catch (error) {
+      console.error(`error: ${error.message}`);
+      process.exitCode = 1;
+    }
+    return;
+  }
+  if (command === "hooks") {
+    try {
+      const [action, ...more] = rest;
+      if (action !== "install") throw new Error("usage: buildbeat hooks install --repo <path>");
+      const flags = parseFlags(more);
+      if (!flags.repo) throw new Error("hooks install requires --repo");
+      console.log(installCommitHook(resolve(flags.repo)).message);
     } catch (error) {
       console.error(`error: ${error.message}`);
       process.exitCode = 1;
