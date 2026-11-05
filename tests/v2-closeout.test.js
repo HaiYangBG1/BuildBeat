@@ -410,9 +410,12 @@ test("close --draft writes a result page from the commits, and closing refuses i
   assert.match(after.stderr, /DRAFTED is already closed/);
 });
 
-test("a hand-written page that quotes the placeholder in code still closes", () => {
+test("a hand-written page that quotes the marker or a placeholder in code still closes", () => {
   const root = repo();
-  const dir = work(root, "QUOTED", { "result.md": "# QUOTED result\n\nDraft guard documented.\n\n```\n- <fill in: example>\n```\n" });
+  const dir = work(root, "QUOTED", { "result.md": [
+    "# QUOTED result", "", "Draft guard documented.", "",
+    "```", "<!-- buildbeat draft: check every section against Git and the work, then delete this line -->", "- <fill in: example>", "```", "",
+  ].join("\n") });
   const closed = close(root, "QUOTED");
   assert.equal(closed.status, 0, closed.stderr);
   assert.equal(decisions(dir).at(-1).subject.result, "Draft guard documented.");

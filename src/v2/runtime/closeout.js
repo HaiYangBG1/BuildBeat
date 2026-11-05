@@ -156,12 +156,15 @@ export function readResult(repoRoot, workId) {
 // A result page drafted from commits (WORK-COMMITTED-WORKS): `decide --action
 // close --draft` writes it, and closing refuses it until someone has read
 // it, deleted its first line and filled in or deleted every "<fill in"
-// placeholder. The marker is an HTML comment, so it is never the summary.
+// placeholder. The marker is an HTML comment, so it is never the summary,
+// and it counts only as the page's first line, where the draft writes it:
+// a hand-written page may quote it in a code block, as it may quote a
+// placeholder, and still close.
 const DRAFT_MARKER = "<!-- buildbeat draft: check every section against Git and the work, then delete this line -->";
 const DRAFT_SHOWN = 20;
 
 export function isDraft(text) {
-  return /^\s*<!-- buildbeat draft:/m.test(text) || textLines(text).some((line) => line.includes("<fill in"));
+  return /^\uFEFF?\s*<!-- buildbeat draft:/.test(text.split(/\r?\n/, 1)[0]) || textLines(text).some((line) => line.includes("<fill in"));
 }
 
 export class DraftError extends Error {
