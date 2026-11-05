@@ -379,9 +379,10 @@ export function computeOverview(
       next = `write delivery/work/${workId}/work.md (goal, scope, acceptance, implementation plan)`;
     } else if (!latest) {
       // A work with a run config is waiting for its run (a session may have
-      // committed the change it will adopt); only works without one can have
-      // been finished in a session.
-      maybeCommitted = findCommitted && configs.length === 0;
+      // committed the change it will adopt); only works without one, or
+      // whose configs only record releases, can have been finished in a
+      // session.
+      maybeCommitted = findCommitted && configs.every((item) => item.releaseOnly);
       if (!plan.exists) {
         stage = intent.accepted ? "INTENT_ACCEPTED" : "INTENT_DRAFT";
         next = intent.accepted
@@ -530,7 +531,10 @@ export function computeOverview(
       next: local ? next : next.replaceAll("--config <run-config.yaml>", `--config ${configPath}`),
     };
     rows.push(row);
-    if (maybeCommitted) unrun.push({ row, workId, repoLabel, hasResult: page.exists });
+    if (maybeCommitted) {
+      const releaseConfig = readback?.status === "passed" ? null : configs.find((item) => item.release) ?? null;
+      unrun.push({ row, workId, repoLabel, hasResult: page.exists, release: releaseConfig ? pathFor(releaseConfig) : null });
+    }
   }
   markCommitted(repoRoot, mainRef, unrun);
   return rows;
@@ -542,7 +546,7 @@ export function computeOverview(
 function markCommitted(repoRoot, branch, unrun) {
   if (unrun.length === 0) return;
   const found = codeCommitsOf(repoRoot, branch, unrun.map((item) => item.workId));
-  for (const { row, workId, repoLabel, hasResult } of unrun) {
+  for (const { row, workId, repoLabel, hasResult, release } of unrun) {
     const commits = found.get(workId);
     if (!commits?.length) continue;
     const describe = (item) => ({ commit: item.commit, at: new Date(item.time * 1000).toISOString(), subject: item.subject });
@@ -552,6 +556,9 @@ function markCommitted(repoRoot, branch, unrun) {
     row.next = hasResult
       ? `if it is done, close it out: ${close} --by <you>`
       : `if it is done, close it out: ${close} --draft, edit delivery/work/${workId}/result.md, then ${close} --by <you>`;
+    // A work whose config reads its release back closes on a passing
+    // readback, so the readback comes first.
+    if (release) row.next = row.next.replace("close it out: ", `release it (a human action), then buildbeat release --config ${release} --env <name>; then close it out: `);
   }
 }
 
