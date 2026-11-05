@@ -8,7 +8,7 @@
 // Work: trailer, while nearly every subject named its work.
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { namedWork } from "../src/v2/runtime/work-commits.js";
@@ -68,7 +68,8 @@ test("a subject names a work only when exactly one known work stands on its own"
   assert.equal(namedWork("feat: WORK-ONE with WORK-ONE again", known), "WORK-ONE");
   assert.equal(namedWork("feat: WORK-ONE and WORK-TWO.1", known), null);
   assert.equal(namedWork("feat: WORK-ONE-B is another", known), null);
-  assert.equal(namedWork("feat: ABC is too short to look up", known), null);
+  assert.equal(namedWork("feat: ABC counts however short", known), "ABC");
+  assert.equal(namedWork("feat: ABC and WORK-ONE", known), null);
   assert.equal(namedWork("feat: nothing", known), null);
 });
 
@@ -87,7 +88,7 @@ test("the commit-msg hook adds the trailer from the subject or the branch, and n
   commit(root, "feat: both WORK-ONE and WORK-TWO.1", own);
   assert.equal(trailers(root), "");
   commit(root, "feat: ABC only", own);
-  assert.equal(trailers(root), "");
+  assert.equal(trailers(root), "ABC");
   commit(root, ["feat: names WORK-ONE", "Work: WORK-TWO.1"], own);
   assert.equal(trailers(root), "WORK-TWO.1");
   git(root, [...IDENTITY, "commit", "-q", "--amend", "--no-edit"], null);
@@ -100,6 +101,9 @@ test("the commit-msg hook adds the trailer from the subject or the branch, and n
   git(root, ["checkout", "-q", "-b", "topic/WORK-ONE"]);
   commit(root, "feat: the branch names it", own);
   assert.equal(trailers(root), "WORK-ONE");
+  // A subject naming two works is ambiguous: the branch does not settle it.
+  commit(root, "feat: WORK-TWO.1 and ABC on a named branch", own);
+  assert.equal(trailers(root), "");
   git(root, ["checkout", "-q", "-b", "topic/WORK-ONE-and-more"]);
   commit(root, "feat: nothing names it", own);
   assert.equal(trailers(root), "");
@@ -138,7 +142,7 @@ test("hooks install writes the hook, keeps a project's own hook, and writes noth
   git(tracked, ["add", "--", ".githooks"]);
   git(tracked, [...IDENTITY, "commit", "-q", "-m", "chore: project hooks"]);
   const refused = cli(tracked, ["hooks", "install", "--repo", "."], ".githooks");
-  assert.equal(refused.trim(), `${join(tracked, ".githooks")} is in the working tree, so nothing was written; copy templates/v2/hooks/commit-msg there as commit-msg (or call it from your existing hook) and commit it with the project's own review`);
+  assert.equal(refused.trim(), `${join(tracked, ".githooks")} is tracked by Git, so nothing was written; copy templates/v2/hooks/commit-msg there as commit-msg (or call it from your existing hook) and commit it with the project's own review`);
   assert.equal(existsSync(join(tracked, ".githooks", "commit-msg")), false);
 
   const wrong = call(root, ["hooks", "--repo", "."]);
@@ -191,6 +195,18 @@ test("accept and check say when recent commits name a work but carry no trailer,
   assert.ok(cli(root, ["accept", "--repo", ".", "--work", "WORK-SUBJ", "--by", "owner"], null).split("\n").includes(warning));
   assert.ok(cli(root, ["check", "--config", "delivery/work/WORK-SUBJ/run-config.yaml"], null).split("\n").includes(warning));
 
+  // A project's own commit-msg keeps it; the copy saved beside it counts only
+  // once that hook calls it.
+  const hooks = join(root, ".git", "hooks");
+  mkdirSync(hooks, { recursive: true });
+  writeFileSync(join(hooks, "commit-msg"), "#!/bin/sh\necho project hook\n", { mode: 0o755 });
+  cli(root, ["hooks", "install", "--repo", "."], null);
+  assert.ok(existsSync(join(hooks, "buildbeat-commit-msg")));
+  assert.ok(cli(root, ["check", "--config", "delivery/work/WORK-SUBJ/run-config.yaml"], null).split("\n").includes(warning));
+  writeFileSync(join(hooks, "commit-msg"), `#!/bin/sh\necho project hook\nsh "${hooks}/buildbeat-commit-msg" "$1"\n`, { mode: 0o755 });
+  assert.ok(!cli(root, ["check", "--config", "delivery/work/WORK-SUBJ/run-config.yaml"], null).includes("carry no Work: trailer"));
+  // With commit-msg itself BuildBeat's hook, nothing is said either.
+  rmSync(join(hooks, "commit-msg"));
   cli(root, ["hooks", "install", "--repo", "."], null);
   assert.ok(!cli(root, ["check", "--config", "delivery/work/WORK-SUBJ/run-config.yaml"], null).includes("carry no Work: trailer"));
 });

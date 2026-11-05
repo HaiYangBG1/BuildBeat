@@ -43,10 +43,15 @@ function ours(path) {
   }
 }
 
+// Installed means Git will run it: commit-msg is ours, or a project's own
+// commit-msg calls the copy saved beside it. A saved copy nothing calls
+// adds no trailer, so it does not count.
 export function hookInstalled(repoRoot) {
   try {
     const dir = hooksDir(repoRoot);
-    return ours(resolve(dir, "commit-msg")) || ours(resolve(dir, "buildbeat-commit-msg"));
+    const main = resolve(dir, "commit-msg");
+    if (ours(main)) return true;
+    return ours(resolve(dir, "buildbeat-commit-msg")) && readFileSync(main, "utf8").includes("buildbeat-commit-msg");
   } catch {
     return false;
   }
@@ -58,7 +63,8 @@ function inside(path, dir) {
 }
 
 // Installs the hook and says what was done. A hooks directory inside the
-// working tree is a project directory: nothing is written there. An
+// working tree belongs to the project and goes into Git with it: nothing is
+// written there. An
 // existing commit-msg hook that is not ours is never touched.
 export function installCommitHook(repoRoot) {
   const top = realpathSync(git(repoRoot, ["rev-parse", "--show-toplevel"]));
@@ -68,7 +74,7 @@ export function installCommitHook(repoRoot) {
   if (inside(real, top) && !inside(real, gitDir)) {
     return {
       written: null,
-      message: `${dir} is in the working tree, so nothing was written; copy templates/v2/hooks/commit-msg there as commit-msg (or call it from your existing hook) and commit it with the project's own review`,
+      message: `${dir} is tracked by Git, so nothing was written; copy templates/v2/hooks/commit-msg there as commit-msg (or call it from your existing hook) and commit it with the project's own review`,
     };
   }
   const text = readFileSync(HOOK_TEMPLATE, "utf8");

@@ -101,15 +101,14 @@ export function knownWorks(root) {
 // The one work a line of text names, or null (WORK-COMMIT-TRAILERS): the
 // text is cut at every character other than letters, digits, ".", "_" and
 // "-", dots, dashes and underscores at either end of a piece are dropped,
-// pieces shorter than four characters are not looked up, and exactly one
-// piece must be a known work. Subjects often cite another work beside their
+// and exactly one piece must be a known work. Subjects often cite another work beside their
 // own, so two names count as none. templates/v2/hooks/commit-msg applies
 // the same rule when it adds the trailer.
 export function namedWork(text, known) {
   const found = new Set();
   for (const raw of String(text ?? "").split(/[^A-Za-z0-9._-]+/)) {
     const piece = raw.replace(/^[._-]+|[._-]+$/g, "");
-    if (piece.length >= 4 && known.has(piece)) found.add(piece);
+    if (piece && known.has(piece)) found.add(piece);
   }
   return found.size === 1 ? [...found][0] : null;
 }
