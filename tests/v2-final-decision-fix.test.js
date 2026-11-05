@@ -431,6 +431,14 @@ test("a repair adopted at the merge decision is shown as a hand-in, not as a mer
   assert.match(views[1], new RegExp(` ${line}`, "m"));
   assert.equal(JSON.parse(statusOf(f.root, "--work", "WORK-F", "--json")).works[0].selfMergeApproval, undefined);
 
+  // Merged by hand with only the hand-in on record: history --path names no
+  // approver (the hand-in carries the merged candidate, so taking it for an
+  // approval would name the session).
+  git(f.root, "merge", "-q", "--ff-only", sha);
+  const history = (json) => spawnSync(process.execPath, [CLI, "history", "--repo", f.root, "--path", "feature.txt", ...(json ? ["--json"] : [])], { encoding: "utf8" }).stdout;
+  assert.equal(JSON.parse(history(true)).works.find((item) => item.work === "WORK-F").approved, null);
+  assert.doesNotMatch(history(false), /^ {4}approved: /m);
+
   // The session approving the merge itself is still called out, by that
   // approval's reference.
   const approval = approveRun(f.root, "RUN-F", { actor: SESSION, transition: "enter-wait-merge", candidate: sha });
@@ -441,11 +449,9 @@ test("a repair adopted at the merge decision is shown as a hand-in, not as a mer
     assert.match(view, new RegExp(`note: merge approved by an AI session \\(claude-code, ${approved}\\), not by a person`));
   }
 
-  // history --path names the approval of the merged candidate, not the hand-in.
-  git(f.root, "merge", "-q", "--ff-only", sha);
-  const trace = JSON.parse(spawnSync(process.execPath, [CLI, "history", "--repo", f.root, "--path", "feature.txt", "--json"], { encoding: "utf8" }).stdout);
-  const work = trace.works.find((item) => item.work === "WORK-F");
-  assert.equal(work.approved.decisionRef, approved);
+  // Once approved, history --path names that approval.
+  assert.equal(JSON.parse(history(true)).works.find((item) => item.work === "WORK-F").approved.decisionRef, approved);
+  assert.match(history(false), /^ {4}approved: \S+ by claude-code \(AI session\) \(RUN-F\)$/m);
 });
 
 test("after a hand-in, a person's merge approval leaves no AI-approval note", () => {
