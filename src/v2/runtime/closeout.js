@@ -59,6 +59,7 @@ export function textLines(text, { codeSpans = true } = {}) {
     }
     const before = comment;
     let kept = "";
+    let dropped = false;
     let at = 0;
     while (at < raw.length) {
       if (comment) {
@@ -88,7 +89,11 @@ export function textLines(text, { codeSpans = true } = {}) {
         // codeSpans: false leaves a closed span out (the draft check reads
         // past code); its boundaries are the ones found here, before any
         // comment on the line is removed.
-        kept += close < 0 || codeSpans ? raw.slice(at, stop) : " ";
+        if (close < 0 || codeSpans) kept += raw.slice(at, stop);
+        else {
+          kept += " ";
+          dropped = true;
+        }
         at = stop;
       } else if (raw.startsWith("<!--", at)) {
         comment = true;
@@ -98,7 +103,10 @@ export function textLines(text, { codeSpans = true } = {}) {
         at += 1;
       }
     }
-    if (kept.trim() === "") {
+    // A line whose only text was a dropped code span is still a line of the
+    // paragraph: it does not count as blank, so the line after it is not
+    // read as indented code.
+    if (kept.trim() === "" && !dropped) {
       // A blank line (not one that was all comment) ends a paragraph.
       if (!before && !comment && raw.trim() === "") {
         lines.push("");

@@ -450,7 +450,10 @@ test("a placeholder or marker quoted in inline code does not hold a page back, o
   // is removed: a comment between two spans must not join them into one
   // that swallows the placeholder after it.
   page("COMMENT-BETWEEN", "Quoted `a`<!-- note -->``b``; unfinished <fill in: who> and `c`.");
-  for (const id of ["MIXED", "ESCAPED", "UNCLOSED", "MARKER-PROSE", "COMMENT-BETWEEN"]) {
+  // A line that is only inline code is still part of its paragraph, so the
+  // indented line after it is prose, not an indented code block.
+  page("CODE-ONLY-LINE", "`Implemented`", "    Confirmed by <fill in: who>.");
+  for (const id of ["MIXED", "ESCAPED", "UNCLOSED", "MARKER-PROSE", "COMMENT-BETWEEN", "CODE-ONLY-LINE"]) {
     const refused = close(root, id);
     assert.notEqual(refused.status, 0, id);
     assert.match(refused.stderr, refusal, id);
