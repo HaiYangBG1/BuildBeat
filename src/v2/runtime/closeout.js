@@ -30,7 +30,7 @@ const PROMOTION =
 // code span (or escaped with a backslash) is text, not the start of a comment. A comment may open or close
 // anywhere else on a line and span several lines; what lies outside it is the
 // line's text.
-export function textLines(text) {
+export function textLines(text, { codeSpans = true } = {}) {
   const lines = [];
   let fence = null;
   let comment = false;
@@ -59,6 +59,7 @@ export function textLines(text) {
     }
     const before = comment;
     let kept = "";
+    let dropped = false;
     let at = 0;
     while (at < raw.length) {
       if (comment) {
@@ -85,7 +86,14 @@ export function textLines(text) {
           }
         }
         const stop = close < 0 ? at + run.length : close + run.length;
-        kept += raw.slice(at, stop);
+        // codeSpans: false leaves a closed span out (the draft check reads
+        // past code); its boundaries are the ones found here, before any
+        // comment on the line is removed.
+        if (close < 0 || codeSpans) kept += raw.slice(at, stop);
+        else {
+          kept += " ";
+          dropped = true;
+        }
         at = stop;
       } else if (raw.startsWith("<!--", at)) {
         comment = true;
@@ -95,7 +103,10 @@ export function textLines(text) {
         at += 1;
       }
     }
-    if (kept.trim() === "") {
+    // A line whose only text was a dropped code span is still a line of the
+    // paragraph: it does not count as blank, so the line after it is not
+    // read as indented code.
+    if (kept.trim() === "" && !dropped) {
       // A blank line (not one that was all comment) ends a paragraph.
       if (!before && !comment && raw.trim() === "") {
         lines.push("");
@@ -159,9 +170,11 @@ export function readResult(repoRoot, workId) {
 // placeholder. The marker is an HTML comment, so it is never the summary.
 // Both count wherever they stand outside code, so moving the marker below a
 // blank line or a heading does not hide it, while a hand-written page may
-// quote either in a code block and still close. textLines drops comments,
-// so the marker is first turned into visible text and then read the same
-// way as the placeholders.
+// quote either in a code block or in inline code and still close
+// (WORK-FALSE-POSITIVES: a result page describing the check quoted the
+// placeholder in inline code and could not close). textLines drops
+// comments, so the marker is first turned into visible text and then read
+// the same way as the placeholders.
 const DRAFT_MARKER = "<!-- buildbeat draft: check every section against Git and the work, then delete this line -->";
 const DRAFT_SHOWN = 20;
 
@@ -169,7 +182,7 @@ const DRAFT_SEEN = "\u0001buildbeat-draft\u0001";
 
 export function isDraft(text) {
   const shown = text.replace(/<!--\s*buildbeat draft:/g, (marker) => `${DRAFT_SEEN}${marker}`);
-  return textLines(shown).some((line) => line.includes(DRAFT_SEEN) || line.includes("<fill in"));
+  return textLines(shown, { codeSpans: false }).some((line) => line.includes(DRAFT_SEEN) || line.includes("<fill in"));
 }
 
 export class DraftError extends Error {
