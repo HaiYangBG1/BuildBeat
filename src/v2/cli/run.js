@@ -56,6 +56,7 @@ import { renderTrace, traceLines } from "../runtime/code-trace.js";
 import { attachThreads, readWorks, renderThread, worksWithRef } from "../runtime/threads.js";
 import { attachFacts, factsWarning, renderFacts } from "../runtime/facts.js";
 import { closeWork, runReadback } from "../runtime/release.js";
+import { writeResultDraft } from "../runtime/closeout.js";
 import {
   DEFAULT_STALL_AFTER_MS,
   describeLiveness,
@@ -108,6 +109,7 @@ Usage:
   buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--as human|agent] [--note <text>]
   buildbeat release --config <run-config.yaml> [--ref <ref>] [--note <text>]
   buildbeat decide --repo <path> --work <WORK-ID> --action close [--result <text>] [--note <text>] [--by <name>] [--as human|agent]
+  buildbeat decide --repo <path> --work <WORK-ID> --action close --draft
   buildbeat check --config <run-config.yaml> [--step <id>]
   buildbeat stop --repo <path> --run <RUN-ID> --reason <text>
   buildbeat gc --repo <path> [--apply] [--force]
@@ -123,7 +125,7 @@ check --step executes that worker in the main checkout, outside the evidence led
 
 // Switches may stand alone (`--json`) or take an explicit true/false
 // (`--json true`, the older spelling); every other flag needs a value.
-const SWITCHES = new Set(["json", "apply", "force", "once", "new", "verify", "all-repos"]);
+const SWITCHES = new Set(["json", "apply", "force", "once", "new", "verify", "all-repos", "draft"]);
 
 function parseFlags(argv) {
   const flags = {};
@@ -1702,6 +1704,17 @@ function commandDecide(flags) {
   if (flags.action === "close") {
     if (!flags.repo || !flags.work)
       throw new Error("closing a work requires --repo and --work");
+    if (flags.draft === "true") {
+      const repoRoot = resolve(flags.repo);
+      const closed = readJsonl(join(repoRoot, "delivery", "work", flags.work, "decisions.jsonl"))
+        .some((row) => row.transition === "close-work");
+      const draft = writeResultDraft({ repoRoot, workId: flags.work, closed });
+      const close = `buildbeat decide --repo ${repoLabelFor(repoRoot, flags.repo)} --work ${flags.work} --action close`;
+      console.log(
+        `wrote delivery/work/${flags.work}/result.md (a draft from ${draft.commits} commit${draft.commits === 1 ? "" : "s"}); check it against Git and the work, delete its first line, then ${close} --by <you>`,
+      );
+      return;
+    }
     const row = closeWork({
       repoRoot: resolve(flags.repo),
       workId: flags.work,

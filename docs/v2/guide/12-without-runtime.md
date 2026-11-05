@@ -98,4 +98,4 @@
 
 想让 AI 在隔离工作树里自动实现、验证、审查、修复，想让机器替你核对上面这些记录，或者工作多了要一眼看全进度，就按[快速开始](01-quickstart.md)装上运行时。已经写下的文件不用改：
 
-运行 `buildbeat status --repo . --work <ID>`：新改的 `work.md` 显示为待接受，手写的接受行与裁决行按同样的摘要与指纹规则生效；`result.md` 的写回行会被现场核对（✓/✗），关窗后 `result.md` 又改过也会标出。之后 `buildbeat run --config <config>` 接着交付。同一个项目里，装了运行时的人和没装的人用的是同一批文件。
+运行 `buildbeat status --repo . --work <ID>`：新改的 `work.md` 显示为待接受，手写的接受行与裁决行按同样的摘要与指纹规则生效；`result.md` 的写回行会被现场核对（✓/✗），关窗后 `result.md` 又改过也会标出。没跑过 Run、已经有代码提交的工作显示为 `COMMITTED`，可以用 `buildbeat decide --repo . --work <ID> --action close --draft` 按提交生成 `result.md` 初稿，改好后关窗。之后 `buildbeat run --config <config>` 接着交付。同一个项目里，装了运行时的人和没装的人用的是同一批文件。
