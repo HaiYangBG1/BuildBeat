@@ -153,13 +153,18 @@ export function runReadback({
     args: spec.args ?? [],
     timeoutMs: spec.timeoutMs,
     inheritEnv: spec.inheritEnv === true,
-    env: { ...(spec.env ?? {}), ...(env !== null ? { BUILDBEAT_RELEASE_ENV: env } : {}) },
+    env: spec.env ?? {},
   });
+  // BUILDBEAT_RELEASE_ENV is --env and nothing else: set last, over the
+  // config's env: and an inherited host environment, and left out (an
+  // undefined value is not passed to the process) when --env is not given,
+  // so the command never checks an environment the record does not name.
   const exec = adapter.execute({
     step: "release",
     worker: "release",
     workspacePath: repoRoot,
     input: { workId, run: released.id, candidate: released.candidate, ref, commit, ...(env !== null ? { env } : {}) },
+    extraEnv: { BUILDBEAT_RELEASE_ENV: env ?? undefined },
   });
   const scrub = (text) => {
     let out = String(text ?? "");

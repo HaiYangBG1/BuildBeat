@@ -100,10 +100,23 @@ test("release --env records the environment and hands it to the readback command
   assert.equal(first.status, "passed");
   assert.equal(Object.hasOwn(second, "env"), false);
 
+  // Only --env sets the variable: not the config's env:, not the host.
+  write(root, config, releaseOnly("WORK-A").replace("release:\n", "release:\n  env:\n    BUILDBEAT_RELEASE_ENV: prod\n"));
+  assert.match(cli(root, "release", "--config", config), /^ {2}\| env=unset$/m);
+  assert.match(cli(root, "release", "--config", config, "--env", "preprod"), /^ {2}\| env=preprod$/m);
+  write(root, config, releaseOnly("WORK-A").replace("release:\n", "release:\n  inheritEnv: true\n"));
+  const inherited = spawnSync(process.execPath, [CLI, "release", "--config", config], {
+    cwd: root, encoding: "utf8", env: { ...fixtureEnv(), BUILDBEAT_RELEASE_ENV: "prod" },
+  });
+  assert.equal(inherited.status, 0, inherited.stderr);
+  assert.match(inherited.stdout, /^ {2}\| env=unset$/m);
+  assert.deepEqual(releases(root, "WORK-A").slice(2).map((row) => row.env ?? null), [null, "preprod", null]);
+  write(root, config, releaseOnly("WORK-A"));
+
   const bad = call(root, "release", "--config", config, "--env", "pre prod");
   assert.notEqual(bad.status, 0);
   assert.match(bad.stderr, /--env pre prod: an environment name is letters, digits, "\.", "_" and "-", starting with a letter or digit/);
-  assert.equal(releases(root, "WORK-A").length, 2);
+  assert.equal(releases(root, "WORK-A").length, 5);
 });
 
 test("a work with a succeeded run is still read back against its candidate", () => {
