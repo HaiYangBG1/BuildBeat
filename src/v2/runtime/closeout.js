@@ -159,9 +159,11 @@ export function readResult(repoRoot, workId) {
 // placeholder. The marker is an HTML comment, so it is never the summary.
 // Both count wherever they stand outside code, so moving the marker below a
 // blank line or a heading does not hide it, while a hand-written page may
-// quote either in a code block and still close. textLines drops comments,
-// so the marker is first turned into visible text and then read the same
-// way as the placeholders.
+// quote either in a code block or in inline code and still close
+// (WORK-FALSE-POSITIVES: a result page describing the check quoted the
+// placeholder in inline code and could not close). textLines drops
+// comments, so the marker is first turned into visible text and then read
+// the same way as the placeholders.
 const DRAFT_MARKER = "<!-- buildbeat draft: check every section against Git and the work, then delete this line -->";
 const DRAFT_SHOWN = 20;
 
@@ -169,7 +171,49 @@ const DRAFT_SEEN = "\u0001buildbeat-draft\u0001";
 
 export function isDraft(text) {
   const shown = text.replace(/<!--\s*buildbeat draft:/g, (marker) => `${DRAFT_SEEN}${marker}`);
-  return textLines(shown).some((line) => line.includes(DRAFT_SEEN) || line.includes("<fill in"));
+  return textLines(shown).some((raw) => {
+    const line = withoutCodeSpans(raw);
+    return line.includes(DRAFT_SEEN) || line.includes("<fill in");
+  });
+}
+
+// A line from textLines without its inline code spans, recognised the way
+// textLines recognises them: a run of backticks closes at the next run of
+// exactly as many, a backslash-escaped character is plain text, and
+// backticks with no closing run are plain text. textLines keeps code spans
+// because promotion lines name their paths in them; only the draft check
+// looks past them.
+function withoutCodeSpans(line) {
+  let out = "";
+  let at = 0;
+  while (at < line.length) {
+    if (line[at] === "\\" && /[!-/:-@[-`{-~]/.test(line[at + 1] ?? "")) {
+      out += line.slice(at, at + 2);
+      at += 2;
+    } else if (line[at] === "`") {
+      const run = /^`+/.exec(line.slice(at))[0];
+      const runs = /`+/g;
+      runs.lastIndex = at + run.length;
+      let close = -1;
+      for (let match = runs.exec(line); match; match = runs.exec(line)) {
+        if (match[0].length === run.length) {
+          close = match.index;
+          break;
+        }
+      }
+      if (close < 0) {
+        out += run;
+        at += run.length;
+      } else {
+        out += " ";
+        at = close + run.length;
+      }
+    } else {
+      out += line[at];
+      at += 1;
+    }
+  }
+  return out;
 }
 
 export class DraftError extends Error {

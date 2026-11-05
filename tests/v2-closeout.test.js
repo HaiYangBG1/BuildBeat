@@ -429,3 +429,26 @@ test("a hand-written page that quotes the marker or a placeholder in code still 
   assert.equal(closed.status, 0, closed.stderr);
   assert.equal(decisions(dir).at(-1).subject.result, "Draft guard documented.");
 });
+
+// WORK-FALSE-POSITIVES: inline code counts as code for the draft check, so
+// a page describing the check can quote it; real placeholders and the
+// marker in prose are still refused.
+test("a placeholder or marker quoted in inline code does not hold a page back, one in prose still does", () => {
+  const root = repo();
+  const marker = "<!-- buildbeat draft: check every section against Git and the work, then delete this line -->";
+  const page = (id, ...body) => work(root, id, { "result.md": [`# ${id} result`, "", ...body, ""].join("\n") });
+  const quoted = page("QUOTED-INLINE", "Closing refuses `<fill in` placeholders and the `" + marker + "` line.", "", "Also ``a `<fill in` inside a double run``.");
+  assert.equal(close(root, "QUOTED-INLINE").status, 0);
+  assert.equal(decisions(quoted).at(-1).transition, "close-work");
+
+  const refusal = /result\.md is still the generated draft/;
+  page("MIXED", "Shipped with `x`. Confirmed by <fill in: who checked it>.");
+  page("ESCAPED", "Shipped. \\`<fill in: who\\` is not code.");
+  page("UNCLOSED", "Shipped ` and <fill in: who> is not code either.");
+  page("MARKER-PROSE", "Shipped.", "", "See `notes`, then " + marker);
+  for (const id of ["MIXED", "ESCAPED", "UNCLOSED", "MARKER-PROSE"]) {
+    const refused = close(root, id);
+    assert.notEqual(refused.status, 0, id);
+    assert.match(refused.stderr, refusal, id);
+  }
+});
