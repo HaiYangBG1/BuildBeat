@@ -446,7 +446,11 @@ test("a placeholder or marker quoted in inline code does not hold a page back, o
   page("ESCAPED", "Shipped. \\`<fill in: who\\` is not code.");
   page("UNCLOSED", "Shipped ` and <fill in: who> is not code either.");
   page("MARKER-PROSE", "Shipped.", "", "See `notes`, then " + marker);
-  for (const id of ["MIXED", "ESCAPED", "UNCLOSED", "MARKER-PROSE"]) {
+  // Code spans keep the boundaries they have before a comment on the line
+  // is removed: a comment between two spans must not join them into one
+  // that swallows the placeholder after it.
+  page("COMMENT-BETWEEN", "Quoted `a`<!-- note -->``b``; unfinished <fill in: who> and `c`.");
+  for (const id of ["MIXED", "ESCAPED", "UNCLOSED", "MARKER-PROSE", "COMMENT-BETWEEN"]) {
     const refused = close(root, id);
     assert.notEqual(refused.status, 0, id);
     assert.match(refused.stderr, refusal, id);

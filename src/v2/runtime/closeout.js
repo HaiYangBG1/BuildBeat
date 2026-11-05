@@ -30,7 +30,7 @@ const PROMOTION =
 // code span (or escaped with a backslash) is text, not the start of a comment. A comment may open or close
 // anywhere else on a line and span several lines; what lies outside it is the
 // line's text.
-export function textLines(text) {
+export function textLines(text, { codeSpans = true } = {}) {
   const lines = [];
   let fence = null;
   let comment = false;
@@ -85,7 +85,10 @@ export function textLines(text) {
           }
         }
         const stop = close < 0 ? at + run.length : close + run.length;
-        kept += raw.slice(at, stop);
+        // codeSpans: false leaves a closed span out (the draft check reads
+        // past code); its boundaries are the ones found here, before any
+        // comment on the line is removed.
+        kept += close < 0 || codeSpans ? raw.slice(at, stop) : " ";
         at = stop;
       } else if (raw.startsWith("<!--", at)) {
         comment = true;
@@ -171,49 +174,7 @@ const DRAFT_SEEN = "\u0001buildbeat-draft\u0001";
 
 export function isDraft(text) {
   const shown = text.replace(/<!--\s*buildbeat draft:/g, (marker) => `${DRAFT_SEEN}${marker}`);
-  return textLines(shown).some((raw) => {
-    const line = withoutCodeSpans(raw);
-    return line.includes(DRAFT_SEEN) || line.includes("<fill in");
-  });
-}
-
-// A line from textLines without its inline code spans, recognised the way
-// textLines recognises them: a run of backticks closes at the next run of
-// exactly as many, a backslash-escaped character is plain text, and
-// backticks with no closing run are plain text. textLines keeps code spans
-// because promotion lines name their paths in them; only the draft check
-// looks past them.
-function withoutCodeSpans(line) {
-  let out = "";
-  let at = 0;
-  while (at < line.length) {
-    if (line[at] === "\\" && /[!-/:-@[-`{-~]/.test(line[at + 1] ?? "")) {
-      out += line.slice(at, at + 2);
-      at += 2;
-    } else if (line[at] === "`") {
-      const run = /^`+/.exec(line.slice(at))[0];
-      const runs = /`+/g;
-      runs.lastIndex = at + run.length;
-      let close = -1;
-      for (let match = runs.exec(line); match; match = runs.exec(line)) {
-        if (match[0].length === run.length) {
-          close = match.index;
-          break;
-        }
-      }
-      if (close < 0) {
-        out += run;
-        at += run.length;
-      } else {
-        out += " ";
-        at = close + run.length;
-      }
-    } else {
-      out += line[at];
-      at += 1;
-    }
-  }
-  return out;
+  return textLines(shown, { codeSpans: false }).some((line) => line.includes(DRAFT_SEEN) || line.includes("<fill in"));
 }
 
 export class DraftError extends Error {

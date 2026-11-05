@@ -21,7 +21,7 @@ function flagged(samples) {
 }
 
 test("ordinary words pass the citation check", () => {
-  const words = ["recite the list", "an excited reviewer", "elicited answers", "please cite the source", "solicited", "citep"];
+  const words = ["recite the list", "an excited reviewer", "elicited answers", "please cite the source", "solicited", "citep", "【符号说明：† 表示脚注】"];
   assert.deepEqual(flagged(words), words.map(() => false));
 });
 
@@ -29,8 +29,7 @@ test("exported citation markers still fail it", () => {
   const markers = [
     "see filecite here",
     "as shown citeturn0search3",
-    "citeturn0file1",
-    "【4:0†source】",
+    "\ue200cite\ue202turn0file1\ue201",
   ];
   assert.deepEqual(flagged(markers), markers.map(() => true));
 });
