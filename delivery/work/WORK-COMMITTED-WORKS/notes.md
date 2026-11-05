@@ -1,0 +1,27 @@
+# 驾驶记录
+
+- 驱动运行时：本机全局 CLI 5.4.0（与 main `1be6ff7` 的运行时代码相同）。
+- builder 和 fixer 不配 worker：驾驶会话在 Run 工作树里亲自写，再以 `run --adopt <sha>` 交给 verify 和只读 reviewer。
+- 所有者 2026-11-05 转来一个业务试点项目的 12 条使用反馈；会话核实后建议先做第 1、2、3 条，所有者说「按推荐起草」，看过三份说明的摘要后说「全部接受并开工」。接受记为 `A-WORK-COMMITTED-WORKS-1`（人，经 AI 会话录入）；所有者没有说逐项看过 work.md。
+- RUN-COMMITTED-WORKS-01 起点 `ee670cf`（会话分支 `claude/caixiaozhi-feedback-00d1e3`，接受记录已提交）。
+- 和说明不完全一样的地方，写在这里供审查和所有者对照：
+  - `history --path` 的输出不变（说明的验收要求），所以它对这类工作仍显示记录里的阶段（比如 `WORK_DRAFT`），不显示 `COMMITTED`。已有测试 `tests/v2-code-trace.test.js` 断言 `WORK-TRAILER  WORK_DRAFT`，按停止条件不改已有断言。
+  - `--json` 的 `committed` 多了一个 `branch` 字段（文本那行要用分支名，顺带给出）。
+  - 说明第 7 项写"只读到这些工作里最早的文件夹出现之后的提交"。实现改为"第一个工作文件夹进入分支之后"：试点上按每项工作各给一个路径（127 个）查起点，比要限定的那次日志本身还慢（约 0.55 秒对 0.29 秒）；改成整个 `delivery/work/` 一个路径后约 0.23 秒。读到的提交只会更多，结果只会更全。
+  - 草稿第一段在提交都在同一天时写 `on <date>`，跨天时写 `<first> to <last>`。
+- 新测试在改动前的代码上：`tests/v2-closeout.test.js` 新增 4 条，其中两条功能测试（`COMMITTED`、`--draft`）失败，原因分别是阶段仍为 `WORK_DRAFT`、旧代码不认 `--draft`（报 `--draft needs a value`）；另两条是回归保护（有配置/有 Run/已关窗的阶段不变；代码块里引用占位不算初稿），在旧代码上本来就通过。
+- 本地全量 `npm test`：412 条全过（233 秒，含本来就慢的 `v2-final-decision-fix` 约 160 秒）；`npm run check:docs` 通过。
+- 试点只读试跑（试点仓库的本地克隆，切到远端开发分支 2026-11-04 的提交，带上本机的 119 份 Run 台账；没有改试点仓库）：
+  - 改动前：没跑过 Run 的 126 项全是草稿（125 项 `INTENT_DRAFT`、1 项 `PLAN_DRAFT`）。
+  - 改动后：114 项 `COMMITTED`，12 项仍是 `INTENT_DRAFT`。说明里预估 110 项（只数了非合并提交）；多出的 4 项是合并提交按第一父算、同时改了文件夹和代码。剩下 12 项里，约 10 项没有代码提交，其余只有提交标题写了编号，要等 WORK-COMMIT-TRAILERS。
+  - 抽查提交最少的 8 项（各 1 个提交）：都是标题写了这项工作编号的功能提交或合并提交，没有落在明显没做完的工作上。
+  - 耗时（机器空闲，各 5 次）：改动前约 1.10 秒，改动后约 1.38 秒，多约 0.28 秒，在 1 秒以内。全量测试跑着时测得多 1.4 秒，那次不算。
+- 本仓 `status`：改动前后阶段一致（本仓的老工作都已关窗或有 Run）。
+- 候选 `e8d559f` 以 `run --adopt` 交接（`D-RUN-COMMITTED-WORKS-01-1`），verify 一次通过（约 3 分钟），codex 只读审查第 1 轮 1 条 P2（`2e2a3c07c153e88a`）：初稿标记按全文找，手写 `result.md` 在代码块里引用这行标记也会被拒绝关窗。成立。
+- 手修 `a13da2e`：标记只认文件第一行（初稿就写在第一行，提示也说"删掉第一行"），占位照旧按代码块以外的正文找；扩展了"代码块里引用不算初稿"那条测试，它在 `e8d559f` 上失败（报 still the generated draft），修后通过。合并决定点以 `run --adopt a13da2e` 交回 Run，重验、再审。
+- 第 2 轮：verify 通过，审查 1 条 P1（`dea94933ac557cf3`）：`a13da2e` 只认第一行，填完占位后在标记前加一个空行或标题就能关窗，违反"标记还在就拒绝关窗"。成立，是上一轮修复引入的。
+- 手修 `be9c463`：标记出现在代码块以外的任何位置都算，做法是先把标记变成可见文字，再和占位一样用 `textLines` 读，代码块里引用的仍不算。初稿测试加了"把标记挪到标题下面、占位都填完"仍被拒的一步，它在 `a13da2e` 上失败，修后 14 条全过。两条问题都按"成立、已修"记为 accept（会话）。
+- 审查不收敛（本轮 1 条阻断、上轮 0 条），Run 停在 `enter-fix` 等人；按规则由所有者决定是否让 `be9c463` 重验、再审。
+- 顺带发现（不在本工作范围）：在合并决定点用 `run --adopt` 交回修复时，运行时记一行 `enter-wait-merge approved`（带 `adopted` 字段），`status` 因此提示"merge approved by an AI session"，其实不是合并批准。人真正批准后提示会消失；`selfMergeApproval`（`src/v2/runtime/actor.js:106-110`）应跳过带 `adopted` 的行。
+- 所有者说「批准重验再审」，`be9c463` 以 `run --adopt` 交回（`D-RUN-COMMITTED-WORKS-01-3`，人，经 AI 会话录入）。第 3 轮 verify 通过（约 4 分钟），codex 只读审查 0 条问题。Run 停在合并决定，等所有者批准。
+- 所有者 2026-11-05 说「批准合并并继续」，记为合并批准 `D-RUN-COMMITTED-WORKS-01-4`（人，经 AI 会话录入）；Run 终态 SUCCEEDED。候选 `be9c463` 以 merge commit 合入会话分支 `claude/caixiaozhi-feedback-00d1e3`。未推送、未发版、未关窗。
