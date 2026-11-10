@@ -24,13 +24,15 @@ import {
   nextStep,
 } from "../engine/workflow.js";
 import { parseYamlSubset } from "../engine/yaml-subset.js";
-import { deliveryChecks } from "../policy/policy.js";
+import { artifactAccepted, deliveryChecks } from "../policy/policy.js";
 import {
   acceptArtifacts,
   adoptCandidate,
   boundArtifacts,
+  approvePass,
   approveRun,
   listInbox,
+  rejectPass,
   rejectRun,
   requestFix,
 } from "../runtime/decisions.js";
@@ -80,6 +82,7 @@ import {
   DEFAULT_REVIEW_ROUNDS_PER_WORK,
   assertRunConfiguration,
   resumeRun,
+  reviewCommit,
   startRun,
 } from "../runtime/orchestrator.js";
 import { describeActor, selfMergeApproval } from "../runtime/actor.js";
@@ -95,7 +98,9 @@ import {
   checkRunConfigShape,
   releaseOnly,
   RunConfigError,
+  workerEnvOverrides,
 } from "./run-config-check.js";
+import { loadPassConfig, workConfigRef } from "./pass-config.js";
 
 const KERNEL = { kind: "kernel", id: "cli" };
 
@@ -104,6 +109,9 @@ const USAGE = `BuildBeat runtime
 Usage:
   buildbeat --version
   buildbeat accept --repo <path> --work <WORK-ID> [--by <name>] [--as human|agent] [--note <text>]
+  buildbeat review --repo <path> --work <WORK-ID> [--commit <sha>]
+  buildbeat decide --repo <path> --work <WORK-ID> --action approve --candidate <sha> [--by <name>] [--as human|agent]
+  buildbeat decide --repo <path> --work <WORK-ID> --action reject --reason <text> [--by <name>] [--as human|agent]
   buildbeat run --config <run-config.yaml> [--run <RUN-ID>] [--new] [--adopt <sha> [--by <name>] [--as human|agent]]
   buildbeat status --repo <path> [--work <WORK-ID> | --run <RUN-ID>] [--all-repos] [--json]
   buildbeat status --repo <path> [--all-repos] --ref <id> [--json]
@@ -126,6 +134,8 @@ Decisions record who made them: --by names the person or session (default:
 git user.name for a person, the detected tool for an AI session); --as says
 which (default: agent inside a detected AI session, otherwise human).
 check --step executes that worker in the main checkout, outside the evidence ledger.
+review verifies and reviews one existing commit (default HEAD) with the workers in
+delivery/run-config.yaml; a work overrides them in delivery/work/<WORK-ID>/run-config.yaml.
 `;
 
 // Switches may stand alone (`--json`) or take an explicit true/false
@@ -330,28 +340,6 @@ function printState(state, ledger, view = {}) {
   if (state.compacted) {
     console.log(`compacted: ${state.compacted.runRecordRef}`);
   }
-}
-
-function workerEnvOverrides(worker, env) {
-  if (env === undefined || env === null) {
-    return {};
-  }
-  if (typeof env !== "object" || Array.isArray(env)) {
-    throw new Error(
-      `workers.${worker}.env must be a mapping of variable names to scalar values`,
-    );
-  }
-  const out = {};
-  for (const [key, value] of Object.entries(env)) {
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
-      throw new Error(`workers.${worker}.env: invalid variable name ${key}`);
-    }
-    if (value === null || typeof value === "object") {
-      throw new Error(`workers.${worker}.env.${key} must be a scalar`);
-    }
-    out[key] = String(value);
-  }
-  return out;
 }
 
 function loadRunConfig(flags, command) {
@@ -1682,6 +1670,143 @@ async function commandRun(flags) {
   return commandStart({ ...flags, attempt: "new" }, options);
 }
 
+// Verify and review one existing commit of a work (WORK-CLEAN-START): the
+// commit is checked out by itself, the project's verifier runs on it and,
+// when that passes, the read-only reviewer. The change under review is what
+// the commit adds after the commit that holds the accepted work.md (or after
+// `base:` in the work's run config).
+function commandReview(flags) {
+  if (!flags.repo || !flags.work) {
+    throw new Error("review requires --repo and --work");
+  }
+  const repoRoot = resolve(flags.repo);
+  const workId = String(flags.work);
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(workId) || workId.includes("..")) {
+    throw new Error(`--work ${workId} is not a work id`);
+  }
+  const repoLabel = repoLabelFor(repoRoot, flags.repo);
+  const again = `buildbeat review --repo ${repoLabel} --work ${workId}`;
+  const ref = `delivery/work/${workId}/work.md`;
+  const options = loadPassConfig(repoRoot, workId);
+  const accepted = artifactAccepted("work", {
+    workDir: join(repoRoot, "delivery", "work", workId),
+  });
+  if (accepted.ok !== true) {
+    throw new Error(
+      `${ref} is not accepted (${accepted.why}); buildbeat accept --repo ${repoLabel} --work ${workId} --by <you>`,
+    );
+  }
+  const git = (args) =>
+    execFileSync("git", ["-C", repoRoot, ...args], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+  const commitOf = (name) => {
+    // A name that starts with "-" would be read by git as an option.
+    if (String(name).startsWith("-")) {
+      throw new Error(`${name} does not name a commit`);
+    }
+    try {
+      return git(["rev-parse", "--verify", `${name}^{commit}`]);
+    } catch {
+      throw new Error(`${name} does not name a commit`);
+    }
+  };
+  const commit = commitOf(flags.commit ?? "HEAD");
+  const short = commit.slice(0, 7);
+  const missing = `commit ${short} does not contain ${ref}; commit the accepted work.md first, then the change`;
+  // Where the work starts: the commit that last wrote its work.md, unless
+  // the work's run config names another one.
+  const base = options.base
+    ? commitOf(options.base)
+    : git(["log", "-1", "--format=%H", commit, "--", ref]);
+  if (!base) {
+    throw new Error(missing);
+  }
+  if (base === commit) {
+    throw new Error(
+      `nothing to review: ${short} is the commit the work starts from; commit the change after it${options.base ? "" : `, or name an earlier start as base: in ${workConfigRef(workId)}`}`,
+    );
+  }
+  // Compared on the checkout itself, where Git has applied that checkout's
+  // attributes and filters.
+  const verifyCheckout = (worktreePath) => {
+    const file = join(worktreePath, ref);
+    if (!existsSync(file)) {
+      throw new Error(missing);
+    }
+    if (textDigest(readFileSync(file, "utf8")) !== options.planDigest) {
+      throw new Error(
+        `commit ${short} carries a different ${ref} than the accepted one; commit the accepted version, or accept the new one`,
+      );
+    }
+  };
+  const runId = nextAttemptId(repoRoot, workId, options.family);
+  console.log(`reviewing ${short} as ${runId} (changes since ${base.slice(0, 7)})`);
+  const result = reviewCommit({ ...options, runId, base, commit, verifyCheckout });
+  for (const run of result.superseded ?? []) {
+    console.log(
+      `superseded ${run} (an earlier review of this work was still waiting; now SUPERSEDED)`,
+    );
+  }
+  for (const row of result.supersedeSkipped ?? []) {
+    console.log(`could not supersede ${row.run}: ${row.reason}`);
+  }
+  for (const run of result.interrupted ?? []) {
+    console.log(
+      `ended ${run} (its review was interrupted: the process is gone; now CANCELLED)`,
+    );
+  }
+  if (result.checkoutLeft) {
+    console.log(`warning: the review checkout could not be removed (${result.checkoutLeft})`);
+  }
+  const ledger = EventLedger.open(result.ledgerPath);
+  printState(ledger.state, ledger, { repoRoot, repoLabel });
+  // A run that ended reviewed nothing a person can decide on.
+  if (ledger.state.terminal) {
+    console.log(
+      ledger.state.terminal.status === "FAILED"
+        ? `next: fix it, commit, then ${again}`
+        : `next: once the tooling works again, ${again}`,
+    );
+    process.exitCode = 1;
+  }
+}
+
+// Approve or reject the commit a review left waiting, by work.
+function commandDecidePass(flags) {
+  if (!flags.repo) {
+    throw new Error(`${flags.action} requires --repo and --work`);
+  }
+  const repoRoot = resolve(flags.repo);
+  if (flags.action === "reject") {
+    if (typeof flags.reason !== "string" || !flags.reason.trim()) {
+      throw new Error("reject requires --reason <text>");
+    }
+    const result = rejectPass(repoRoot, flags.work, {
+      by: flags.by, as: flags.as,
+      reason: flags.reason,
+    });
+    console.log(
+      `rejected ${result.candidate.slice(0, 7)} as ${result.decisionRef} by ${describeActor(result)}; ${result.runId} cancelled and compacted`,
+    );
+    return;
+  }
+  const result = approvePass(repoRoot, flags.work, {
+    by: flags.by, as: flags.as,
+    candidate: flags.candidate,
+  });
+  console.log(`approved ${result.transition} as ${result.decisionRef} by ${describeActor(result)}`);
+  console.log(`  candidate: ${result.subject.candidate}`);
+  console.log(`  planDigest: ${result.subject.planDigest}`);
+  for (const warning of result.warnings ?? []) {
+    console.log(`  advisory: ${warning}`);
+  }
+  console.log(
+    `${result.runId} is terminal: SUCCEEDED (merge itself stays a manual external action)`,
+  );
+}
+
 // Runs the project's release readback once and records it in the Work.
 function commandRelease(flags) {
   const options = loadRunConfig(flags, "release");
@@ -1762,12 +1887,17 @@ function commandDecide(flags) {
     );
     return;
   }
+  // A reviewed commit is decided by work; --run keeps the per-run form.
+  if (["approve", "reject"].includes(flags.action) && flags.work && !flags.run)
+    return commandDecidePass(flags);
   if (flags.action === "approve") return commandApprove(flags);
   if (flags.action === "reject") return commandReject(flags);
   if (flags.action === "fix") {
     if (!flags.repo || !flags.run) throw new Error("fix requires --repo and --run");
     const repoRoot = resolve(flags.repo);
     const prior = EventLedger.open(ledgerPathFor(repoRoot, flags.run));
+    if (prior.state.run?.pass)
+      throw new Error(`${flags.run} reviewed one commit and takes no repair; commit the fix and run buildbeat review`);
     let hasFixer;
     // Older 4.x ledgers did not freeze repair capabilities. Discover a
     // single matching configuration; never guess between several configs.
@@ -2046,6 +2176,8 @@ async function main() {
     const flags = parseFlags(rest);
     if (command === "run") {
       await commandRun(flags);
+    } else if (command === "review") {
+      commandReview(flags);
     } else if (command === "decide") {
       commandDecide(flags);
     } else if (command === "release") {

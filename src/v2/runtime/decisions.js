@@ -118,6 +118,11 @@ export function approveRun(
   try {
     const ledger = openWaiting(repoRoot, runId);
     const pending = ledger.state.pendingHuman;
+    if (ledger.state.run.pass) {
+      throw new DecisionError(
+        `${runId} reviewed one commit: approve it with buildbeat decide --repo <path> --work ${ledger.state.run.work} --action approve --candidate ${pending.subject.candidate}`,
+      );
+    }
     const repaired = ledger.events.some((event) => event.type === "DECISION_RECORDED" &&
       event.data.transition === "enter-wait-merge" && (event.data.adopted || event.data.decision === "fix"));
     if ((candidate && candidate !== pending.subject.candidate) ||
@@ -172,125 +177,272 @@ export function approveRun(
       };
     }
 
-    // Both the accepted copy (main checkout) and the candidate's copy must
-    // still be the bytes bound at creation: a builder or fixer that edits
-    // the work artifact in its worktree must not carry a different scope
-    // into a final approval.
-    const frozenChecks = ledger.state.run.deliveryChecks;
-    for (const { artifact, digest, committed } of boundArtifacts(
-      ledger.state.run,
-      pending.subject.planDigest,
-    )) {
-      const rel = join(
-        "delivery",
-        "work",
-        ledger.state.run.work,
-        `${artifact}.md`,
-      );
-      if (digestOf(join(repoRoot, rel)) !== digest) {
-        throw new DecisionError(
-          `work artifact changed since the run was created (${artifact}.md); accept the new scope and start a new attempt`,
-        );
-      }
-      if (committed && digestOf(join(worktreePath, rel)) !== digest) {
-        throw new DecisionError(
-          `the candidate changed the bound ${artifact}.md; restore the accepted version in the candidate, or accept the new scope and start a new attempt`,
-        );
-      }
-    }
-
-    // Transition policies are enforced at the moment of stamping: an
-    // approval that a LOCAL_ENFORCED policy forbids is refused, not logged.
-    const policyRows = evaluatePolicies(
-      frozenChecks ? deliveryChecks(frozenChecks) : (policies ?? []),
-      { type: "transition", appliesTo: pending.transition },
-      {
-        repoRoot,
-        state: ledger.state,
-        candidate: pending.subject.candidate,
-        workDir: join(repoRoot, "delivery", "work", ledger.state.run.work),
-        worktreePath,
-        readWorktree: () => readback(worktreePath),
-      },
-    );
-    for (const row of policyRows) {
-      ledger.append({
-        type: "POLICY_EVALUATED",
-        actor: KERNEL,
-        ts: when,
-        data: {
-          policy: row.policy,
-          phase: "transition",
-          result: row.result,
-          enforcement: row.enforcement,
-          reason: row.reason,
-        },
-      });
-    }
-    const refused = policyRows.filter(
-      (row) => row.enforcement !== "ADVISORY" && row.result !== "PASS",
-    );
-    if (refused.length > 0) {
-      throw new DecisionError(
-        `approval refused by policy: ${refused
-          .map((row) => `${row.policy} (${row.reason})`)
-          .join("; ")}`,
-      );
-    }
-    const warnings = policyRows
-      .filter((row) => row.enforcement === "ADVISORY" && row.result !== "PASS")
-      .map((row) => `${row.policy}: ${row.reason}`);
-
-    const decisionRef = `D-${runId}-${ledger.state.decisions.length + 1}`;
-    ledger.append({
-      type: "DECISION_RECORDED",
-      actor: who,
-      ts: when,
-      data: {
-        decision: "approved",
-        transition: pending.transition,
-        subject: pending.subject,
-        decisionRef,
-      },
+    return stampApproval({
+      repoRoot,
+      runId,
+      ledger,
+      pending,
+      who,
+      when,
+      policies,
+      worktreePath,
     });
-    recordDecisionFile(repoRoot, ledger.state.run.work, {
-      ts: when,
-      run: runId,
-      decisionRef,
-      decision: "approved",
-      transition: pending.transition,
-      subject: pending.subject,
-      by: who.id,
-      actor: who,
-    });
-    let terminal = false;
-    if (pending.kind === "final-decision") {
-      ledger.append({
-        type: "RUN_TERMINAL",
-        actor: KERNEL,
-        ts: when,
-        data: {
-          status: "SUCCEEDED",
-          reason:
-            "final decision approved; the external action (merge) stays manual",
-        },
-      });
-      writeRunRecord({ repoRoot, ledger, ts: when });
-      terminal = true;
-    }
-    return {
-      approved: true,
-      decisionRef,
-      actor: who,
-      terminal,
-      transition: pending.transition,
-      subject: pending.subject,
-      warnings,
-      state: ledger.state,
-    };
   } finally {
     releaseLock(repoRoot, runId);
   }
+}
+
+// Checks an approval against what the run froze and against the merge
+// checks, then records it. Shared by approveRun, which has read the checkout
+// back, and approvePass, whose subject is a commit and has no checkout
+// (worktreePath null).
+function stampApproval({
+  repoRoot,
+  runId,
+  ledger,
+  pending,
+  who,
+  when,
+  policies,
+  worktreePath,
+}) {
+  // Both the accepted copy (main checkout) and the candidate's copy must
+  // still be the bytes bound at creation: a builder or fixer that edits
+  // the work artifact in its worktree must not carry a different scope
+  // into a final approval. A reviewed commit was compared with the bound
+  // bytes on its own checkout before the run was recorded, and a commit
+  // does not change afterwards.
+  const frozenChecks = ledger.state.run.deliveryChecks;
+  for (const { artifact, digest, committed } of boundArtifacts(
+    ledger.state.run,
+    pending.subject.planDigest,
+  )) {
+    const rel = join(
+      "delivery",
+      "work",
+      ledger.state.run.work,
+      `${artifact}.md`,
+    );
+    if (digestOf(join(repoRoot, rel)) !== digest) {
+      throw new DecisionError(
+        `work artifact changed since the run was created (${artifact}.md); accept the new scope and start a new attempt`,
+      );
+    }
+    if (committed && worktreePath && digestOf(join(worktreePath, rel)) !== digest) {
+      throw new DecisionError(
+        `the candidate changed the bound ${artifact}.md; restore the accepted version in the candidate, or accept the new scope and start a new attempt`,
+      );
+    }
+  }
+
+  // Transition policies are enforced at the moment of stamping: an
+  // approval that a LOCAL_ENFORCED policy forbids is refused, not logged.
+  const policyRows = evaluatePolicies(
+    frozenChecks ? deliveryChecks(frozenChecks) : (policies ?? []),
+    { type: "transition", appliesTo: pending.transition },
+    {
+      repoRoot,
+      state: ledger.state,
+      candidate: pending.subject.candidate,
+      workDir: join(repoRoot, "delivery", "work", ledger.state.run.work),
+      ...(worktreePath
+        ? { worktreePath, readWorktree: () => readback(worktreePath) }
+        : {}),
+    },
+  );
+  for (const row of policyRows) {
+    ledger.append({
+      type: "POLICY_EVALUATED",
+      actor: KERNEL,
+      ts: when,
+      data: {
+        policy: row.policy,
+        phase: "transition",
+        result: row.result,
+        enforcement: row.enforcement,
+        reason: row.reason,
+      },
+    });
+  }
+  const refused = policyRows.filter(
+    (row) => row.enforcement !== "ADVISORY" && row.result !== "PASS",
+  );
+  if (refused.length > 0) {
+    throw new DecisionError(
+      `approval refused by policy: ${refused
+        .map((row) => `${row.policy} (${row.reason})`)
+        .join("; ")}`,
+    );
+  }
+  const warnings = policyRows
+    .filter((row) => row.enforcement === "ADVISORY" && row.result !== "PASS")
+    .map((row) => `${row.policy}: ${row.reason}`);
+
+  const decisionRef = `D-${runId}-${ledger.state.decisions.length + 1}`;
+  ledger.append({
+    type: "DECISION_RECORDED",
+    actor: who,
+    ts: when,
+    data: {
+      decision: "approved",
+      transition: pending.transition,
+      subject: pending.subject,
+      decisionRef,
+    },
+  });
+  recordDecisionFile(repoRoot, ledger.state.run.work, {
+    ts: when,
+    run: runId,
+    decisionRef,
+    decision: "approved",
+    transition: pending.transition,
+    subject: pending.subject,
+    by: who.id,
+    actor: who,
+  });
+  let terminal = false;
+  if (pending.kind === "final-decision") {
+    ledger.append({
+      type: "RUN_TERMINAL",
+      actor: KERNEL,
+      ts: when,
+      data: {
+        status: "SUCCEEDED",
+        reason:
+          "final decision approved; the external action (merge) stays manual",
+      },
+    });
+    writeRunRecord({ repoRoot, ledger, ts: when });
+    terminal = true;
+  }
+  return {
+    approved: true,
+    decisionRef,
+    actor: who,
+    terminal,
+    transition: pending.transition,
+    subject: pending.subject,
+    warnings,
+    state: ledger.state,
+  };
+}
+
+// The run of a work that reviewed one commit (reviewCommit) and waits for
+// the decision on it, or null. A newer review supersedes an older waiting
+// one, so there is normally at most one; the most recently created wins.
+export function waitingPass(repoRoot, workId) {
+  const dir = join(repoRoot, ".buildbeat", "runtime", "runs");
+  if (!existsSync(dir)) {
+    return null;
+  }
+  let found = null;
+  for (const entry of readdirSync(dir)) {
+    const path = ledgerPathFor(repoRoot, entry);
+    if (!existsSync(path)) {
+      continue;
+    }
+    const ledger = EventLedger.open(path);
+    const state = ledger.state;
+    if (
+      ledger.corruption ||
+      !state.run?.pass ||
+      state.run.work !== workId ||
+      state.terminal ||
+      state.pendingHuman?.kind !== "final-decision"
+    ) {
+      continue;
+    }
+    const createdAt = ledger.events[0]?.ts ?? "";
+    if (!found || createdAt > found.createdAt) {
+      found = {
+        runId: entry,
+        candidate: state.pendingHuman.subject.candidate,
+        createdAt,
+      };
+    }
+  }
+  return found;
+}
+
+// Approves the commit a run reviewed. The approval names the commit; what is
+// checked is that this is the commit waiting for the decision, that it is
+// still in the repository, that the accepted work description still has the
+// bytes the run was bound to, and the merge checks: verify passed on this
+// commit, no undismissed blocking finding, screenshots when required.
+export function approvePass(
+  repoRoot,
+  workId,
+  { candidate, by, as, actor, ts } = {},
+) {
+  const waiting = waitingPass(repoRoot, workId);
+  if (!waiting) {
+    throw new DecisionError(
+      `no reviewed commit of ${workId} waits for a decision; review one with buildbeat review --repo <path> --work ${workId}`,
+    );
+  }
+  if (typeof candidate !== "string" || !/^[0-9a-f]{40,64}$/.test(candidate)) {
+    throw new DecisionError(
+      `an approval names the full commit it approves: --candidate ${waiting.candidate}`,
+    );
+  }
+  const stale = (current) =>
+    new DecisionError(
+      `approval stale: the commit waiting for a decision is ${current}, not ${candidate}`,
+    );
+  if (candidate !== waiting.candidate) {
+    throw stale(waiting.candidate);
+  }
+  const who = actorFrom({ actor, by, as, repoRoot });
+  acquireLock(repoRoot, waiting.runId);
+  try {
+    // Read again under the lock: the run may have been superseded, rejected
+    // or approved since the scan.
+    const ledger = openWaiting(repoRoot, waiting.runId);
+    const pending = ledger.state.pendingHuman;
+    if (pending.kind !== "final-decision" || pending.subject.candidate !== candidate) {
+      throw stale(pending.subject.candidate);
+    }
+    const present = spawnSync(
+      "git",
+      ["-C", repoRoot, "cat-file", "-e", `${candidate}^{commit}`],
+      { stdio: "ignore" },
+    );
+    if (present.status !== 0) {
+      throw new DecisionError(
+        `commit ${candidate} is not in this repository; review a commit that is`,
+      );
+    }
+    return {
+      ...stampApproval({
+        repoRoot,
+        runId: waiting.runId,
+        ledger,
+        pending,
+        who,
+        when: ts ?? new Date().toISOString(),
+        policies: [],
+        worktreePath: null,
+      }),
+      runId: waiting.runId,
+    };
+  } finally {
+    releaseLock(repoRoot, waiting.runId);
+  }
+}
+
+// Declines the commit a run reviewed: the run ends CANCELLED.
+export function rejectPass(repoRoot, workId, { by, as, actor, reason, ts } = {}) {
+  const waiting = waitingPass(repoRoot, workId);
+  if (!waiting) {
+    throw new DecisionError(
+      `no reviewed commit of ${workId} waits for a decision`,
+    );
+  }
+  return {
+    ...rejectRun(repoRoot, waiting.runId, { by, as, actor, reason, ts }),
+    runId: waiting.runId,
+    candidate: waiting.candidate,
+  };
 }
 
 // A human (or the driving session) supplies the candidate: the fix was made
@@ -321,6 +473,11 @@ export function adoptCandidate(
     }
     const ledger = openWaiting(repoRoot, runId);
     const pending = ledger.state.pendingHuman;
+    if (ledger.state.run.pass) {
+      throw new DecisionError(
+        `${runId} reviewed one commit and takes no repair; commit the fix and run buildbeat review`,
+      );
+    }
     const final = pending.kind === "final-decision" && pending.transition === "enter-wait-merge";
     if (pending.kind === "final-decision" && (!final || !ledger.state.run.deliveryChecks)) {
       throw new DecisionError("legacy active run: use its original 3.3.1 runtime (docs/MIGRATION.md)");
@@ -429,6 +586,8 @@ export function requestFix(repoRoot, runId, { by, as, actor, reason, ts, hasFixe
   try {
     const ledger = openWaiting(repoRoot, runId);
     const pending = ledger.state.pendingHuman;
+    if (ledger.state.run.pass)
+      throw new DecisionError(`${runId} reviewed one commit and takes no repair; commit the fix and run buildbeat review`);
     if (!ledger.state.run.deliveryChecks)
       throw new DecisionError("legacy active run: use its original 3.3.1 runtime (docs/MIGRATION.md)");
     if (pending.kind !== "final-decision" || pending.transition !== "enter-wait-merge")

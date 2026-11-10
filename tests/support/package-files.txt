@@ -64,6 +64,7 @@ package.json
 src/v2/adapters/mock.js
 src/v2/adapters/notification-payload.js
 src/v2/adapters/shell.js
+src/v2/cli/pass-config.js
 src/v2/cli/run-config-check.js
 src/v2/cli/run.js
 src/v2/domain/event-registry.js

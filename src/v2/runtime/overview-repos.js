@@ -48,6 +48,11 @@ export function readRunLedgers(repoRoot) {
   return ledgers;
 }
 
+// The project's own run config (WORK-CLEAN-START): how `buildbeat review`
+// verifies and reviews a commit of any work in this repository.
+export const PROJECT_CONFIG = "delivery/run-config.yaml";
+export const hasProjectConfig = (repoRoot) => existsSync(join(repoRoot, PROJECT_CONFIG));
+
 export function workConfigs(repoRoot, workId, warnings = []) {
   const dir = join(repoRoot, "delivery", "work", workId);
   if (!directory(dir)) return [];
@@ -55,6 +60,12 @@ export function workConfigs(repoRoot, workId, warnings = []) {
     const path = join(dir, name);
     try {
       const doc = parseYamlSubset(readFileSync(path, "utf8"));
+      if (doc === null || typeof doc !== "object" || Array.isArray(doc)) throw new Error("the file must be a map of keys");
+      // A work's overrides of the project config name no repository, work or
+      // run: they apply to this work, here.
+      if (doc.repo === undefined && doc.work === undefined && doc.run === undefined) {
+        return { path, target: repoRoot, release: Object.hasOwn(doc, "release"), releaseOnly: false, review: true };
+      }
       if (typeof doc.repo !== "string" || !doc.repo.trim()) throw new Error("repo must be a non-empty path");
       const target = resolve(dirname(path), doc.repo);
       const release = Object.hasOwn(doc, "release");

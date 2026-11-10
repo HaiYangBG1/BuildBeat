@@ -112,6 +112,24 @@ export function nextReply({ repoLabel, state, repoRoot }) {
   }
   const runId = state.run.id;
   const lines = [];
+  // A run that reviewed one commit is decided by work, and repaired by
+  // reviewing the next commit. While blocking findings stand the approval is
+  // refused, so what to do about them comes first.
+  if (state.run.pass) {
+    const work = state.run.work;
+    const approve = `buildbeat decide --repo ${repoLabel} --work ${work} --action approve --candidate ${pending.subject.candidate} --by <you>`;
+    const reject = `buildbeat decide --repo ${repoLabel} --work ${work} --action reject --reason <why> --by <you>`;
+    const lastReview = [...(state.evidence ?? [])].reverse().find((item) => item.kind === "review");
+    if (lastReview?.status === "failed") {
+      return [
+        `buildbeat review --repo ${repoLabel} --work ${work}   # after committing a fix: reviews the new commit and supersedes this one`,
+        `buildbeat decide --repo ${repoLabel} --work ${work} --fingerprint <fp> --action accept|dismiss --by <you>`,
+        `${approve}   # refused while a blocking finding stands`,
+        reject,
+      ];
+    }
+    return [approve, reject];
+  }
   const triage = pending.kind === "finding-triage" || pending.kind === "review-not-converging";
   // A ledger without frozen safeguards was written by 3.x: this runtime
   // refuses to approve or resume it, so offer the spellings its original
