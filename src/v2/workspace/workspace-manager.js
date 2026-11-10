@@ -290,8 +290,25 @@ export function releaseLock(repoRoot, runId) {
   rmSync(lockPathFor(repoRoot, runId), { recursive: true, force: true });
 }
 
-export function createWorkspace({ repoRoot, runId, base, branch, protectPush = true }) {
+// `at` checks the workspace out at an existing commit instead of at base (a
+// run that reviews one commit): the commit must come after base, so that
+// base..commit is the change under review.
+export function createWorkspace({ repoRoot, runId, base, branch, protectPush = true, at = null }) {
   const resolvedBase = git(repoRoot, ["rev-parse", "--verify", `${base}^{commit}`]);
+  let start = resolvedBase;
+  if (at !== null) {
+    start = git(repoRoot, ["rev-parse", "--verify", `${at}^{commit}`]);
+    if (start === resolvedBase) {
+      throw new WorkspaceError(`nothing to review: ${start.slice(0, 7)} is the base itself`);
+    }
+    try {
+      git(repoRoot, ["merge-base", "--is-ancestor", resolvedBase, start]);
+    } catch {
+      throw new WorkspaceError(
+        `commit ${start.slice(0, 7)} does not come after base ${resolvedBase.slice(0, 7)}`,
+      );
+    }
+  }
   const worktreePath = join(repoRoot, ".buildbeat", "worktrees", runId);
   if (existsSync(worktreePath)) {
     throw new WorkspaceError(`worktree already exists: ${worktreePath}`);
@@ -301,7 +318,7 @@ export function createWorkspace({ repoRoot, runId, base, branch, protectPush = t
   if (branches !== "") {
     throw new WorkspaceError(`branch already exists: ${branchName}`);
   }
-  git(repoRoot, ["worktree", "add", "-b", branchName, worktreePath, resolvedBase]);
+  git(repoRoot, ["worktree", "add", "-b", branchName, worktreePath, start]);
 
   // Protected Actions (B WP4.4): the reliable form of "workers must not
   // push" is capability removal, not a prompt. Worktree-scoped pushurl

@@ -72,6 +72,9 @@ export function applyEvent(state, event) {
         intentDigest: data.intentDigest ?? "UNVERIFIED",
         ...(data.deliveryChecks ? { deliveryChecks: data.deliveryChecks } : {}),
         ...(data.repair ? { repair: data.repair } : {}),
+        // A run that reviews one existing commit (reviewCommit): no builder,
+        // no fixer, no resume.
+        ...(data.pass === true ? { pass: true } : {}),
       };
       break;
     }

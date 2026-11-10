@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { describeActor, selfMergeApproval } from "./actor.js";
 import { checkPromotions, readResult } from "./closeout.js";
 import { listInbox } from "./decisions.js";
-import { configTargets, directory, discoverRepos, pathLabel, readRunLedgers, shellArg, workConfigs } from "./overview-repos.js";
+import { configTargets, directory, discoverRepos, hasProjectConfig, pathLabel, readRunLedgers, shellArg, workConfigs } from "./overview-repos.js";
 
 import { EventLedger } from "../storage/event-ledger.js";
 import { latestAdjudications, readFindingsAccount } from "./findings.js";
@@ -155,6 +155,7 @@ export function runsFor(repoRoot, workId, ledgers = null) {
       createdAt: ledger.events[0]?.ts ?? null,
       lastAt: ledger.events[ledger.events.length - 1]?.ts ?? null,
       workflow: state.run.workflowRef ?? null,
+      pass: state.run.pass === true,
       steps: Object.keys(state.steps),
       state,
       source: "runtime",
@@ -181,6 +182,7 @@ export function runsFor(repoRoot, workId, ledgers = null) {
           createdAt: record.startedAt ?? null,
           lastAt: record.finishedAt ?? null,
           workflow: record.workflow ?? null,
+          pass: record.pass === true,
           steps: Object.keys(record.attempts ?? {}),
           state: null,
           source: "run-record",
@@ -264,6 +266,10 @@ export function computeOverview(
     const pathFor = (item) =>
       shellArg(cwd && !local ? pathLabel(cwd, item.path) : `delivery/work/${workId}/${item.path.split("/").at(-1)}`);
     const configPath = config ? pathFor(config) : "<run-config.yaml>";
+    // Reviewed with `buildbeat review`: the repository has a project config
+    // and this work brings no run config of its own kind.
+    const reviewed = hasProjectConfig(repoRoot) && configs.every((item) => item.review === true);
+    const review = `buildbeat review --repo ${repoLabel} --work ${workId}`;
     const runs = runsFor(repoRoot, workId, ledgersOf(repoRoot, context));
     if (!configs.length && !runs.length && !["work.md", "intent.md", "plan.md", "decisions.jsonl", "runs"].some((name) => existsSync(join(workDir, name)))) continue;
     const decisions = readJsonl(join(workDir, "decisions.jsonl"));
@@ -322,7 +328,11 @@ export function computeOverview(
         .reverse()
         .find(
           (run) =>
-            run.candidate && isAncestor(repoRoot, run.candidate, mainRef, context),
+            run.candidate &&
+            // A reviewed commit is on its branch before anyone decided on
+            // it; only the approved one counts.
+            (!run.pass || run.status === "SUCCEEDED") &&
+            isAncestor(repoRoot, run.candidate, mainRef, context),
         ) ?? null;
     const merged = Boolean(mergedRun);
     const RELEASE_STEPS = ["preflight", "apply-readback", "observe"];
@@ -405,8 +415,9 @@ export function computeOverview(
         next = `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact ${artifacts} --by <you>${plan.stale ? `   # ${unified ? "work.md" : "plan"} changed since acceptance` : ""}`;
       } else {
         stage = "READY_TO_RUN";
-        next =
-          configs.length > 0
+        next = reviewed
+          ? `commit the change, then ${review}`
+          : configs.length > 0
             ? `buildbeat run --config ${configPath}`
             : `no run-config in delivery/work/${workId}: write one, or, if it was doc-only, close out: ${closeOut}`;
       }
@@ -456,9 +467,11 @@ export function computeOverview(
         : "run succeeded without a candidate; nothing to merge";
     } else {
       stage = `STOPPED_${latest.status}`;
-      next = plan.accepted
-        ? `decide: retry (buildbeat run --config ${configPath} --new) or close the work`
-        : `${unified ? "work.md" : "plan"} not accepted (${plan.exists ? "draft" : "missing"}); fix that before another run`;
+      next = !plan.accepted
+        ? `${unified ? "work.md" : "plan"} not accepted (${plan.exists ? "draft" : "missing"}); fix that before another run`
+        : reviewed
+          ? `decide: commit a fix and ${review}, or close the work`
+          : `decide: retry (buildbeat run --config ${configPath} --new) or close the work`;
     }
     const row = {
       work: workId,
@@ -534,7 +547,7 @@ export function computeOverview(
     rows.push(row);
     if (maybeCommitted) {
       const releaseConfig = readback?.status === "passed" ? null : configs.find((item) => item.release) ?? null;
-      unrun.push({ row, workId, repoLabel, hasResult: page.exists, release: releaseConfig ? pathFor(releaseConfig) : null });
+      unrun.push({ row, workId, repoLabel, hasResult: page.exists, release: releaseConfig ? pathFor(releaseConfig) : null, review: reviewed ? review : null });
     }
   }
   markCommitted(repoRoot, mainRef, unrun);
@@ -547,7 +560,7 @@ export function computeOverview(
 function markCommitted(repoRoot, branch, unrun) {
   if (unrun.length === 0) return;
   const found = codeCommitsOf(repoRoot, branch, unrun.map((item) => item.workId));
-  for (const { row, workId, repoLabel, hasResult, release } of unrun) {
+  for (const { row, workId, repoLabel, hasResult, release, review } of unrun) {
     const commits = found.get(workId);
     if (!commits?.length) continue;
     const describe = (item) => ({ commit: item.commit, at: new Date(item.time * 1000).toISOString(), subject: item.subject });
@@ -560,6 +573,8 @@ function markCommitted(repoRoot, branch, unrun) {
     // A work whose config reads its release back closes on a passing
     // readback, so the readback comes first.
     if (release) row.next = row.next.replace("close it out: ", `release it (a human action), then buildbeat release --config ${release} --env <name>; then close it out: `);
+    // In a repository whose commits are reviewed, the commits come first.
+    if (review) row.next = `${review}; or, ${row.next}`;
   }
 }
 

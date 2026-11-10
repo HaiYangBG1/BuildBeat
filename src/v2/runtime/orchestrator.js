@@ -782,6 +782,11 @@ function beginStep(context, step, stepDef, attempt) {
   // review saw when it is an ancestor of this one.
   if (stepDef.readonly) {
     const head = before.head;
+    // A reviewed commit sits on the author's own branch: say where the
+    // change starts, since the branch no longer does.
+    if (ledger.state.run.pass) {
+      input.base = workspace.base;
+    }
     const lastReviewed = lastReviewedCandidate(
       context.repoRoot,
       ledger.state.run.work,
@@ -1032,6 +1037,18 @@ function recordStepResult(
   { exec, tree },
 ) {
   const { ledger, workspace, now } = context;
+  // A run that reviews one commit (reviewCommit) has nobody to hand a stopped
+  // step to and nothing to resume, so it ends there: FAILED when the commit
+  // broke a rule the runner checks, CANCELLED when the tooling did, which is
+  // no verdict on the commit.
+  const stop = (verdict, reasons, kind) => {
+    if (context.endPass) {
+      context.endPass(verdict, reasons[0]);
+    } else {
+      context.waitHuman(`resume-${step}`, reasons, kind);
+    }
+    return null;
+  };
   // Read-only enforcement: a reviewer that changed the workspace is a
   // policy violation, not a candidate (invariants 9/17).
   if (
@@ -1056,10 +1073,9 @@ function recordStepResult(
       ts: now(),
       data: { step, attempt, status: "blocked" },
     });
-    context.waitHuman(`resume-${step}`, [
+    return stop("CANCELLED", [
       `read-only step ${step} modified the workspace; human triage required`,
     ]);
-    return null;
   }
 
   let envelopeRaw = exec.envelope;
@@ -1157,8 +1173,8 @@ function recordStepResult(
         : stepStatus === "invalid-output"
           ? (outputProblem ?? "output is not a worker envelope")
           : stepStatus;
-    context.waitHuman(
-      `resume-${step}`,
+    return stop(
+      "CANCELLED",
       [
         `worker infrastructure failure at ${step}: ${cause}; not a candidate defect, attempt not charged`,
         ...(tree.dirty
@@ -1170,7 +1186,6 @@ function recordStepResult(
       ],
       "infra",
     );
-    return null;
   }
 
   let blockingFindings = [];
@@ -1219,8 +1234,15 @@ function recordStepResult(
   // proceed, whatever the exit code said.
   if (!stepDef.readonly && context.allowedPaths) {
     const changed = listChangedPaths(workspace.worktreePath, workspace.base);
+    // A reviewed commit sits on the author's branch, where the work's own
+    // records (decisions, findings, run records) are committed next to the
+    // code: they are always in scope. Its work.md is bound by digest.
+    const records = context.endPass
+      ? `delivery/work/${ledger.state.run.work}/`
+      : null;
     const violations = changed.filter(
       (path) =>
+        !(records && path.startsWith(records)) &&
         !context.allowedPaths.some(
           (prefix) =>
             path === prefix ||
@@ -1240,19 +1262,17 @@ function recordStepResult(
           reason: `out-of-scope changes: ${violations.slice(0, 5).join(", ")}`,
         },
       });
-      context.waitHuman(`resume-${step}`, [
-        `worker changed paths outside the allowed scope: ${violations.slice(0, 5).join(", ")}`,
+      return stop("FAILED", [
+        `${context.endPass ? "the commit changes" : "worker changed"} paths outside the allowed scope: ${violations.slice(0, 5).join(", ")}`,
       ]);
-      return null;
     }
   }
 
   if (stepStatus === "succeeded" && !stepDef.readonly) {
     if (tree.dirty) {
-      context.waitHuman(`resume-${step}`, [
+      return stop("FAILED", [
         `step ${step} left a dirty worktree; a candidate must be a committed state`,
       ]);
-      return null;
     }
     const pinned = ledger.state.workspaces[workspace.workspaceId]?.candidate;
     if (tree.head !== (pinned ?? workspace.base)) {
@@ -1282,8 +1302,7 @@ function recordStepResult(
       return null;
     }
     if (postGate.action === "wait") {
-      context.waitHuman(`resume-${step}`, policyReasons(postGate.rows));
-      return null;
+      return stop("FAILED", policyReasons(postGate.rows));
     }
   }
 
@@ -1595,6 +1614,328 @@ export function startRun(options) {
   );
 }
 
+// The steps of a run that reviews one commit, in order.
+const PASS_STEPS = ["verify", "review"];
+
+// Verify, then review, each once. Ends the run, or leaves it waiting for the
+// person's decision on the commit.
+function runPass(context) {
+  const { ledger, workflow, now } = context;
+  context.endPass = (status, reason) => {
+    ledger.append({
+      type: "RUN_TERMINAL",
+      actor: KERNEL,
+      ts: now(),
+      data: { status, reason },
+    });
+    writeRunRecord({ repoRoot: context.repoRoot, ledger, ts: now() });
+  };
+  let blocking = [];
+  for (const [index, step] of PASS_STEPS.entries()) {
+    const stepDef = workflow.steps.find((item) => item.id === step);
+    const started = beginStep(context, step, stepDef, 1);
+    const ran = executeOrReuse(
+      context,
+      step,
+      stepDef,
+      context.adapters[stepDef.worker],
+      1,
+      started,
+    );
+    const result = recordStepResult(context, step, stepDef, 1, started, ran);
+    if (!result) {
+      return;
+    }
+    if (result.stepStatus !== "succeeded") {
+      // Tooling failures ended the run inside recordStepResult. What is left
+      // is a command that ran and said no: for verify that is a verdict on
+      // the commit, for the reviewer it is a reviewer that did not finish.
+      const detail = result.exec.requirementFailure
+        ? `: ${result.exec.requirementFailure}`
+        : "";
+      context.endPass(
+        stepDef.readonly ? "CANCELLED" : "FAILED",
+        stepDef.readonly
+          ? `${step} exited ${result.exec.exitCode} without a verdict; not a candidate defect`
+          : `${step} failed (exit ${result.exec.exitCode})${detail}`,
+      );
+      return;
+    }
+    if (stepDef.readonly) {
+      blocking = result.blockingFindings;
+    }
+    ledger.append({
+      type: "TRANSITION",
+      actor: KERNEL,
+      ts: now(),
+      data: {
+        from: step,
+        to: PASS_STEPS[index + 1] ?? "wait-merge",
+        cause: `outcome:${blocking.length > 0 ? "findings-blocking" : "succeeded"}`,
+      },
+    });
+  }
+  context.waitHuman(
+    "enter-wait-merge",
+    blocking.length > 0
+      ? [
+          `review found ${blocking.length} blocking finding(s); approval is refused until each is dismissed, or a fixed commit is reviewed`,
+          ...blocking
+            .slice(0, 5)
+            .map(
+              (finding) =>
+                `[${finding.severity} ${fingerprintFinding(finding)}] ${finding.summary.slice(0, 200)}`,
+            ),
+        ]
+      : [
+          "verified and reviewed with no blocking finding; the decision on this commit is the person's",
+        ],
+    "final-decision",
+  );
+}
+
+// A review whose process died (killed, host shut down) left its run RUNNING
+// with a checkout behind it, and there is nothing to resume: the next review
+// of the same work ends it. Called with the repository's run lock held, so
+// no run recorded as RUNNING can still be alive.
+function settleInterruptedPasses(repoRoot, workId, newRunId, now) {
+  const runsDir = join(repoRoot, ".buildbeat", "runtime", "runs");
+  const settled = [];
+  if (!existsSync(runsDir)) {
+    return settled;
+  }
+  for (const entry of readdirSync(runsDir).sort()) {
+    const ledgerPath = join(runsDir, entry, "events.jsonl");
+    if (entry === newRunId || !existsSync(ledgerPath)) {
+      continue;
+    }
+    const seen = EventLedger.open(ledgerPath).state;
+    if (!seen.run?.pass || seen.run.work !== workId || seen.terminal || seen.run.status !== "RUNNING") {
+      continue;
+    }
+    try {
+      acquireLock(repoRoot, entry);
+    } catch {
+      continue;
+    }
+    try {
+      const ledger = EventLedger.open(ledgerPath);
+      const state = ledger.state;
+      if (ledger.corruption || state.terminal || state.run?.status !== "RUNNING") {
+        continue;
+      }
+      ledger.append({
+        type: "RUN_INTERRUPTED",
+        actor: KERNEL,
+        ts: now(),
+        data: { cause: "process lost during a review" },
+      });
+      if (state.currentStep) {
+        ledger.append({
+          type: "STEP_FINISHED",
+          actor: KERNEL,
+          ts: now(),
+          data: {
+            step: state.currentStep,
+            attempt: state.steps[state.currentStep].attempts,
+            status: "crashed",
+            infra: true,
+          },
+        });
+      }
+      ledger.append({
+        type: "RUN_TERMINAL",
+        actor: KERNEL,
+        ts: now(),
+        data: {
+          status: "CANCELLED",
+          reason: `interrupted: the process that ran this review is gone; superseded by ${newRunId}`,
+        },
+      });
+      writeRunRecord({ repoRoot, ledger, ts: now() });
+      // Its checkout and branch, when they are still there.
+      const bound = state.workspaces[entry];
+      if (bound) {
+        const worktreePath = resolveRepoRef(repoRoot, bound.worktreePath);
+        try {
+          withRepoGitLock(repoRoot, () =>
+            discardWorkspace({ repoRoot, worktreePath, branch: bound.branch }),
+          );
+        } catch {
+          // already gone, or not removable: gc reports what is left
+        }
+      }
+      settled.push(entry);
+    } finally {
+      releaseLock(repoRoot, entry);
+    }
+  }
+  return settled;
+}
+
+// One pass over one existing commit (WORK-CLEAN-START): the commit is checked
+// out by itself, the project's verifier runs on it and, when that passes, a
+// read-only reviewer. Nothing is written, retried or repaired here; a fixed
+// commit is a new run, which supersedes this one while it still waits.
+//
+// How the run ends:
+//   FAILED         verify failed, or the commit broke a rule the runner
+//                  checks (paths outside allowedPaths, a dirty checkout)
+//   CANCELLED      the tooling failed (timeout, crash, exit 75, no review
+//                  report, a reviewer that wrote or exited non-zero): no
+//                  verdict on the commit
+//   WAITING_HUMAN  verified and reviewed: the decision on this commit is the
+//                  person's. Blocking findings do not end the run; the merge
+//                  checks refuse the approval while they stand
+//
+// The checkout and its branch are removed before this returns. The subject
+// of the decision is a commit, which cannot change, so approvePass reads the
+// ledger and Git rather than a checkout.
+export function reviewCommit(options) {
+  const {
+    repoRoot,
+    workflow,
+    workflowDigest,
+    workId,
+    runId,
+    base,
+    commit,
+    planDigest,
+  } = options;
+  if (!repoRoot || !workId || !runId || !base || !commit) {
+    throw new OrchestratorError(
+      "repoRoot, workId, runId, base and commit are required",
+    );
+  }
+  if (!workflowDigest) {
+    throw new OrchestratorError(
+      "workflowDigest is required (pin what you run)",
+    );
+  }
+  for (const step of PASS_STEPS) {
+    const worker = workflow.steps.find((item) => item.id === step)?.worker;
+    if (!worker || !options.adapters?.[worker]) {
+      throw new OrchestratorError(
+        `no ${worker ?? step} configured; a review needs a verifier and a reviewer`,
+      );
+    }
+  }
+  if (options.requires?.length) {
+    assertRequires(options.requires);
+  }
+  const { ledger, ledgerPath } = openLedgerFor(repoRoot, runId);
+  if (ledger.events.length > 0) {
+    throw new OrchestratorError(`run ${runId} already has a ledger`);
+  }
+
+  return withRunLocks(repoRoot, runId, () => {
+    const interrupted = settleInterruptedPasses(
+      repoRoot,
+      workId,
+      runId,
+      options.now ?? (() => new Date().toISOString()),
+    );
+    const workspace = withRepoGitLock(repoRoot, () =>
+      createWorkspace({ repoRoot, runId, base, at: commit }),
+    );
+    let result;
+    let leftover = null;
+    try {
+      // The checkout is the final word on what the reviewer is shown.
+      if (options.verifyCheckout) {
+        options.verifyCheckout(workspace.worktreePath);
+      }
+      const candidate = readback(workspace.worktreePath).head;
+      // No stop boundaries, budgets, reuse or triage: each step runs once.
+      const context = makeContext(
+        { ...options, stopAt: [], budgets: {}, cache: {}, reviewTriage: null },
+        ledger,
+        workspace,
+      );
+      const now = context.now;
+      const supersession = supersedeWaitingRuns(repoRoot, workId, runId, now);
+      ledger.append({
+        type: "RUN_CREATED",
+        actor: KERNEL,
+        ts: now(),
+        run: runId,
+        work: workId,
+        data: {
+          pass: true,
+          workflowRef: workflow.name,
+          workflowDigest,
+          base: workspace.base,
+          riskPreset: options.riskPreset ?? "standard",
+          entry: PASS_STEPS[0],
+          planDigest: planDigest ?? "UNVERIFIED",
+          intentDigest: "UNVERIFIED",
+          ...(options.deliveryChecks
+            ? { deliveryChecks: options.deliveryChecks }
+            : {}),
+          ...(supersession.superseded.length > 0
+            ? { supersedes: supersession.superseded }
+            : {}),
+          ...(options.envelope
+            ? {
+                envelopeDigest: options.envelope.digest,
+                envelopeSource: options.envelope.source,
+              }
+            : {}),
+        },
+      });
+      ledger.append({
+        type: "RUN_STARTED",
+        actor: KERNEL,
+        ts: now(),
+        data: {},
+      });
+      ledger.append({
+        type: "WORKSPACE_BOUND",
+        actor: KERNEL,
+        ts: now(),
+        data: {
+          workspaceId: workspace.workspaceId,
+          repo: toRepoRef(repoRoot, repoRoot),
+          branch: workspace.branch,
+          worktreePath: toRepoRef(repoRoot, workspace.worktreePath),
+          base: workspace.base,
+        },
+      });
+      // The candidate is the commit under review, whatever verify says.
+      ledger.append({
+        type: "CANDIDATE_PINNED",
+        actor: KERNEL,
+        ts: now(),
+        data: {
+          workspaceId: workspace.workspaceId,
+          base: workspace.base,
+          candidate,
+        },
+      });
+      runPass(context);
+      result = {
+        runId,
+        workId,
+        ledgerPath,
+        candidate,
+        state: ledger.state,
+        superseded: supersession.superseded,
+        supersedeSkipped: supersession.skipped,
+        interrupted,
+      };
+    } finally {
+      try {
+        withRepoGitLock(repoRoot, () => discardWorkspace(workspace));
+      } catch (error) {
+        // Evidence lives in the run directory; a checkout that could not be
+        // removed is reported, it does not change what the run found.
+        leftover = `${workspace.worktreePath}: ${error.message}`;
+      }
+    }
+    return leftover ? { ...result, checkoutLeft: leftover } : result;
+  });
+}
+
 function resumeStepFromTransition(transition) {
   if (transition.startsWith("enter-")) {
     return transition.slice("enter-".length);
@@ -1697,6 +2038,11 @@ export function resumeRun(options) {
   // through the earlier read would fork the hash chain.
   const outer = openLedgerFor(repoRoot, runId);
   const outerLedger = outer.ledger;
+  if (outerLedger.state.run?.pass) {
+    throw new OrchestratorError(
+      `${runId} reviewed one commit and has nothing to resume; commit the next change and run buildbeat review`,
+    );
+  }
   const outside = resumeTarget(options, outer);
   if (outside.early) {
     return outside.early;

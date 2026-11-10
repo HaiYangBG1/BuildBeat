@@ -250,7 +250,7 @@ export function checkRunConfigShape(config) {
   return problems;
 }
 
-function checkCommandSpec(where, spec) {
+export function checkCommandSpec(where, spec) {
   const problems = [];
   if (!isMap(spec)) {
     return [`${where}: must be a map with at least a command`];
@@ -319,4 +319,28 @@ export function checkRunConfigAgainstWorkflow(config, workflow) {
     );
   }
   return problems;
+}
+
+// `env:` of a worker or of the release readback: variable names mapped to
+// scalar values, handed to the command on top of the allowlisted environment.
+export function workerEnvOverrides(worker, env) {
+  if (env === undefined || env === null) {
+    return {};
+  }
+  if (typeof env !== "object" || Array.isArray(env)) {
+    throw new Error(
+      `workers.${worker}.env must be a mapping of variable names to scalar values`,
+    );
+  }
+  const out = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+      throw new Error(`workers.${worker}.env: invalid variable name ${key}`);
+    }
+    if (value === null || typeof value === "object") {
+      throw new Error(`workers.${worker}.env.${key} must be a scalar`);
+    }
+    out[key] = String(value);
+  }
+  return out;
 }

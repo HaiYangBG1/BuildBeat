@@ -42,6 +42,8 @@ export function writeRunRecord({ repoRoot, ledger, ts }) {
     run: first.run,
     work: first.work,
     workflow: state.run?.workflowRef ?? null,
+    // A run that reviewed one existing commit (reviewCommit).
+    ...(state.run?.pass ? { pass: true } : {}),
     ...(state.run?.deliveryChecks ? { deliveryChecks: state.run.deliveryChecks } : {}),
     terminal: state.terminal,
     events: { from: first.seq, to: last.seq, lastDigest: last.digest },
