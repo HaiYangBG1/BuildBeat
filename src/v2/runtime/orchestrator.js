@@ -1275,6 +1275,16 @@ function recordStepResult(
       ]);
     }
     const pinned = ledger.state.workspaces[workspace.workspaceId]?.candidate;
+    // A review judges the commit it was given: that commit's work.md was
+    // compared with the accepted one on this checkout, and the approval will
+    // name it. A verifier that leaves another HEAD behind (it committed, or
+    // checked something else out) would have the reviewer and the approval
+    // look at a commit nobody sent, so the run ends instead of re-pinning.
+    if (context.endPass && tree.head !== pinned) {
+      return stop("FAILED", [
+        `step ${step} moved the checkout from ${String(pinned).slice(0, 7)} to ${tree.head.slice(0, 7)}; a review judges the commit it was given`,
+      ]);
+    }
     if (tree.head !== (pinned ?? workspace.base)) {
       ledger.append({
         type: "CANDIDATE_PINNED",

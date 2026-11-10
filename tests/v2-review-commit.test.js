@@ -9,7 +9,8 @@ import { join } from "node:path";
 import test from "node:test";
 import { tempDir } from "./support/tmp.js";
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
+const ROOT = join(import.meta.dirname, "..");
+const CLI = join(ROOT, "bin", "buildbeat.js");
 const WORK = "WORK-A";
 const P1 = { severity: "P1", summary: "the feature text is wrong" };
 
@@ -279,6 +280,31 @@ test("a tooling failure ends the run CANCELLED, which is no verdict on the commi
   }
 });
 
+test("a verifier that moves the checkout off the commit under review fails the run", () => {
+  // Commits in the checkout: HEAD is no longer the commit that was sent.
+  const { root } = fixture({
+    workConfig: yaml([
+      "workers:", "  verifier:", "    command: bash", "    args:", "      - -c",
+      "      - 'echo extra > src/extra.txt && git add src/extra.txt && git commit -q -m sneaked-in'",
+    ]),
+  });
+  const sha = commit(root, "add the feature", { "src/feature.txt": "hello\n" });
+  const reviewed = review(root);
+  assert.equal(reviewed.status, 1, reviewed.all);
+  assert.match(reviewed.out, new RegExp(`terminal: FAILED \\(step verify moved the checkout from ${sha.slice(0, 7)} to \\w{7}; a review judges the commit it was given\\)`));
+  // Nothing was reviewed, the candidate is still the commit that was sent,
+  // and the commit the verifier made went away with the checkout.
+  assert.doesNotMatch(reviewed.out, /step review/);
+  const run = record(root, "RUN-A-01");
+  assert.equal(run.terminal.status, "FAILED");
+  assert.equal(run.workspaces["RUN-A-01"].candidate, sha);
+  assert.equal(git(root, ["rev-parse", "HEAD"]), sha);
+  assert.equal(git(root, ["branch", "--list", "run/*"]), "");
+  const approve = decide(root, ["--action", "approve", "--candidate", sha]);
+  assert.equal(approve.status, 1);
+  assert.match(approve.err, /no reviewed commit of WORK-A waits for a decision/);
+});
+
 test("a review whose process died is ended by the next review of the work", () => {
   // The verifier kills the CLI that runs it while the commit carries kill-me.
   const { root } = fixture({
@@ -493,4 +519,76 @@ test("status sends a work of a reviewed repository to buildbeat review", () => {
   const committed = stage(root);
   assert.equal(committed.stage, "COMMITTED");
   assert.match(committed.next, /^buildbeat review --repo \S+ --work WORK-A; or, if it is done, close it out: /);
+});
+
+// The released 5.5.0 runtime, taken from its tag: what a session that has
+// not upgraded yet reads these records with. A shallow clone has no tag, and
+// the test says so instead of passing.
+function released() {
+  try {
+    git(ROOT, ["rev-parse", "--verify", "--quiet", "v5.5.0^{commit}"]);
+  } catch {
+    return null;
+  }
+  const dir = tempDir("bb-v2-released-");
+  const archive = execFileSync("git", ["-C", ROOT, "archive", "v5.5.0", "bin", "src", "package.json"], { maxBuffer: 1 << 28 });
+  execFileSync("tar", ["-x", "-C", dir], { input: archive });
+  assert.equal(JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version, "5.5.0");
+  return (args) => execFileSync("node", [join(dir, "bin", "buildbeat.js"), ...args], { encoding: "utf8" });
+}
+
+test("the released 5.5.0 reads what a review records: status, decisions and history", (t) => {
+  const old = released();
+  if (!old) {
+    t.skip("tag v5.5.0 is not in this clone (a shallow checkout); run with full history");
+    return;
+  }
+  const { root, base } = fixture();
+  const first = commit(root, "add the feature\n\nWork: WORK-A", {
+    "src/feature.txt": "helo\n",
+    "findings.json": JSON.stringify({ findings: [P1] }),
+  });
+  assert.equal(review(root).status, 0);
+  const row = (args = []) => JSON.parse(old(["status", "--repo", root, "--json", ...args])).works.find((item) => item.work === WORK);
+
+  // A review still waiting, read from its ledger.
+  const waiting = row();
+  assert.equal(waiting.stage, "MERGE_DECISION");
+  assert.equal(waiting.latest.id, "RUN-A-01");
+  assert.equal(waiting.latest.candidate, first);
+  assert.equal(waiting.openFindings, 1);
+
+  // Superseded, then approved: run records and decision rows in Git.
+  const second = commit(root, "fix the text\n\nWork: WORK-A", { "src/feature.txt": "hello\n", "findings.json": null });
+  assert.equal(review(root).status, 0);
+  assert.equal(decide(root, ["--action", "approve", "--candidate", second]).status, 0);
+  // Only the records in Git from here on, as on another machine.
+  execFileSync("rm", ["-rf", join(root, ".buildbeat")]);
+
+  const approved = row(["--work", WORK]);
+  assert.equal(approved.stage, "MERGED");
+  assert.equal(approved.runs, 2);
+  assert.equal(approved.latest.id, "RUN-A-02");
+  assert.equal(approved.latest.status, "SUCCEEDED");
+  assert.equal(approved.latest.candidate, second);
+  assert.equal(approved.mergedCandidate, second);
+  assert.equal(approved.cost.reviewRounds, 2);
+  const merge = approved.decisions.find((item) => item.transition === "enter-wait-merge");
+  assert.equal(merge.run, "RUN-A-02");
+  assert.equal(merge.decision, "approved");
+  assert.match(merge.who, /^owner \(person/);
+  const text = old(["status", "--repo", root, "--work", WORK]);
+  assert.match(text, /RUN-A-02 SUCCEEDED candidate \w{7} \(merged\)/);
+  assert.match(text, /D-RUN-A-02-1 enter-wait-merge approved by owner/);
+
+  // A line of the change traces back to the work through both runs' ranges.
+  const trace = JSON.parse(old(["history", "--repo", root, "--path", "src/feature.txt", "--json"]));
+  assert.equal(trace.untraced.lines, 0);
+  assert.equal(trace.works.length, 1);
+  assert.equal(trace.works[0].work, WORK);
+  assert.equal(trace.works[0].lines, 1);
+  assert.equal(trace.works[0].approved.run, "RUN-A-02");
+  assert.equal(trace.works[0].approved.decisionRef, "D-RUN-A-02-1");
+  const runs = JSON.parse(readFileSync(join(root, "delivery", "work", WORK, "runs", "RUN-A-02", "run-record.json"), "utf8"));
+  assert.equal(runs.workspaces["RUN-A-02"].base, base);
 });
