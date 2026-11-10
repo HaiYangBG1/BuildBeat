@@ -1,0 +1,220 @@
+{
+  "run": "RUN-CLEAN-START-02",
+  "work": "WORK-CLEAN-START",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 45,
+    "lastDigest": "sha256:4fe98b8ed83843ae983eff5a68e53fe79d2034b934e7a37a50bfd0ba1d579e56"
+  },
+  "startedAt": "2026-11-10T14:05:18.635Z",
+  "finishedAt": "2026-11-10T14:55:28.560Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 10
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "waits": {
+      "decided": {
+        "count": 3,
+        "ms": 1887773
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 1120984
+  },
+  "workspaces": {
+    "RUN-CLEAN-START-02": {
+      "repo": ".",
+      "branch": "run/RUN-CLEAN-START-02",
+      "worktreePath": ".buildbeat/worktrees/RUN-CLEAN-START-02",
+      "base": "77d5ce7ef054ab9eaaeaa0ef1104346455b1c2c0",
+      "candidate": "f922fa4004a3427a001b92b054ef11a5cd12799a"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-02/logs/verify-1.log",
+      "kind": "command",
+      "subject": "cf9cd8d7e1da06f77802c5ed2fe6f594332f7b7b",
+      "digest": "sha256:18ea8df98e57be9d841a509692767b0127681b452587a0516a29cd1f47e6cc92",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:200cf1f796b4882734a0c332355235eeb61b4fafbf5bc2e64a00417d564fb6e4"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-02/logs/review-1.log",
+      "kind": "command",
+      "subject": "cf9cd8d7e1da06f77802c5ed2fe6f594332f7b7b",
+      "digest": "sha256:a277199dcfe1a5c3e96f9169a3d0d8ffaceab06da60c7838bacbe529d5d62a1e",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-02/outputs/review-1.json",
+      "kind": "review",
+      "subject": "cf9cd8d7e1da06f77802c5ed2fe6f594332f7b7b",
+      "digest": "sha256:53b22a7f501a823add5256c26afbee74591649b32c0fff01662a52e1d2519e7e",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/orchestrator.js:1645 未锁定送审 SHA，verifier 改变 HEAD 后会重绑候选并继续审查，而批准时不再复核候选内的 work.md，可能放行与已接受工作说明不一致的提交。"
+        },
+        {
+          "severity": "P1",
+          "summary": "tests/v2-review-commit.test.js:116 仅检查记录字段并调用当前 CLI，缺少 work.md 第一段验收要求的原版 5.5.0 status/history 读取新运行记录和决定记录的回归测试。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-02/logs/verify-2.log",
+      "kind": "command",
+      "subject": "f922fa4004a3427a001b92b054ef11a5cd12799a",
+      "digest": "sha256:d000884dae7d23cec9365f6c21d67005bc9135bb9304a7a234dd3f33ea71ef69",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:7e667dca15f93af0fddf26c08adc3aac4687c274b2747df124ce3975557e48d9"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-02/logs/review-2.log",
+      "kind": "command",
+      "subject": "f922fa4004a3427a001b92b054ef11a5cd12799a",
+      "digest": "sha256:10d7eae4f8eb199d27379aef8bc81e772ec1d65cefaa901d465f2c30ed11ca91",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-02/outputs/review-2.json",
+      "kind": "review",
+      "subject": "f922fa4004a3427a001b92b054ef11a5cd12799a",
+      "digest": "sha256:55bdc3d4ade103dbe0befa7ef69c20d895b78bbfd640a83d0d09677329c4e280",
+      "status": "passed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P2",
+          "summary": "tests/v2-review-commit.test.js:542 在缺少 v5.5.0 标签时跳过兼容性测试，而 .github/workflows/ci.yml:87 的 CLI 测试任务使用默认浅检出且未获取标签，导致常规 CI 不执行新增的旧版 status/history 回归；应让该任务获取所需标签。"
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "cf9cd8d7e1da06f77802c5ed2fe6f594332f7b7b",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-CLEAN-START-02-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      },
+      "adopted": "cf9cd8d7e1da06f77802c5ed2fe6f594332f7b7b",
+      "resumeAt": "verify"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "f922fa4004a3427a001b92b054ef11a5cd12799a",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:53b22a7f501a823add5256c26afbee74591649b32c0fff01662a52e1d2519e7e"
+      },
+      "decisionRef": "D-RUN-CLEAN-START-02-2",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      },
+      "adopted": "f922fa4004a3427a001b92b054ef11a5cd12799a",
+      "resumeAt": "verify"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "f922fa4004a3427a001b92b054ef11a5cd12799a",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:55bdc3d4ade103dbe0befa7ef69c20d895b78bbfd640a83d0d09677329c4e280"
+      },
+      "decisionRef": "D-RUN-CLEAN-START-02-3",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-CLEAN-START-02-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "cf9cd8d7e1da06f77802c5ed2fe6f594332f7b7b",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-CLEAN-START-02-2",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "f922fa4004a3427a001b92b054ef11a5cd12799a",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:53b22a7f501a823add5256c26afbee74591649b32c0fff01662a52e1d2519e7e"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-CLEAN-START-02-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "f922fa4004a3427a001b92b054ef11a5cd12799a",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:55bdc3d4ade103dbe0befa7ef69c20d895b78bbfd640a83d0d09677329c4e280"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

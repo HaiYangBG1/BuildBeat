@@ -19,6 +19,7 @@ allowedPaths:
   - delivery/envelope
   - .buildbeat/observe.yaml
   - .claude-plugin
+  - .github/workflows/ci.yml
   - .gitignore
   - SKILL.md
   - README.md
@@ -50,7 +51,7 @@ workers:
     timeoutMs: 1800000
     args:
       - delivery/work/WORK-CLEAN-START/verify.sh
-      - "1"
+      - "2"
   reviewer:
     command: bash
     timeoutMs: 3600000
