@@ -1,29 +1,37 @@
 # Run config for WORK-CLEAN-START. Paths resolve relative to this file.
-# Builder and fixer are deliberately absent: the driving session writes the
-# change and hands each commit over with --adopt. Verify runs the full local
-# gate plus the acceptance checks in work.md; review is the shipped reviewer
-# prompt on codex, read-only.
+# The work lands in three stages, one run each (run --new); the verifier's
+# argument names the stage. Builder and fixer are deliberately absent: the
+# driving session writes the change and hands each commit over with --adopt.
+# Review is the shipped reviewer prompt on codex, read-only.
 repo: ../../..
 work: WORK-CLEAN-START
 run: RUN-CLEAN-START
 allowedPaths:
   - src
+  - bin
   - tests
   - docs
   - templates
   - example
   - plugins
   - evals
+  - delivery/run-config.yaml
+  - delivery/envelope
+  - .buildbeat/observe.yaml
+  - .claude-plugin
+  - .gitignore
   - SKILL.md
   - README.md
   - README.en.md
   - CONTRIBUTING.md
   - CHANGELOG.md
   - CHANGELOG-v1.md
+  - lessons.md
   - package.json
 reviewTriage: off
+# The work's stop line (work.md decision 11): 12 review rounds across its three stages.
 budgets:
-  reviewRoundsPerWork: 6
+  reviewRoundsPerWork: 12
 cache:
   verify: tree
 envelope:
@@ -42,6 +50,7 @@ workers:
     timeoutMs: 1800000
     args:
       - delivery/work/WORK-CLEAN-START/verify.sh
+      - "1"
   reviewer:
     command: bash
     timeoutMs: 3600000
