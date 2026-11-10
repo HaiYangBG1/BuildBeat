@@ -1,5 +1,6 @@
-// Built-in delivery checks, not a user-programmable rule language.
-// Evidence and acceptance remain candidate/digest scoped and fail closed.
+// The checks an approval must pass, not a user-programmable rule language.
+// Evidence and acceptance are scoped to one commit and one digest, and a
+// check that cannot be answered fails closed.
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -16,9 +17,9 @@ const SEVERITY = { P0: 0, P1: 1, P2: 2, P3: 3 };
 export function sha256Text(text) {
   return `sha256:${createHash("sha256").update(text, "utf8").digest("hex")}`;
 }
-export function artifactAccepted(artifact, ctx) {
-  if (!["work", "intent", "plan", "spec"].includes(artifact))
-    throw new PolicyError("invalid artifact");
+// Is the work's description accepted, with the bytes it has now?
+export function workAccepted(ctx) {
+  const artifact = "work";
   const file = join(ctx.workDir, `${artifact}.md`);
   if (!existsSync(file))
     return { ok: "unverified", why: `artifact file missing: ${artifact}.md` };
@@ -152,84 +153,35 @@ export function reviewClear(atMost, ctx) {
       : `no findings above ${atMost}`,
   };
 }
-export function deliveryChecks({
-  artifact = "plan",
-  requireAcceptance = true,
-  requireIntent = false,
-  maxSeverity = "P2",
-  requireScreenshot = false,
-} = {}) {
-  if (
-    !["work", "plan"].includes(artifact) ||
-    !["P2", "P3"].includes(maxSeverity) ||
-    typeof requireScreenshot !== "boolean"
-  )
-    throw new PolicyError("invalid delivery safeguards");
-  const rows = [];
-  const add = (name, type, appliesTo, check) =>
-    rows.push({
-      name,
-      type,
-      appliesTo,
+// What approving a commit requires, in the order a person would ask: did
+// verify pass on this commit, is the work description the accepted one, are
+// there screenshots when the work asks for them, and is every finding above
+// the floor dismissed. `checks` is what the run froze when it was created.
+// One row, under the name these checks have always had in the ledger.
+export function mergeChecks(
+  { requireAcceptance = true, maxSeverity = "P2", requireScreenshot = false } = {},
+  ctx,
+) {
+  let verdict = evidencePresent(
+    { kind: "command", minGrade: "L2", step: "verify" },
+    ctx,
+  );
+  if (verdict.ok === true && requireAcceptance) verdict = workAccepted(ctx);
+  // UI work proves its real render: screenshots the verify step left for
+  // this commit (lessons.md "静态稿拍板 → 返工螺旋").
+  if (verdict.ok === true && requireScreenshot) verdict = screenshotsPresent(ctx);
+  if (verdict.ok === true) verdict = reviewClear(maxSeverity, ctx);
+  return [
+    {
+      policy: "merge-evidence-floor",
+      result:
+        verdict.ok === true
+          ? "PASS"
+          : verdict.ok === "unverified"
+            ? "UNVERIFIED"
+            : "WAIT_HUMAN",
+      reason: verdict.why,
       enforcement: "LOCAL_ENFORCED",
-      onFail: "WAIT_HUMAN",
-      ...check,
-    });
-  if (requireIntent && artifact !== "work")
-    add("intent-accepted", "pre", "build", {
-      kind: "artifact",
-      artifact: "intent",
-    });
-  if (requireAcceptance)
-    add(`${artifact}-accepted`, "pre", "build", { kind: "artifact", artifact });
-  add("merge-evidence-floor", "transition", "enter-wait-merge", {
-    kind: "merge",
-    maxSeverity,
-    artifact,
-    requireAcceptance,
-    requireIntent,
-    ...(requireScreenshot ? { requireScreenshot } : {}),
-  });
-  return rows;
-}
-export function evaluatePolicies(policies, { type, appliesTo }, ctx) {
-  return (policies ?? [])
-    .filter((p) => p.type === type && p.appliesTo === appliesTo)
-    .map((p) => {
-      let v;
-      if (p.kind === "artifact") v = artifactAccepted(p.artifact, ctx);
-      else if (p.kind === "evidence")
-        v = evidencePresent(
-          { kind: p.evidenceKind, minGrade: p.minGrade },
-          ctx,
-        );
-      else if (p.kind === "merge") {
-        v = evidencePresent(
-          { kind: "command", minGrade: "L2", step: "verify" },
-          ctx,
-        );
-        if (v.ok === true && p.requireAcceptance)
-          v = artifactAccepted(p.artifact, ctx);
-        if (v.ok === true && p.requireIntent && p.artifact !== "work")
-          v = artifactAccepted("intent", ctx);
-        // UI work proves its real render: screenshots the verify step left
-        // for this candidate (lessons.md "静态稿拍板 → 返工螺旋").
-        if (v.ok === true && p.requireScreenshot) v = screenshotsPresent(ctx);
-        if (v.ok === true) v = reviewClear(p.maxSeverity ?? "P2", ctx);
-      } else
-        throw new PolicyError(
-          "custom policy rules are retired; migrate using docs/MIGRATION.md",
-        );
-      return {
-        policy: p.name,
-        result:
-          v.ok === true
-            ? "PASS"
-            : v.ok === "unverified"
-              ? "UNVERIFIED"
-              : (p.onFail ?? "WAIT_HUMAN"),
-        reason: v.why,
-        enforcement: p.enforcement ?? "LOCAL_ENFORCED",
-      };
-    });
+    },
+  ];
 }

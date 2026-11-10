@@ -11,17 +11,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { createShellAdapter } from "../adapters/shell.js";
-import { DELIVERY_TEXT, deliveryWorkflow } from "../engine/workflow.js";
 import { parseYamlSubset } from "../engine/yaml-subset.js";
-import { deliveryChecks } from "../policy/policy.js";
 import { loadEnvelope } from "../runtime/envelope.js";
-import { PROJECT_CONFIG } from "../runtime/overview-repos.js";
-import {
-  RunConfigError,
-  checkCommandSpec,
-  suggest,
-  workerEnvOverrides,
-} from "./run-config-check.js";
+import { PROJECT_CONFIG, workConfigRef } from "../runtime/overview-repos.js";
 
 const PROJECT_KEYS = [
   "workers",
@@ -37,13 +29,123 @@ const WORKERS = ["verifier", "reviewer"];
 const ENVELOPE_KEYS = ["prompts", "vars", "pin"];
 const LISTS = ["requires", "redact", "allowedPaths"];
 
-export const workConfigRef = (workId) => `delivery/work/${workId}/run-config.yaml`;
-
 const sha256 = (text) =>
   `sha256:${createHash("sha256").update(text, "utf8").digest("hex")}`;
 
 function isMap(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function nonEmptyString(value) {
+  return typeof value === "string" && value.trim() !== "";
+}
+
+export class RunConfigError extends Error {
+  constructor(label, problems) {
+    super(
+      `run config ${label} has ${problems.length} problem(s):\n${problems.map((problem) => `  - ${problem}`).join("\n")}`,
+    );
+    this.name = "RunConfigError";
+    this.problems = problems;
+  }
+}
+
+function distance(a, b) {
+  const row = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    let previous = row[0];
+    row[0] = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      const kept = row[j];
+      row[j] = Math.min(
+        row[j] + 1,
+        row[j - 1] + 1,
+        previous + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+      previous = kept;
+    }
+  }
+  return row[b.length];
+}
+
+// The closest known name, if it is plausibly what was meant.
+function suggest(name, known) {
+  const lower = String(name).toLowerCase();
+  const exact = known.find((candidate) => candidate.toLowerCase() === lower);
+  if (exact) {
+    return exact;
+  }
+  let best = null;
+  let bestDistance = 3;
+  for (const candidate of known) {
+    const d = distance(lower, candidate.toLowerCase());
+    if (d < bestDistance) {
+      best = candidate;
+      bestDistance = d;
+    }
+  }
+  return best;
+}
+
+const WORKER_KEYS = ["command", "args", "timeoutMs", "inheritEnv", "env"];
+
+function checkCommandSpec(where, spec) {
+  const problems = [];
+  if (!isMap(spec)) {
+    return [`${where}: must be a map with at least a command`];
+  }
+  for (const key of Object.keys(spec)) {
+    if (!WORKER_KEYS.includes(key)) {
+      problems.push(unknownKey(`${where}.`, key, WORKER_KEYS));
+    }
+  }
+  if (!nonEmptyString(spec.command)) {
+    problems.push(`${where}.command: required, a non-empty string`);
+  }
+  if (spec.args !== undefined && !Array.isArray(spec.args)) {
+    problems.push(`${where}.args: must be a list (one "- arg" per line)`);
+  }
+  if (
+    spec.timeoutMs !== undefined &&
+    !(typeof spec.timeoutMs === "number" && spec.timeoutMs > 0)
+  ) {
+    problems.push(
+      `${where}.timeoutMs: must be a positive number, got ${JSON.stringify(spec.timeoutMs)}`,
+    );
+  }
+  if (spec.inheritEnv !== undefined && typeof spec.inheritEnv !== "boolean") {
+    problems.push(
+      `${where}.inheritEnv: must be true or false, got ${JSON.stringify(spec.inheritEnv)} (anything else used to mean false silently)`,
+    );
+  }
+  if (spec.env !== undefined && !isMap(spec.env)) {
+    problems.push(`${where}.env: must be a map of NAME -> value`);
+  }
+  return problems;
+}
+
+// `env:` of a worker or of the release readback: variable names mapped to
+// scalar values, handed to the command on top of the allowlisted environment.
+function workerEnvOverrides(worker, env) {
+  if (env === undefined || env === null) {
+    return {};
+  }
+  if (typeof env !== "object" || Array.isArray(env)) {
+    throw new Error(
+      `workers.${worker}.env must be a mapping of variable names to scalar values`,
+    );
+  }
+  const out = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+      throw new Error(`workers.${worker}.env: invalid variable name ${key}`);
+    }
+    if (value === null || typeof value === "object") {
+      throw new Error(`workers.${worker}.env.${key} must be a scalar`);
+    }
+    out[key] = String(value);
+  }
+  return out;
 }
 
 function unknownKey(where, key, known) {
@@ -148,10 +250,10 @@ function readConfig(repoRoot, ref, keys) {
 // The project config with the work's overrides applied, as the options the
 // runtime takes. A key the work sets replaces the project's; workers are
 // replaced one by one, so a work can swap its verifier and keep the
-// project's reviewer.
-export function loadPassConfig(repoRoot, workId) {
+// project's reviewer. Without a work, the project config alone.
+export function loadReviewConfig(repoRoot, workId = null) {
   const project = readConfig(repoRoot, PROJECT_CONFIG, PROJECT_KEYS);
-  const work = readConfig(repoRoot, workConfigRef(workId), WORK_KEYS);
+  const work = workId ? readConfig(repoRoot, workConfigRef(workId), WORK_KEYS) : null;
   if (!project && !work) {
     throw new Error(
       `no ${PROJECT_CONFIG} in this repository: write one that names workers.verifier and workers.reviewer`,
@@ -208,14 +310,14 @@ export function loadPassConfig(repoRoot, workId) {
     maxSeverity: config.maxReviewSeverity ?? "P2",
     ...(config.requireScreenshot === true ? { requireScreenshot: true } : {}),
   };
-  const description = join(repoRoot, "delivery", "work", workId, "work.md");
+  const description = workId ? join(repoRoot, "delivery", "work", workId, "work.md") : null;
   return {
     repoRoot,
     workId,
+    // Which files the options came from, for `check` to name.
+    files: [project && PROJECT_CONFIG, work && workConfigRef(workId)].filter(Boolean),
     // RUN-<work id without its WORK- prefix>; the runtime numbers each review.
-    family: `RUN-${workId.replace(/^WORK-/, "")}`,
-    workflow: deliveryWorkflow(),
-    workflowDigest: sha256(DELIVERY_TEXT),
+    family: workId ? `RUN-${workId.replace(/^WORK-/, "")}` : null,
     adapters,
     adapterConfigs: config.workers,
     envelope: envelopeDir ? loadEnvelope(config, envelopeDir, WORKERS) : null,
@@ -227,9 +329,7 @@ export function loadPassConfig(repoRoot, workId) {
     allowedPaths: config.allowedPaths ?? null,
     base: config.base ?? null,
     deliveryChecks: checks,
-    policies: deliveryChecks(checks),
-    riskPreset: "standard",
-    planDigest: existsSync(description)
+    planDigest: description && existsSync(description)
       ? sha256(readFileSync(description, "utf8"))
       : null,
   };

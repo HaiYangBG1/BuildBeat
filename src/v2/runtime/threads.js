@@ -36,8 +36,7 @@ export function parseLinks(text) {
 }
 
 // Every work folder in the given checkouts, with its links, refs and prose
-// from work.md (the legacy intent.md only when there is no work.md) and
-// result.md.
+// from work.md and result.md.
 export function readWorks(roots) {
   const works = [];
   for (const repo of roots) {
@@ -46,8 +45,7 @@ export function readWorks(roots) {
     for (const work of readdirSync(workRoot).sort()) {
       const dir = join(workRoot, work);
       if (!directory(dir)) continue;
-      const description = existsSync(join(dir, "work.md")) ? "work.md" : "intent.md";
-      const pages = [description, "result.md"]
+      const pages = ["work.md", "result.md"]
         .map((name) => join(dir, name))
         .filter((path) => existsSync(path))
         .map((path) => parseLinks(readFileSync(path, "utf8")));
@@ -154,7 +152,7 @@ export function attachThreads(rows, roots, cwd = process.cwd()) {
     if (node.missing) return null;
     const key = keyOf(node);
     if (!stages.has(key)) {
-      const row = computeOverview(node.repo, { work: node.work, cwd, repoLabel: shellArg(pathLabel(cwd, node.repo)) })[0];
+      const row = computeOverview(node.repo, { work: node.work, repoLabel: shellArg(pathLabel(cwd, node.repo)) })[0];
       stages.set(key, row?.stage ?? null);
     }
     return stages.get(key);

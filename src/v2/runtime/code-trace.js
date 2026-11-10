@@ -167,14 +167,13 @@ async function runRanges(root, runs) {
   return map;
 }
 
+// The heading of work.md; for a work whose records are in an earlier
+// version's format, the first line of its result page.
 function titleOf(dir) {
-  for (const name of ["work.md", "intent.md"]) {
-    const path = join(dir, name);
-    if (!existsSync(path)) continue;
-    const heading = readFileSync(path, "utf8").split(/\r?\n/).find((line) => /^#\s+\S/.test(line));
-    if (heading) return heading.replace(/^#\s+/, "").trim();
-  }
-  return null;
+  const lines = (name) => (existsSync(join(dir, name)) ? readFileSync(join(dir, name), "utf8").split(/\r?\n/) : []);
+  const heading = lines("work.md").find((line) => /^#\s+\S/.test(line));
+  const first = heading ?? lines("result.md").find((line) => line.trim() !== "");
+  return first ? first.replace(/^#+\s*/, "").trim() : null;
 }
 
 // Who decided (WORK-POSITIONING-ALIGN): the merge approval bound to the
@@ -205,10 +204,10 @@ function workFacts(roots, work, cwd) {
     if (!directory(dir)) continue;
     // The stage as the work's records give it: history --path keeps its
     // output, and COMMITTED would only repeat the commits it already lists.
-    const row = computeOverview(root, { work, followTargets: false, committed: false })[0] ?? null;
+    const row = computeOverview(root, { work, committed: false })[0] ?? null;
     const stage = row?.stage ?? null;
     const page = readResult(root, work);
-    const read = [join(dir, "work.md"), join(dir, "intent.md"), join(dir, "result.md")]
+    const read = [join(dir, "work.md"), join(dir, "result.md")]
       .filter((path) => existsSync(path))
       .map((path) => pathLabel(cwd, path));
     return {

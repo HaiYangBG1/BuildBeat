@@ -7,7 +7,7 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, linkSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, linkSync, mkdirSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join } from "node:path";
 
@@ -214,50 +214,6 @@ export function acquireLock(repoRoot, runId) {
   return lockPath;
 }
 
-// Locks that belong to no single run: the repository-wide active-run lock,
-// and names starting with "@" (per-work, parallel-run marker, repo-git),
-// which no run id can contain.
-export function isRunLockName(name) {
-  return name !== "active-run" && !name.startsWith("@");
-}
-
-// Run ids currently holding a lock in this repository: who a blocked
-// `start` is queued behind.
-export function listHeldRunLocks(repoRoot) {
-  const lockDir = join(repoRoot, ".buildbeat", "runtime", "locks");
-  if (!existsSync(lockDir)) {
-    return [];
-  }
-  return readdirSync(lockDir)
-    .filter((entry) => entry.endsWith(".lock"))
-    .map((entry) => entry.slice(0, -".lock".length))
-    .filter(isRunLockName)
-    .sort();
-}
-
-// Parallel-run markers (@parallel.<RUN>) whose owner is alive or cannot be
-// judged; markers of dead owners are reclaimed on the way and not returned.
-export function liveParallelMarkers(repoRoot) {
-  const lockDir = join(repoRoot, ".buildbeat", "runtime", "locks");
-  if (!existsSync(lockDir)) {
-    return [];
-  }
-  const live = [];
-  for (const entry of readdirSync(lockDir).sort()) {
-    if (!entry.startsWith("@parallel.") || !entry.endsWith(".lock")) {
-      continue;
-    }
-    const lockPath = join(lockDir, entry);
-    const seen = inspectLock(lockPath);
-    if (seen.state === "dead" && reclaimStaleLock(lockPath, seen.owner)) {
-      rmSync(lockPath, { recursive: true, force: true });
-      continue;
-    }
-    live.push({ run: entry.slice("@parallel.".length, -".lock".length), ...seen });
-  }
-  return live;
-}
-
 function pause(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
@@ -382,35 +338,10 @@ export function listChangedPaths(worktreePath, base) {
   return [...new Set([...committed, ...dirty])];
 }
 
-export function pinCandidate(workspace) {
-  const { head, dirty } = readback(workspace.worktreePath);
-  if (dirty) {
-    throw new WorkspaceError(
-      `worktree is dirty; a candidate must be a committed state (${workspace.worktreePath})`,
-    );
-  }
-  return head;
-}
-
 // Undoes createWorkspace for a run that never started (nothing was written
 // to its ledger): the worktree and its branch both go, so the same run id
 // can be created again.
 export function discardWorkspace(workspace) {
   git(workspace.repoRoot, ["worktree", "remove", "--force", workspace.worktreePath]);
   git(workspace.repoRoot, ["branch", "-D", workspace.branch]);
-}
-
-export function removeWorkspace(workspace, { force = false } = {}) {
-  const { dirty } = readback(workspace.worktreePath);
-  if (dirty && !force) {
-    throw new WorkspaceError(
-      `refusing to remove dirty worktree ${workspace.worktreePath}; debug state is preserved`,
-    );
-  }
-  const args = ["worktree", "remove"];
-  if (force) {
-    args.push("--force");
-  }
-  args.push(workspace.worktreePath);
-  git(workspace.repoRoot, args);
 }

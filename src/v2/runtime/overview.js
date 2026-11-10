@@ -1,12 +1,7 @@
-// Work-level overview (iteration 08, C5): "where is this thing, and who
-// moves next" — the question the owner opened three sessions with
-// ("X 上线了吗 / 离上线还差多远 / 从每个系统说待办") and that inbox,
-// which only knows about runs waiting on a human, cannot answer.
-//
-// Everything here is derived: work directories and decision ledgers in the
-// Git plane, run ledgers in the runtime plane (run-records fill in for runs
-// whose runtime was wiped), and git ancestry for "merged". Nothing is
-// written.
+// Where each work stands and who moves next. Everything here is derived:
+// work folders and decision records in Git, run ledgers on this machine (run
+// records fill in for runs whose ledger is elsewhere), and Git ancestry for
+// "merged". Nothing is written.
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -15,13 +10,11 @@ import { join } from "node:path";
 import { describeActor, selfMergeApproval } from "./actor.js";
 import { checkPromotions, readResult } from "./closeout.js";
 import { listInbox } from "./decisions.js";
-import { configTargets, directory, discoverRepos, hasProjectConfig, pathLabel, readRunLedgers, shellArg, workConfigs } from "./overview-repos.js";
+import { directory, discoverRepos, hasProjectConfig, pathLabel, readRunLedgers, shellArg, workDeclaresRelease } from "./overview-repos.js";
 
-import { EventLedger } from "../storage/event-ledger.js";
 import { latestAdjudications, readFindingsAccount } from "./findings.js";
-import { nextReply } from "./notify.js";
+import { nextReply } from "./hints.js";
 import { readReleases } from "./release.js";
-import { describeLiveness } from "./liveness.js";
 import { computeWorkCost, renderWorkCost } from "./work-cost.js";
 import { codeCommitsOf } from "./work-commits.js";
 
@@ -46,17 +39,17 @@ export function readJsonl(path) {
     .filter(Boolean);
 }
 
-export function artifactStatus(workDir, decisions, artifact) {
-  const path = join(workDir, `${artifact}.md`);
+// The work's description: is work.md there, and accepted with the bytes it
+// has now?
+export function descriptionStatus(workDir, decisions) {
+  const path = join(workDir, "work.md");
   if (!existsSync(path)) {
     return { exists: false, accepted: false, stale: false };
   }
   const digest = sha256File(path);
-  const accepts = decisions.filter(
-    (row) =>
-      row.transition === `accept-${artifact}` && row.decision === "approved",
-  );
-  const latest = accepts[accepts.length - 1];
+  const latest = decisions
+    .filter((row) => row.transition === "accept-work" && row.decision === "approved")
+    .at(-1);
   if (!latest) {
     return { exists: true, accepted: false, stale: false };
   }
@@ -197,11 +190,10 @@ export function runsFor(repoRoot, workId, ledgers = null) {
   );
 }
 
-// Per status invocation: known local roots need no validation subprocess,
-// and forwarded works share repository facts with the later target scan.
-// ledgers and reach are read-only caches for this one call: every work's
-// runs, its cost and the work-id scan read the same ledgers, and in a pilot
-// workspace one cross-repository status opened 245 ledgers 20,390 times
+// Per status invocation, read-only caches: every work's runs, its cost and
+// the work-id scan read the same ledgers, and "is this commit on the branch"
+// is answered from one rev-list per branch. In a pilot workspace one
+// cross-repository status opened 245 ledgers 20,390 times
 // (WORK-OVERVIEW-SPEED).
 function overviewContext(repoRoot) {
   return {
@@ -218,9 +210,13 @@ function ledgersOf(repoRoot, context) {
   return context.ledgers.get(repoRoot);
 }
 
+// The files that say a folder without work.md once held a work: records an
+// earlier version wrote in its own format. They stay in Git and are not read.
+const RECORDS = ["decisions.jsonl", "review-findings.jsonl", "releases.jsonl", "result.md", "runs"];
+
 export function computeOverview(
   repoRoot,
-  { work = null, repoLabel: defaultRepoLabel = ".", cwd = null, followTargets = true, warnings = [], configsOverride = null, context = overviewContext(repoRoot), skipWorks = new Set(), localCompatibility = false, committed: findCommitted = true } = {},
+  { work = null, repoLabel = ".", context = overviewContext(repoRoot), committed: findCommitted = true } = {},
 ) {
   const workRoot = join(repoRoot, "delivery", "work");
   const rows = [];
@@ -230,56 +226,20 @@ export function computeOverview(
     if (run?.work) workIds.add(run.work);
   }
   const mainRef = headRef(repoRoot, context);
-  // Resolve once; do not spawn another Git process for each local work.
-  const currentRoot = realpathSync(repoRoot);
-  // Works nobody ran that may have commits behind them; looked up together
-  // after the loop, with one git log for all of them.
+  const reviewable = hasProjectConfig(repoRoot);
+  // Works nobody reviewed that may have commits behind them; looked up
+  // together after the loop, with one git log for all of them.
   const unrun = [];
   for (const workId of [...workIds].sort()) {
-    if ((work && workId !== work) || skipWorks.has(workId)) {
+    if (work && workId !== work) {
       continue;
     }
     const workDir = join(workRoot, workId);
-    const configs = configsOverride ?? workConfigs(repoRoot, workId, warnings);
-    const resolved = followTargets ? configTargets(configs, warnings, context.roots) : configs;
-    const owner = followTargets ? resolved.find((item) => item.repo && item.repo !== currentRoot &&
-      (directory(join(item.repo, "delivery", "work", workId)) || runsFor(item.repo, workId, ledgersOf(item.repo, context)).length)) : null;
-    const usable = resolved.filter((item) => !item.error);
-    const selected = owner ?? usable[0] ?? resolved[0] ?? null;
-    const applicable = selected?.repo ? resolved.filter((item) => item.repo === selected.repo) : usable;
-    const local = localCompatibility && (!selected?.target || selected.repo === currentRoot);
-    const config = (local ? null : applicable.find((item) => item.release)) ?? selected;
-    if (owner) {
-      const targetRows = computeOverview(config.repo, {
-        work: workId, repoLabel: shellArg(pathLabel(cwd ?? process.cwd(), config.repo)),
-        cwd: cwd ?? process.cwd(), followTargets: false, warnings, configsOverride: applicable, context,
-      });
-      if (targetRows.length) {
-        rows.push({ ...targetRows[0], repo: config.repo, repoLabel: pathLabel(cwd ?? process.cwd(), config.repo) });
-        continue;
-      }
-    }
-    // Cross-repo work still belongs here until the target has records.
-    // Its commands need a copyable owner path, not the legacy local label.
-    const repoLabel = followTargets && config?.target && config.repo !== currentRoot
-      ? shellArg(pathLabel(cwd ?? process.cwd(), repoRoot)) : defaultRepoLabel;
-    const pathFor = (item) =>
-      shellArg(cwd && !local ? pathLabel(cwd, item.path) : `delivery/work/${workId}/${item.path.split("/").at(-1)}`);
-    const configPath = config ? pathFor(config) : "<run-config.yaml>";
-    // Reviewed with `buildbeat review`: the repository has a project config
-    // and this work brings no run config of its own kind.
-    const reviewed = hasProjectConfig(repoRoot) && configs.every((item) => item.review === true);
-    const review = `buildbeat review --repo ${repoLabel} --work ${workId}`;
     const runs = runsFor(repoRoot, workId, ledgersOf(repoRoot, context));
-    if (!configs.length && !runs.length && !["work.md", "intent.md", "plan.md", "decisions.jsonl", "runs"].some((name) => existsSync(join(workDir, name)))) continue;
     const decisions = readJsonl(join(workDir, "decisions.jsonl"));
-    const unified = existsSync(join(workDir, "work.md"));
-    const intent = artifactStatus(
-      workDir,
-      decisions,
-      unified ? "work" : "intent",
-    );
-    const plan = unified ? intent : artifactStatus(workDir, decisions, "plan");
+    const description = descriptionStatus(workDir, decisions);
+    const legacy = !description.exists && RECORDS.some((name) => existsSync(join(workDir, name)));
+    if (!description.exists && !legacy && runs.length === 0 && !directory(workDir)) continue;
     const envFacts = existsSync(join(workDir, "env-facts.md"));
     const findingRows = readFindingsAccount(repoRoot, workId);
     // Run and work decisions from decisions.jsonl, finding rulings from
@@ -319,32 +279,26 @@ export function computeOverview(
     ).length;
     const live = runs.filter((run) => run.status !== "SUPERSEDED");
     const latest = live[live.length - 1] ?? null;
-    // "Merged" is a fact about any candidate of the work, not only the
-    // latest run's: a pilot's shipped candidate sat behind a CANCELLED run
-    // (its in-run review budget ran out and closure happened elsewhere) and
-    // overview reported the shipped work as STOPPED_CANCELLED.
+    // "Merged" is a fact about any approved commit of the work, not only the
+    // latest run's. A reviewed commit is on its branch before anyone decided
+    // on it, so only an approved one counts; a run an earlier version made
+    // counts whatever its end (a pilot's shipped candidate sat behind a
+    // CANCELLED run).
     const mergedRun =
       [...runs]
         .reverse()
         .find(
           (run) =>
             run.candidate &&
-            // A reviewed commit is on its branch before anyone decided on
-            // it; only the approved one counts.
             (!run.pass || run.status === "SUCCEEDED") &&
             isAncestor(repoRoot, run.candidate, mainRef, context),
         ) ?? null;
     const merged = Boolean(mergedRun);
-    const RELEASE_STEPS = ["preflight", "apply-readback", "observe"];
-    const isReleaseLane = (run) =>
-      Boolean(run) &&
-      (run.workflow === "release-readback" ||
-        run.steps.some((step) => RELEASE_STEPS.includes(step)));
 
-    // A Work is closed by an explicit row in decisions.jsonl:
+    // A work is closed by an explicit row in decisions.jsonl:
     //   {"transition":"close-work","decision":"closed"|"cancelled","subject":{"result":"..."}}
-    // A live run (RUNNING / WAITING_HUMAN) contradicts a closure and wins, so a
-    // stale close row can never hide something that still needs a human.
+    // A live run (RUNNING / WAITING_HUMAN) contradicts a closure and wins, so
+    // a stale close row can never hide something that still needs a person.
     const closure = [...decisions]
       .reverse()
       .find((row) => row.transition === "close-work");
@@ -352,6 +306,9 @@ export function computeOverview(
     const liveRun =
       latest &&
       (latest.status === "RUNNING" || latest.status === "WAITING_HUMAN");
+    // true, false, or null when the work's run config cannot be read (which
+    // counts as a release: a readback is never skipped for that).
+    const declaresRelease = workDeclaresRelease(repoRoot, workId);
 
     // A work closes with its result page (closeout.js): the hint names the
     // page and the command, and a closed work says how many conclusions it
@@ -363,6 +320,8 @@ export function computeOverview(
         : null;
     const resultChanged = Boolean(closedDigest) && page.digest !== closedDigest;
     const closeOut = `write delivery/work/${workId}/result.md, then buildbeat decide --repo ${repoLabel} --work ${workId} --action close --by <you>`;
+    const review = `buildbeat review --repo ${repoLabel} --work ${workId}`;
+    const release = `buildbeat release --repo ${repoLabel} --work ${workId}`;
 
     let stage;
     let next;
@@ -382,44 +341,25 @@ export function computeOverview(
         next += ` · written into the project: ${written}`;
         if (resultChanged) next += " · result.md changed after closing";
       }
-    } else if (!intent.exists && (!latest || directory(workDir))) {
-      // A work directory without a work description stays NO_INTENT even
-      // when it has runs, as in 4.0.0; only a work known solely from
-      // runtime ledgers (no directory here) shows its run state.
+    } else if (legacy && !liveRun) {
+      stage = "LEGACY";
+      next = "legacy records: read the folder, or close it with a result.md";
+    } else if (!description.exists && (!latest || directory(workDir))) {
+      // A work folder without a description stays NO_INTENT even when it has
+      // runs; only a work known solely from run ledgers (no folder here)
+      // shows its run state.
       stage = "NO_INTENT";
       next = `write delivery/work/${workId}/work.md (goal, scope, acceptance, implementation plan)`;
     } else if (!latest) {
-      // A work with a run config is waiting for its run (a session may have
-      // committed the change it will adopt); only works without one, or
-      // whose configs only record releases, can have been finished in a
-      // session.
-      maybeCommitted = findCommitted && configs.every((item) => item.releaseOnly);
-      if (!plan.exists) {
-        stage = intent.accepted ? "INTENT_ACCEPTED" : "INTENT_DRAFT";
-        next = intent.accepted
-          ? `write delivery/work/${workId}/plan.md, then accept it`
-          : `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact intent --by <you>`;
-      } else if (!plan.accepted) {
-        stage = unified
-          ? plan.stale
-            ? "WORK_STALE"
-            : "WORK_DRAFT"
-          : plan.stale
-            ? "PLAN_STALE"
-            : "PLAN_DRAFT";
-        const artifacts = unified
-          ? "work"
-          : intent.accepted
-            ? "plan"
-            : "intent,plan";
-        next = `buildbeat accept --repo ${repoLabel} --work ${workId} --artifact ${artifacts} --by <you>${plan.stale ? `   # ${unified ? "work.md" : "plan"} changed since acceptance` : ""}`;
+      maybeCommitted = findCommitted;
+      if (!description.accepted) {
+        stage = description.stale ? "WORK_STALE" : "WORK_DRAFT";
+        next = `buildbeat accept --repo ${repoLabel} --work ${workId} --by <you>${description.stale ? "   # work.md changed since acceptance" : ""}`;
       } else {
         stage = "READY_TO_RUN";
-        next = reviewed
+        next = reviewable
           ? `commit the change, then ${review}`
-          : configs.length > 0
-            ? `buildbeat run --config ${configPath}`
-            : `no run-config in delivery/work/${workId}: write one, or, if it was doc-only, close out: ${closeOut}`;
+          : `write delivery/run-config.yaml (workers.verifier, workers.reviewer), then ${review}; or, if it was doc-only, close out: ${closeOut}`;
       }
     } else if (latest.status === "RUNNING") {
       stage = "RUNNING";
@@ -430,57 +370,45 @@ export function computeOverview(
           ? "MERGE_DECISION"
           : "WAITING_HUMAN";
       const replies = latest.state
-        ? nextReply({ repoLabel, state: latest.state, repoRoot })
+        ? nextReply({ repoLabel, state: latest.state })
         : [];
       next = replies[0] ?? `buildbeat status --repo ${repoLabel} --work ${workId}`;
-    } else if (latest.status === "SUCCEEDED" && isReleaseLane(latest)) {
-      // A release-readback lane that reached wait-close and was approved is
-      // a closed release window, not "nothing to merge".
-      stage = "RELEASED";
-      next = `release window closed by ${latest.id}; close out: ${closeOut}`;
     } else if (merged) {
       stage = "MERGED";
       // After the merge: the person releases, the project's readback proves
-      // it, and the work closes on a passing readback and its result page.
-      // The readback lives in whichever run config has a release: section;
-      // when every config was read and none has one, the work closes out
-      // with its result page alone. Unreadable or absent configs keep the
-      // generic release hint.
-      const releaseConfig = configs.find((item) => item.release) ?? null;
-      const releasePath = releaseConfig ? pathFor(releaseConfig) : configPath;
-      const noReleaseStep =
-        configs.length > 0 && !releaseConfig && !configs.some((item) => item.error);
+      // it, and a work that declares a release closes on a passing readback
+      // and its result page. A work that declares none closes out with its
+      // result page alone.
       next = !readback
-        ? noReleaseStep
+        ? declaresRelease === false
           ? `merged; close out: ${closeOut}`
-          : `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release it (a human action), then buildbeat release --config ${releasePath}; then ${closeOut}`
+          : `candidate ${mergedRun.candidate.slice(0, 7)} (${mergedRun.id}) is on ${mainRef}; release it (a human action), then ${release}; then ${closeOut}`
         : readback.status === "passed"
           ? `readback passed @ ${readback.ts} (${readback.commit.slice(0, 7)}); close the window: ${closeOut}`
-          : `latest readback failed @ ${readback.ts} (exit ${readback.exitCode}); fix the release, then buildbeat release --config ${releasePath} again`;
+          : `latest readback failed @ ${readback.ts} (exit ${readback.exitCode}); fix the release, then ${release} again`;
       if (latest.status !== "SUCCEEDED") {
         next += `   # latest run ${latest.id} ended ${latest.status} after the merge`;
       }
     } else if (latest.status === "SUCCEEDED") {
       stage = "MERGE_READY";
       next = latest.candidate
-        ? `merge ${latest.candidate.slice(0, 7)} (run/${latest.id}) into ${mainRef} — manual, then push`
+        ? `approved ${latest.candidate.slice(0, 7)} is not on ${mainRef}; merge it — manual, then push`
         : "run succeeded without a candidate; nothing to merge";
     } else {
       stage = `STOPPED_${latest.status}`;
-      next = !plan.accepted
-        ? `${unified ? "work.md" : "plan"} not accepted (${plan.exists ? "draft" : "missing"}); fix that before another run`
-        : reviewed
-          ? `decide: commit a fix and ${review}, or close the work`
-          : `decide: retry (buildbeat run --config ${configPath} --new) or close the work`;
+      next = description.accepted
+        ? `decide: commit a fix and ${review}, or close the work`
+        : `work.md not accepted (${description.exists ? "draft" : "missing"}); fix that before another review`;
     }
     const row = {
       work: workId,
-      ...(config ? { config: config.path, hasRelease: configs.some((item) => item.release) ? true : configs.some((item) => item.error) ? null : false } : { hasRelease: false }),
-      ...(config?.target && (!config.repo || config.repo !== currentRoot) && followTargets ? { targetRepo: config.repo ?? config.target, targetLabel: pathLabel(cwd ?? process.cwd(), config.repo ?? config.target) } : {}),
+      hasRelease: declaresRelease,
       stage,
-      intent,
-      plan,
-      ...(unified ? { workArtifact: "work" } : {}),
+      // Both name the work's description; two keys for readers of earlier
+      // versions' output.
+      intent: description,
+      plan: description,
+      ...(description.exists ? { workArtifact: "work" } : {}),
       envFacts,
       openFindings,
       findings: findingRows
@@ -505,14 +433,9 @@ export function computeOverview(
         ? {
             result: {
               exists: page.exists,
-              ...(page.exists
-                ? {
-                    summary: page.summary,
-                    digest: page.digest,
-                    promotions: checkPromotions(repoRoot, workId, page.promotions, { ref: mainRef }),
-                  }
-                : {}),
-              ...(closedDigest ? { changedAfterClose: resultChanged } : {}),
+              digest: page.digest,
+              ...(closedDigest ? { closedDigest, changed: resultChanged } : {}),
+              ...(page.exists ? { promotions: checkPromotions(repoRoot, workId, page.promotions) } : {}),
             },
           }
         : {}),
@@ -542,25 +465,29 @@ export function computeOverview(
             },
           }
         : {}),
-      next: local ? next : next.replaceAll("--config <run-config.yaml>", `--config ${configPath}`),
+      next,
     };
     rows.push(row);
     if (maybeCommitted) {
-      const releaseConfig = readback?.status === "passed" ? null : configs.find((item) => item.release) ?? null;
-      unrun.push({ row, workId, repoLabel, hasResult: page.exists, release: releaseConfig ? pathFor(releaseConfig) : null, review: reviewed ? review : null });
+      unrun.push({
+        row, workId, repoLabel, hasResult: page.exists,
+        review: reviewable ? review : null,
+        release: declaresRelease !== false && readback?.status !== "passed" ? release : null,
+      });
     }
   }
   markCommitted(repoRoot, mainRef, unrun);
   return rows;
 }
 
-// COMMITTED (WORK-COMMITTED-WORKS): a work with no run and no run config,
-// not closed, whose code commits are on the branch. It says there are
-// commits, not that the work is done; the next step is the close-out.
+// COMMITTED (WORK-COMMITTED-WORKS): a work nobody reviewed, not closed, whose
+// code commits are on the branch. It says there are commits, not that the
+// work is done; in a repository whose commits are reviewed the review comes
+// first, otherwise the close-out.
 function markCommitted(repoRoot, branch, unrun) {
   if (unrun.length === 0) return;
   const found = codeCommitsOf(repoRoot, branch, unrun.map((item) => item.workId));
-  for (const { row, workId, repoLabel, hasResult, release, review } of unrun) {
+  for (const { row, workId, repoLabel, hasResult, review, release } of unrun) {
     const commits = found.get(workId);
     if (!commits?.length) continue;
     const describe = (item) => ({ commit: item.commit, at: new Date(item.time * 1000).toISOString(), subject: item.subject });
@@ -570,10 +497,9 @@ function markCommitted(repoRoot, branch, unrun) {
     row.next = hasResult
       ? `if it is done, close it out: ${close} --by <you>`
       : `if it is done, close it out: ${close} --draft, edit delivery/work/${workId}/result.md, then ${close} --by <you>`;
-    // A work whose config reads its release back closes on a passing
-    // readback, so the readback comes first.
-    if (release) row.next = row.next.replace("close it out: ", `release it (a human action), then buildbeat release --config ${release} --env <name>; then close it out: `);
-    // In a repository whose commits are reviewed, the commits come first.
+    // A work that declares a release closes on a passing readback, so the
+    // readback comes first.
+    if (release) row.next = row.next.replace("close it out: ", `release it (a human action), then ${release} --env <name>; then close it out: `);
     if (review) row.next = `${review}; or, ${row.next}`;
   }
 }
@@ -603,18 +529,11 @@ export function renderOverview(rows, { decisions = false, extra = null } = {}) {
   for (const row of rows) {
     lines.push(`${row.work}  ${row.stage}`);
     if (row.repo) lines.push(`  repo: ${row.repoLabel ?? row.repo}`);
-    if (row.targetRepo) lines.push(`  runs in: ${row.targetLabel ?? row.targetRepo}`);
-    const parts =
-      row.workArtifact === "work"
-        ? [`work.md ${mark(row.plan)}`, `runs ${row.runs}`]
-        : [
-            `intent ${mark(row.intent)}`,
-            `plan ${mark(row.plan)}`,
-            `runs ${row.runs}`,
-          ];
-    const settled = ["MERGED", "RELEASED", "CLOSED", "CANCELLED"].includes(
-      row.stage,
-    );
+    const parts = [
+      row.workArtifact === "work" ? `work.md ${mark(row.plan)}` : row.stage === "NO_INTENT" ? "work.md –" : "legacy records",
+      `runs ${row.runs}`,
+    ];
+    const settled = ["MERGED", "CLOSED", "CANCELLED"].includes(row.stage);
     if (row.openFindings > 0 && !settled) {
       // Unadjudicated, not necessarily unresolved: a fixer may have closed
       // them without anyone recording a verdict. The number says "nobody
@@ -681,42 +600,22 @@ export function renderOverview(rows, { decisions = false, extra = null } = {}) {
   return lines.join("\n");
 }
 
-// The main repo's configuration remains the command source; all state and
-// decisions come from the checkout that owns the work. Only the main repo's
-// pointers are followed, so targets cannot recursively expand this view.
+// One repository, or with allRepos this one and every checkout directly
+// inside it that keeps works of its own. Each repository's works, decisions
+// and waiting runs are read from that repository.
 export function computeRepositoryOverview(repoRoot, { work = null, allRepos = false, cwd = process.cwd(), localRepoLabel = shellArg(pathLabel(cwd, repoRoot)) } = {}) {
   repoRoot = realpathSync(repoRoot);
   const context = overviewContext(repoRoot);
-  const warnings = [];
-  const roots = allRepos ? discoverRepos(repoRoot, warnings, context.roots) : [repoRoot];
-  const primary = computeOverview(repoRoot, { work, cwd, repoLabel: allRepos ? shellArg(pathLabel(cwd, repoRoot)) : localRepoLabel, warnings, context, localCompatibility: !allRepos });
-  const groups = new Map(roots.map((repo) => [repo, new Map()]));
-  for (const row of primary) {
-    const owner = row.repo ?? repoRoot;
-    if (!groups.has(owner)) groups.set(owner, new Map());
-    groups.get(owner).set(row.work, row);
-  }
-  if (allRepos) {
-    for (const root of roots.filter((root) => root !== repoRoot)) {
-      for (const row of computeOverview(root, { work, cwd, followTargets: false, warnings, context, skipWorks: new Set(groups.get(root).keys()), repoLabel: shellArg(pathLabel(cwd, root)) })) {
-        if (!groups.get(root).has(row.work)) groups.get(root).set(row.work, row);
-      }
-    }
-  }
+  const roots = allRepos ? discoverRepos(repoRoot, context.roots) : [repoRoot];
   const pending = [];
   const repos = [];
-  for (const [repo, byWork] of groups) {
-    const works = [...byWork.values()].sort((a, b) => a.work.localeCompare(b.work)).map((row) => ({
-      ...row, repo, repoLabel: pathLabel(cwd, repo),
-      ...(row.targetRepo ? { targetLabel: pathLabel(cwd, row.targetRepo) } : {}),
-    }));
+  for (const repo of roots) {
+    const works = computeOverview(repo, {
+      work, context,
+      repoLabel: allRepos ? shellArg(pathLabel(cwd, repo)) : localRepoLabel,
+    }).map((row) => ({ ...row, repo, repoLabel: pathLabel(cwd, repo) }));
     const settled = { total: 0, closed: 0, cancelled: 0, merged: 0 };
     for (const row of works) {
-      if (allRepos && row.stage === "RUNNING" && row.latest?.source === "runtime") {
-        const ledger = EventLedger.open(join(repo, ".buildbeat", "runtime", "runs", row.latest.id, "events.jsonl"));
-        const live = describeLiveness({ repoRoot: repo, runId: row.latest.id, ledger });
-        if (live.inFlight?.stalled) row.stage = "STALLED";
-      }
       const kind = row.stage === "CLOSED" ? "closed" : row.stage === "CANCELLED" ? "cancelled" : row.stage === "MERGED" && row.hasRelease === false ? "merged" : null;
       row.settled = Boolean(kind);
       if (kind) { settled[kind]++; settled.total++; }
@@ -724,10 +623,8 @@ export function computeRepositoryOverview(repoRoot, { work = null, allRepos = fa
     repos.push({ repo, works, settled });
     for (const row of listInbox(repo)) {
       if (work && row.work !== work && !row.corrupted) continue;
-      if (!allRepos && repo !== repoRoot && !byWork.has(row.work) && !row.corrupted) continue;
-      if (repo === repoRoot && primary.some((item) => item.work === row.work && item.repo && item.repo !== repoRoot)) continue;
-      pending.push({ ...row, repo, ...(byWork.get(row.work)?.config ? { config: byWork.get(row.work).config } : {}) });
+      pending.push({ ...row, repo });
     }
   }
-  return { repos, pending, warnings: [...new Set(warnings)] };
+  return { repos, pending, warnings: [] };
 }

@@ -3,95 +3,21 @@
 // through the CLI, the way a session uses it.
 
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { ROOT, cli, commit, decide as decideWork, fixture, git, jsonl as rows, record as runRecord, review as reviewWork, statusRow, write, yaml } from "./support/review.js";
 import { tempDir } from "./support/tmp.js";
 
-const ROOT = join(import.meta.dirname, "..");
-const CLI = join(ROOT, "bin", "buildbeat.js");
 const WORK = "WORK-A";
 const P1 = { severity: "P1", summary: "the feature text is wrong" };
 
-function git(cwd, args) {
-  return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
-}
-
-function cli(args) {
-  const result = spawnSync("node", [CLI, ...args], { encoding: "utf8" });
-  return { status: result.status, out: result.stdout, err: result.stderr, all: `${result.stdout}${result.stderr}` };
-}
-
-const yaml = (lines) => `${lines.join("\n")}\n`;
-
-// The verifier wants src/feature.txt; the reviewer reports whatever
-// findings.json the commit carries, and nothing when there is none.
-const PROJECT_CONFIG = yaml([
-  "workers:",
-  "  verifier:",
-  "    command: bash",
-  "    args:",
-  "      - -lc",
-  "      - test -f src/feature.txt",
-  "  reviewer:",
-  "    command: sh",
-  "    args:",
-  "      - tools/reviewer.sh",
-]);
-
-const REVIEWER = [
-  "#!/bin/sh",
-  'if [ -f findings.json ]; then cat findings.json > "$BUILDBEAT_OUTPUT"; else printf \'{"findings":[]}\' > "$BUILDBEAT_OUTPUT"; fi',
-  "",
-].join("\n");
-
-function write(root, path, text) {
-  mkdirSync(join(root, path, ".."), { recursive: true });
-  writeFileSync(join(root, path), text);
-}
-
-function commit(root, message, files = {}) {
-  for (const [path, text] of Object.entries(files)) {
-    if (text === null) git(root, ["rm", "-q", path]);
-    else write(root, path, text);
-  }
-  git(root, ["add", "-A"]);
-  git(root, ["commit", "-q", "-m", message]);
-  return git(root, ["rev-parse", "HEAD"]);
-}
-
-// A repository with the project config and the reviewer, then a commit that
-// holds the work's description: the work starts there (`base`).
-function fixture({ projectConfig = PROJECT_CONFIG, workConfig = null, accept = true } = {}) {
-  const root = tempDir("bb-v2-review-");
-  execFileSync("git", ["init", "-q", "-b", "main", root]);
-  git(root, ["config", "user.email", "pilot@example.com"]);
-  git(root, ["config", "user.name", "Pilot"]);
-  commit(root, "baseline", {
-    ".gitignore": ".buildbeat/\n",
-    "tools/reviewer.sh": REVIEWER,
-    ...(projectConfig === null ? {} : { "delivery/run-config.yaml": projectConfig }),
-  });
-  const base = commit(root, "describe the work", {
-    ...(workConfig === null ? {} : { [`delivery/work/${WORK}/run-config.yaml`]: workConfig }),
-    [`delivery/work/${WORK}/work.md`]: "# Add the feature\n\n## Goal\nA feature file.\n",
-  });
-  if (accept) {
-    const accepted = cli(["accept", "--repo", root, "--work", WORK, "--by", "owner", "--as", "human"]);
-    assert.equal(accepted.status, 0, accepted.all);
-  }
-  return { root, base };
-}
-
-const review = (root, extra = []) => cli(["review", "--repo", root, "--work", WORK, ...extra]);
-const decide = (root, args) => cli(["decide", "--repo", root, "--work", WORK, "--by", "owner", "--as", "human", ...args]);
-const record = (root, run) =>
-  JSON.parse(readFileSync(join(root, "delivery", "work", WORK, "runs", run, "run-record.json"), "utf8"));
-const jsonl = (root, name) =>
-  readFileSync(join(root, "delivery", "work", WORK, name), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
-const stage = (root) =>
-  JSON.parse(cli(["status", "--repo", root, "--json"]).out).works.find((row) => row.work === WORK);
+const review = (root, extra = []) => reviewWork(root, WORK, extra);
+const decide = (root, args) => decideWork(root, WORK, args);
+const record = (root, run) => runRecord(root, WORK, run);
+const jsonl = (root, name) => rows(root, WORK, name);
+const stage = (root) => statusRow(root, WORK);
 
 test("a commit is verified, reviewed and left for the person; approval binds to that commit", () => {
   const { root, base } = fixture();
@@ -260,7 +186,7 @@ test("a tooling failure ends the run CANCELLED, which is no verdict on the commi
     },
     "the reviewer exits non-zero": {
       config: ["workers:", "  reviewer:", "    command: sh", "    args:", "      - -c", "      - exit 3"],
-      reason: /review exited 3 without a verdict; not a candidate defect/,
+      reason: /worker infrastructure failure at review: exit 3 without a verdict; not a candidate defect/,
     },
   };
   for (const [name, { config, reason }] of Object.entries(cases)) {
@@ -494,19 +420,17 @@ test("the reviewer is told where the change starts and which commit it saw last"
   ]);
 });
 
-test("the per-run commands point a reviewed commit at the commands that decide it", () => {
+test("the commands of earlier versions are unknown commands", () => {
   const { root } = fixture();
-  const sha = commit(root, "add the feature", { "src/feature.txt": "hello\n" });
-  assert.equal(review(root).status, 0);
-
-  const approve = cli(["decide", "--repo", root, "--run", "RUN-A-01", "--action", "approve", "--transition", "enter-wait-merge", "--candidate", sha, "--by", "owner"]);
-  assert.equal(approve.status, 1);
-  assert.match(approve.err, new RegExp(`RUN-A-01 reviewed one commit: approve it with buildbeat decide --repo <path> --work WORK-A --action approve --candidate ${sha}`));
-  const fix = cli(["decide", "--repo", root, "--run", "RUN-A-01", "--action", "fix", "--reason", "tidy", "--by", "owner"]);
-  assert.equal(fix.status, 1);
-  assert.match(fix.err, /RUN-A-01 reviewed one commit and takes no repair; commit the fix and run buildbeat review/);
-  // Still waiting, untouched.
-  assert.equal(stage(root).stage, "MERGE_DECISION");
+  for (const old of ["run", "stop", "gc", "watch", "start", "resume", "overview", "inbox", "metrics", "approve", "reject", "findings", "doctor", "preflight", "events", "replay", "observe"]) {
+    const result = cli([old, "--repo", root]);
+    assert.equal(result.status, 2, old);
+    assert.match(result.err, new RegExp(`^error: unknown command ${old}\\n\\nBuildBeat runtime`), old);
+    assert.equal(result.out, "", old);
+  }
+  // Nothing was touched.
+  assert.equal(existsSync(join(root, ".buildbeat")), false);
+  assert.equal(cli([]).status, 0);
 });
 
 test("status sends a work of a reviewed repository to buildbeat review", () => {
