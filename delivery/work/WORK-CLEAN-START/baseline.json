@@ -1,0 +1,80 @@
+{
+ "recordedOn": "2e0d984",
+ "runtime": "5.5.0",
+ "stages": {
+  "WORK-4.0-INTENT-FOLLOWUPS": "CLOSED",
+  "WORK-ADOPT-GRANTS": "CLOSED",
+  "WORK-ADOPT-NOT-APPROVAL": "CLOSED",
+  "WORK-APPROVAL-IDENTITY": "CLOSED",
+  "WORK-BUDGET-FALSE-STOPS": "CLOSED",
+  "WORK-CODE-TRACE": "CLOSED",
+  "WORK-COMMIT-TRAILERS": "CLOSED",
+  "WORK-COMMITTED-WORKS": "CLOSED",
+  "WORK-CONTEXT-CLOSEOUT": "CLOSED",
+  "WORK-CROSS-REPO-STATUS": "CLOSED",
+  "WORK-DELIVERY-BINARIES": "CLOSED",
+  "WORK-FACT-DIR-POINTERS": "CLOSED",
+  "WORK-FACT-POINTERS": "CLOSED",
+  "WORK-FALSE-POSITIVES": "CLOSED",
+  "WORK-FINAL-DECISION-FIX": "CLOSED",
+  "WORK-FOLDER-EXTRAS": "CLOSED",
+  "WORK-GUIDE12-SETUP": "CLOSED",
+  "WORK-LEDGER-RACE": "CLOSED",
+  "WORK-LIVE-FACTS": "CLOSED",
+  "WORK-OVERVIEW-SPEED": "CLOSED",
+  "WORK-POSITIONING-ALIGN": "CLOSED",
+  "WORK-PR70-REVIEW": "CLOSED",
+  "WORK-PRODUCT-SIMPLIFY": "CLOSED",
+  "WORK-README-REDESIGN": "CLOSED",
+  "WORK-RELEASE-ENVS": "CLOSED",
+  "WORK-REPLAY-FOLLOWUPS": "CLOSED",
+  "WORK-RESUME-RUN-FAMILY": "CLOSED",
+  "WORK-REVIEW-CLEANUP": "CLOSED",
+  "WORK-REVIEW-CONVERGENCE": "CLOSED",
+  "WORK-REVIEW-LEFTOVERS": "CLOSED",
+  "WORK-RUN-CONFIG-CHECK": "CLOSED",
+  "WORK-RUNNABLE-HINTS": "CLOSED",
+  "WORK-SCOPE-RENAMES": "CLOSED",
+  "WORK-SELF-001": "CLOSED",
+  "WORK-STALE-LOCKS": "CLOSED",
+  "WORK-TEAM-ENTRY": "CLOSED",
+  "WORK-THREADS": "CLOSED",
+  "WORK-V2-M1-ACCEPT": "NO_INTENT",
+  "WORK-YAML-SUBSET": "CLOSED"
+ },
+ "history": {
+  "src/v2/engine/yaml-subset.js": {
+   "works": {
+    "WORK-REVIEW-CLEANUP": 17,
+    "WORK-YAML-SUBSET": 35
+   },
+   "untraced": 183
+  },
+  "src/v2/runtime/gc.js": {
+   "works": {
+    "WORK-REVIEW-CLEANUP": 41,
+    "WORK-STALE-LOCKS": 18
+   },
+   "untraced": 164
+  },
+  "src/v2/storage/event-ledger.js": {
+   "works": {
+    "WORK-LEDGER-RACE": 22
+   },
+   "untraced": 151
+  },
+  "src/v2/runtime/metrics.js": {
+   "works": {
+    "WORK-REVIEW-CLEANUP": 3
+   },
+   "untraced": 146
+  },
+  "src/v2/runtime/findings.js": {
+   "works": {
+    "WORK-APPROVAL-IDENTITY": 5,
+    "WORK-REVIEW-CONVERGENCE": 70
+   },
+   "untraced": 159
+  }
+ }
+}

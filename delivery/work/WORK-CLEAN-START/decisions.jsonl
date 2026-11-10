@@ -1,0 +1,1 @@
+{"ts":"2026-11-10T13:44:13.016Z","decisionRef":"A-WORK-CLEAN-START-1","decision":"approved","transition":"accept-work","subject":{"artifact":"work","digest":"sha256:c3a75b7b688925f455564a2b079ee0837f06a8a062e1c260bdc9ac947a3f98db"},"note":"按推荐接受","by":"HaiYangBG1","actor":{"kind":"human","id":"HaiYangBG1","source":"flag","via":"agent-session"}}
