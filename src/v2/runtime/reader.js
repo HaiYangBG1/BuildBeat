@@ -70,7 +70,7 @@ export function readerPrompt(doc, instructions = null) {
   return [
     (instructions ?? DEFAULT_PROMPT).trim(),
     "",
-    "回答下面的问题。每个答案是一段短文字或一个字符串列表；最后一个问题的答案必须是列表，没有就给空列表。",
+    "回答下面的问题。每个答案是一段短文字或一个字符串列表；路径一条一项；最后一个问题的答案必须是列表，没有就给空列表。",
     ...questions.map((question, index) => `${index + 1}. ${question}`),
     "",
     "最后只输出一个 JSON 对象，不要别的文字（可以裹一层 ```json 代码栏），键是问题编号：",
@@ -147,18 +147,30 @@ function approvedCommits(repoRoot, workId) {
 }
 
 // The paths an answer names. A list item or a backticked span that is one
-// token is a path as it stands ("src"); inside prose only a token with a
-// slash or a file extension counts, so ordinary words are not paths.
-const TOKEN = /^[A-Za-z0-9_@.*/-]+$/;
+// token is a path as it stands ("src"), and so is a whole list item that
+// looks like a path even with spaces in it; inside prose only a token with
+// a slash or a file extension counts, so ordinary words are not paths.
+const PART = "\\p{L}\\p{N}_@.*-";
+const TOKEN = new RegExp(`^[${PART}/]+$`, "u");
+const LOOSE = new RegExp(`[${PART}]+(?:/[${PART}]+)*/?`, "gu");
+const pathLike = (token) => token.includes("/") || /\.[\p{L}\p{N}]+$/u.test(token);
 function pathsIn(answer) {
   const found = [];
   for (const item of Array.isArray(answer) ? answer : [answer]) {
     const whole = item.trim().replace(/^`|`$/g, "");
-    const spans = [...item.matchAll(/`([^`]+)`/g)].map((match) => match[1].trim()).filter((span) => TOKEN.test(span));
-    const loose = (item.match(/[A-Za-z0-9_@.-]+(?:\/[A-Za-z0-9_@.*-]+)*\/?/g) ?? []).filter((token) => token.includes("/") || /\.[A-Za-z0-9]+$/.test(token));
-    found.push(...(Array.isArray(answer) && TOKEN.test(whole) ? [whole] : [...spans, ...loose]));
+    if (Array.isArray(answer) && (TOKEN.test(whole) || (pathLike(whole) && /(?:\/|\.[\p{L}\p{N}]+)$/u.test(whole) && !/[\n，。；：,;:@]/.test(whole)))) {
+      found.push(whole);
+      continue;
+    }
+    found.push(...[...item.matchAll(/`([^`]+)`/g)].map((match) => match[1].trim()).filter((span) => TOKEN.test(span) || pathLike(span)));
+    found.push(...(item.match(LOOSE) ?? []).filter(pathLike));
   }
   return [...new Set(found.map((token) => token.replace(/\/\*+$|\/$/, "")).filter(Boolean))];
+}
+// Whether the text names exactly this path: not as part of a longer one.
+function namesPath(text, path) {
+  const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![${PART}/])${escaped}(?![\\p{L}\\p{N}_@*/-])(?!\\.[\\p{L}\\p{N}])`, "u").test(text);
 }
 const under = (path, area) => path === area || path.startsWith(`${area}/`);
 
@@ -200,8 +212,8 @@ export function checkAnswers({ repoRoot, workId, doc, answers, allowedPaths = nu
   }
   const written = checkPromotions(repoRoot, workId, parsePromotions(doc.text)).filter((item) => item.ok).map((item) => item.path);
   if (written.length > 0) {
-    const named = pathsIn(answers[3]);
-    const missed = [...new Set(written)].filter((path) => !named.includes(path));
+    const text = asText(answers[3]);
+    const missed = [...new Set(written)].filter((path) => !namesPath(text, path));
     checks.push({ question: 4, against: "the write-back lines Git confirms", ok: missed.length === 0, missed });
   }
   return checks;

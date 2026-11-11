@@ -90,6 +90,8 @@ test("the paths a reader of work.md names are checked against allowedPaths, then
   // A bare directory name in a list is a path; a word in a sentence is not.
   assert.deepEqual(test1(named(["src"]), ["src"]), [{ question: 2, against: "allowedPaths", ok: true, missed: [] }]);
   assert.deepEqual(test1(named("only `src` and what tests need"), ["src"]), [{ question: 2, against: "allowedPaths", ok: true, missed: [] }]);
+  assert.deepEqual(test1(named(["文档/说明.md", "src/my file.js"]), ["src", "文档"]), [{ question: 2, against: "allowedPaths", ok: true, missed: [] }]);
+  assert.deepEqual(test1(named(["src/ 下的导出代码", "docs/guide.md @ abc1234 — the guide"]), ["src"])[0].missed, ["docs/guide.md"]);
   // An answer that names no path is not confirmed.
   assert.equal(test1(named("everything it needs"), ["src"])[0].ok, false);
 
@@ -121,6 +123,13 @@ test("a reader of result.md is checked on the approved commit and on the write-b
   assert.deepEqual(checks(RESULT_ANSWERS(merge))[0], commitCheck(true));
   const base = git(root, ["rev-list", "--max-parents=0", "HEAD"]);
   assert.deepEqual(checks(RESULT_ANSWERS(base))[0], commitCheck(false));
+  // Paths with spaces or non-ASCII names are compared as they are.
+  const odd = commit(root, "docs: more", { "docs/说明.md": "x\n", "docs/release notes.md": "y\n" });
+  write(root, `delivery/work/${WORK}/result.md`, `# ${WORK}\n\nShipped.\n\n## Written into the project\n- docs/说明.md @ ${odd.slice(0, 7)} — x\n- \`docs/release notes.md\` @ ${odd.slice(0, 7)} — y\n`);
+  const oddAnswers = (docs) => RESULT_ANSWERS(sha).map((answer, index) => (index === 3 ? docs : answer));
+  assert.equal(checks(oddAnswers(["docs/说明.md", "docs/release notes.md"]))[1].ok, true);
+  assert.deepEqual(checks(oddAnswers("写进了 docs/说明.md。"))[1].missed, ["docs/release notes.md"]);
+  write(root, `delivery/work/${WORK}/result.md`, `# ${WORK}\n\nShipped.\n\n## Written into the project\n- docs/notes.md @ ${noted.slice(0, 7)} — the rule\n`);
   // A path that merely contains the written one is another path.
   const near = RESULT_ANSWERS(sha).map((answer, index) => (index === 3 ? ["unrelated/docs/notes.md.bak"] : answer));
   assert.deepEqual(checks(near)[1], docsCheck(false));
