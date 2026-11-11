@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "buildbeat",
-  "version": "0.6.5",
+  "version": "0.7.0",
   "displayName": "BuildBeat",
   "description": "Git-based project context management for Claude Code: keeps why each piece of work was done, what was decided and where it stands in the project with the code. The runtime, which adds verification and independent review of a commit and approval bound to it, is optional.",
   "author": {

@@ -2,7 +2,7 @@
 
 Earlier history: see tag v5.5.0.
 
-## Unreleased
+## v6.0.0 — 2026-11-11（主版本：运行时只做记、验、审、批，代码由会话写；只认当前写法；读者测试；路径不再带 v2）
 
 **Breaking.** The runtime records, verifies, reviews and binds the approval. It no longer writes code or drives a loop, and it reads only the current format (WORK-CLEAN-START). Finish or cancel work in progress with the version you have before installing this one.
 
