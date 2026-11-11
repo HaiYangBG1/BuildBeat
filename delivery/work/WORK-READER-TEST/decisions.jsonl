@@ -1,0 +1,1 @@
+{"ts":"2026-11-11T10:43:04.114Z","decisionRef":"A-WORK-READER-TEST-1","decision":"approved","transition":"accept-work","subject":{"artifact":"work","digest":"sha256:7ff73017fce5d063a55cd82d56179af606ff009b0cf56550b3bc34863f46ca8e"},"note":"所有者原话：按推荐接受（2026-11-11）","by":"HaiYangBG1","actor":{"kind":"human","id":"HaiYangBG1","source":"flag","via":"agent-session"}}
