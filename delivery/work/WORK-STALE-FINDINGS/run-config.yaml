@@ -1,0 +1,5 @@
+# What WORK-STALE-FINDINGS may change; everything else comes from delivery/run-config.yaml.
+allowedPaths:
+  - src
+  - tests
+  - CHANGELOG.md
