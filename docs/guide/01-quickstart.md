@@ -3,7 +3,7 @@
 安装运行时：`npm install --global @haiyangbg/buildbeat@latest`（Node ≥ 20）。从 6 以前的版本升级：先用旧版把在跑的工作跑完或取消；旧版本留下的记录不用动，已关窗的照常显示，没关的旧格式工作显示 `LEGACY`。
 
 1. 检查 Node ≥20、Git、Bash 和已鉴权的 AI 工具；保留项目自己的规范。
-2. 模板随 npm 包安装在 `$(npm root -g)/@haiyangbg/buildbeat/templates/`。将其中 `AGENTS.md`、`CLAUDE.md` 按工具装载方式放入项目；从同在 `templates/` 下的 `gitignore.template` 复制运行时排除项。`delivery/` 要跟代码一起进 Git，不要在 `.gitignore` 或 `.git/info/exclude` 里排除它；其中的截图、压缩包和日志不进 Git，模板里已写好忽略规则。
+2. 模板随 npm 包安装在 `$(npm root -g)/@haiyangbg/buildbeat/templates/`。将其中 `AGENTS.md`、`CLAUDE.md` 按工具装载方式放入项目；从 `gitignore.template`（同在 `templates/` 下）复制运行时排除项。`delivery/` 要跟代码一起进 Git，不要在 `.gitignore` 或 `.git/info/exclude` 里排除它；其中的截图、压缩包和日志不进 Git，模板里已写好忽略规则。
 3. 把 `run-config.example.yaml` 复制为 `delivery/run-config.yaml`，把 `envelope/` 复制为 `delivery/envelope/`，把验证命令和审查命令换成真实的，提交。这份配置说的是这个项目里一个提交怎么验、怎么审，所有工作共用。`buildbeat check --repo .` 检查它写对了没有。
 4. 建 delivery/work/WORK-X/work.md，照 `work.example.md` 的八节写：目标、起因、已核实的现状（标题写核实时的提交号，每条带出处，引用代码写成 `路径:起-止`）、范围、开工前待拍板、验收、实施计划、停止条件。标题可以用项目自己的语言。提交它：这个提交之后的改动才算这项工作的。
 5. 用户接受工作说明后，会话写代码、自己提交，再送审。送审在这个提交的临时检出里跑验证，请只读的审查者看一遍，然后停在人的决定。批准写的是完整提交号。合并后（声明了上线的，回读通过后），照 `result.example.md` 写 delivery/work/WORK-X/result.md，再用最后一条命令关窗。
