@@ -77,55 +77,14 @@ test("the reader runs in an empty directory outside the repository and its answe
   assert.match(row.digest, /^sha256:[0-9a-f]{64}$/);
   assert.equal(row.reader, "test:reader");
   assert.deepEqual(row.answers, WORK_ANSWERS);
-  // Nothing to compare the paths with: no commit of the work, no allowedPaths.
   assert.deepEqual(row.checks, []);
 });
 
-test("the paths a reader of work.md names are checked against allowedPaths, then against what the work's commits changed", () => {
-  const { root } = fixture({ prefix: "bb-reader-" });
-  const test1 = (answers, allowedPaths) => runReaderTest({ repoRoot: root, workId: WORK, adapter: reader(answers), allowedPaths }).checks;
-  const named = (paths) => WORK_ANSWERS.map((answer, index) => (index === 1 ? paths : answer));
-  const scope = (ok, outside = []) => [{ question: 2, against: "allowedPaths", ok, missed: [], outside }];
-  // Before any commit: everything the reader would change must be in scope.
-  assert.deepEqual(test1(named(["src/feature.txt"]), ["src"]), scope(true));
-  assert.deepEqual(test1(named(["`src/`", "src/**"]), ["src"]), scope(true));
-  assert.deepEqual(test1(named(["src/feature.txt", "docs/guide.md"]), ["src"]), scope(false, ["docs/guide.md"]));
-  // The scope as a review reads it: an entry with or without a trailing
-  // slash, and the work's own folder always.
-  assert.deepEqual(test1(named(["src/feature.txt", "./docs/a.md", `delivery/work/${WORK}/result.md`]), ["src/", "docs"]), scope(true));
-  assert.deepEqual(test1(named(["delivery/work/WORK-B/work.md"]), ["src/"]), scope(false, ["delivery/work/WORK-B/work.md"]));
-  // A directory above an area is wider than the scope; a longer name is another name.
-  assert.deepEqual(test1(named(["docs"]), ["docs/guide"]), scope(false, ["docs"]));
-  assert.deepEqual(test1(named(["src.old", "my-src/x.js"]), ["src"]), scope(false, ["src.old", "my-src/x.js"]));
-  assert.deepEqual(test1(named(["文档/说明.md", "src/my file.js"]), ["src", "文档"]), scope(true));
-  // An item is one path and nothing else: prose is not parsed for paths.
-  assert.deepEqual(test1(named(["修改 src/feature.txt"]), ["src"]), scope(false, ["修改 src/feature.txt"]));
-  assert.deepEqual(test1(named("everything it needs"), ["src"]), scope(false, ["everything it needs"]));
-  assert.deepEqual(test1(named([]), ["src"]), scope(false));
-
-  commit(root, `add the feature\n\nWork: ${WORK}`, { "src/feature.txt": "hello\n", "docs/guide.md": "guide\n" });
-  const against = "the paths the work's commits changed";
-  const cover = (ok, missed = []) => [{ question: 2, against, ok, missed, outside: [] }];
-  // After: every changed file is named, or lies in a named directory.
-  assert.deepEqual(test1(named(["src/", "docs/guide.md"]), ["src"]), cover(true));
-  assert.deepEqual(test1(named(["`src/feature.txt`"]), null), cover(false, ["docs/guide.md"]));
-  // Works' folders, this work's or another's, hold records the reader is
-  // not asked about; the project's own files under delivery/ still count.
-  commit(root, `records of two works\n\nWork: ${WORK}`, { "src/feature.txt": "hello again\n", "delivery/work/WORK-B/notes.md": "b\n", [`delivery/work/${WORK}/notes.md`]: "a\n" });
-  assert.deepEqual(test1(named(["src", "docs"]), null), cover(true));
-  commit(root, `the wrapper too\n\nWork: ${WORK}`, { "src/feature.txt": "hello\n", "delivery/envelope/worker.sh": "#!/bin/sh\n" });
-  assert.deepEqual(test1(named(["src", "docs"]), null), cover(false, ["delivery/envelope/worker.sh"]));
-  assert.deepEqual(test1(named(["src", "docs", "delivery/envelope"]), null), cover(true));
-  // Another file of the same directory does not cover this one.
-  assert.deepEqual(test1(named(["src/other.txt", "docs", "delivery/envelope"]), null), cover(false, ["src/feature.txt"]));
-
-  // A merge counts for what it brought in from the side branch.
-  git(root, ["checkout", "-q", "-b", "side"]);
-  commit(root, "side work", { "lib/side.js": "side\n" });
-  git(root, ["checkout", "-q", "main"]);
-  git(root, ["merge", "-q", "--no-ff", "side", "-m", `merge side\n\nWork: ${WORK}`]);
-  assert.deepEqual(test1(named(["src", "docs", "delivery/envelope"]), null), cover(false, ["lib/side.js"]));
-  assert.equal(test1(named(["src", "docs", "delivery/envelope", "lib"]), null)[0].ok, true);
+test("a reader of work.md is not checked by machine, with or without commits and a scope", () => {
+  const { root } = fixture({ prefix: "bb-reader-", workConfig: yaml(["allowedPaths:", "  - src"]) });
+  assert.deepEqual(runReaderTest({ repoRoot: root, workId: WORK, adapter: reader(WORK_ANSWERS) }).checks, []);
+  commit(root, `add the feature\n\nWork: ${WORK}`, { "src/feature.txt": "hello\n" });
+  assert.deepEqual(runReaderTest({ repoRoot: root, workId: WORK, adapter: reader(WORK_ANSWERS) }).checks, []);
 });
 
 test("a reader of result.md is checked on the approved commit and on the write-back lines Git confirms", () => {
@@ -135,8 +94,8 @@ test("a reader of result.md is checked on the approved commit and on the write-b
   const merge = commit(root, "later work on main", { "README.md": "more\n" });
   write(root, `delivery/work/${WORK}/result.md`, `# ${WORK}\n\nShipped.\n\n## Written into the project\n- docs/notes.md @ ${noted.slice(0, 7)} — the rule\n- docs/missing.md @ ${noted.slice(0, 7)} — not in that commit\n`);
   const checks = (answers) => runReaderTest({ repoRoot: root, workId: WORK, adapter: reader(answers) }).checks;
-  const commitCheck = (ok) => ({ question: 1, against: "the commits approved for this work", ok, missed: ok ? [] : [sha.slice(0, 7)], outside: [] });
-  const docsCheck = (ok) => ({ question: 4, against: "the write-back lines Git confirms", ok, missed: ok ? [] : ["docs/notes.md"], outside: [] });
+  const commitCheck = (ok) => ({ question: 1, against: "the commits approved for this work", ok, missed: ok ? [] : [sha.slice(0, 7)] });
+  const docsCheck = (ok) => ({ question: 4, against: "the write-back lines Git confirms", ok, missed: ok ? [] : ["docs/notes.md"] });
   assert.deepEqual(checks(RESULT_ANSWERS(sha)), [commitCheck(true), docsCheck(true)]);
   // A later commit that contains the approved one counts; an unrelated or unnamed one does not.
   assert.deepEqual(checks(RESULT_ANSWERS(merge))[0], commitCheck(true));

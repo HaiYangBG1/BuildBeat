@@ -16,9 +16,8 @@ import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFil
 import { tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
 
-import { checkPromotions, currentRef, parsePromotions } from "./closeout.js";
+import { checkPromotions, parsePromotions } from "./closeout.js";
 import { parseEnvelope } from "./orchestrator.js";
-import { codeCommitsOf } from "./work-commits.js";
 
 // The questions are fixed so results compare across works and projects. The
 // last one of each set collects what the reader could not tell.
@@ -71,7 +70,6 @@ export function readerPrompt(doc, instructions = null) {
     (instructions ?? DEFAULT_PROMPT).trim(),
     "",
     "回答下面的问题。每个答案是一段短文字或一个字符串列表；最后一个问题的答案必须是列表，没有就给空列表。",
-    ...(doc.name === "work.md" ? ["第 2 问的答案是路径列表：一项只写一个目录或文件的路径，不加任何说明。"] : []),
     ...questions.map((question, index) => `${index + 1}. ${question}`),
     "",
     "最后只输出一个 JSON 对象，不要别的文字（可以裹一层 ```json 代码栏），键是问题编号：",
@@ -109,29 +107,6 @@ export function parseAnswers(raw, docName) {
   return { answers };
 }
 
-// The code and documents the work's commits changed, or null when it has no
-// code commit on the current branch yet. Works' folders do not count: they
-// hold records, and one commit often carries records of several works (a
-// reader of ten documents of this repository was marked wrong for not
-// naming other works' folders). The rest of delivery/ is the project's own
-// configuration and counts.
-function changedPaths(repoRoot, workId) {
-  const commits = codeCommitsOf(repoRoot, currentRef(repoRoot), [workId]).get(workId) ?? [];
-  if (commits.length === 0) return null;
-  const paths = new Set();
-  for (const { commit } of commits) {
-    // Against the first parent, so a merge counts for what it brought in.
-    const parent = git(repoRoot, ["rev-list", "--parents", "-n", "1", commit]).trim().split(" ")[1];
-    const listed = parent
-      ? git(repoRoot, ["diff", "--no-renames", "--name-only", "-z", parent, commit])
-      : git(repoRoot, ["show", "--no-renames", "--format=", "--name-only", "-z", commit]);
-    for (const path of listed.split("\0")) {
-      if (path && !path.startsWith("delivery/work/")) paths.add(path);
-    }
-  }
-  return [...paths].sort();
-}
-
 // The commits a person approved for this work, from its decisions.
 function approvedCommits(repoRoot, workId) {
   const path = join(repoRoot, "delivery", "work", workId, "decisions.jsonl");
@@ -151,44 +126,22 @@ function approvedCommits(repoRoot, workId) {
 }
 
 // Whether the text names exactly this path, not a longer one around it.
-// For result.md, whose readers copy whole write-back lines: the paths come
-// from Git and are looked for in what the reader wrote.
+// Readers copy whole write-back lines, so the paths, which come from Git,
+// are looked for in what the reader wrote; nothing is parsed out of it.
 function names(text, path) {
   const part = "\\p{L}\\p{N}_@*-";
   const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`(?<![${part}./])${escaped}(?![${part}/])(?!\\.[\\p{L}\\p{N}])`, "u").test(text);
 }
-// The reader of work.md is asked for one path per item and nothing else,
-// so each item is a path as it stands: nothing is parsed out of prose, and
-// an item that carries prose is a path nothing lies under.
-// One spelling for a path a reader wrote: no backticks, no leading ./, no
-// trailing slash or glob.
-const plain = (path) => path.trim().replace(/^`|`$/g, "").replace(/^(?:\.\/)+/, "").replace(/\/\*{0,2}$/, "");
-const pathItems = (answer) => (Array.isArray(answer) ? answer : [answer]).filter((item) => item.trim() !== "").map(plain);
-const under = (path, area) => path === area || path.startsWith(`${area}/`);
-
 // The answers something other than the document can confirm. A check with
 // nothing to compare against is left out: it is not checked, not wrong.
-export function checkAnswers({ repoRoot, workId, doc, answers, allowedPaths = null }) {
+export function checkAnswers({ repoRoot, workId, doc, answers }) {
   const checks = [];
-  if (doc.name === "work.md") {
-    const named = pathItems(answers[1]);
-    const changed = changedPaths(repoRoot, workId);
-    if (changed) {
-      // Every file the work really changed is one the reader named, or lies
-      // in a directory it named.
-      const missed = changed.filter((path) => !named.some((area) => under(path, area)));
-      checks.push({ question: 2, against: "the paths the work's commits changed", ok: missed.length === 0, missed, outside: [] });
-    } else if (allowedPaths) {
-      // No commit yet: everything the reader would change must be in scope.
-      // The scope as a review reads it: each entry a path or a directory,
-      // with or without a trailing slash, plus the work's own folder.
-      const areas = [...allowedPaths.map((area) => String(area).replace(/\/$/, "")), `delivery/work/${workId}`];
-      const outside = named.filter((path) => !areas.some((area) => under(path, area)));
-      checks.push({ question: 2, against: "allowedPaths", ok: named.length > 0 && outside.length === 0, missed: [], outside });
-    }
-    return checks;
-  }
+  // Only a result page has such answers. What a description's reader would
+  // change was compared with the paths its commits changed, and dropped: a
+  // description says what to achieve, not which files, and those commits
+  // carry releases and merges, so the check said wrong whatever was read.
+  if (doc.name === "work.md") return checks;
   const approved = approvedCommits(repoRoot, workId);
   if (approved.length > 0) {
     // The answer names an approved commit, or a commit that contains one
@@ -205,20 +158,20 @@ export function checkAnswers({ repoRoot, workId, doc, answers, allowedPaths = nu
         }
       }),
     );
-    checks.push({ question: 1, against: "the commits approved for this work", ok, missed: ok ? [] : approved.map((commit) => commit.slice(0, 7)), outside: [] });
+    checks.push({ question: 1, against: "the commits approved for this work", ok, missed: ok ? [] : approved.map((commit) => commit.slice(0, 7)) });
   }
   const written = checkPromotions(repoRoot, workId, parsePromotions(doc.text)).filter((item) => item.ok).map((item) => item.path);
   if (written.length > 0) {
     const text = asText(answers[3]);
     const missed = [...new Set(written)].filter((path) => !names(text, path));
-    checks.push({ question: 4, against: "the write-back lines Git confirms", ok: missed.length === 0, missed, outside: [] });
+    checks.push({ question: 4, against: "the write-back lines Git confirms", ok: missed.length === 0, missed });
   }
   return checks;
 }
 
 // Runs the reader on one document and records the result. Tool trouble
 // (timeout, crash, exit 75, no usable report) throws and records nothing.
-export function runReaderTest({ repoRoot, workId, doc: docName = null, adapter, instructions = null, vars = undefined, allowedPaths = null, timeoutMs, redact = [], now = () => new Date().toISOString() }) {
+export function runReaderTest({ repoRoot, workId, doc: docName = null, adapter, instructions = null, vars = undefined, timeoutMs, redact = [], now = () => new Date().toISOString() }) {
   const doc = readerDoc(repoRoot, workId, docName);
   // Two new directories outside the repository: the empty one the reader
   // works in, and one for what passes between it and the runtime.
@@ -273,7 +226,7 @@ export function runReaderTest({ repoRoot, workId, doc: docName = null, adapter, 
     bytes: doc.bytes,
     reader: adapter.name,
     answers: parsed.answers,
-    checks: checkAnswers({ repoRoot, workId, doc, answers: parsed.answers, allowedPaths }),
+    checks: checkAnswers({ repoRoot, workId, doc, answers: parsed.answers }),
   };
   appendFileSync(recordsPath(repoRoot, workId), `${JSON.stringify(row)}\n`, "utf8");
   return row;

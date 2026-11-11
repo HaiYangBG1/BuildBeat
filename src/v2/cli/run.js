@@ -330,7 +330,6 @@ function commandReader(flags) {
     adapter,
     instructions: options.envelope?.prompts?.reader?.text ?? null,
     vars: options.envelope?.vars,
-    allowedPaths: options.allowedPaths,
     redact: options.redact,
   });
   const questions = READER_QUESTIONS[row.doc];
@@ -347,7 +346,7 @@ function commandReader(flags) {
     }
     const check = row.checks.find((item) => item.question === index + 1);
     if (check) {
-      console.log(`   ${check.ok ? "✓" : "✗"} checked against ${check.against}${check.missed.length ? `: missing ${check.missed.join(", ")}` : ""}${check.outside.length ? `: outside it ${check.outside.join(", ")}` : ""}`);
+      console.log(`   ${check.ok ? "✓" : "✗"} checked against ${check.against}${check.missed.length ? `: missing ${check.missed.join(", ")}` : ""}`);
     }
   });
   console.log(`recorded in delivery/work/${workId}/reader-tests.jsonl`);
