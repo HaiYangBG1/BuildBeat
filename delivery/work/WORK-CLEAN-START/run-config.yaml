@@ -53,7 +53,7 @@ workers:
     timeoutMs: 1800000
     args:
       - delivery/work/WORK-CLEAN-START/verify.sh
-      - "2"
+      - "3"
   reviewer:
     command: bash
     timeoutMs: 3600000
