@@ -1,0 +1,1 @@
+{"ts":"2026-11-11T12:40:27.057Z","decisionRef":"A-WORK-DROP-V2-PATHS-1","decision":"approved","transition":"accept-work","subject":{"artifact":"work","digest":"sha256:cea330d6acb5b937a03c7e425c3665cbc15d142ccfcbba7e5826a50094c38208"},"note":"所有者 2026-11-11 选：这次一起改","by":"HaiYangBG1","actor":{"kind":"human","id":"HaiYangBG1","source":"flag","via":"agent-session"}}
