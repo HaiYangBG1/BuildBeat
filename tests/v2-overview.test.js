@@ -28,6 +28,8 @@ test("status derives each work's stage and next move from its records, its runs 
   write(root, "delivery/work/WORK-L/intent.md", "# WORK-L\n");
   write(root, "delivery/work/WORK-L/plan.md", "# plan WORK-L\n");
   write(root, "delivery/work/WORK-L/decisions.jsonl", `${JSON.stringify({ transition: "accept-intent", decision: "approved", by: "owner" })}\n`);
+  // An old-format draft nobody decided anything on yet.
+  write(root, "delivery/work/WORK-L2/intent.md", "# WORK-L2\n");
   addWork(root, "WORK-B", { accept: false });
   addWork(root, "WORK-C");
   write(root, "delivery/work/WORK-C/work.md", "# edited after acceptance\n");
@@ -57,6 +59,7 @@ test("status derives each work's stage and next move from its records, its runs 
   assert.match(rows["WORK-A"].next, /^write delivery\/work\/WORK-A\/work\.md /);
   assert.equal(rows["WORK-L"].stage, "LEGACY");
   assert.match(rows["WORK-L"].next, /^legacy records: /);
+  assert.equal(rows["WORK-L2"].stage, "LEGACY");
   assert.equal(rows["WORK-B"].stage, "WORK_DRAFT");
   assert.equal(rows["WORK-B"].next, "buildbeat accept --repo . --work WORK-B --by <you>");
   assert.equal(rows["WORK-C"].stage, "WORK_STALE");

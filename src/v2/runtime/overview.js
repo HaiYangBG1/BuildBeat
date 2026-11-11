@@ -212,7 +212,7 @@ function ledgersOf(repoRoot, context) {
 
 // The files that say a folder without work.md once held a work: records an
 // earlier version wrote in its own format. They stay in Git and are not read.
-const RECORDS = ["decisions.jsonl", "review-findings.jsonl", "releases.jsonl", "result.md", "runs"];
+const RECORDS = ["decisions.jsonl", "review-findings.jsonl", "releases.jsonl", "result.md", "runs", "intent.md", "plan.md", "workflow.yaml"];
 
 export function computeOverview(
   repoRoot,

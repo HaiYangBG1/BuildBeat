@@ -717,12 +717,14 @@ function supersedeWaitingRuns(repoRoot, workId, newRunId, now) {
 // A review whose process died (killed, host shut down) left its run RUNNING
 // with a checkout behind it, and there is nothing to resume: the next review
 // of the same work ends it. Called with the repository's run lock held, so
-// no run recorded as RUNNING can still be alive.
+// no run recorded as RUNNING can still be alive. Only this version's reviews:
+// a run an earlier version left RUNNING may hold a worktree with work in it.
 function settleInterruptedRuns(repoRoot, workId, newRunId, now) {
   const settled = [];
   const interrupted = (ledger) =>
     !ledger.corruption &&
     ledger.state.run?.work === workId &&
+    ledger.state.run.pass === true &&
     !ledger.state.terminal &&
     ledger.state.run.status === "RUNNING";
   for (const { entry, path } of runLedgers(repoRoot)) {

@@ -99,13 +99,13 @@ test("the locks are released when the review returns, however it ended", () => {
 // The ledger a review leaves when its process dies while verify runs: the
 // run is RUNNING, its step started, its checkout and branch still there.
 // Without a checkout, the process died before it made one.
-function interruptedReview(root, work, runId, { base, sha, checkout = true }) {
+function interruptedReview(root, work, runId, { base, sha, checkout = true, pass = true }) {
   const workspace = checkout ? createWorkspace({ repoRoot: root, runId, base, at: sha }) : null;
   const ledger = EventLedger.open(ledgerPath(root, runId));
   const append = (type, data) =>
     ledger.append({ type, actor: KERNEL, ts: TS, run: runId, work, data });
   append("RUN_CREATED", {
-    pass: true,
+    ...(pass ? { pass: true } : {}),
     workflowRef: WORKFLOW_NAME,
     workflowDigest: WORKFLOW_DIGEST,
     base,
@@ -167,4 +167,20 @@ test("a review left running by a process that is gone is ended CANCELLED by the 
   const other = EventLedger.open(ledgerPath(root, "RUN-B-01")).state;
   assert.equal(other.terminal, null);
   assert.equal(other.run.status, "RUNNING");
+});
+
+test("a run an earlier version left running keeps its worktree when the work is reviewed", () => {
+  const { root, base, work } = fixture({ prefix: "bb-v2-orch-old-" });
+  const first = commit(root, "add the feature", { "src/feature.txt": "hello\n" });
+  // The earlier version's builder was writing in this worktree.
+  const workspace = interruptedReview(root, work, "RUN-A-01", { base, sha: first, pass: false });
+  writeFileSync(join(workspace.worktreePath, "src", "unsaved.txt"), "not committed\n");
+
+  const result = reviewWith(root, work);
+  assert.deepEqual(result.interrupted, []);
+  assert.equal(result.state.run.status, "WAITING_HUMAN");
+  assert.equal(readFileSync(join(workspace.worktreePath, "src", "unsaved.txt"), "utf8"), "not committed\n");
+  const old = EventLedger.open(ledgerPath(root, "RUN-A-01")).state;
+  assert.equal(old.terminal, null);
+  assert.equal(old.run.status, "RUNNING");
 });
