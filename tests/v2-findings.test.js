@@ -4,7 +4,7 @@
 // blocking and reaches later reviewers as an anchor.
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -15,7 +15,8 @@ import {
   readFindingsAccount,
   recordReviewFindings,
 } from "../src/v2/runtime/findings.js";
-import { cli, commit, emptyRepo, fixture, reviewWith, worker } from "./support/review.js";
+import { approveReview } from "../src/v2/runtime/decisions.js";
+import { cli, commit, emptyRepo, fixture, reviewWith, statusRow, worker } from "./support/review.js";
 
 test("fingerprints normalize whitespace/case and carry severity as identity", () => {
   const a = fingerprintFinding({ severity: "P1", summary: "Unsafe  single-stage   rollout" });
@@ -156,4 +157,60 @@ test("status lists the findings of a work and decide rules on one, from the Git 
   assert.match(after.out, /\(dismiss by haiyang \(person\)\)/);
   const raw = readFileSync(join(root, "delivery", "work", "WORK-CLI", "review-findings.jsonl"), "utf8");
   assert.equal(raw.trim().split("\n").length, 2);
+});
+
+// WORK-STALE-FINDINGS: a work reviewed for eight rounds listed nine findings
+// as (open) at its last decision, every one fixed rounds earlier, while the
+// approval looked only at the review of the commit being approved.
+test("status calls a finding open only while the latest review that happened still raises it", () => {
+  const { root, work } = fixture({ prefix: "bb-v2-stale-findings-" });
+  const A = { severity: "P1", summary: "the export drops the header" };
+  const B = { severity: "P1", summary: "commas are not quoted" };
+  const C = { severity: "P2", summary: "naming could be clearer" };
+  const fp = fingerprintFinding;
+  const text = () => cli(["status", "--repo", root, "--work", work]).out;
+  const standing = () => Object.fromEntries(statusRow(root, work, ["--work", work]).findings.map((item) => [item.fingerprint, item.adjudication]));
+  const round = (content, options) => {
+    commit(root, `round\n\nWork: ${work}`, { "src/feature.txt": content });
+    return reviewWith(root, work, options);
+  };
+
+  round("one\n", { findings: [A, B, C] });
+  assert.match(text(), /unadjudicated P0\/P1 findings 2/);
+  assert.deepEqual(standing(), { [fp(A)]: "open", [fp(B)]: "open", [fp(C)]: "open" });
+
+  // The next review still raises A; B and C are not raised again.
+  round("two\n", { findings: [A] });
+  assert.match(text(), new RegExp(`^  \\[P1 ${fp(A)}\\] \\(open\\) the export drops the header$`, "m"));
+  assert.match(text(), new RegExp(`^  \\[P1 ${fp(B)}\\] \\(not raised again\\) commas are not quoted$`, "m"));
+  assert.match(text(), /unadjudicated P0\/P1 findings 1/);
+  assert.deepEqual(standing(), { [fp(A)]: "open", [fp(B)]: "not raised again", [fp(C)]: "not raised again" });
+  assert.equal(statusRow(root, work).openFindings, 1);
+
+  // A later commit that fails verify was never reviewed: nothing changes.
+  assert.equal(round("three\n", { verifier: worker({ exitCode: 1 }) }).state.terminal.status, "FAILED");
+  assert.match(text(), /unadjudicated P0\/P1 findings 1/);
+  assert.deepEqual(standing(), { [fp(A)]: "open", [fp(B)]: "not raised again", [fp(C)]: "not raised again" });
+
+  // A clean review answers the rest; a ruling is shown as the ruling.
+  const clean = round("four\n");
+  assert.doesNotMatch(text(), /unadjudicated|\(open\)/);
+  adjudicateFinding(root, work, { fingerprint: fp(B), action: "dismiss", by: "owner", as: "human", note: "by design" });
+  const final = { [fp(A)]: "not raised again", [fp(B)]: "dismiss", [fp(C)]: "not raised again" };
+  assert.deepEqual(standing(), final);
+  assert.match(text(), new RegExp(`\\[P1 ${fp(B)}\\] \\(dismiss by owner \\(person\\)\\)`));
+
+  // From the run records alone the answer is the same.
+  approveReview(root, work, { candidate: clean.state.pendingHuman.subject.candidate, by: "owner", as: "human" });
+  rmSync(join(root, ".buildbeat", "runtime"), { recursive: true, force: true });
+  assert.deepEqual(standing(), final);
+});
+
+test("with no review on record a finding nobody ruled on stays open", () => {
+  const root = emptyRepo("bb-v2-stale-findings-");
+  commit(root, "baseline", { "README.md": "x\n", "delivery/work/WORK-A/work.md": "# A\n" });
+  recordReviewFindings(root, "WORK-A", { run: "RUN-A-01", step: "review", attempt: 1, findings: [{ severity: "P1", summary: "left over" }], ts: "2026-11-11T00:00:00.000Z" });
+  const row = statusRow(root, "WORK-A");
+  assert.equal(row.openFindings, 1);
+  assert.equal(row.findings[0].adjudication, "open");
 });

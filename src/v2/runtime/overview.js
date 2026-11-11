@@ -12,7 +12,7 @@ import { checkPromotions, readResult } from "./closeout.js";
 import { listInbox } from "./decisions.js";
 import { directory, discoverRepos, hasProjectConfig, pathLabel, readRunLedgers, shellArg, workDeclaresRelease } from "./overview-repos.js";
 
-import { latestAdjudications, readFindingsAccount } from "./findings.js";
+import { fingerprintFinding, latestAdjudications, readFindingsAccount } from "./findings.js";
 import { nextReply } from "./hints.js";
 import { readReleases } from "./release.js";
 import { computeWorkCost, renderWorkCost } from "./work-cost.js";
@@ -130,6 +130,13 @@ function headRef(repoRoot, context) {
   }
 }
 
+// The fingerprints a run's last review raised, or null when it never got to
+// a review (verify failed, a tool gave out).
+function reviewedFindings(evidence) {
+  const review = (evidence ?? []).filter((item) => item.kind === "review").at(-1);
+  return review ? (review.findings ?? []).map(fingerprintFinding) : null;
+}
+
 // Runs for a work: runtime ledgers first, run-records for the rest.
 // ledgers: the repository's run ledgers already read for this call
 // (readRunLedgers); without them every ledger is read here.
@@ -151,6 +158,7 @@ export function runsFor(repoRoot, workId, ledgers = null) {
       workflow: state.run.workflowRef ?? null,
       pass: state.run.pass === true,
       steps: Object.keys(state.steps),
+      reviewed: reviewedFindings(state.evidence),
       state,
       source: "runtime",
     });
@@ -178,6 +186,7 @@ export function runsFor(repoRoot, workId, ledgers = null) {
           workflow: record.workflow ?? null,
           pass: record.pass === true,
           steps: Object.keys(record.attempts ?? {}),
+          reviewed: reviewedFindings(record.evidence),
           state: null,
           source: "run-record",
         });
@@ -278,11 +287,16 @@ export function computeOverview(
     ].sort((a, b) => String(a.ts ?? "").localeCompare(String(b.ts ?? "")));
     const selfMerge = selfMergeApproval(decisionRows);
     const adjudicated = latestAdjudications(findingRows);
+    // A finding nobody ruled on is open while the latest review that
+    // happened still raises it. A later commit's review that no longer does
+    // has answered it; a later run that never reached review has not. With
+    // no review on record at all there is nothing to answer it, so it stays
+    // open. This is what an approval looks at: the review of that commit.
+    const raised = runs.filter((run) => run.reviewed).at(-1)?.reviewed ?? null;
+    const standing = (row) =>
+      adjudicated.get(row.fingerprint)?.action ?? (!raised || raised.includes(row.fingerprint) ? "open" : "not raised again");
     const openFindings = findingRows.filter(
-      (row) =>
-        row.kind === "finding" &&
-        (row.severity === "P0" || row.severity === "P1") &&
-        !adjudicated.has(row.fingerprint),
+      (row) => row.kind === "finding" && (row.severity === "P0" || row.severity === "P1") && standing(row) === "open",
     ).length;
     const live = runs.filter((run) => run.status !== "SUPERSEDED");
     const latest = live[live.length - 1] ?? null;
@@ -424,7 +438,7 @@ export function computeOverview(
           const verdict = adjudicated.get(item.fingerprint);
           return {
             ...item,
-            adjudication: verdict?.action ?? "open",
+            adjudication: standing(item),
             ...(verdict ? { adjudicatedBy: describeActor(verdict) } : {}),
           };
         }),
@@ -543,9 +557,7 @@ export function renderOverview(rows, { decisions = false, extra = null } = {}) {
     ];
     const settled = ["MERGED", "CLOSED", "CANCELLED"].includes(row.stage);
     if (row.openFindings > 0 && !settled) {
-      // Unadjudicated, not necessarily unresolved: a fixer may have closed
-      // them without anyone recording a verdict. The number says "nobody
-      // ruled on these", which is exactly what a human should know.
+      // Raised by the latest review and ruled on by nobody.
       parts.push(`unadjudicated P0/P1 findings ${row.openFindings}`);
     }
     if (!settled && row.findings?.length) {
