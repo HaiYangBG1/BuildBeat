@@ -1,7 +1,7 @@
 // Facts with code pointers (WORK-FACT-POINTERS): the facts section names the
 // commit it was checked on in its heading and points at code as `path`,
 // `path:line` or `path:line-line`; status --work lists the pointers whose code
-// changed since (against HEAD before the first run, the latest run's base
+// changed since (against HEAD before the first review, the latest run's base
 // after) with the commits to each changed file, and accept and check warn.
 // Closed works are left alone.
 import assert from "node:assert/strict";
@@ -9,7 +9,9 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
+import { rejectReview } from "../src/v2/runtime/decisions.js";
 import { parseFacts, runBase } from "../src/v2/runtime/facts.js";
+import { reviewWith } from "./support/review.js";
 import { tempDir } from "./support/tmp.js";
 
 const ROOT = join(import.meta.dirname, "..");
@@ -41,8 +43,11 @@ function cli(cwd, ...args) {
 }
 const row = (cwd, work) => JSON.parse(cli(cwd, "status", "--repo", ".", "--work", work, "--json")).works[0];
 const block = (text) => text.split("\n").filter((line) => /^ {2}facts:|^ {4}(changed|not found) /.test(line));
-const CONFIG = ["repo: ../../..", "work: W", "run: RUN-W", "allowedPaths:", "  - src", "workers:", "  verifier:",
-  "    command: bash", "    args:", "      - -lc", "      - \"true\""];
+// The project's run config, and what work W overrides of it.
+const PROJECT_CONFIG = ["workers:", "  verifier:", "    command: bash", "    args:", "      - -lc", "      - \"true\"",
+  "  reviewer:", "    command: bash", "    args:", "      - -lc", "      - \"true\""];
+const CONFIG = ["allowedPaths:", "  - src"];
+const check = (root) => cli(root, "check", "--repo", ".", "--work", "W");
 
 // Code checked on `pin`, a work whose facts point at it, then a commit that
 // moves, edits, inserts into and deletes the code pointed at, and a later one
@@ -74,6 +79,7 @@ function fixture() {
     "<!-- `src/app.js:2` -->",
     "", "## Scope", "", "- `src/app.js:1-20`", "",
   ].join("\n"));
+  write(root, "delivery/run-config.yaml", `${PROJECT_CONFIG.join("\n")}\n`);
   write(root, "delivery/work/W/run-config.yaml", `${CONFIG.join("\n")}\n`);
   commit(root, "work");
   const app = numbered("app", 20);
@@ -118,7 +124,7 @@ test("only the section whose heading names a commit is read, outside code and co
   assert.deepEqual(sections[1].pointers, [{ text: "src/e.js:3-1", path: "src/e.js", lines: [3, 3] }]);
 });
 
-test("status --work compares the code pointed at with HEAD before the first run, line by line", () => {
+test("status --work compares the code pointed at with HEAD before the first review, line by line", () => {
   const { root, pin, change, later } = fixture();
   const facts = row(root, "W").facts;
   assert.equal(facts.checkedOn, pin);
@@ -176,32 +182,38 @@ test("a directory is no pointer, even when a file elsewhere ends with its name",
   ]);
 });
 
-test("accept and check warn when code the facts point at changed; check uses the run config's base", () => {
+test("accept and check warn when code the facts point at changed", () => {
   const { root, pin } = fixture();
   const warning = `warning: facts in delivery/work/W/work.md were checked on ${pin.slice(0, 7)}; 5 referenced places changed since: ` +
     "src/app.js:5-7, src/app.js:10-12, src/app.js:17, src/lib/util.js, src/gone.js; re-check them before starting";
   assert.ok(cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner").split("\n").includes(warning));
-  assert.ok(cli(root, "check", "--config", "delivery/work/W/run-config.yaml").split("\n").includes(warning));
-  // A run config whose base is the commit the facts were checked on: nothing changed.
-  write(root, "delivery/work/W/run-config.yaml", `${[...CONFIG, `base: ${pin}`].join("\n")}\n`);
-  assert.doesNotMatch(cli(root, "check", "--config", "delivery/work/W/run-config.yaml"), /^warning: facts/m);
+  assert.ok(check(root).split("\n").includes(warning));
 });
 
-test("after a run the facts are compared with its base; a closed work has no facts block", () => {
+test("check compares the facts with the base the work's run config names", () => {
   const { root, pin } = fixture();
   cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner");
-  assert.match(cli(root, "run", "--config", "delivery/work/W/run-config.yaml"), /waiting on human: enter-build/);
-  const base = git(root, "rev-parse", "HEAD");
-  assert.equal(runBase(root, "W", "RUN-W-01"), base);
-  write(root, "docs/a.md", "# A changed after the run started\n");
-  commit(root, "docs after the run started");
+  // A base that is the commit the facts were checked on: nothing changed.
+  write(root, "delivery/work/W/run-config.yaml", `${[...CONFIG, `base: ${pin}`].join("\n")}\n`);
+  assert.doesNotMatch(check(root), /^warning: facts/m);
+});
+
+test("after a review the facts are compared with its base; a closed work has no facts block", () => {
+  const { root, pin, later } = fixture();
+  cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner");
+  write(root, "src/feature.js", "feature\n");
+  commit(root, "the change of W");
+  assert.equal(reviewWith(root, "W", { base: later }).state.pendingHuman.kind, "final-decision");
+  assert.equal(runBase(root, "W", "RUN-W-01"), later);
+  write(root, "docs/a.md", "# A changed after the review\n");
+  commit(root, "docs after the review");
   const facts = row(root, "W").facts;
   assert.equal(facts.against, "base of RUN-W-01");
   assert.equal(facts.pointers.find((item) => item.path === "docs/a.md").state, "same");
   assert.match(cli(root, "status", "--repo", ".", "--work", "W"),
     new RegExp(`^ {2}facts: checked on ${pin.slice(0, 7)}, compared with base of RUN-W-01: 10 pointers, 4 changed,`, "m"));
 
-  cli(root, "decide", "--repo", ".", "--run", "RUN-W-01", "--action", "reject", "--reason", "done elsewhere", "--by", "owner");
+  rejectReview(root, "W", { by: "owner", as: "human", reason: "done elsewhere" });
   appendFileSync(join(root, "delivery/work/W/decisions.jsonl"),
     `${JSON.stringify({ ts: "2026-10-26T00:00:00.000Z", transition: "close-work", decision: "closed", subject: { result: "done" } })}\n`);
   const closed = row(root, "W");

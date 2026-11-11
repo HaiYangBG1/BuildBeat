@@ -1,7 +1,7 @@
 // Read-only repository/config discovery shared by single- and multi-repo status.
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { join, relative } from "node:path";
 import { parseYamlSubset } from "../engine/yaml-subset.js";
 import { EventLedger } from "../storage/event-ledger.js";
 
@@ -46,79 +46,6 @@ export function readRunLedgers(repoRoot) {
     ledgers.push({ entry, path, ledger: EventLedger.open(path) });
   }
   return ledgers;
-}
-
-// The project's own run config (WORK-CLEAN-START): how `buildbeat review`
-// verifies and reviews a commit of any work in this repository.
-export const PROJECT_CONFIG = "delivery/run-config.yaml";
-export const hasProjectConfig = (repoRoot) => existsSync(join(repoRoot, PROJECT_CONFIG));
-
-export function workConfigs(repoRoot, workId, warnings = []) {
-  const dir = join(repoRoot, "delivery", "work", workId);
-  if (!directory(dir)) return [];
-  return readdirSync(dir).sort().filter((name) => /^run-config.*\.ya?ml$/.test(name)).map((name) => {
-    const path = join(dir, name);
-    try {
-      const doc = parseYamlSubset(readFileSync(path, "utf8"));
-      if (doc === null || typeof doc !== "object" || Array.isArray(doc)) throw new Error("the file must be a map of keys");
-      // A work's overrides of the project config name no repository, work or
-      // run: they apply to this work, here.
-      if (doc.repo === undefined && doc.work === undefined && doc.run === undefined) {
-        return { path, target: repoRoot, release: Object.hasOwn(doc, "release"), releaseOnly: false, review: true };
-      }
-      if (typeof doc.repo !== "string" || !doc.repo.trim()) throw new Error("repo must be a non-empty path");
-      const target = resolve(dirname(path), doc.repo);
-      const release = Object.hasOwn(doc, "release");
-      return { path, target, release, releaseOnly: release && (doc.workers === undefined || doc.workers === null) };
-    } catch (error) {
-      warnings.push(`${path}: ${error.message.replaceAll("\n", " ")}`);
-      return { path, error: true, release: null };
-    }
-  });
-}
-
-export function configTargets(configs, warnings, roots = new Map()) {
-  return configs.map((config) => {
-    if (!config.target) return config;
-    try { return { ...config, repo: repositoryRoot(config.target, roots) }; }
-    catch (error) {
-      warnings.push(`${config.path}: ${config.target}: ${error.message.replaceAll("\n", " ")}`);
-      return { ...config, error: true };
-    }
-  });
-}
-
-// The checkout that contains path (its root or any directory inside it).
-function enclosingCheckout(path) {
-  try {
-    const top = execFileSync("git", ["-C", path, "rev-parse", "--show-toplevel"], {
-      encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    return top ? realpathSync(top) : null;
-  } catch {
-    return null;
-  }
-}
-
-// Run configs that govern a work kept in this checkout: its own, and those a
-// main repository keeps for it with repo: pointing here, looked up in the
-// caller's checkout and in the checkout this one sits inside (the layouts
-// status follows). An unreadable config there counts too, so a release
-// cannot be skipped because its config could not be read.
-export function governingConfigs(repoRoot, workId, { callers = [], warnings = [] } = {}) {
-  const real = realpathSync(repoRoot);
-  const configs = workConfigs(real, workId, warnings);
-  const roots = new Set();
-  for (const path of [...callers, dirname(real)]) {
-    const root = path ? enclosingCheckout(path) : null;
-    if (root && root !== real) roots.add(root);
-  }
-  for (const root of roots) {
-    for (const config of configTargets(workConfigs(root, workId, warnings), warnings)) {
-      if (config.error || config.repo === real) configs.push(config);
-    }
-  }
-  return configs;
 }
 
 // The warning to print when a work's records would stay out of Git (a
@@ -192,7 +119,7 @@ export function heavyRecordsWarning(repoRoot, workId) {
 // 10 such files (one held 699), mostly command output, readback results and
 // one-off scripts, while four code repositories' 46 works held 3 at most
 // (WORK-FOLDER-EXTRAS).
-const RECORD_FILES = /^(?:work\.md|intent\.md|plan\.md|result\.md|env-facts\.md|run-config[^/]*\.ya?ml|decisions\.jsonl|review-findings\.jsonl|releases\.jsonl|runs\/[^/]+\/run-record\.json)$/;
+const RECORD_FILES = /^(?:work\.md|result\.md|env-facts\.md|run-config[^/]*\.ya?ml|decisions\.jsonl|review-findings\.jsonl|releases\.jsonl|runs\/[^/]+\/run-record\.json)$/;
 const EXTRA_FILES_LIMIT = 10;
 
 export function extraFilesWarning(repoRoot, workId) {
@@ -223,16 +150,33 @@ export function extraFilesWarning(repoRoot, workId) {
   return `warning: ${folder} holds ${extras.length} files besides its records: ${shown.join(", ")}, and ${extras.length - shown.length} more; keep command output, readback results and one-off scripts out of it (the runtime keeps verify, review and readback output on this machine) and write the conclusions into result.md`;
 }
 
-export function discoverRepos(repoRoot, warnings, roots = new Map()) {
-  const repos = new Set([repoRoot]);
-  const workRoot = join(repoRoot, "delivery", "work");
-  if (directory(workRoot)) {
-    for (const id of readdirSync(workRoot).sort()) {
-      for (const config of configTargets(workConfigs(repoRoot, id, warnings), warnings, roots)) {
-        if (config.repo) repos.add(config.repo);
-      }
-    }
+// The project's run config: how `buildbeat review` verifies and reviews a
+// commit of any work in this repository. A work overrides what it must in
+// its own folder.
+export const PROJECT_CONFIG = "delivery/run-config.yaml";
+export const workConfigRef = (workId) => `delivery/work/${workId}/run-config.yaml`;
+export const hasProjectConfig = (repoRoot) => existsSync(join(repoRoot, PROJECT_CONFIG));
+
+// Does the work's own run config declare a release readback (a `release:`
+// key)? Such a work closes only on a passing readback. null when the file is
+// there and cannot be read: callers treat that as a release, so a readback
+// is never skipped because its config could not be parsed. Only the key is
+// looked at, so the run configs of works made by earlier versions answer too.
+export function workDeclaresRelease(repoRoot, workId) {
+  const path = join(repoRoot, workConfigRef(workId));
+  if (!existsSync(path)) return false;
+  try {
+    const doc = parseYamlSubset(readFileSync(path, "utf8"));
+    return doc !== null && typeof doc === "object" && Object.hasOwn(doc, "release");
+  } catch {
+    return null;
   }
+}
+
+// The repositories one status call covers with --all-repos: this one and
+// every checkout directly inside it that keeps works of its own.
+export function discoverRepos(repoRoot, roots = new Map()) {
+  const repos = new Set([repoRoot]);
   for (const name of readdirSync(repoRoot).sort()) {
     const child = join(repoRoot, name);
     if (!directory(join(child, "delivery", "work"))) continue;

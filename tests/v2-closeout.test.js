@@ -1,6 +1,7 @@
 // Close-out (WORK-CONTEXT-CLOSEOUT): every work closes with result.md; a
-// work without a release closes on its page alone; "<path> @ <commit>"
-// lines are read back from Git before the close is recorded. Real cost
+// work whose own run config declares no release closes on its page alone;
+// "<path> @ <commit>" lines are read back from Git before the close is
+// recorded. Real cost
 // behind it: in the pilot workspace 15 of 21 release readback scripts only
 // checked Git so that works that never ship could close, and the same
 // environment facts were rediscovered work after work.
@@ -11,6 +12,7 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { checkPromotions, parsePromotions, resultSummary } from "../src/v2/runtime/closeout.js";
+import { approved, commit as commitAll, fixture, reviewWith } from "./support/review.js";
 import { tempDir } from "./support/tmp.js";
 
 const ROOT = join(import.meta.dirname, "..");
@@ -58,11 +60,15 @@ const close = (root, id, ...extra) => call(root, "decide", "--repo", ".", "--wor
 const decisions = (dir) => readFileSync(join(dir, "decisions.jsonl"), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
 const statusRow = (root, id) => JSON.parse(cli(root, "status", "--repo", ".", "--work", id, "--json")).works[0];
 const sha256 = (path) => `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
-const config = (id, extra = "") => `repo: ../../..\nwork: ${id}\n${extra}`;
+// A work's own run config: what it overrides of the project's.
+const config = (extra = "") => `allowedPaths:\n  - src\n${extra}`;
 
 test("a work without a release closes on its result page, bound by digest", () => {
   const root = repo();
-  const dir = work(root, "PLAIN", { "run-config.yaml": config("PLAIN") });
+  // The project's run config names a readback command for every work to
+  // use; that alone does not make PLAIN a work with a release.
+  write(root, "delivery/run-config.yaml", "release:\n  command: true\n");
+  const dir = work(root, "PLAIN", { "run-config.yaml": config() });
   const missing = close(root, "PLAIN");
   assert.notEqual(missing.status, 0);
   assert.match(missing.stderr, /closing a work needs delivery\/work\/PLAIN\/result\.md \(template: templates\/v2\/result\.example\.md\)/);
@@ -86,14 +92,16 @@ test("a work without a release closes on its result page, bound by digest", () =
   const closedRow = statusRow(root, "PLAIN");
   assert.equal(closedRow.stage, "CLOSED");
   assert.match(closedRow.next, /^closed @ .*: Export ships in 1\.3\.0, merged as ede20b6\. · written into the project: 0$/);
-  assert.equal(closedRow.result.changedAfterClose, false);
+  assert.equal(closedRow.result.closedDigest, row.subject.resultDigest);
+  assert.equal(closedRow.result.changed, false);
   assert.match(cli(root, "status", "--repo", ".", "--work", "PLAIN"), /close-work closed by owner \(person\) — measured by the owner/);
   assert.match(close(root, "PLAIN").stderr, /PLAIN is already closed/);
 
   writeFileSync(join(dir, "result.md"), `${readFileSync(join(dir, "result.md"), "utf8")}- one more leftover\n`);
   const changed = statusRow(root, "PLAIN");
   assert.match(changed.next, / · result\.md changed after closing$/);
-  assert.equal(changed.result.changedAfterClose, true);
+  assert.equal(changed.result.closedDigest, row.subject.resultDigest);
+  assert.equal(changed.result.changed, true);
 });
 
 test("--result overrides the page's summary, and a page without text needs --result", () => {
@@ -119,11 +127,11 @@ test("--result overrides the page's summary, and a page without text needs --res
 test("a work with a release, or a run config that cannot be read, still needs a passing readback", () => {
   const root = repo();
   const ship = work(root, "SHIP", {
-    "run-config.yaml": config("SHIP", "release:\n  command: true\n"),
+    "run-config.yaml": config("release:\n  command: true\n"),
     "result.md": "# SHIP result\n\nShipped.\n",
   });
-  assert.match(close(root, "SHIP").stderr, /SHIP has no readback; run buildbeat release --config/);
-  work(root, "BROKEN", { "run-config.yaml": "repo: [\n", "result.md": "# BROKEN result\n\nShipped.\n" });
+  assert.match(close(root, "SHIP").stderr, /SHIP has no readback; run buildbeat release --repo <path> --work SHIP after the release first/);
+  work(root, "BROKEN", { "run-config.yaml": "allowedPaths: [\n", "result.md": "# BROKEN result\n\nShipped.\n" });
   assert.match(close(root, "BROKEN").stderr, /BROKEN has no readback/);
   writeFileSync(join(ship, "releases.jsonl"), `${JSON.stringify({
     ts: "2026-10-25T00:00:00.000Z", status: "failed", exitCode: 3, digest: "sha256:r1",
@@ -133,60 +141,19 @@ test("a work with a release, or a run config that cannot be read, still needs a 
   assert.equal(existsSync(join(ship, "decisions.jsonl")), false);
 });
 
-test("a release kept in the main repository governs a work whose records live in a code repository", () => {
-  const main = repo();
-  // A main repository with its code repository inside, the layout
-  // status --all-repos discovers.
-  const code = join(main, "code");
-  mkdirSync(code);
-  git(code, "init", "-q", "-b", "main");
-  git(code, ...IDENTITY, "commit", "-q", "--allow-empty", "-m", "fixture");
-  const mainConfig = join(work(main, "CROSS", {
-    "run-config.yaml": "repo: ../../../code\nwork: CROSS\nrelease:\n  command: true\n",
-  }), "run-config.yaml");
-  const dir = work(code, "CROSS", { "result.md": "# CROSS result\n\nShipped.\n" });
-  const fromMain = () => call(main, "decide", "--repo", "code", "--work", "CROSS", "--action", "close", "--by", "owner");
-  assert.match(fromMain().stderr, /CROSS has no readback/);
-  // From inside the code repository the enclosing main repository is read too.
-  assert.match(close(code, "CROSS").stderr, /CROSS has no readback/);
-  assert.equal(existsSync(join(dir, "decisions.jsonl")), false);
-  // Without a release in the main repository's config, the page alone closes it.
-  writeFileSync(mainConfig, "repo: ../../../code\nwork: CROSS\n");
-  assert.equal(fromMain().status, 0);
-  assert.equal(decisions(dir).at(-1).transition, "close-work");
-});
-
-test("runs recorded here with no run config in reach refuse the close", () => {
-  // A code repository on its own: the main repository that holds its
-  // config is neither the caller nor around it.
-  const code = repo();
-  const dir = work(code, "AWAY", { "result.md": "# AWAY result\n\nShipped.\n" });
-  const record = join(dir, "runs", "RUN-AWAY-01");
-  mkdirSync(record, { recursive: true });
-  writeFileSync(join(record, "run-record.json"), JSON.stringify({
-    startedAt: "2026-10-25T00:00:00Z",
-    terminal: { status: "SUCCEEDED" },
-    workspaces: { "RUN-AWAY-01": { candidate: git(code, "rev-parse", "HEAD") } },
-  }));
-  const refused = close(code, "AWAY");
-  assert.notEqual(refused.status, 0);
-  assert.match(refused.stderr, /AWAY: its run configs are not in this repository; close it from the repository that holds them/);
-});
-
 test("a work cannot be closed underneath its own run in progress", () => {
-  const root = repo();
-  const dir = work(root, "LIVE", { "result.md": "# LIVE result\n\nNot done yet.\n" });
-  const record = join(dir, "runs", "RUN-LIVE-01");
-  mkdirSync(record, { recursive: true });
-  writeFileSync(join(record, "run-record.json"), JSON.stringify({
-    startedAt: "2026-10-25T00:00:00Z",
-    terminal: { status: "WAITING_HUMAN" },
-    workspaces: { "RUN-LIVE-01": { candidate: git(root, "rev-parse", "HEAD") } },
-  }));
+  const { root } = fixture({ work: "LIVE" });
+  const dir = join(root, "delivery", "work", "LIVE");
+  commitAll(root, "feat: the feature", {
+    "src/feature.txt": "hello\n",
+    "delivery/work/LIVE/result.md": "# LIVE result\n\nNot done yet.\n",
+  });
+  // A reviewed commit nobody has decided on yet.
+  assert.equal(reviewWith(root, "LIVE").state.run.status, "WAITING_HUMAN");
   const refused = close(root, "LIVE");
   assert.notEqual(refused.status, 0);
   assert.match(refused.stderr, /LIVE has a run in progress \(RUN-LIVE-01 WAITING_HUMAN\); finish or stop it before closing/);
-  assert.equal(existsSync(join(dir, "decisions.jsonl")), false);
+  assert.equal(decisions(dir).some((row) => row.transition === "close-work"), false);
 });
 
 test("promotion lines are read back from Git before the close is recorded", () => {
@@ -322,30 +289,26 @@ test("a work nobody ran shows COMMITTED once code commits on the branch name it"
   assert.equal(statusRow(root, "TRAILER").stage, "COMMITTED");
 });
 
-test("a work with a run config, a run or a close keeps its stage", () => {
-  const root = repo();
-  work(root, "CONFIGURED", { "run-config.yaml": config("CONFIGURED") });
-  work(root, "RAN");
+test("a work with a run or a close keeps its stage", () => {
+  const { root } = fixture({ work: "RAN" });
+  work(root, "CONFIGURED", { "run-config.yaml": config() });
   work(root, "SHUT", { "result.md": "# SHUT result\n\nDone.\n" });
-  commitFiles(root, {
-    "delivery/work/CONFIGURED/work.md": "# CONFIGURED\n", "delivery/work/CONFIGURED/run-config.yaml": config("CONFIGURED"),
-    "delivery/work/RAN/work.md": "# RAN\n", "delivery/work/SHUT/work.md": "# SHUT\n", "delivery/work/SHUT/result.md": "# SHUT result\n\nDone.\n",
-  }, "docs: works");
-  const base = git(root, "rev-parse", "HEAD");
-  const code = commitFiles(root, { "src/c.js": "c\n" }, "feat: c", "Work: CONFIGURED", "Work: RAN", "Work: SHUT");
-  write(root, "delivery/work/RAN/runs/RUN-RAN-01/run-record.json", JSON.stringify({
-    startedAt: "2026-10-01T00:00:00Z", terminal: { status: "SUCCEEDED" }, workspaces: { "RUN-RAN-01": { base, candidate: code } },
-  }));
+  commitAll(root, "docs: works");
+  // One commit names all three; RAN's review of it is approved.
+  const { sha } = approved(root, "RAN", { "src/c.js": "c\n" }, { message: "feat: c\n\nWork: CONFIGURED\nWork: RAN\nWork: SHUT" });
   const shut = close(root, "SHUT");
   assert.equal(shut.status, 0, shut.stderr);
 
-  const configured = statusRow(root, "CONFIGURED");
-  assert.equal(configured.stage, "WORK_DRAFT");
-  assert.equal(configured.committed, undefined);
   const ran = statusRow(root, "RAN");
   assert.equal(ran.stage, "MERGED");
+  assert.equal(ran.mergedCandidate, sha);
   assert.equal(ran.committed, undefined);
   assert.equal(statusRow(root, "SHUT").stage, "CLOSED");
+  // A run config of its own holds a work back no longer: nobody reviewed
+  // CONFIGURED, so the commit that names it shows.
+  const configured = statusRow(root, "CONFIGURED");
+  assert.equal(configured.stage, "COMMITTED");
+  assert.equal(configured.committed.latest.commit, sha);
 });
 
 test("close --draft writes a result page from the commits, and closing refuses it until it is read", () => {

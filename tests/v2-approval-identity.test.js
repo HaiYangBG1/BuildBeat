@@ -5,20 +5,13 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test, { afterEach, beforeEach } from "node:test";
-import { createMockAdapter } from "../src/v2/adapters/mock.js";
-import { deliveryWorkflow, DELIVERY_TEXT } from "../src/v2/engine/workflow.js";
 import { sha256Text } from "../src/v2/policy/policy.js";
 import { describeActor, detectAgentSession, resolveActor } from "../src/v2/runtime/actor.js";
-import {
-  acceptArtifacts,
-  adoptCandidate,
-  rejectRun,
-  requestFix,
-} from "../src/v2/runtime/decisions.js";
+import { acceptWork, approveReview, rejectReview } from "../src/v2/runtime/decisions.js";
 import { adjudicateFinding, readFindingsAccount, recordReviewFindings } from "../src/v2/runtime/findings.js";
-import { startRun } from "../src/v2/runtime/orchestrator.js";
 import { closeWork } from "../src/v2/runtime/release.js";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
+import { commit, fixture, reviewWith } from "./support/review.js";
 import { tempDir } from "./support/tmp.js";
 
 // Fixture repositories must not see the host's git identity: the default
@@ -39,7 +32,6 @@ afterEach(() => {
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
 const git = (cwd, ...args) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
-const clean = () => ({ behavior: "succeed", envelope: { status: "succeeded", findings: [] } });
 const NO_SESSION = {};
 const SESSION = { CLAUDECODE: "1" };
 
@@ -68,35 +60,15 @@ function repo({ name = "Test" } = {}) {
   return root;
 }
 
-// A run waiting at the final merge decision, with a fixer configured.
+// A commit of WORK-I, reviewed and waiting for the merge decision (RUN-I-01).
 function finalDecision() {
-  const root = repo();
-  const worktree = join(root, ".buildbeat", "worktrees", "RUN-I");
-  const scripted = createMockAdapter({ build: ["succeed"], verify: Array(4).fill("succeed"), review: Array.from({ length: 4 }, clean), fix: Array(4).fill("succeed") });
-  const adapter = {
-    name: "fixture",
-    execute(context) {
-      if (context.step === "build") commit(worktree, "built\n");
-      return scripted.execute(context);
-    },
-  };
-  startRun({
-    repoRoot: root, workId: "WORK-I", runId: "RUN-I", entry: "build", workflow: deliveryWorkflow(),
-    workflowDigest: sha256Text(DELIVERY_TEXT), allowedPaths: ["feature.txt"],
-    budgets: { reviewRoundsPerWork: 6 },
-    deliveryChecks: { artifact: "work", requireAcceptance: false },
-    adapters: { builder: adapter, verifier: adapter, reviewer: adapter, fixer: adapter },
-  });
-  const ledger = () => EventLedger.open(join(root, ".buildbeat/runtime/runs/RUN-I/events.jsonl"));
+  const { root } = fixture({ prefix: "bb-identity-", work: "WORK-I" });
+  const candidate = commit(root, "change", { "src/feature.txt": "built\n" });
+  reviewWith(root, "WORK-I");
+  const ledger = () => EventLedger.open(join(root, ".buildbeat/runtime/runs/RUN-I-01/events.jsonl"));
   assert.equal(ledger().state.pendingHuman.kind, "final-decision");
-  return { root, worktree, ledger, candidate: () => ledger().state.pendingHuman.subject.candidate };
-}
-
-function commit(worktree, content) {
-  writeFileSync(join(worktree, "feature.txt"), content);
-  git(worktree, "add", "feature.txt");
-  git(worktree, "-c", "user.name=Setup", "commit", "-qm", "change");
-  return git(worktree, "rev-parse", "HEAD");
+  assert.equal(ledger().state.pendingHuman.subject.candidate, candidate);
+  return { root, ledger, candidate };
 }
 
 const decisionsOf = (root, work = "WORK-I") => lines(join(root, "delivery", "work", work, "decisions.jsonl"));
@@ -141,11 +113,11 @@ test("inside an AI session a decision is the session's unless it says it relays 
 
 test("an AI session approving the merge is recorded, replayable and called out in status", () => {
   const f = finalDecision();
-  const candidate = f.candidate();
-  const out = cli(f.root, SESSION, "decide", "--repo", f.root, "--run", "RUN-I", "--action", "approve",
-    "--transition", "enter-wait-merge", "--candidate", candidate);
+  const out = cli(f.root, SESSION, "decide", "--repo", f.root, "--work", "WORK-I", "--action", "approve",
+    "--candidate", f.candidate);
   assert.match(out, /by claude-code \(AI session\)/);
   const row = decisionsOf(f.root).at(-1);
+  assert.equal(row.transition, "enter-wait-merge");
   assert.equal(row.by, "claude-code");
   assert.deepEqual(row.actor, { kind: "agent", id: "claude-code", source: "env" });
   const ledger = f.ledger();
@@ -153,29 +125,30 @@ test("an AI session approving the merge is recorded, replayable and called out i
   const event = ledger.events.findLast((item) => item.type === "DECISION_RECORDED");
   assert.deepEqual(event.actor, { kind: "agent", id: "claude-code", source: "env" });
   assert.deepEqual(ledger.state.decisions.at(-1).actor, event.actor);
-  const record = JSON.parse(readFileSync(join(f.root, "delivery/work/WORK-I/runs/RUN-I/run-record.json"), "utf8"));
+  const record = JSON.parse(readFileSync(join(f.root, "delivery/work/WORK-I/runs/RUN-I-01/run-record.json"), "utf8"));
   assert.equal(record.decisions.at(-1).actor.kind, "agent");
 
   const status = cli(f.root, NO_SESSION, "status", "--repo", f.root, "--work", "WORK-I");
-  assert.match(status, /note: merge approved by an AI session \(claude-code, D-RUN-I-1\), not by a person/);
-  assert.match(status, /decisions:\n.* D-RUN-I-1 enter-wait-merge approved by claude-code \(AI session\)/);
-  const run = cli(f.root, NO_SESSION, "status", "--repo", f.root, "--run", "RUN-I");
-  assert.match(run, /decision D-RUN-I-1 enter-wait-merge approved by claude-code \(AI session\)/);
-  assert.match(run, /note: merge approved by an AI session \(claude-code, D-RUN-I-1\), not by a person/);
+  assert.match(status, /note: merge approved by an AI session \(claude-code, D-RUN-I-01-1\), not by a person/);
+  // The acceptance of work.md by the fixture's owner, then the approval.
+  assert.match(status, /decisions:\n.* A-WORK-I-1 accept-work approved by owner \(person\)\n.* D-RUN-I-01-1 enter-wait-merge approved by claude-code \(AI session\)/);
+  const run = cli(f.root, NO_SESSION, "status", "--repo", f.root, "--run", "RUN-I-01");
+  assert.match(run, /decision D-RUN-I-01-1 enter-wait-merge approved by claude-code \(AI session\)/);
+  assert.match(run, /note: merge approved by an AI session \(claude-code, D-RUN-I-01-1\), not by a person/);
   const overview = cli(f.root, NO_SESSION, "status", "--repo", f.root);
   assert.match(overview, /note: merge approved by an AI session/);
   const json = JSON.parse(cli(f.root, NO_SESSION, "status", "--repo", f.root, "--work", "WORK-I", "--json"));
   assert.equal(json.works[0].decisions.at(-1).actor.kind, "agent");
-  assert.equal(json.works[0].selfMergeApproval.decisionRef, "D-RUN-I-1");
+  assert.equal(json.works[0].selfMergeApproval.decisionRef, "D-RUN-I-01-1");
 });
 
 test("a person's merge decision relayed from an AI session says so, without the AI-approval note", () => {
   const f = finalDecision();
-  cli(f.root, SESSION, "decide", "--repo", f.root, "--run", "RUN-I", "--action", "approve",
-    "--transition", "enter-wait-merge", "--candidate", f.candidate(), "--as", "human", "--by", "owner");
+  cli(f.root, SESSION, "decide", "--repo", f.root, "--work", "WORK-I", "--action", "approve",
+    "--candidate", f.candidate, "--as", "human", "--by", "owner");
   assert.deepEqual(decisionsOf(f.root).at(-1).actor, { kind: "human", id: "owner", source: "flag", via: "agent-session" });
   const status = cli(f.root, NO_SESSION, "status", "--repo", f.root, "--work", "WORK-I");
-  assert.match(status, /approved by owner \(person, entered from an AI session\)/);
+  assert.match(status, /enter-wait-merge approved by owner \(person, entered from an AI session\)/);
   assert.doesNotMatch(status, /merge approved by an AI session/);
 });
 
@@ -183,32 +156,30 @@ test("every decision entry point records the decider", () => {
   const root = repo();
   mkdirSync(join(root, "delivery", "work", "WORK-I"), { recursive: true });
   writeFileSync(join(root, "delivery", "work", "WORK-I", "work.md"), "# Work\n");
-  const accepted = acceptArtifacts(root, "WORK-I", ["work"], { env: undefined });
-  assert.deepEqual(accepted[0].actor, { kind: "human", id: "Test", source: "git" });
-  assert.deepEqual(decisionsOf(root).at(-1).actor, accepted[0].actor);
+  const accepted = acceptWork(root, "WORK-I");
+  assert.deepEqual(accepted.actor, { kind: "human", id: "Test", source: "git" });
+  assert.deepEqual(decisionsOf(root).at(-1).actor, accepted.actor);
 
-  const adopt = finalDecision();
-  const sha = commit(adopt.worktree, "hand fix\n");
-  adoptCandidate(adopt.root, "RUN-I", { sha, as: "agent", resumeAt: "verify" });
-  assert.equal(decisionsOf(adopt.root).at(-1).actor.kind, "agent");
-  const pinned = adopt.ledger().events.findLast((item) => item.type === "CANDIDATE_PINNED");
-  assert.equal(pinned.actor.kind, "agent");
+  const approve = finalDecision();
+  const approved = approveReview(approve.root, "WORK-I", { candidate: approve.candidate, by: "bot", as: "agent" });
+  assert.deepEqual(approved.actor, { kind: "agent", id: "bot", source: "flag" });
+  assert.deepEqual(decisionsOf(approve.root).at(-1).actor, approved.actor);
+  const recorded = approve.ledger().events.findLast((item) => item.type === "DECISION_RECORDED");
+  assert.equal(recorded.actor.kind, "agent");
 
   const reject = finalDecision();
-  const rejected = rejectRun(reject.root, "RUN-I", { by: "owner", reason: "not needed" });
+  const rejected = rejectReview(reject.root, "WORK-I", { by: "owner", reason: "not needed" });
   assert.equal(rejected.actor.id, "owner");
+  assert.equal(decisionsOf(reject.root).at(-1).decision, "rejected");
   assert.equal(decisionsOf(reject.root).at(-1).actor.kind, "human");
 
-  const fix = finalDecision();
-  requestFix(fix.root, "RUN-I", { by: "bot", as: "agent", reason: "tighten the check" });
-  assert.equal(decisionsOf(fix.root).at(-1).actor.kind, "agent");
-  const adjudication = readFindingsAccount(fix.root, "WORK-I").findLast((item) => item.kind === "adjudication");
-  assert.deepEqual(adjudication.actor, { kind: "agent", id: "bot", source: "flag" });
-
-  recordReviewFindings(root, "WORK-I", { run: "RUN-X", step: "review", attempt: 1, findings: [{ severity: "P2", summary: "docs drift" }] });
-  const [finding] = readFindingsAccount(root, "WORK-I");
+  recordReviewFindings(root, "WORK-I", { run: "RUN-X", step: "review", attempt: 1, findings: [{ severity: "P2", summary: "docs drift" }, { severity: "P3", summary: "a nit" }] });
+  const [finding, nit] = readFindingsAccount(root, "WORK-I");
   const verdict = adjudicateFinding(root, "WORK-I", { fingerprint: finding.fingerprint, action: "dismiss", by: "owner", note: "fine" });
   assert.deepEqual(verdict.actor, { kind: "human", id: "owner", source: "flag" });
+  adjudicateFinding(root, "WORK-I", { fingerprint: nit.fingerprint, action: "accept", by: "bot", as: "agent" });
+  const adjudication = readFindingsAccount(root, "WORK-I").findLast((item) => item.kind === "adjudication");
+  assert.deepEqual(adjudication.actor, { kind: "agent", id: "bot", source: "flag" });
 
   appendFileSync(join(root, "delivery", "work", "WORK-I", "releases.jsonl"),
     `${JSON.stringify({ ts: "2026-10-19T00:00:00.000Z", status: "passed", digest: "sha256:readback", commit: git(root, "rev-parse", "HEAD"), candidate: null })}\n`);
@@ -257,14 +228,14 @@ test("Codex desktop without a sandbox marker is still an AI session", () => {
 test("Codex desktop decisions persist AI identity and human relay provenance", () => {
   const f = finalDecision();
   const env = { CODEX_THREAD_ID: "fixture-thread" };
-  cli(f.root, env, "decide", "--repo", f.root, "--run", "RUN-I", "--action", "approve",
-    "--transition", "enter-wait-merge", "--candidate", f.candidate());
+  cli(f.root, env, "decide", "--repo", f.root, "--work", "WORK-I", "--action", "approve",
+    "--candidate", f.candidate);
   assert.deepEqual(decisionsOf(f.root).at(-1).actor, { kind: "agent", id: "codex", source: "env" });
-  assert.match(cli(f.root, NO_SESSION, "status", "--repo", f.root, "--run", "RUN-I"), /merge approved by an AI session \(codex,/);
+  assert.match(cli(f.root, NO_SESSION, "status", "--repo", f.root, "--run", "RUN-I-01"), /merge approved by an AI session \(codex,/);
 
   const relay = finalDecision();
-  cli(relay.root, env, "decide", "--repo", relay.root, "--run", "RUN-I", "--action", "approve",
-    "--transition", "enter-wait-merge", "--candidate", relay.candidate(), "--as", "human", "--by", "owner");
+  cli(relay.root, env, "decide", "--repo", relay.root, "--work", "WORK-I", "--action", "approve",
+    "--candidate", relay.candidate, "--as", "human", "--by", "owner");
   assert.deepEqual(decisionsOf(relay.root).at(-1).actor,
     { kind: "human", id: "owner", source: "flag", via: "agent-session" });
 });

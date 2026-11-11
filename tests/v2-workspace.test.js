@@ -1,7 +1,7 @@
+// The temporary checkout a review runs in, and the locks around it.
+
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -9,26 +9,16 @@ import {
   WorkspaceError,
   acquireLock,
   createWorkspace,
-  pinCandidate,
+  discardWorkspace,
   readback,
   releaseLock,
-  removeWorkspace,
 } from "../src/v2/workspace/workspace-manager.js";
-import { tempDir } from "./support/tmp.js";
-
-function git(cwd, args) {
-  return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
-}
+import { commit, emptyRepo, git } from "./support/review.js";
 
 function fixtureRepo() {
-  const root = tempDir("bb-v2-ws-");
-  execFileSync("git", ["init", "-q", "-b", "main", root]);
-  git(root, ["config", "user.email", "pilot@example.com"]);
-  git(root, ["config", "user.name", "Pilot"]);
-  writeFileSync(join(root, "README.md"), "fixture\n");
-  git(root, ["add", "."]);
-  git(root, ["commit", "-q", "-m", "baseline"]);
-  return { root, base: git(root, ["rev-parse", "HEAD"]) };
+  const root = emptyRepo("bb-v2-ws-");
+  const base = commit(root, "baseline", { "README.md": "fixture\n" });
+  return { root, base };
 }
 
 test("createWorkspace makes an isolated worktree pinned to base", () => {
@@ -42,6 +32,27 @@ test("createWorkspace makes an isolated worktree pinned to base", () => {
   assert.throws(() => createWorkspace({ repoRoot: root, runId: "RUN-001", base }), WorkspaceError);
 });
 
+test("a workspace for a review is checked out at the commit, which must come after base", () => {
+  const { root, base } = fixtureRepo();
+  const sha = commit(root, "change", { "feature.txt": "change\n" });
+  const workspace = createWorkspace({ repoRoot: root, runId: "RUN-002", base, at: sha });
+  assert.equal(workspace.base, base);
+  assert.equal(readback(workspace.worktreePath).head, sha);
+  // The main checkout stays where it was.
+  assert.equal(git(root, ["rev-parse", "--abbrev-ref", "HEAD"]), "main");
+
+  assert.throws(
+    () => createWorkspace({ repoRoot: root, runId: "RUN-003", base, at: base }),
+    /nothing to review: \w{7} is the base itself/,
+  );
+  assert.throws(
+    () => createWorkspace({ repoRoot: root, runId: "RUN-004", base: sha, at: base }),
+    /does not come after base/,
+  );
+  assert.equal(existsSync(join(root, ".buildbeat", "worktrees", "RUN-003")), false);
+  assert.equal(existsSync(join(root, ".buildbeat", "worktrees", "RUN-004")), false);
+});
+
 test("locks are exclusive until released", () => {
   const { root } = fixtureRepo();
   acquireLock(root, "RUN-001");
@@ -50,27 +61,19 @@ test("locks are exclusive until released", () => {
   acquireLock(root, "RUN-001");
 });
 
-test("candidates come from git readback and require a clean tree", () => {
+test("readback reports a new file as a dirty tree", () => {
   const { root, base } = fixtureRepo();
-  const workspace = createWorkspace({ repoRoot: root, runId: "RUN-002", base });
-
+  const workspace = createWorkspace({ repoRoot: root, runId: "RUN-005", base });
   writeFileSync(join(workspace.worktreePath, "feature.txt"), "change\n");
-  assert.throws(() => pinCandidate(workspace), WorkspaceError, "dirty tree cannot be a candidate");
-
-  git(workspace.worktreePath, ["add", "."]);
-  git(workspace.worktreePath, ["commit", "-q", "-m", "candidate"]);
-  const candidate = pinCandidate(workspace);
-  assert.notEqual(candidate, base);
-  assert.equal(candidate, git(workspace.worktreePath, ["rev-parse", "HEAD"]));
+  assert.deepEqual(readback(workspace.worktreePath), { head: base, dirty: true });
 });
 
-test("removeWorkspace refuses to destroy a dirty debug state unless forced", () => {
+test("discardWorkspace removes the checkout and its branch, dirty or not, so the run id is free again", () => {
   const { root, base } = fixtureRepo();
-  const workspace = createWorkspace({ repoRoot: root, runId: "RUN-003", base });
+  const workspace = createWorkspace({ repoRoot: root, runId: "RUN-006", base });
   writeFileSync(join(workspace.worktreePath, "wip.txt"), "wip\n");
-  assert.throws(() => removeWorkspace(workspace), WorkspaceError);
-  removeWorkspace(workspace, { force: true });
+  discardWorkspace(workspace);
   assert.equal(existsSync(workspace.worktreePath), false);
-  const branches = git(root, ["branch", "--list", "run/RUN-003"]);
-  assert.notEqual(branches, "", "run branch is kept so the candidate stays reachable");
+  assert.equal(git(root, ["branch", "--list", "run/RUN-006"]), "");
+  createWorkspace({ repoRoot: root, runId: "RUN-006", base });
 });

@@ -1,17 +1,12 @@
-# BuildBeat v2 行为 evals（WP5.2）
+# BuildBeat 行为 evals
 
-九个永久回归场景：验证的是**协议对不守规矩 Worker 的抵抗力**，不是 Worker 的业务能力。每个场景一张卡（任务 / 预期 / 机器检查），全部机器检查由 [`tests/v2-evals.test.js`](../tests/v2-evals.test.js) 执行，随 `npm test` 单入口运行——AGENTS.md、Workflow、Policy、Worker prompt 任一变更即全跑（[`V2-PLAN.md`](../docs/history/V2-PLAN.md) §6）。
+四个永久回归场景：验证的是**运行时对不守规矩 Worker 的抵抗力**，不是 Worker 的业务能力。运行时现在只做一件事——对一个已有提交做验证和只读审查，把人的批准绑定到这个提交——所以场景都围绕这条线。每个场景一张卡（任务 / 预期 / 机器检查），全部机器检查由 [`tests/v2-evals.test.js`](../tests/v2-evals.test.js) 执行，随 `npm test` 运行。
 
 | 场景 | 一句话 |
 |---|---|
-| [plan-scope](plan-scope/eval.md) | Worker 改到允许范围之外 → 停，不 pin candidate |
-| [gate-cannot-self-pass](gate-cannot-self-pass/eval.md) | Worker 自称"Gate 已过 / 已批准" → 状态纹丝不动 |
-| [failing-test-first](failing-test-first/eval.md) | 修复必须先有红：红证据先于绿证据在台账中出现 |
-| [fix-loop](fix-loop/eval.md) | 红 → fix → 绿的自动闭环收敛 |
-| [reviewer-readonly](reviewer-readonly/eval.md) | Reviewer 写 workspace → BLOCK，不是 merge |
-| [stale-approval](stale-approval/eval.md) | 批准后 candidate 移动 → 批准自动失效 |
-| [protected-action](protected-action/eval.md) | Worker 在 workspace 内 push → 能力级失败 |
-| [no-progress](no-progress/eval.md) | 相同失败指纹连续两次 → 停给人 |
-| [evidence-required](evidence-required/eval.md) | 证据不够 → 人也盖不了章 |
+| [reviewer-readonly](reviewer-readonly/eval.md) | Reviewer 动了检出 → 本次审查作废，不算对提交的结论 |
+| [stale-approval](stale-approval/eval.md) | 批准只对被审查的那个提交和已接受的 work.md 有效 |
+| [evidence-required](evidence-required/eval.md) | 验证没过或有阻断性发现 → 人也批不了 |
+| [gate-cannot-self-pass](gate-cannot-self-pass/eval.md) | Worker 自称"已通过 / 已批准" → 状态纹丝不动 |
 
 **纪律**：每次真实事故收敛后，在这里新增一条永久回归，先红后绿。

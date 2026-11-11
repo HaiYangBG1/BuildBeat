@@ -4,6 +4,10 @@
 # CI. Written for bash 3.2: no associative arrays, no mapfile.
 set -uo pipefail
 
+# The suite may itself run as a verifier of a BuildBeat review: what that
+# review handed its worker must not reach the workers under test.
+unset BUILDBEAT_OUTPUT BUILDBEAT_PROMPT BUILDBEAT_INPUT
+
 REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORKER="$REPO_ROOT/templates/v2/envelope/worker.sh"
 # The shell that runs worker.sh (run configs invoke it as `bash worker.sh`).
@@ -21,12 +25,6 @@ check() { if [ "$2" = "$3" ]; then ok "$1"; else not_ok "$1 (expected [$3], got 
 # Stub tools on PATH. The prompt arrives as the last argument.
 BIN="$TMP_ROOT/bin"
 mkdir -p "$BIN"
-cat > "$BIN/stub-write" <<'STUB'
-#!/usr/bin/env bash
-for last in "$@"; do :; done
-printf '%s' "${last:-}" > made-by-stub.txt
-exit "${STUB_EXIT:-0}"
-STUB
 cat > "$BIN/stub-echo" <<'STUB'
 #!/usr/bin/env bash
 for last in "$@"; do :; done
@@ -58,42 +56,22 @@ run_worker() {
 
 PROMPT="$TMP_ROOT/prompt.md"
 printf 'do the thing' > "$PROMPT"
-export BUILDBEAT_INPUT='{"workId":"WORK-T","runId":"RUN-T-01","step":"build","attempt":2}'
+export BUILDBEAT_INPUT='{"workId":"WORK-T","runId":"RUN-T-01","step":"review","attempt":1}'
 
 repo=$(new_repo usage)
 check "no arguments is a usage error (64)" "$(run_worker "$repo")" 64
-check "a role without a tool is a usage error (64)" "$(run_worker "$repo" builder)" 64
-check "a tool missing from PATH is an infrastructure exit (75)" "$(run_worker "$repo" builder -- no-such-tool-for-buildbeat)" 75
+check "a role without a tool is a usage error (64)" "$(run_worker "$repo" reviewer)" 64
+check "a tool missing from PATH is an infrastructure exit (75)" "$(run_worker "$repo" reviewer -- no-such-tool-for-buildbeat)" 75
 check "an unknown role is a usage error (64)" "$(run_worker "$repo" painter -- true)" 64
-
-repo=$(new_repo builder)
-status=$(BUILDBEAT_PROMPT="$PROMPT" run_worker "$repo" builder -- stub-write)
-check "builder exits with the tool's status" "$status" 0
-check "the prompt is passed as the last argument" "$(cat "$repo/made-by-stub.txt")" "do the thing"
-check "builder commits its changes mechanically" "$(git -C "$repo" log -1 --format=%s)" "builder: RUN-T-01 attempt 2"
-check "builder's commit names its work in a Work: trailer" "$(git -C "$repo" log -1 --format=%B | grep -c '^Work: WORK-T$')" 1
-check "builder leaves a clean worktree" "$(git -C "$repo" status --porcelain)" ""
-
-repo=$(new_repo no-work)
-BUILDBEAT_INPUT='{"runId":"RUN-T-01","step":"build","attempt":1}' run_worker "$repo" builder -- stub-write > /dev/null
-check "without a work id the commit has no Work: trailer" "$(git -C "$repo" log -1 --format=%B | grep -c '^Work:')" 0
-
-repo=$(new_repo fixer)
-status=$(STUB_EXIT=3 BUILDBEAT_PROMPT="$PROMPT" run_worker "$repo" fixer -- stub-write)
-check "fixer passes a failing tool status through" "$status" 3
-check "fixer still commits what the tool changed" "$(git -C "$repo" log -1 --format=%s)" "fixer: RUN-T-01 attempt 2"
-
-repo=$(new_repo quiet)
-before=$(git -C "$repo" rev-parse HEAD)
-check "a writing step with no changes exits 0" "$(run_worker "$repo" builder -- true)" 0
-check "a writing step with no changes makes no commit" "$(git -C "$repo" rev-parse HEAD)" "$before"
+check "the writing roles of earlier versions are usage errors (64)" "$(run_worker "$repo" builder -- true)$(run_worker "$repo" fixer -- true)" 6464
 
 repo=$(new_repo reviewer)
 output="$TMP_ROOT/review.json"
 status=$(BUILDBEAT_OUTPUT="$output" BUILDBEAT_PROMPT="$PROMPT" run_worker "$repo" reviewer -- stub-echo)
 check "reviewer exits with the tool's status" "$status" 0
-check "reviewer captures the tool's stdout as its output" "$(cat "$output")" "REVIEW: do the thing"
+check "the prompt is passed as the last argument, and the tool's stdout becomes the output" "$(cat "$output")" "REVIEW: do the thing"
 check "reviewer makes no commit" "$(git -C "$repo" log --format=%s | wc -l | tr -d ' ')" 1
+check "reviewer leaves the checkout as it found it" "$(git -C "$repo" status --porcelain)" ""
 
 rm -f "$output"
 status=$(STUB_EXIT=5 BUILDBEAT_OUTPUT="$output" run_worker "$repo" reviewer -- stub-echo)
@@ -102,6 +80,10 @@ check "reviewer passes a failing tool status through" "$status" 5
 rm -f "$output"
 BUILDBEAT_OUTPUT="$output" run_worker "$repo" reviewer -- stub-selfwrite > /dev/null
 check "reviewer keeps an output the tool wrote itself" "$(cat "$output")" '{"self":true}'
+
+status=$(STUB_EXIT=7 run_worker "$repo" reviewer -- stub-echo)
+check "without an output path the tool still runs and its status passes through" "$status" 7
+check "without a prompt file nothing is appended" "$(cat "$TMP_ROOT/out.txt")" "REVIEW: "
 
 if cmp -s "$WORKER" "$REPO_ROOT/example/delivery/envelope/worker.sh"; then
   ok "the example project's worker.sh is the template, byte for byte"

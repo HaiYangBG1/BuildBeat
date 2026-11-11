@@ -1,17 +1,20 @@
+// The checks an approval must pass (src/v2/policy/policy.js): the work's
+// description is accepted at its current bytes, verify passed on the commit
+// being approved, and that commit's review has no undismissed finding above
+// the floor.
+
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import {
-  artifactAccepted,
-  deliveryChecks,
-  evaluatePolicies,
   evidencePresent,
+  mergeChecks,
   reviewClear,
   sha256Text,
-  PolicyError,
+  workAccepted,
 } from "../src/v2/policy/policy.js";
-import { acceptArtifact } from "../src/v2/runtime/decisions.js";
+import { acceptWork } from "../src/v2/runtime/decisions.js";
 import { fingerprintFinding } from "../src/v2/runtime/findings.js";
 import { tempDir } from "./support/tmp.js";
 function ctx(extra = {}) {
@@ -27,16 +30,16 @@ test("fixed work acceptance binds the digest and becomes stale after edits", () 
   const workDir = join(repo, "delivery", "work", "W");
   mkdirSync(workDir, { recursive: true });
   const c = ctx({ workDir });
-  assert.equal(artifactAccepted("work", c).ok, "unverified");
+  assert.equal(workAccepted(c).ok, "unverified");
   writeFileSync(join(workDir, "work.md"), "goal and plan");
-  assert.equal(artifactAccepted("work", c).ok, false);
+  assert.equal(workAccepted(c).ok, false);
   assert.equal(
-    acceptArtifact(repo, "W", "work", { by: "owner" }).digest,
+    acceptWork(repo, "W", { by: "owner" }).digest,
     sha256Text("goal and plan"),
   );
-  assert.equal(artifactAccepted("work", c).ok, true);
+  assert.equal(workAccepted(c).ok, true);
   writeFileSync(join(workDir, "work.md"), "changed scope");
-  assert.equal(artifactAccepted("work", c).ok, false);
+  assert.equal(workAccepted(c).ok, false);
 });
 test("command evidence must be passed, correctly graded and for the current candidate", () => {
   const c = ctx({
@@ -58,7 +61,7 @@ test("command evidence must be passed, correctly graded and for the current cand
   assert.equal(evidencePresent({ minGrade: "L3" }, c).ok, false);
   assert.equal(evidencePresent({ minGrade: "bad" }, c).ok, "unverified");
 });
-test("the final floor requires verifier evidence and independent review, not only a successful builder", () => {
+test("the final floor requires verifier evidence and independent review, not only another command that passed", () => {
   const c = ctx({
     state: {
       evidence: [
@@ -72,13 +75,12 @@ test("the final floor requires verifier evidence and independent review, not onl
       ],
     },
   });
-  const gates = deliveryChecks({ requireAcceptance: false });
-  const evaluate = () =>
-    evaluatePolicies(
-      gates,
-      { type: "transition", appliesTo: "enter-wait-merge" },
-      c,
-    )[0];
+  const evaluate = () => {
+    const rows = mergeChecks({ requireAcceptance: false }, c);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].policy, "merge-evidence-floor");
+    return rows[0];
+  };
   assert.notEqual(evaluate().result, "PASS");
   c.state.evidence.push({
     kind: "command",
@@ -114,17 +116,6 @@ test("superseded candidate findings cannot poison the current review; missing re
   );
   assert.equal(reviewClear("P2", c).ok, true);
   assert.equal(reviewClear("P3", c).ok, false);
-});
-test("unrecognized custom rules are refused rather than ignored", () => {
-  assert.throws(
-    () =>
-      evaluatePolicies(
-        [{ type: "pre", appliesTo: "build", rule: { all: [] } }],
-        { type: "pre", appliesTo: "build" },
-        ctx(),
-      ),
-    PolicyError,
-  );
 });
 
 test("a newer accept reopens a previously suppressed finding", () => {

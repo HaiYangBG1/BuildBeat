@@ -1,16 +1,19 @@
+// What outlived the "fix" and "adopt" answers to the merge decision this file
+// was written for (both are gone: a repair is the next commit, reviewed as a
+// new run):
+// 1. Fixtures, the runtime and shell workers are not affected by the host's
+//    Git configuration.
+// 2. Records an earlier version wrote for a repair handed in with --adopt
+//    still read as a hand-in, not as a merge approval.
+
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test, { beforeEach, afterEach } from "node:test";
-import { createMockAdapter } from "../src/v2/adapters/mock.js";
-import { deliveryWorkflow, DELIVERY_TEXT } from "../src/v2/engine/workflow.js";
-import { sha256Text } from "../src/v2/policy/policy.js";
-import { adoptCandidate, approveRun, requestFix } from "../src/v2/runtime/decisions.js";
-import { readFindingsAccount } from "../src/v2/runtime/findings.js";
-import { nextReply, buildNotification } from "../src/v2/runtime/notify.js";
-import { resumeRun, startRun } from "../src/v2/runtime/orchestrator.js";
+import { approveReview } from "../src/v2/runtime/decisions.js";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
+import { cli, commit, decide, fixture, record, review, reviewWith, yaml } from "./support/review.js";
 import { tempDir } from "./support/tmp.js";
 
 // Runtime Git calls inherit this process; CLI children inherit it too. Workers
@@ -29,355 +32,48 @@ afterEach(() => {
   Object.assign(process.env, savedGitEnvironment);
 });
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
-const git = (cwd, ...args) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
-const clean = () => ({ behavior: "succeed", envelope: { status: "succeeded", findings: [] } });
-
-function fixture({ fixer = true, legacy = false, rounds = 6, entry = "build", buildCommit = true, allowedPaths = ["feature.txt"], baseline = {} } = {}) {
-  const root = tempDir("bb-final-fix-");
-  git(root, "init", "-q", "-b", "main");
-  git(root, "config", "user.name", "Test");
-  git(root, "config", "user.email", "test@example.com");
-  git(root, "config", "commit.gpgSign", "false");
-  git(root, "config", "core.hooksPath", "/dev/null");
-  writeFileSync(join(root, "feature.txt"), "baseline\n");
-  for (const [path, text] of Object.entries(baseline)) {
-    mkdirSync(join(root, path, ".."), { recursive: true });
-    writeFileSync(join(root, path), text);
-  }
-  git(root, "add", ".");
-  git(root, "commit", "-qm", "baseline");
-  const worktree = join(root, ".buildbeat", "worktrees", "RUN-F");
-  const inputs = [];
-  const scripted = createMockAdapter({ build: ["succeed"], verify: Array(6).fill("succeed"), review: Array.from({ length: 6 }, clean), fix: Array(6).fill("succeed") });
-  const adapter = {
-    name: "fixture",
-    execute(context) {
-      inputs.push(structuredClone(context.input));
-      if (context.step === "fix" || (context.step === "build" && buildCommit)) commit(`${context.step} ${inputs.length}\n`);
-      return scripted.execute(context);
-    },
-  };
-  function commit(content, path = "feature.txt") {
-    writeFileSync(join(worktree, path), content);
-    git(worktree, "add", path);
-    git(worktree, "commit", "-qm", "repair");
-    return git(worktree, "rev-parse", "HEAD");
-  }
-  const options = {
-    repoRoot: root, workId: "WORK-F", runId: "RUN-F", entry, workflow: deliveryWorkflow(),
-    workflowDigest: sha256Text(DELIVERY_TEXT), allowedPaths,
-    budgets: { reviewRoundsPerWork: rounds },
-    ...(!legacy ? { deliveryChecks: { artifact: "work", requireAcceptance: false } } : {}),
-    adapters: { builder: adapter, verifier: adapter, reviewer: adapter, ...(fixer ? { fixer: adapter } : {}) },
-  };
-  startRun(options);
-  const ledger = () => EventLedger.open(join(root, ".buildbeat/runtime/runs/RUN-F/events.jsonl"));
-  assert.equal(ledger().state.pendingHuman.kind, "final-decision");
-  const adopt = (sha) => adoptCandidate(root, "RUN-F", { sha, by: "owner", resumeAt: "verify" });
-  const approve = (candidate) => approveRun(root, "RUN-F", { by: "owner", transition: "enter-wait-merge", candidate });
-  return { root, worktree, options, ledger, inputs, commit, adopt, approve };
-}
-
-test("final adopt keeps evidence, verifies and incrementally reviews the new candidate; stale approvals fail", () => {
-  const f = fixture();
-  const before = f.ledger().state;
-  const old = before.pendingHuman.subject.candidate;
-  const sha = f.commit("manual repair\n");
-  f.adopt(sha.slice(0, 7));
-  assert.equal(f.ledger().state.pendingHuman, null);
-  assert.throws(() => f.approve(old), /no pending human/);
-  const { state } = resumeRun(f.options);
-  assert.equal(state.steps.build.attempts, 1);
-  assert.equal(state.steps.fix, undefined);
-  assert.equal(state.steps.verify.attempts, 2);
-  assert.equal(state.steps.review.attempts, 2);
-  assert.equal(state.pendingHuman.subject.candidate, sha);
-  assert.deepEqual(state.evidence.slice(0, before.evidence.length), before.evidence);
-  assert.equal(f.ledger().events.filter((e) => e.type === "BUDGET_EXTENDED").length, 0);
-  const review = f.inputs.filter((input) => input.step === "review").at(-1);
-  assert.ok(JSON.stringify(review.lastReviewed).includes(old), "incremental review names the previous candidate");
-  assert.throws(() => f.approve(old), /approval stale/);
-  assert.throws(() => f.approve(), /approval stale/);
-  assert.equal(f.approve(sha).terminal, true);
-  assert.equal(f.ledger().state.terminal.status, "SUCCEEDED");
-  assert.throws(() => f.adopt(sha), /already terminal/);
+test("the runtime reviews a commit and records its approval", () => {
+  const { root, work } = fixture();
+  const sha = commit(root, "add the feature", { "src/feature.txt": "hello\n" });
+  const reviewed = reviewWith(root, work);
+  assert.equal(reviewed.candidate, sha);
+  assert.equal(reviewed.state.pendingHuman.kind, "final-decision");
+  const approved = approveReview(root, work, { candidate: sha, by: "owner", as: "human" });
+  assert.equal(approved.state.terminal.status, "SUCCEEDED");
+  assert.equal(record(root, work, "RUN-A-01").workspaces["RUN-A-01"].candidate, sha);
 });
 
-for (const scenario of ["dirty", "non-descendant", "scope", "same-head", "wrong-head"]) {
-  test(`final adopt refuses ${scenario} without answering the request or pinning a candidate`, () => {
-    const f = fixture();
-    const before = f.ledger().events.length;
-    let sha = f.ledger().state.pendingHuman.subject.candidate;
-    let pattern;
-    if (scenario === "dirty") {
-      writeFileSync(join(f.worktree, "feature.txt"), "dirty\n"); pattern = /dirty/;
-    } else if (scenario === "non-descendant") {
-      git(f.worktree, "reset", "--hard", f.ledger().state.run.base);
-      sha = f.commit("different history\n"); pattern = /descendant/;
-    } else if (scenario === "scope") {
-      sha = f.commit("outside\n", "outside.txt"); pattern = /out-of-scope/;
-    } else if (scenario === "same-head") pattern = /descendant/;
-    else { sha = "0000000"; pattern = /not 0000000/; }
-    assert.throws(() => f.adopt(sha), pattern);
-    assert.equal(f.ledger().events.length, before);
+// The verifier commits in a repository of its own: a commit is what a signing
+// program or a hook of the host would break.
+const VERIFY_WITH_GIT = [
+  "#!/bin/sh",
+  "set -eu",
+  "test -f src/feature.txt",
+  'scratch=$(mktemp -d)',
+  'git init -q "$scratch"',
+  'git -C "$scratch" -c user.name=Worker -c user.email=worker@example.com commit -q --allow-empty -m probe',
+  'rm -rf "$scratch"',
+  "",
+].join("\n");
+
+test("the CLI reviews a commit with shell workers that use Git", () => {
+  const env = Object.entries(gitEnvironment).map(([key, value]) => `      ${key}: "${value}"`);
+  const { root, work } = fixture({
+    workConfig: yaml([
+      "workers:",
+      "  verifier:", "    command: sh", "    env:", ...env, "    args:", "      - tools/verify.sh",
+      "  reviewer:", "    command: sh", "    env:", ...env, "    args:", "      - tools/reviewer.sh",
+    ]),
   });
-}
-
-// WORK-SCOPE-RENAMES: a move counts on both sides, so a file moved in from
-// outside the scope is refused by the path it left.
-test("final adopt refuses a file moved in from outside the scope, naming the path it left", () => {
-  const f = fixture({ allowedPaths: ["feature.txt", "src"], baseline: { "secret/x.txt": "secret\n" } });
-  const before = f.ledger().events.length;
-  mkdirSync(join(f.worktree, "src"), { recursive: true });
-  git(f.worktree, "mv", "secret/x.txt", "src/x.txt");
-  git(f.worktree, "commit", "-qm", "move in");
-  const sha = git(f.worktree, "rev-parse", "HEAD");
-  assert.throws(() => f.adopt(sha), { message: "out-of-scope changes: secret/x.txt" });
-  assert.equal(f.ledger().events.length, before);
-});
-
-test("human fix records an accepted P1, feeds its complete reason to fixer and returns through verify/review", () => {
-  const f = fixture();
-  const before = f.ledger().state;
-  const reason = `Repair the missing case: ${"long detail ".repeat(40)}`.trim();
-  const result = requestFix(f.root, "RUN-F", { reason, by: "owner" });
-  const decision = f.ledger().events.at(-1).data;
-  assert.equal(decision.decision, "fix");
-  assert.equal(decision.reason, reason);
-  assert.equal(decision.resumeAt, "fix");
-  assert.deepEqual(result.state.steps, before.steps);
-  const rows = readFindingsAccount(f.root, "WORK-F");
-  assert.equal(rows[0].severity, "P1");
-  assert.equal(rows[0].summary, reason);
-  assert.equal(rows[1].action, "accept");
-  const state = resumeRun(f.options).state;
-  const input = f.inputs.find((item) => item.step === "fix");
-  assert.deepEqual(input.findings.map((item) => [item.summary, item.adjudication]), [[reason, "accept"]]);
-  assert.equal(state.steps.fix.attempts, 1);
-  assert.equal(state.steps.verify.attempts, 2);
-  assert.equal(state.steps.review.attempts, 2);
-  assert.equal(state.pendingHuman.kind, "final-decision");
-  assert.notEqual(state.pendingHuman.subject.candidate, before.pendingHuman.subject.candidate);
-  assert.equal(f.ledger().events.filter((e) => e.type === "BUDGET_EXTENDED").length, 0);
-  const decisions = readFileSync(join(f.root, "delivery/work/WORK-F/decisions.jsonl"), "utf8");
-  assert.equal(JSON.parse(decisions.trim()).decision, "fix");
-});
-
-test("fix refusal covers missing fixer, empty reason, changed tree, non-final wait and 3.x", () => {
-  const missing = fixture({ fixer: false });
-  assert.throws(() => requestFix(missing.root, "RUN-F", { reason: "repair" }), /no fixer.*--adopt/);
-  const f = fixture();
-  assert.throws(() => requestFix(f.root, "RUN-F", { reason: "  " }), /non-empty reason/);
-  writeFileSync(join(f.worktree, "feature.txt"), "dirty");
-  assert.throws(() => requestFix(f.root, "RUN-F", { reason: "repair" }), /worktree changed/);
-  const ledger = f.ledger();
-  ledger.append({ type: "HUMAN_REQUESTED", actor: { kind: "kernel", id: "test" }, data: {
-    transition: "enter-fix", kind: "boundary", subject: ledger.state.pendingHuman.subject, reasons: [],
-  } });
-  assert.throws(() => requestFix(f.root, "RUN-F", { reason: "repair" }), /only available at the merge decision/);
-  const old = fixture({ legacy: true });
-  assert.throws(() => requestFix(old.root, "RUN-F", { reason: "repair" }), /legacy active run/);
-  const sha = old.commit("hand repair\n");
-  assert.throws(() => old.adopt(sha), /legacy active run/);
-});
-
-test("returning for repair does not extend an exhausted work review budget", () => {
-  const f = fixture({ rounds: 1 });
-  requestFix(f.root, "RUN-F", { reason: "repair" });
-  const state = resumeRun(f.options).state;
-  assert.equal(state.steps.fix.attempts, 1);
-  assert.equal(state.steps.review.attempts, 1);
-  assert.equal(state.pendingHuman.kind, "work-review-cap");
-  assert.equal(f.ledger().events.filter((e) => e.type === "BUDGET_EXTENDED").length, 0);
-});
-
-test("status, inbox and notifications show manual repair and configured fixer commands; CLI fix records a decision", () => {
-  const f = fixture();
-  const state = f.ledger().state;
-  const replies = nextReply({ repoLabel: ".", state });
-  assert.ok(replies.some((line) => /--adopt <sha>/.test(line)));
-  assert.ok(replies.some((line) => /--action fix --reason/.test(line)));
-  assert.deepEqual(buildNotification("HUMAN_REQUESTED", { repoLabel: ".", state }).nextReply, replies);
-  for (const command of ["status", "inbox"]) {
-    const output = execFileSync(process.execPath, [CLI, command, "--repo", f.root, ...(command === "status" ? ["--run", "RUN-F"] : [])], { encoding: "utf8" });
-    assert.match(output, /--adopt <sha>/);
-    assert.match(output, /--action fix --reason/);
-  }
-  const cli = spawnSync(process.execPath, [CLI, "decide", "--repo", f.root, "--run", "RUN-F", "--action", "fix", "--reason", "CLI repair", "--by", "owner"], { encoding: "utf8" });
-  assert.equal(cli.status, 0, cli.stderr);
-  assert.equal(f.ledger().events.at(-1).data.reason, "CLI repair");
-  const missing = fixture({ fixer: false });
-  assert.ok(nextReply({ repoLabel: ".", state: missing.ledger().state }).every((line) => !line.includes("--action fix")));
-  const old = fixture({ legacy: true });
-  assert.ok(nextReply({ repoLabel: ".", state: old.ledger().state }).every((line) => !line.includes("--adopt") && !line.includes("--action fix")));
-});
-
-function cliFixture({ old = false } = {}) {
-  const root = tempDir("bb-final-cli-");
-  git(root, "init", "-q", "-b", "main");
-  git(root, "config", "user.name", "Test");
-  git(root, "config", "user.email", "test@example.com");
-  git(root, "config", "commit.gpgSign", "false");
-  git(root, "config", "core.hooksPath", "/dev/null");
-  const dir = join(root, "delivery/work/WORK-C");
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "work.md"), "# Confirmed work\nRepair feature.txt.\n");
-  writeFileSync(join(root, "worker.sh"), `#!/bin/sh
-set -eu
-case "$1" in
- build|fix) echo "$1" > feature.txt; git add feature.txt; git commit -qm "$1" ;;
- verify) test -f feature.txt ;;
- review) printf '%s\\n' '{"status":"succeeded","findings":[]}' > "$BUILDBEAT_OUTPUT" ;;
-esac
-`);
-  const config = join(dir, "run-config.yaml");
-  writeFileSync(config, ["repo: ../../..", "work: WORK-C", "run: RUN-C", "allowedPaths:", "  - feature.txt", "workers:",
-    ...["builder", "verifier", "reviewer", "fixer"].flatMap((worker, index) => [
-      `  ${worker}:`, "    command: sh", "    env:",
-      ...Object.entries(gitEnvironment).map(([key, value]) => `      ${key}: "${value}"`), "    args:", "      - worker.sh", `      - ${["build", "verify", "review", "fix"][index]}`,
-    ]), ""].join("\n"));
-  git(root, "add", ".");
-  git(root, "commit", "-qm", "fixture");
-  const call = (...args) => spawnSync(process.execPath, [CLI, ...args], { cwd: root, encoding: "utf8" });
-  const ok = (...args) => {
-    const result = call(...args);
-    assert.equal(result.status, 0, result.stderr + result.stdout);
-    return result.stdout;
-  };
-  ok("accept", "--repo", ".", "--work", "WORK-C");
-  ok("run", "--config", config);
-  const path = join(root, ".buildbeat/runtime/runs/RUN-C-01/events.jsonl");
-  if (old) {
-    const events = EventLedger.open(path).events;
-    rmSync(path);
-    const replacement = EventLedger.open(path);
-    for (const { type, actor, ts, run, work, data } of events) {
-      const copy = structuredClone(data);
-      if (type === "RUN_CREATED") delete copy.repair;
-      replacement.append({ type, actor, ts, run, work, data: copy });
-    }
-  }
-  return { root, config, call, ok, state: () => EventLedger.open(path).state,
-    worktree: join(root, ".buildbeat/worktrees/RUN-C-01") };
-}
-
-// Split a displayed reply the way sh does for the forms the CLI prints (bare
-// words, single-quoted words, backslash escapes, a trailing # comment), then
-// run it without a shell, substituting only the CLI executable and the
-// documented human-name placeholder.
-function replyArgv(reply) {
-  const args = [];
-  let word = null;
-  let quoted = false;
-  for (let i = 0; i < reply.length; i++) {
-    const c = reply[i];
-    if (quoted) {
-      if (c === "'") quoted = false;
-      else word += c;
-    } else if (c === "'") {
-      quoted = true;
-      word ??= "";
-    } else if (c === "\\" && i + 1 < reply.length) {
-      word = (word ?? "") + reply[++i];
-    } else if (c === "#" && word === null) {
-      break;
-    } else if (/\s/.test(c)) {
-      if (word !== null) args.push(word);
-      word = null;
-    } else {
-      word = (word ?? "") + c;
-    }
-  }
-  assert.equal(quoted, false, `unterminated quote in ${reply}`);
-  if (word !== null) args.push(word);
-  return args;
-}
-function runReply(f, reply) {
-  const [command, ...args] = replyArgv(reply.replaceAll("<you>", "owner"));
-  assert.equal(command, "buildbeat", reply);
-  return spawnSync(process.execPath, [CLI, ...args], { cwd: f.root, encoding: "utf8" });
-}
-function displayedApproval(f) {
-  const output = f.ok("status", "--repo", ".", "--run", "RUN-C-01");
-  const reply = output.split("\n").find((line) => line.includes("buildbeat decide --action approve"));
-  assert.ok(reply, output);
-  return reply.slice(reply.indexOf("buildbeat"));
-}
-
-for (const old of [false, true]) {
-  for (const route of ["fix", "adopt"]) {
-    test(`CLI ${route} approves the refreshed reply on ${old ? "existing 4.x" : "new"} runs`, () => {
-      const f = cliFixture({ old });
-      const oldReply = displayedApproval(f);
-      assert.match(f.ok("inbox", "--repo", "."), /--action fix --reason/);
-      if (route === "fix") {
-        f.ok("decide", "--repo", ".", "--run", "RUN-C-01", "--action", "fix", "--reason", "Repair feature", "--by", "owner");
-        f.ok("run", "--config", f.config, "--run", "RUN-C-01");
-      } else {
-        writeFileSync(join(f.worktree, "feature.txt"), "manual\n");
-        git(f.worktree, "add", "feature.txt");
-        git(f.worktree, "commit", "-qm", "manual");
-        f.ok("run", "--config", f.config, "--run", "RUN-C-01", "--adopt", git(f.worktree, "rev-parse", "HEAD"), "--by", "owner");
-      }
-      const state = f.state();
-      const sha = git(f.worktree, "rev-parse", "HEAD");
-      assert.equal(state.steps.build.attempts, 1);
-      assert.equal(state.steps.fix?.attempts ?? 0, route === "fix" ? 1 : 0);
-      assert.equal(state.steps.verify.attempts, 2);
-      assert.equal(state.steps.review.attempts, 2);
-      assert.equal(state.pendingHuman.subject.candidate, sha);
-      const reply = displayedApproval(f);
-      assert.ok(reply.includes(`--candidate ${sha}`));
-      assert.ok(f.ok("inbox", "--repo", ".").includes(`--candidate ${sha}`));
-      const notification = buildNotification("HUMAN_REQUESTED", { repoLabel: ".", state, repoRoot: f.root });
-      assert.ok(notification.nextReply.includes(reply));
-      const stale = runReply(f, oldReply);
-      assert.notEqual(stale.status, 0);
-      assert.match(stale.stderr, /approval stale/);
-      const unbound = runReply(f, reply.replace(` --candidate ${sha}`, ""));
-      assert.notEqual(unbound.status, 0);
-      assert.match(unbound.stderr, /approval stale/);
-      assert.equal(f.state().terminal, null);
-      const approved = runReply(f, reply);
-      assert.equal(approved.status, 0, approved.stderr + approved.stdout);
-      assert.equal(f.state().terminal.status, "SUCCEEDED");
-      assert.equal(f.state().decisions.at(-1).subject.candidate, sha);
-      const decisions = readFileSync(join(f.root, "delivery/work/WORK-C/decisions.jsonl"), "utf8").trim().split("\n").map(JSON.parse);
-      assert.equal(decisions.at(-1).subject.candidate, sha);
-    });
-  }
-}
-
-for (const setup of [{ entry: "verify" }, { buildCommit: false }]) {
-  for (const route of ["adopt", "fix"]) {
-    test(`base-only ${JSON.stringify(setup)} accepts ${route} and rechecks the candidate`, () => {
-      const f = fixture(setup);
-      const initial = f.ledger().state;
-      assert.equal(initial.workspaces["RUN-F"].candidate, null);
-      assert.equal(initial.pendingHuman.subject.candidate, initial.workspaces["RUN-F"].base);
-      if (route === "adopt") f.adopt(f.commit("manual base repair\n"));
-      else requestFix(f.root, "RUN-F", { reason: "repair base" });
-      const state = resumeRun(f.options).state;
-      assert.equal(state.pendingHuman.kind, "final-decision");
-      assert.equal(state.steps.verify.attempts, 2);
-      assert.equal(state.steps.review.attempts, 2);
-      assert.notEqual(state.pendingHuman.subject.candidate, initial.pendingHuman.subject.candidate);
-      assert.equal(f.approve(state.pendingHuman.subject.candidate).terminal, true);
-    });
-  }
-}
-
-test("base-only fix still rejects a mismatched pending subject", () => {
-  const f = fixture({ entry: "verify" });
-  const ledger = f.ledger();
-  const pending = ledger.state.pendingHuman;
-  ledger.append({ type: "HUMAN_REQUESTED", actor: { kind: "kernel", id: "test" }, data: {
-    ...pending, subject: { ...pending.subject, candidate: "0".repeat(40) },
-  } });
-  const before = f.ledger().events.length;
-  assert.throws(() => requestFix(f.root, "RUN-F", { reason: "repair" }), /worktree changed/);
-  assert.equal(f.ledger().events.length, before);
+  const sha = commit(root, "add the feature", { "src/feature.txt": "hello\n", "tools/verify.sh": VERIFY_WITH_GIT });
+  const reviewed = review(root, work);
+  assert.equal(reviewed.status, 0, reviewed.all);
+  assert.match(reviewed.out, /step verify: SUCCEEDED \(attempts 1\)/);
+  assert.match(reviewed.out, /step review: SUCCEEDED \(attempts 1\)/);
+  assert.match(reviewed.out, /status: WAITING_HUMAN/);
+  const approved = decide(root, work, ["--action", "approve", "--candidate", sha]);
+  assert.equal(approved.status, 0, approved.all);
+  assert.equal(record(root, work, "RUN-A-01").terminal.status, "SUCCEEDED");
 });
 
 test("fixtures, runtime and shell workers ignore hostile host Git configuration", () => {
@@ -391,77 +87,108 @@ test("fixtures, runtime and shell workers ignore hostile host Git configuration"
   // A nested test runner must not inherit Node's child-runner protocol.
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
-  const result = spawnSync(process.execPath, ["--test", "--test-reporter=tap", "--test-name-pattern", "^(final adopt keeps|CLI fix approves the refreshed reply on new runs)", import.meta.filename], {
+  const result = spawnSync(process.execPath, ["--test", "--test-reporter=tap", "--test-name-pattern", "^(the runtime reviews a commit and records its approval|the CLI reviews a commit with shell workers that use Git)$", import.meta.filename], {
     encoding: "utf8", env: { ...env, GIT_CONFIG_GLOBAL: config, GIT_CONFIG_SYSTEM: config,
       GIT_CONFIG_NOSYSTEM: "0", GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "commit.gpgSign", GIT_CONFIG_VALUE_0: "true" },
   });
   assert.equal(result.status, 0, result.stderr + result.stdout);
-  assert.match(result.stdout, /# pass 2\b/, "both runtime and CLI fixture regressions must actually run");
+  assert.match(result.stdout, /# pass 2\b/, "both the runtime and the CLI test must actually run");
   assert.equal(existsSync(marker), false, "host hooks must never execute");
 });
 
-// A hand repair adopted at the merge decision answers the request as an
-// approved enter-wait-merge carrying `adopted`; it approves no merge
+// A hand repair adopted at the merge decision answered the request as an
+// approved enter-wait-merge carrying `adopted`; it approved no merge
 // (WORK-ADOPT-NOT-APPROVAL). Real cost behind it: status reported a merge
 // "approved by an AI session, not by a person" while the owner had not
-// decided yet.
+// decided yet. Nothing writes such a record any more; the ones in Git and in
+// old ledgers are still read.
 const SESSION = { kind: "agent", id: "claude-code", source: "env" };
+const KERNEL = { kind: "kernel", id: "orchestrator" };
+const OLD_RUN = "RUN-F";
+const HAND_IN = "D-RUN-F-1";
+
+// The ledger and the decision row an earlier version left: RUN-F waited at
+// the merge decision on `first`, a session handed in `sha` with --adopt, and
+// the run waits again on `sha`.
+function oldHandIn(root, work, base, first, sha) {
+  const ledger = EventLedger.open(join(root, ".buildbeat", "runtime", "runs", OLD_RUN, "events.jsonl"));
+  const subject = (candidate) => ({ candidate, planDigest: "UNVERIFIED", evidenceDigest: "UNVERIFIED" });
+  const waiting = (candidate) => ({ transition: "enter-wait-merge", kind: "final-decision", subject: subject(candidate), reasons: ["verified and reviewed"] });
+  const events = [
+    ["RUN_CREATED", KERNEL, { workflowRef: "software-delivery", workflowDigest: "sha256:old", base, riskPreset: "standard", deliveryChecks: { artifact: "work", requireAcceptance: false } }],
+    ["RUN_STARTED", KERNEL, {}],
+    ["WORKSPACE_BOUND", KERNEL, { workspaceId: OLD_RUN, repo: ".", branch: `run/${OLD_RUN}`, worktreePath: `.buildbeat/worktrees/${OLD_RUN}`, base }],
+    ["CANDIDATE_PINNED", KERNEL, { workspaceId: OLD_RUN, base, candidate: first }],
+    ["HUMAN_REQUESTED", KERNEL, waiting(first)],
+    ["DECISION_RECORDED", SESSION, { decision: "approved", transition: "enter-wait-merge", subject: subject(first), decisionRef: HAND_IN, adopted: sha, resumeAt: "verify" }],
+    ["RUN_STARTED", KERNEL, {}],
+    ["CANDIDATE_PINNED", KERNEL, { workspaceId: OLD_RUN, base, candidate: sha }],
+    ["HUMAN_REQUESTED", KERNEL, waiting(sha)],
+  ];
+  for (const [type, actor, data] of events) {
+    ledger.append({ type, actor, data, run: OLD_RUN, work });
+  }
+  // The row carries the commit that reached the branch: read as an approval,
+  // it would name the session as the one who approved the merge.
+  appendFileSync(join(root, "delivery", "work", work, "decisions.jsonl"), `${JSON.stringify({
+    ts: "2026-10-01T00:00:00.000Z", run: OLD_RUN, decisionRef: HAND_IN, decision: "approved", transition: "enter-wait-merge",
+    subject: subject(sha), by: SESSION.id, actor: SESSION, adopted: sha, resumeAt: "verify",
+  })}\n`);
+}
+
+function handedIn() {
+  const { root, base, work } = fixture();
+  const first = commit(root, "add the feature", { "src/feature.txt": "helo\n" });
+  const sha = commit(root, "repair the text", { "src/feature.txt": "hello\n" });
+  oldHandIn(root, work, base, first, sha);
+  return { root, work, sha };
+}
+
 function statusOf(root, ...args) {
-  const out = spawnSync(process.execPath, [CLI, "status", "--repo", root, ...args], { encoding: "utf8" });
-  assert.equal(out.status, 0, out.stderr);
-  return out.stdout;
+  const out = cli(["status", "--repo", root, ...args]);
+  assert.equal(out.status, 0, out.err);
+  return out.out;
 }
-function adoptedBySession(f) {
-  const sha = f.commit("session repair\n");
-  adoptCandidate(f.root, "RUN-F", { sha, actor: SESSION, resumeAt: "verify" });
-  resumeRun(f.options);
-  const handIn = f.ledger().state.decisions.find((item) => item.adopted);
-  assert.equal(handIn.adopted, sha);
-  assert.equal(handIn.resumeAt, "verify");
-  return { sha, ref: handIn.decisionRef };
-}
+const history = (root, ...args) => cli(["history", "--repo", root, "--path", "src/feature.txt", ...args]).out;
 
 test("a repair adopted at the merge decision is shown as a hand-in, not as a merge approval", () => {
-  const f = fixture();
-  const { sha, ref } = adoptedBySession(f);
-  const views = [statusOf(f.root), statusOf(f.root, "--work", "WORK-F"), statusOf(f.root, "--run", "RUN-F")];
+  const { root, work, sha } = handedIn();
+  const views = [statusOf(root), statusOf(root, "--work", work), statusOf(root, "--run", OLD_RUN)];
   for (const view of views) assert.doesNotMatch(view, /merge approved by an AI session/);
-  const line = `${ref} enter-wait-merge approved by claude-code \\(AI session\\) — adopted ${sha.slice(0, 7)}, resumed at verify$`;
+  const line = `${HAND_IN} enter-wait-merge approved by claude-code \\(AI session\\) — adopted ${sha.slice(0, 7)}, resumed at verify$`;
   assert.match(views[2], new RegExp(`^decision ${line}`, "m"));
   assert.match(views[1], new RegExp(` ${line}`, "m"));
-  assert.equal(JSON.parse(statusOf(f.root, "--work", "WORK-F", "--json")).works[0].selfMergeApproval, undefined);
+  assert.equal(JSON.parse(statusOf(root, "--work", work, "--json")).works[0].selfMergeApproval, undefined);
 
-  // Merged by hand with only the hand-in on record: history --path names no
-  // approver (the hand-in carries the merged candidate, so taking it for an
-  // approval would name the session).
-  git(f.root, "merge", "-q", "--ff-only", sha);
-  const history = (json) => spawnSync(process.execPath, [CLI, "history", "--repo", f.root, "--path", "feature.txt", ...(json ? ["--json"] : [])], { encoding: "utf8" }).stdout;
-  assert.equal(JSON.parse(history(true)).works.find((item) => item.work === "WORK-F").approved, null);
-  assert.doesNotMatch(history(false), /^ {4}approved: /m);
+  // The repaired commit is on the branch with only the hand-in on record:
+  // history --path names no approver.
+  assert.equal(JSON.parse(history(root, "--json")).works.find((item) => item.work === work).approved, null);
+  assert.doesNotMatch(history(root), /^ {4}approved: /m);
 
   // The session approving the merge itself is still called out, by that
   // approval's reference.
-  const approval = approveRun(f.root, "RUN-F", { actor: SESSION, transition: "enter-wait-merge", candidate: sha });
-  assert.equal(approval.terminal, true);
-  const approved = f.ledger().state.decisions.at(-1).decisionRef;
-  assert.notEqual(approved, ref);
-  for (const view of [statusOf(f.root, "--work", "WORK-F"), statusOf(f.root, "--run", "RUN-F")]) {
+  const reviewed = reviewWith(root, work);
+  assert.deepEqual(reviewed.superseded, [OLD_RUN]);
+  const approval = approveReview(root, work, { actor: SESSION, candidate: sha });
+  assert.equal(approval.state.terminal.status, "SUCCEEDED");
+  const approved = approval.decisionRef;
+  assert.notEqual(approved, HAND_IN);
+  for (const view of [statusOf(root, "--work", work), statusOf(root, "--run", reviewed.runId)]) {
     assert.match(view, new RegExp(`note: merge approved by an AI session \\(claude-code, ${approved}\\), not by a person`));
   }
 
   // Once approved, history --path names that approval.
-  assert.equal(JSON.parse(history(true)).works.find((item) => item.work === "WORK-F").approved.decisionRef, approved);
-  assert.match(history(false), /^ {4}approved: \S+ by claude-code \(AI session\) \(RUN-F\)$/m);
+  assert.equal(JSON.parse(history(root, "--json")).works.find((item) => item.work === work).approved.decisionRef, approved);
+  assert.match(history(root), new RegExp(`^ {4}approved: \\S+ by claude-code \\(AI session\\) \\(${reviewed.runId}\\)$`, "m"));
 });
 
 test("after a hand-in, a person's merge approval leaves no AI-approval note", () => {
-  const f = fixture();
-  const { sha } = adoptedBySession(f);
-  approveRun(f.root, "RUN-F", { by: "owner", as: "human", transition: "enter-wait-merge", candidate: sha });
-  for (const view of [statusOf(f.root), statusOf(f.root, "--work", "WORK-F"), statusOf(f.root, "--run", "RUN-F")]) {
+  const { root, work, sha } = handedIn();
+  const reviewed = reviewWith(root, work);
+  approveReview(root, work, { by: "owner", as: "human", candidate: sha });
+  for (const view of [statusOf(root), statusOf(root, "--work", work), statusOf(root, "--run", reviewed.runId)]) {
     assert.doesNotMatch(view, /merge approved by an AI session/);
   }
-  git(f.root, "merge", "-q", "--ff-only", sha);
-  const trace = JSON.parse(spawnSync(process.execPath, [CLI, "history", "--repo", f.root, "--path", "feature.txt", "--json"], { encoding: "utf8" }).stdout);
-  assert.equal(trace.works.find((item) => item.work === "WORK-F").approved.who, "owner (person)");
+  const trace = JSON.parse(history(root, "--json"));
+  assert.equal(trace.works.find((item) => item.work === work).approved.who, "owner (person)");
 });

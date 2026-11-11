@@ -1,13 +1,19 @@
+// `buildbeat status --all-repos`: one call covers the main repository and
+// every checkout directly inside it that keeps works of its own. Each
+// repository's works, decisions and waiting reviews are read from that
+// repository; nothing is written.
+
 import assert from "node:assert/strict";
 import childProcess, { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import { join, relative } from "node:path";
 import test from "node:test";
-import { acceptArtifact } from "../src/v2/runtime/decisions.js";
-import { computeOverview, computeRepositoryOverview } from "../src/v2/runtime/overview.js";
+import { acceptWork } from "../src/v2/runtime/decisions.js";
+import { computeRepositoryOverview } from "../src/v2/runtime/overview.js";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
+import { addWork, commit, reviewWith } from "./support/review.js";
 import { tempDir } from "./support/tmp.js";
 
 const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
@@ -16,7 +22,7 @@ function fixtureEnv() {
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
   // No background maintenance either: after a fixture commit git may start
   // a detached `maintenance run --auto` whose objects/maintenance.lock lands
-  // between the before/after snapshots (seen on CI after 4.2.0 was tagged).
+  // between the before/after snapshots.
   return { ...env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null",
     GIT_CONFIG_COUNT: "4", GIT_CONFIG_KEY_0: "core.hooksPath", GIT_CONFIG_VALUE_0: "/dev/null",
     GIT_CONFIG_KEY_1: "commit.gpgSign", GIT_CONFIG_VALUE_1: "false",
@@ -27,16 +33,25 @@ const git = (root, ...args) => execFileSync("git", ["-C", root, ...args], { enco
 function repo(root) {
   mkdirSync(root, { recursive: true });
   git(root, "init", "-q", "-b", "main");
-  git(root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-q", "--allow-empty", "-m", "fixture");
+  git(root, "config", "user.name", "Test");
+  git(root, "config", "user.email", "test@example.com");
+  git(root, "config", "maintenance.auto", "false");
+  git(root, "config", "gc.auto", "0");
+  git(root, "commit", "-q", "--allow-empty", "-m", "fixture");
   return root;
 }
-function work(root, id, target = null, release = false) {
+// A work folder with a description nobody accepted; with `release`, its own
+// run config declares a release readback.
+function work(root, id, { release = false } = {}) {
   const dir = join(root, "delivery", "work", id);
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "work.md"), `# ${id}\n`);
-  if (target) writeFileSync(join(dir, "run-config.yaml"), `repo: ${relative(dir, target)}\nwork: ${id}\n${release ? "release:\n  command: true\n" : ""}`);
+  if (release) writeFileSync(join(dir, "run-config.yaml"), "release:\n  command: true\n");
   return dir;
 }
+// A run ledger written by hand: a run that started and, with `waiting`, asked
+// a person for something. It carries no `pass`, like a run of an earlier
+// version.
 function ledger(root, id, waiting = true) {
   const run = `RUN-${id}`;
   const log = EventLedger.open(join(root, ".buildbeat", "runtime", "runs", run, "events.jsonl"));
@@ -45,26 +60,31 @@ function ledger(root, id, waiting = true) {
     riskPreset: "standard", deliveryChecks: { enabled: true },
   } });
   log.append({ type: "RUN_STARTED", actor, data: {} });
-  if (waiting) {
-    const path = join(".buildbeat", "worktrees", run);
-    git(root, "worktree", "add", "--quiet", "--detach", path, "HEAD");
-    log.append({ type: "WORKSPACE_BOUND", actor, data: { workspaceId: run, repo: ".",
-      branch: "HEAD", worktreePath: path, base: git(root, "rev-parse", "HEAD") } });
-  }
   if (waiting) log.append({ type: "HUMAN_REQUESTED", actor, data: {
     transition: "enter-fix", kind: "approval", subject: { candidate: git(root, "rev-parse", "HEAD"), planDigest: "UNVERIFIED", evidenceDigest: "sha256:evidence" }, reasons: ["test decision"],
   } });
   return log;
 }
+// The record of a finished run whose commit is HEAD.
 function archived(root, id) {
   const dir = join(root, "delivery", "work", id, "runs", `RUN-${id}`);
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "run-record.json"), JSON.stringify({ startedAt: "2026-10-01T00:00:00Z", terminal: { status: "SUCCEEDED" }, workspaces: { [`RUN-${id}`]: { candidate: git(root, "rev-parse", "HEAD") } } }));
 }
+function call(cwd, ...args) {
+  return spawnSync(process.execPath, [CLI, "status", ...args], { cwd, encoding: "utf8", env: fixtureEnv() });
+}
+// `buildbeat status --repo . <args>` from inside the repository.
 function cli(cwd, ...args) {
-  const out = spawnSync(process.execPath, [CLI, "status", "--repo", ".", ...args], { cwd, encoding: "utf8", env: fixtureEnv() });
+  const out = call(cwd, "--repo", ".", ...args);
   assert.equal(out.status, 0, out.stderr);
   return out.stdout;
+}
+// Runs a command status printed, the way a person pastes it into a shell.
+function paste(cwd, command) {
+  return spawnSync("sh", ["-c", `buildbeat() { "$BB_NODE" "$BB_CLI" "$@"; }; ${command}`], {
+    cwd, encoding: "utf8", env: { ...fixtureEnv(), BB_NODE: process.execPath, BB_CLI: CLI },
+  });
 }
 function snapshot(root) {
   const files = {};
@@ -79,237 +99,169 @@ function snapshot(root) {
   visit(root);
   return files;
 }
+const worksOf = (result) => result.repos.flatMap((group) => group.works);
+
+// A main repository with two code repositories inside it. In the first a
+// reviewed commit of SHARED waits for the person; the second holds settled
+// works and one that still has a release to read back.
 function fixture() {
   const base = realpathSync(tempDir("bb-cross-repo-"));
   const main = repo(join(base, "main"));
   const a = repo(join(main, "code a's"));
   const b = repo(join(main, "code-b"));
-  work(main, "SHARED", a);
-  acceptArtifact(main, "SHARED", "work", { by: "owner" });
-  work(a, "SHARED");
-  writeFileSync(join(a, "delivery/work/SHARED/review-findings.jsonl"), JSON.stringify({ kind: "finding", severity: "P1", fingerprint: "target-only", summary: "target finding" }) + "\n");
-  ledger(a, "SHARED");
   work(main, "DRAFT");
-  work(main, "FUTURE", b);
+  addWork(a, "SHARED");
+  const candidate = commit(a, "change for SHARED\n\nWork: SHARED", { ".gitignore": ".buildbeat/\n", "src/feature.txt": "hello\n" });
+  assert.equal(reviewWith(a, "SHARED").state.pendingHuman.kind, "final-decision");
+  work(a, "NOTED");
+  writeFileSync(join(a, "delivery/work/NOTED/review-findings.jsonl"), JSON.stringify({ kind: "finding", severity: "P1", fingerprint: "noted-only", summary: "a finding nobody ruled on" }) + "\n");
   work(b, "ONLY-CODE");
   for (const [id, decision] of [["DONE", "closed"], ["CANCEL", "cancelled"]]) {
     const dir = work(b, id);
     writeFileSync(join(dir, "decisions.jsonl"), `${JSON.stringify({ transition: "close-work", decision })}\n`);
   }
-  work(b, "MERGED", b);
+  work(b, "MERGED");
   archived(b, "MERGED");
-  work(main, "RELEASE", b, true);
-  work(b, "RELEASE");
+  work(b, "RELEASE", { release: true });
   archived(b, "RELEASE");
-  return { base, main, a, b };
+  return { base, main, a, b, candidate };
 }
 
-test("all-repos merges authoritative work facts, keeps drafts and counts settled works; commands resolve from the caller", () => {
-  const { base, main, a, b } = fixture();
+test("all-repos reads each repository's own works, keeps drafts and counts settled works; commands resolve from the caller", () => {
+  const { base, main, a, b, candidate } = fixture();
   const before = snapshot(base);
   const result = JSON.parse(cli(main, "--all-repos", "--json"));
   assert.deepEqual(Object.keys(result), ["repos", "pending", "warnings"]);
-  assert.equal(result.repos.length, 3);
+  assert.deepEqual(result.repos.map((group) => group.repo), [main, a, b]);
   assert.deepEqual(result.warnings, []);
-  const rows = result.repos.flatMap((group) => group.works);
+  const rows = worksOf(result);
   const shared = rows.filter((row) => row.work === "SHARED");
   assert.equal(shared.length, 1);
   assert.equal(shared[0].repo, a);
-  assert.equal(shared[0].stage, "WAITING_HUMAN");
-  assert.equal(shared[0].openFindings, 1);
-  assert.equal(shared[0].findings[0].fingerprint, "target-only");
-  assert.equal(shared[0].config, join(main, "delivery/work/SHARED/run-config.yaml"));
-  assert.deepEqual(rows.map((row) => row.work).sort(), ["CANCEL", "DONE", "DRAFT", "FUTURE", "MERGED", "ONLY-CODE", "RELEASE", "SHARED"]);
+  assert.equal(shared[0].stage, "MERGE_DECISION");
+  assert.equal(shared[0].next, `buildbeat decide --repo 'code a'\\''s' --work SHARED --action approve --candidate ${candidate} --by <you>`);
+  const noted = rows.find((row) => row.work === "NOTED");
+  assert.equal(noted.repo, a);
+  assert.equal(noted.openFindings, 1);
+  assert.equal(noted.findings[0].fingerprint, "noted-only");
+  assert.deepEqual(rows.map((row) => row.work).sort(), ["CANCEL", "DONE", "DRAFT", "MERGED", "NOTED", "ONLY-CODE", "RELEASE", "SHARED"]);
   for (const [id, stage] of [["DONE", "CLOSED"], ["CANCEL", "CANCELLED"], ["MERGED", "MERGED"]]) {
     assert.equal(rows.find((row) => row.work === id).stage, stage);
   }
   assert.equal(rows.find((row) => row.work === "DRAFT").repo, main);
   assert.equal(rows.find((row) => row.work === "ONLY-CODE").repo, b);
-  assert.equal(rows.find((row) => row.work === "FUTURE").targetRepo, b);
-  assert.equal(rows.find((row) => row.work === "FUTURE").repo, main);
   assert.equal(rows.find((row) => row.work === "RELEASE").hasRelease, true);
+  assert.equal(rows.find((row) => row.work === "RELEASE").settled, false);
   assert.deepEqual(result.repos.find((group) => group.repo === b).settled, { total: 3, closed: 1, cancelled: 1, merged: 1 });
   assert.equal(result.pending.length, 1);
   assert.equal(result.pending[0].repo, a);
+  assert.equal(result.pending[0].run, "RUN-SHARED-01");
+
   const text = cli(main, "--all-repos");
-  const pendingHeader = text.indexOf("pending decisions · ");
+  const pendingHeader = text.indexOf("pending decisions · code a's");
   assert.ok(pendingHeader >= 0 && pendingHeader < text.search(/^repo .+:$/m), "pending decisions come before the per-repo sections");
-  assert.match(text, /RELEASE  MERGED/);
-  assert.doesNotMatch(text, /(?:DONE  CLOSED|CANCEL  CANCELLED|MERGED  MERGED)/);
-  assert.match(text, /settled 3 \(closed 1 · cancelled 1 · merged, not closed 1\)/);
-  assert.match(text, /runs in: code-b/);
+  assert.match(text, /^repo code a's:$/m);
+  assert.match(text, /^DRAFT {2}WORK_DRAFT$/m);
+  assert.match(text, /^RELEASE {2}MERGED$/m);
+  // Settled works are counted, not listed.
+  assert.doesNotMatch(text, /(?:DONE {2}CLOSED|CANCEL {2}CANCELLED|MERGED {2}MERGED)/);
+  assert.match(text, /^code-b: settled 3 \(closed 1 · cancelled 1 · merged, not closed 1\)$/m);
+  assert.match(text, /next: buildbeat decide --repo 'code a'\\''s' --work SHARED --action approve /);
   assert.doesNotMatch(text, /[\u4e00-\u9fff]/, "the cross-repo view prints English like the rest of the CLI");
-  assert.match(text, /--config delivery\/work\/SHARED\/run-config.yaml/);
-  const single = JSON.parse(cli(main, "--work", "SHARED", "--json"));
-  assert.equal(single.works[0].stage, "WAITING_HUMAN");
-  assert.equal(single.pending[0].repo, a);
-  assert.doesNotMatch(cli(main, "--work", "SHARED"), /READY_TO_RUN/);
-  assert.equal(computeOverview(main, { work: "SHARED" })[0].repo, a);
+
+  // The main repository alone does not answer for the ones inside it.
+  const single = JSON.parse(cli(main, "--json"));
+  assert.deepEqual(single.works.map((row) => row.work), ["DRAFT"]);
+  assert.deepEqual(single.pending, []);
   const filtered = JSON.parse(cli(main, "--all-repos", "--work", "SHARED", "--json"));
-  assert.deepEqual(filtered.repos.flatMap((group) => group.works).map((row) => row.work), ["SHARED"]);
+  assert.deepEqual(worksOf(filtered).map((row) => row.work), ["SHARED"]);
   assert.equal(filtered.pending.length, 1);
-  const invalid = spawnSync(process.execPath, [CLI, "status", "--repo", main, "--all-repos", "--run", "RUN-SHARED"], { encoding: "utf8", env: fixtureEnv() });
+  // A settled work asked for by name is shown.
+  assert.match(cli(main, "--all-repos", "--work", "DONE"), /^DONE {2}CLOSED$/m);
+  const invalid = call(main, "--repo", main, "--all-repos", "--run", "RUN-SHARED-01");
   assert.notEqual(invalid.status, 0);
   assert.match(invalid.stderr, /--all-repos.*--run.*--work/);
   assert.deepEqual(snapshot(base), before, "every file and directory in every repo is unchanged");
 });
 
 for (const repoArgument of ["absolute", "relative"]) {
-  test(`single-repo status quotes the owning repo for an unstarted cross-repo work (${repoArgument} --repo)`, () => {
+  test(`all-repos status quotes a repository path so its commands run from the caller's directory (${repoArgument} --repo)`, () => {
     const base = realpathSync(tempDir("bb-cross-draft-"));
     const main = repo(join(base, "main repo"));
-    const target = repo(join(base, "code"));
     const caller = join(base, "caller");
     mkdirSync(caller);
-    work(main, "FUTURE", target);
+    work(main, "FUTURE");
     const before = snapshot(base);
-    const args = ["--repo", repoArgument === "absolute" ? main : relative(caller, main), "--work", "FUTURE"];
-    const row = JSON.parse(cli(caller, ...args, "--json")).works[0];
-    const command = "buildbeat accept --repo '../main repo' --work FUTURE --artifact work --by <you>";
+    const args = ["--repo", repoArgument === "absolute" ? main : relative(caller, main), "--all-repos", "--work", "FUTURE"];
+    const read = () => {
+      const out = call(caller, ...args, "--json");
+      assert.equal(out.status, 0, out.stderr);
+      return worksOf(JSON.parse(out.stdout))[0];
+    };
+    const row = read();
+    const command = "buildbeat accept --repo '../main repo' --work FUTURE --by <you>";
     assert.equal(row.stage, "WORK_DRAFT");
     assert.equal(row.repo, main);
-    assert.equal(row.targetRepo, target);
     assert.equal(row.next, command);
-    assert.ok(cli(caller, ...args).includes(`next: ${command}`));
-    assert.deepEqual(snapshot(base), before, "status leaves both repositories unchanged");
-    const targetBefore = snapshot(target);
-    const result = spawnSync("sh", ["-c", `buildbeat() { "$BB_NODE" "$BB_CLI" "$@"; }; ${row.next.replaceAll("<you>", "owner")}`], {
-      cwd: caller, encoding: "utf8", env: { ...fixtureEnv(), BB_NODE: process.execPath, BB_CLI: CLI },
-    });
+    assert.ok(call(caller, ...args).stdout.includes(`next: ${command}`));
+    assert.deepEqual(snapshot(base), before, "status leaves the repository unchanged");
+    const result = paste(caller, row.next.replaceAll("<you>", "owner"));
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(JSON.parse(cli(caller, ...args, "--json")).works[0].plan.accepted, true);
-    assert.deepEqual(snapshot(target), targetBefore, "acceptance is recorded only in the main repository");
+    assert.equal(read().plan.accepted, true);
   });
 }
 
-test("discovery is one-level, deduplicates real paths, warns without failing and supports ledger-only targets", () => {
+test("discovery is one level deep, follows a link to the same checkout once, skips plain directories and shows a work known only from a run ledger", () => {
   const { base, main, a, b } = fixture();
   symlinkSync(a, join(main, "alias"));
-  work(main, "ALIAS", join(main, "alias"));
-  work(main, "MISSING", join(base, "missing"));
-  const nonrepo = join(base, "plain");
-  mkdirSync(nonrepo);
-  work(main, "NONREPO", nonrepo);
-  const broken = work(main, "BROKEN");
-  writeFileSync(join(broken, "run-config.yaml"), "repo: [invalid]\n");
-  // A ledger alone establishes target ownership, including live state when
-  // there is no work artifact in that checkout.
-  work(main, "LEDGER", b);
+  // A directory that keeps works but is no checkout of its own.
+  work(join(main, "plain"), "NOT-A-REPO");
+  // A run ledger with no work folder in that checkout.
   ledger(b, "LEDGER", false);
   const nested = repo(join(b, "nested"));
   work(nested, "DEEP");
-  work(b, "POINTER", nested);
   const before = snapshot(base);
   const result = JSON.parse(cli(main, "--all-repos", "--json"));
-  assert.equal(result.repos.length, 3);
-  assert.equal(result.warnings.length, 3);
-  const rows = result.repos.flatMap((group) => group.works);
+  assert.deepEqual(result.repos.map((group) => group.repo), [main, a, b]);
+  assert.deepEqual(result.warnings, []);
+  const rows = worksOf(result);
+  assert.equal(rows.filter((row) => row.work === "SHARED").length, 1);
   assert.equal(rows.find((row) => row.work === "LEDGER").repo, b);
   assert.equal(rows.find((row) => row.work === "LEDGER").stage, "RUNNING");
   assert.equal(rows.some((row) => row.work === "DEEP"), false);
-  assert.equal(cli(main, "--all-repos").split("\n").filter((line) => line.startsWith("warning:")).length, 3);
-  assert.match(cli(main, "--all-repos"), /DRAFT  WORK_DRAFT/);
+  assert.equal(rows.some((row) => row.work === "NOT-A-REPO"), false);
+  assert.match(cli(main, "--all-repos"), /^DRAFT {2}WORK_DRAFT$/m);
   assert.deepEqual(snapshot(base), before);
 });
-
-
-test("external targets and config-only entries work from another cwd; stalled runs stay visible", () => {
-  const base = realpathSync(tempDir("bb-cross-external-"));
-  const main = repo(join(base, "main repo"));
-  const target = repo(join(base, "outside repo"));
-  const dir = work(main, "EXTERNAL", target, true);
-  rmSync(join(dir, "work.md"));
-  work(target, "EXTERNAL");
-  archived(target, "EXTERNAL");
-  work(target, "STUCK");
-  const log = ledger(target, "STUCK", false);
-  log.append({ type: "WORKSPACE_BOUND", actor, data: { workspaceId: "test", repo: ".", branch: "run/RUN-STUCK", worktreePath: ".buildbeat/worktrees/RUN-STUCK", base: git(target, "rev-parse", "HEAD") } });
-  log.append({ type: "STEP_STARTED", actor, ts: "2020-01-01T00:00:00Z", data: { step: "build", attempt: 1, worker: "builder", adapter: "test", workspaceId: "test" } });
-  const before = snapshot(base);
-  const out = spawnSync(process.execPath, [CLI, "status", "--repo", "main repo", "--all-repos", "--json"], { cwd: base, encoding: "utf8", env: fixtureEnv() });
-  assert.equal(out.status, 0, out.stderr);
-  const result = JSON.parse(out.stdout);
-  assert.equal(result.repos.length, 2);
-  const rows = result.repos.flatMap((group) => group.works);
-  assert.equal(rows.filter((row) => row.work === "EXTERNAL").length, 1);
-  assert.match(rows.find((row) => row.work === "EXTERNAL").next, /--config 'main repo\/delivery\/work\/EXTERNAL\/run-config.yaml'/);
-  assert.equal(rows.find((row) => row.work === "STUCK").stage, "STALLED");
-  assert.match(rows.find((row) => row.work === "STUCK").next, /--repo 'outside repo' --run RUN-STUCK/);
-  assert.deepEqual(snapshot(base), before);
-});
-
 
 for (const action of ["approve", "reject"]) {
-  test(`rendered ${action} command records a real decision in the target repository`, () => {
-    const { main, a } = fixture();
+  test(`the ${action} command status prints records a real decision in the repository that holds the work`, () => {
+    const { main, a, candidate } = fixture();
     const beforeMain = snapshot(join(main, "delivery"));
     const text = cli(main, "--all-repos");
-    const command = text.split("\n").find((line) => line.includes(`buildbeat decide --action ${action}`)).trim().replace(/^next: /, "");
+    const command = text.split("\n").find((line) => line.includes(`--action ${action}`)).trim().replace(/^next: /, "");
     const executable = command.split("   #")[0].replaceAll("<you>", "owner").replaceAll("<why>", "reason");
-    // The shell parses the displayed command, including the quoted repo name;
-    // the function dispatches every argument to the real CLI.
-    const result = spawnSync("sh", ["-c", `buildbeat() { "$BB_NODE" "$BB_CLI" "$@"; }; ${executable}`], {
-      cwd: main, encoding: "utf8", env: { ...fixtureEnv(), BB_NODE: process.execPath, BB_CLI: CLI },
-    });
+    // The shell parses the printed command, including the quoted repo name.
+    const result = paste(main, executable);
     assert.equal(result.status, 0, result.stderr);
-    const log = EventLedger.open(join(a, ".buildbeat/runtime/runs/RUN-SHARED/events.jsonl"));
+    const log = EventLedger.open(join(a, ".buildbeat/runtime/runs/RUN-SHARED-01/events.jsonl"));
     const decision = log.events.find((event) => event.type === "DECISION_RECORDED");
     assert.equal(decision?.data.decision, action === "approve" ? "approved" : "rejected");
-    assert.equal(decision.data.transition, "enter-fix");
+    assert.equal(decision.data.transition, "enter-wait-merge");
     assert.equal(decision.actor.id, "owner");
+    const recorded = JSON.parse(readFileSync(join(a, "delivery/work/SHARED/decisions.jsonl"), "utf8").trim().split("\n").at(-1));
+    assert.equal(recorded.subject.candidate, candidate);
     assert.deepEqual(snapshot(join(main, "delivery")), beforeMain);
   });
 }
 
-test("discovers an immediate child with no main-repository config pointing to it", () => {
-  const { main } = fixture();
-  const child = repo(join(main, "unreferenced"));
-  work(child, "CHILD-ONLY");
-  const result = JSON.parse(cli(main, "--all-repos", "--json"));
-  assert.deepEqual(result.repos.find((group) => group.repo === child).works.map((row) => row.work), ["CHILD-ONLY"]);
-});
-
-test("an unreadable first config cannot hide valid ownership or main-config hints", () => {
-  const { main, a } = fixture();
-  writeFileSync(join(main, "delivery/work/SHARED/run-config-00.yaml"), "repo: [invalid]\n");
-  for (const all of [[], ["--all-repos"]]) {
-    const result = JSON.parse(cli(main, ...all, "--work", "SHARED", "--json"));
-    const rows = result.works ?? result.repos.flatMap((group) => group.works);
-    assert.equal(rows.length, 1);
-    assert.equal(rows[0].repo, a);
-    assert.equal(rows[0].stage, "WAITING_HUMAN");
-    assert.equal(rows[0].config, join(main, "delivery/work/SHARED/run-config.yaml"));
-    assert.equal(result.warnings.length, 1);
-    const text = cli(main, ...all, "--work", "SHARED");
-    assert.match(text, /--config delivery\/work\/SHARED\/run-config.yaml/);
-    assert.doesNotMatch(text, /READY_TO_RUN/);
-  }
-});
-
-test("forwarding aggregates release metadata and chooses the release-bearing main config", () => {
-  const { main, b } = fixture();
-  const dir = join(main, "delivery/work/RELEASE");
-  writeFileSync(join(dir, "run-config-00.yaml"), `repo: ${relative(dir, b)}\nwork: RELEASE\n`);
-  for (const all of [[], ["--all-repos"]]) {
-    const result = JSON.parse(cli(main, ...all, "--work", "RELEASE", "--json"));
-    const rows = result.works ?? result.repos.flatMap((group) => group.works);
-    assert.equal(rows.length, 1);
-    assert.equal(rows[0].hasRelease, true);
-    assert.equal(rows[0].settled, false);
-    assert.equal(rows[0].config, join(dir, "run-config.yaml"));
-    assert.match(rows[0].next, /release --config delivery\/work\/RELEASE\/run-config.yaml/);
-    assert.match(cli(main, ...all, "--work", "RELEASE"), /RELEASE  MERGED/);
-  }
-});
-
-test("status caches target validation, HEAD and ancestry and reuses forwarded works", () => {
+test("status asks Git once per repository for its checkout, its branch and the commits on it", () => {
   const { main, b } = fixture();
   for (let i = 0; i < 5; i++) {
-    work(main, `LOCAL-${i}`, main);
+    work(main, `LOCAL-${i}`);
     archived(main, `LOCAL-${i}`);
-    work(main, `FORWARDED-${i}`, b);
-    work(b, `FORWARDED-${i}`);
-    archived(b, `FORWARDED-${i}`);
+    work(b, `CODE-${i}`);
+    archived(b, `CODE-${i}`);
   }
   const calls = [];
   const original = childProcess.execFileSync;
@@ -324,14 +276,14 @@ test("status caches target validation, HEAD and ancestry and reuses forwarded wo
     calls.length = 0;
     computeRepositoryOverview(main, { allRepos: true, cwd: main });
     const validations = calls.filter((args) => args.includes("--show-toplevel"));
-    assert.equal(validations.length, 2, "only the two distinct target repositories are validated");
+    assert.equal(validations.length, 2, "each repository inside the main one is validated once");
     const heads = calls.filter((args) => args.includes("--abbrev-ref"));
     assert.equal(heads.length, 3, "HEAD is read once per repository");
-    // WORK-OVERVIEW-SPEED: one rev-list of the main branch per owning
-    // repository answers every full candidate id; no merge-base process.
+    // One rev-list of the branch per repository answers every full commit
+    // id; no merge-base process.
     assert.equal(calls.filter((args) => args.includes("merge-base")).length, 0);
     const ancestry = calls.filter((args) => args.includes("rev-list"));
-    assert.equal(ancestry.length, 2, "the main branch is listed once in each owning repository");
+    assert.equal(ancestry.length, 2, "the branch is listed once in each repository with finished runs");
     assert.equal(new Set(calls.map((args) => JSON.stringify(args))).size, calls.length, "no Git query repeats");
   } finally {
     childProcess.execFileSync = original;
@@ -339,50 +291,44 @@ test("status caches target validation, HEAD and ancestry and reuses forwarded wo
   }
 });
 
-
-test("ordinary local status JSON exactly preserves the pre-cross-repo serialization", () => {
+test("the JSON of one repository's status keeps its shape", () => {
   const root = repo(realpathSync(tempDir("bb-status-compat-")));
-  work(root, "LOCAL", root);
+  work(root, "LOCAL");
   const draft = { exists: true, accepted: false, stale: false };
-  // Full baseline row shape from 8ef9c29, including the original local hints;
-  // WORK-APPROVAL-IDENTITY adds the single-work decision list and the
-  // decider's identity on accepted artifacts.
   const expected = {
     works: [{ work: "LOCAL", stage: "WORK_DRAFT", intent: draft, plan: draft,
       workArtifact: "work", envFacts: false, openFindings: 0, findings: [], decisions: [], runs: 0,
       cost: null, latest: null, merged: false, mergedCandidate: null,
-      next: "buildbeat accept --repo . --work LOCAL --artifact work --by <you>" }],
-    pending: [], metrics: null,
+      next: "buildbeat accept --repo . --work LOCAL --by <you>" }],
+    pending: [],
   };
   assert.equal(cli(root, "--work", "LOCAL", "--json"), JSON.stringify(expected, null, 2) + "\n");
-  acceptArtifact(root, "LOCAL", "work", { by: "owner" });
+
+  commit(root, "describe LOCAL");
+  acceptWork(root, "LOCAL", { by: "owner", as: "human" });
   const decision = JSON.parse(readFileSync(join(root, "delivery/work/LOCAL/decisions.jsonl"), "utf8").trim());
   expected.works[0].stage = "READY_TO_RUN";
   const owner = { kind: "human", id: "owner", source: "flag" };
   expected.works[0].intent = expected.works[0].plan = { exists: true, accepted: true, stale: false, by: "owner", actor: owner, at: decision.ts };
   expected.works[0].decisions = [{ ts: decision.ts, decisionRef: decision.decisionRef, transition: "accept-work",
     decision: "approved", by: "owner", actor: owner, who: "owner (person)" }];
-  expected.works[0].next = "buildbeat run --config delivery/work/LOCAL/run-config.yaml";
+  expected.works[0].next = "write delivery/run-config.yaml (workers.verifier, workers.reviewer), then buildbeat review --repo . --work LOCAL; or, if it was doc-only, close out: write delivery/work/LOCAL/result.md, then buildbeat decide --repo . --work LOCAL --action close --by <you>";
   assert.equal(cli(root, "--work", "LOCAL", "--json"), JSON.stringify(expected, null, 2) + "\n");
-  const log = ledger(root, "LOCAL");
-  const firstAt = log.events[0].ts, lastAt = log.events.at(-1).ts;
-  const waiting = cli(root, "--work", "LOCAL", "--json");
-  // Since WORK-REPLAY-FOLLOWUPS the cost also splits waits by how they
-  // ended; the open wait grows with the clock, everything else stays exact.
-  const { waits } = JSON.parse(waiting).works[0].cost;
-  assert.deepEqual(Object.keys(waits), ["decided", "superseded", "stopped", "open"]);
-  assert.deepEqual({ ...waits, open: { count: waits.open.count } },
-    { decided: { count: 0, ms: 0 }, superseded: { count: 0, ms: 0 }, stopped: { count: 0, ms: 0 }, open: { count: 1 } });
-  assert.ok(waits.open.ms >= 0);
+
+  const candidate = commit(root, "change for LOCAL\n\nWork: LOCAL", { "src/feature.txt": "hello\n" });
+  const reviewed = reviewWith(root, "LOCAL");
+  const events = EventLedger.open(reviewed.ledgerPath).events;
+  const subject = reviewed.state.pendingHuman.subject;
+  assert.equal(subject.candidate, candidate);
   Object.assign(expected.works[0], {
-    stage: "WAITING_HUMAN", runs: 1,
-    cost: { runs: 1, reviewRounds: 0, findings: 0, humanWaits: 1, waits, infraFailures: 0, workerMs: 0, firstAt, lastAt },
-    latest: { id: "RUN-LOCAL", status: "WAITING_HUMAN", candidate: null, at: lastAt, source: "runtime", terminalReason: null, waiting: "enter-fix" },
-    next: "buildbeat decide --action approve --repo . --run RUN-LOCAL --transition enter-fix --by <you>   # then: run --config <run-config.yaml>",
+    stage: "MERGE_DECISION", runs: 1,
+    cost: { runs: 1, reviewRounds: 1, findings: 0 },
+    latest: { id: "RUN-LOCAL-01", status: "WAITING_HUMAN", candidate, at: events.at(-1).ts, source: "runtime", terminalReason: null, waiting: "enter-wait-merge" },
+    next: `buildbeat decide --repo . --work LOCAL --action approve --candidate ${candidate} --by <you>`,
   });
-  expected.pending = [{ run: "RUN-LOCAL", work: "LOCAL", transition: "enter-fix", kind: "approval",
-    reasons: ["test decision"], subject: { candidate: git(root, "rev-parse", "HEAD"), planDigest: "UNVERIFIED", evidenceDigest: "sha256:evidence" } }];
-  assert.equal(waiting, JSON.stringify(expected, null, 2) + "\n");
+  expected.pending = [{ run: "RUN-LOCAL-01", work: "LOCAL", transition: "enter-wait-merge", kind: "final-decision",
+    reasons: reviewed.state.pendingHuman.reasons, subject }];
+  assert.equal(cli(root, "--work", "LOCAL", "--json"), JSON.stringify(expected, null, 2) + "\n");
 });
 
 test("fixture Git and CLI children ignore hostile inherited config and Git environment", () => {
@@ -400,7 +346,7 @@ test("fixture Git and CLI children ignore hostile inherited config and Git envir
   Object.assign(process.env, hostile);
   try {
     const root = repo(join(base, "fixture"));
-    work(root, "LOCAL", root);
+    work(root, "LOCAL");
     ledger(root, "LOCAL");
     const result = JSON.parse(cli(root, "--work", "LOCAL", "--json"));
     assert.equal(result.works[0].stage, "WAITING_HUMAN");
@@ -413,15 +359,14 @@ test("fixture Git and CLI children ignore hostile inherited config and Git envir
   }
 });
 
-// WORK-OVERVIEW-SPEED: in a pilot workspace one cross-repository status
-// opened 245 run ledgers 20,390 times (19 s) and spawned 102 merge-base
-// processes (11 s); both are now done once per repository per call.
+// In a pilot workspace one cross-repository status opened 245 run ledgers
+// 20,390 times (19 s) and spawned 102 merge-base processes (11 s); both are
+// now done once per repository per call.
 test("one status call opens each run ledger at most twice, whatever the number of works", () => {
   const root = repo(realpathSync(tempDir("bb-ledger-once-")));
-  // Finished runs, as nearly all are in a real workspace; a running run
-  // also reads every ledger for its typical step durations.
+  // Finished runs, as nearly all are in a real workspace.
   for (let i = 0; i < 6; i++) {
-    work(root, `W-${i}`, root);
+    work(root, `W-${i}`);
     ledger(root, `W-${i}`, false).append({ type: "RUN_TERMINAL", actor, data: { status: "SUCCEEDED", reason: "test" } });
   }
   const opened = new Map();
@@ -445,11 +390,11 @@ test("merged candidates are answered from one rev-list; a short id falls back to
   const root = repo(realpathSync(tempDir("bb-ancestry-")));
   const merged = git(root, "rev-parse", "HEAD");
   git(root, "checkout", "-q", "-b", "side");
-  git(root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-q", "--allow-empty", "-m", "unmerged");
+  git(root, "commit", "-q", "--allow-empty", "-m", "unmerged");
   const unmerged = git(root, "rev-parse", "HEAD");
   git(root, "checkout", "-q", "main");
   const record = (id, candidate) => {
-    work(root, id, root);
+    work(root, id);
     const dir = join(root, "delivery", "work", id, "runs", `RUN-${id}`);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "run-record.json"), JSON.stringify({ startedAt: "2026-10-01T00:00:00Z", terminal: { status: "SUCCEEDED" }, workspaces: { [`RUN-${id}`]: { candidate } } }));

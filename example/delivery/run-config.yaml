@@ -1,0 +1,29 @@
+# 简账的项目配置：这个项目里一个提交怎么验、怎么审。所有工作共用这一份；路径相对本文件解析。
+# 检查：buildbeat check --repo .；送审一个提交：buildbeat review --repo . --work <WORK-ID>
+envelope:
+  prompts: envelope/prompts
+  vars:
+    component: export
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+requires:
+  - command: node
+    min: "20"
+workers:
+  # 项目自己的测试；环境不满足就 exit 75
+  verifier:
+    command: bash
+    args:
+      - -lc
+      - npm test
+  # 只读审查。换工具只改 -- 后面的命令
+  reviewer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only

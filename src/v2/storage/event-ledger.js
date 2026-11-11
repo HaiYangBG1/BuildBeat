@@ -41,7 +41,7 @@ export function eventDigest(event) {
   return `sha256:${hex}`;
 }
 
-// Default reducer is the run reducer; other streams (observe) plug their own
+// Default reducer is the run reducer; another stream plugs its own
 // reducer while keeping the exact same envelope, chain and corruption rules.
 const RUN_REDUCER = { initialState, applyEvent };
 

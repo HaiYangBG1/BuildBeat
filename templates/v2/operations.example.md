@@ -9,7 +9,7 @@ How to release, roll back and run this project, and the traps that have bitten b
 
 ## Release
 1. The steps a person takes, in order, with the project's own commands or scripts (keep scripts in the project, for example under deploy/).
-2. After each step, read it back: `buildbeat release --config <run-config.yaml> --env <name> --note "<step>"`.
+2. After each step, read it back: `buildbeat release --repo . --work <WORK-ID> --env <name> --note "<step>"`.
 
 ## Roll back
 - How to go back to the previous version, and how to tell that it worked.

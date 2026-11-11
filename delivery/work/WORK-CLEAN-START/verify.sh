@@ -39,19 +39,37 @@ for (const [work, was] of Object.entries(baseline.stages)) {
   const expected = was === "NO_INTENT" && stage >= 2 ? "LEGACY" : was;
   if (now[work] !== expected) problems.push(`status: ${work} is ${now[work]}, expected ${expected}`);
 }
+// A file this work has not touched must trace exactly as before. One it
+// rewrote keeps fewer old lines: every work it still traces to must be one
+// of the baseline's, with no more lines than then (lines this work wrote
+// trace to this work). One it deleted has nothing left to trace.
+let exact = 0, changed = 0, gone = 0;
 for (const [file, expected] of Object.entries(baseline.history)) {
+  if (!require("node:fs").existsSync(file)) { gone += 1; continue; }
   const h = run(["history", "--repo", ".", "--path", file, "--json"]);
   const works = Object.fromEntries(h.works.map((w) => [w.work, w.lines]));
-  if (JSON.stringify(Object.entries(works).sort()) !== JSON.stringify(Object.entries(expected.works).sort()))
-    problems.push(`history: ${file} traces to ${JSON.stringify(works)}, expected ${JSON.stringify(expected.works)}`);
-  const untraced = h.untraced ? h.untraced.lines : 0;
-  if (untraced !== expected.untraced) problems.push(`history: ${file} has ${untraced} untraced lines, expected ${expected.untraced}`);
+  let untouched = true;
+  try { execFileSync("git", ["diff", "--quiet", "2e0d984", "HEAD", "--", file]); } catch { untouched = false; }
+  if (untouched) {
+    exact += 1;
+    if (JSON.stringify(Object.entries(works).sort()) !== JSON.stringify(Object.entries(expected.works).sort()))
+      problems.push(`history: ${file} traces to ${JSON.stringify(works)}, expected ${JSON.stringify(expected.works)}`);
+    const untraced = h.untraced ? h.untraced.lines : 0;
+    if (untraced !== expected.untraced) problems.push(`history: ${file} has ${untraced} untraced lines, expected ${expected.untraced}`);
+    continue;
+  }
+  changed += 1;
+  for (const [work, lines] of Object.entries(works)) {
+    if (work === "WORK-CLEAN-START") continue;
+    if (!(work in expected.works)) problems.push(`history: ${file} now traces to ${work}, which it did not before`);
+    else if (lines > expected.works[work]) problems.push(`history: ${file} traces ${lines} lines to ${work}, more than the ${expected.works[work]} before`);
+  }
 }
 if (problems.length) {
   console.error(problems.join("\n"));
   process.exit(1);
 }
-console.log(`baseline holds: ${Object.keys(baseline.stages).length} works, ${Object.keys(baseline.history).length} files`);
+console.log(`baseline holds: ${Object.keys(baseline.stages).length} works; history of ${exact} untouched, ${changed} rewritten, ${gone} deleted files`);
 NODE
 
 if [ "$stage" -ge 2 ]; then

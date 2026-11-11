@@ -1,11 +1,10 @@
-// Release readback and closeout (4.0; replaces the retired release-readback
-// lane, owner decision 2026-10-04). BuildBeat still performs no deployment
-// (invariant 20): after a person releases a merged candidate, the project's
-// own read-only command proves the release took effect. Every readback is a
-// line in the Work's releases.jsonl, next to its decisions, and a work with
-// a release closes only on a passing readback (its result page is checked in
-// closeout.js). Real cost behind it: one pilot go-live was recorded by hand
-// as forty "step N readback" commits.
+// Release readback and closeout. BuildBeat performs no deployment: after a
+// person releases an approved commit, the project's own read-only command
+// proves the release took effect. Every readback is a line in the work's
+// releases.jsonl, next to its decisions, and a work with a release closes
+// only on a passing readback (its result page is checked in closeout.js).
+// Real cost behind it: one pilot go-live was recorded by hand as forty
+// "step N readback" commits.
 
 import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
@@ -23,7 +22,7 @@ import { join } from "node:path";
 import { createShellAdapter } from "../adapters/shell.js";
 import { actorFrom } from "./actor.js";
 import { checkPromotions, readResult } from "./closeout.js";
-import { governingConfigs } from "./overview-repos.js";
+import { workDeclaresRelease } from "./overview-repos.js";
 import { toRepoRef } from "./repo-ref.js";
 import { codeCommitsOf } from "./work-commits.js";
 
@@ -79,15 +78,14 @@ function isAncestor(repoRoot, sha, commit) {
 const ENV_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 // Runs the configured readback in the main checkout once and records it.
-// `runs` are the Work's runs (overview's runsFor); the newest SUCCEEDED one
-// whose candidate the release ref contains is what this readback is about.
-// A work done in a session (WORK-RELEASE-ENVS) is read back through a
-// config that only records releases (withoutRun): with no succeeded run it
-// is bound to its newest code commit the release ref contains, found the
-// way status finds COMMITTED works; with none, there is nothing to read
-// back. A config with workers is meant to run, so its work still needs a
-// succeeded run first. `env` names the environment released to: one config serves every
-// environment, and a release in steps reads each step back with --note.
+// `runs` are the work's runs (overview's runsFor); the newest approved one
+// whose commit the release ref contains is what this readback is about. A
+// work that was reviewed needs an approved commit first. A work nobody
+// reviewed (done in a session, WORK-RELEASE-ENVS) is bound to its newest
+// code commit the release ref contains, found the way status finds COMMITTED
+// works; with none, there is nothing to read back. `env` names the
+// environment released to: one config serves every environment, and a
+// release in steps reads each step back with --note.
 export function runReadback({
   repoRoot,
   workId,
@@ -97,7 +95,6 @@ export function runReadback({
   ref = "HEAD",
   env = null,
   note = null,
-  withoutRun = false,
   ts = new Date().toISOString(),
 }) {
   if (env !== null && !ENV_NAME.test(env)) {
@@ -122,16 +119,16 @@ export function runReadback({
     .filter((run) => run.status === "SUCCEEDED" && run.candidate)
     .sort((a, b) => String(a.lastAt).localeCompare(String(b.lastAt)));
   let released;
-  if (succeeded.length === 0 && !withoutRun) {
+  if (succeeded.length === 0 && runs.length > 0) {
     throw new ReleaseError(
-      `${workId} has no succeeded run; approve its merge decision first (a work done without a run reads back through a config with release: and no workers:)`,
+      `${workId} has no approved commit; approve its merge decision first`,
     );
   }
   if (succeeded.length === 0) {
     const latest = codeCommitsOf(repoRoot, commit, [workId]).get(workId)?.[0] ?? null;
     if (!latest) {
       throw new ReleaseError(
-        `${workId} has no succeeded run and no commits in ${ref} trace to it; nothing to read back`,
+        `${workId} has no approved commit and no commits in ${ref} trace to it; nothing to read back`,
       );
     }
     released = { id: null, candidate: latest.commit };
@@ -226,18 +223,17 @@ export function runReadback({
 
 // Closes a work: a close-work decision bound to its result page and to the
 // conclusions the page says were written into the project. A work with a
-// release (a release: section in any config that governs it, a readback
-// already run, or a run config that cannot be read) closes only on a passing
-// latest readback; any other work closes once result.md is there. callers
-// are the directories the command was given from, where a main repository's
-// config for a work kept in a code repository can be found.
+// release (a release: key in its own run config, a readback already run, or
+// a run config of its own that cannot be read) closes only on a passing
+// latest readback; any other work closes once result.md is there. The
+// project's run config may name a readback command for every work to use;
+// it does not by itself make a work one that has a release.
 export function closeWork({
   repoRoot,
   workId,
   result,
   note,
   runs = [],
-  callers = [],
   by,
   as,
   actor,
@@ -259,20 +255,12 @@ export function closeWork({
   // In the order the status hint gives: release and readback first, then
   // the result page.
   const releases = readReleases(repoRoot, workId);
-  const configs = governingConfigs(repoRoot, workId, { callers });
-  // Runs recorded here and no config in reach: the config, and perhaps a
-  // release, lives in a main repository this command cannot see.
-  if (configs.length === 0 && runs.length > 0 && releases.length === 0) {
-    throw new ReleaseError(
-      `${workId}: its run configs are not in this repository; close it from the repository that holds them`,
-    );
-  }
   const released =
-    releases.length > 0 || configs.some((config) => config.release !== false);
+    releases.length > 0 || workDeclaresRelease(repoRoot, workId) !== false;
   const latest = released ? releases.at(-1) : null;
   if (released && !latest) {
     throw new ReleaseError(
-      `${workId} has no readback; run buildbeat release --config <run-config.yaml> after the release first`,
+      `${workId} has no readback; run buildbeat release --repo <path> --work ${workId} after the release first`,
     );
   }
   if (latest && latest.status !== "passed") {
@@ -377,7 +365,7 @@ export function summarizeReleases(roots) {
 
 export function renderReleases(summary) {
   if (summary.length === 0) {
-    return "releases: none recorded (buildbeat release --config <run-config.yaml> --env <name>)";
+    return "releases: none recorded (buildbeat release --repo <path> --work <WORK-ID> --env <name>)";
   }
   const width = Math.max(...summary.map((item) => (item.env ?? "-").length));
   const lines = ["releases (latest passing readback per environment):"];

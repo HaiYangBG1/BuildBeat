@@ -67,8 +67,7 @@ ACTIVE_DOCS = (
     "example/AGENTS.md",
     "example/指挥台.md",
     "example/pm/decisions.md",
-    "example/delivery/work/WORK-EXPORT-DATE-FILTER/intent.md",
-    "example/delivery/work/WORK-EXPORT-DATE-FILTER/plan.md",
+    "example/delivery/work/WORK-EXPORT-DATE-FILTER/work.md",
 )
 # Claims that were true once and are wrong today, plus contract wording the
 # parser rejects. Each entry: (regex, what it means). Found in an active doc =
@@ -98,13 +97,13 @@ CRITICAL_TEMPLATE_FILES = (
     "templates/v2/run-config.example.yaml",
     "templates/v2/work.example.md",
     "templates/v2/envelope/worker.sh",
-    "templates/v2/envelope/prompts/builder.md",
     "templates/v2/envelope/prompts/reviewer.md",
-    "templates/v2/envelope/prompts/fixer.md",
     "example/README.md",
     "example/AGENTS.md",
+    "example/delivery/run-config.yaml",
+    "example/delivery/work/WORK-EXPORT-DATE-FILTER/work.md",
     "example/delivery/work/WORK-EXPORT-DATE-FILTER/run-config.yaml",
-    "example/delivery/work/WORK-EXPORT-DATE-FILTER/runs/RUN-EXPORT-01/run-record.json",
+    "example/delivery/work/WORK-EXPORT-DATE-FILTER/runs/RUN-EXPORT-DATE-FILTER-01/run-record.json",
     "example/delivery/work/WORK-EXPORT-DATE-FILTER/decisions.jsonl",
     "tests/example-firstrun.test.js",
 )
@@ -116,7 +115,8 @@ CRITICAL_CLI_FILES = (
     "package-lock.json",
     "package.json",
     "src/v2/cli/run.js",
-    "src/v2/presets/software-delivery.yaml",
+    "src/v2/cli/review-config.js",
+    "src/v2/engine/workflow.js",
     "tests/publish-workflow.test.js",
     "tests/pack-firstrun.test.sh",
     "tests/v2-templates-firstrun.test.js",
@@ -173,6 +173,19 @@ REMOVED_PATHS = (
     # (WORK-LIVE-FACTS); AGENTS.md says where to look instead.
     "templates/v2/BUILDBEAT.md",
     "example/BUILDBEAT.md",
+    # The runtime no longer writes code or drives a fix loop: it verifies and
+    # reviews a commit the session made (WORK-CLEAN-START).
+    "src/v2/presets",
+    "src/v2/adapters/mock.js",
+    "templates/v2/envelope/prompts/builder.md",
+    "templates/v2/envelope/prompts/fixer.md",
+    "example/delivery/envelope/prompts/builder.md",
+    "example/delivery/envelope/prompts/fixer.md",
+    "example/delivery/work/WORK-EXPORT-DATE-FILTER/intent.md",
+    "example/delivery/work/WORK-EXPORT-DATE-FILTER/plan.md",
+    "example/delivery/work/WORK-EXPORT-DATE-FILTER/workflow.yaml",
+    "example/.buildbeat/notify.yaml",
+    ".buildbeat/observe.yaml",
 )
 
 
@@ -868,22 +881,6 @@ def check_without_runtime_guide() -> list[str]:
     return errors
 
 
-def check_final_repair_contract() -> list[str]:
-    errors = []
-    for relative in (
-        "SKILL.md", "docs/v2/guide/07-approval-guide.md",
-        "docs/v2/guide/07-approval-guide.en.md", "docs/v2/guide/10-recovery.md",
-        "docs/v2/guide/10-recovery.en.md",
-    ):
-        text = (ROOT / relative).read_text(encoding="utf-8")
-        for token in ("run --adopt", "decide --action fix", "--candidate"):
-            if token not in text:
-                errors.append(f"{relative}: final repair contract must mention {token}")
-        if not re.search(r"运行时 4\.2 或更高版本|runtime 4\.2 or later", text):
-            errors.append(f"{relative}: final repair contract must require runtime 4.2 or later")
-    return errors
-
-
 def main() -> int:
     paths = markdown_files()
     errors = []
@@ -901,7 +898,6 @@ def main() -> int:
     errors.extend(check_no_pinned_runtime())
     errors.extend(check_lesson_citations())
     errors.extend(check_without_runtime_guide())
-    errors.extend(check_final_repair_contract())
 
     if errors:
         print("Documentation checks failed:", file=sys.stderr)

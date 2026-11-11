@@ -28,20 +28,6 @@ function addWait(bucket, ms) {
   }
 }
 
-function emptyCost() {
-  return {
-    runs: 0,
-    reviewRounds: 0,
-    findings: 0,
-    humanWaits: 0,
-    waits: emptyWaits(),
-    infraFailures: 0,
-    workerMs: 0,
-    firstAt: null,
-    lastAt: null,
-  };
-}
-
 // Cost facts of one ledger: review rounds, human waits and how each ended,
 // infra failures and worker wall time (STEP_STARTED → STEP_FINISHED per
 // attempt). A wait runs from HUMAN_REQUESTED to the next DECISION_RECORDED
@@ -103,20 +89,13 @@ export function ledgerCost(ledger, { now = Date.now() } = {}) {
   return cost;
 }
 
-function addWaits(total, waits) {
-  for (const kind of WAIT_KINDS) {
-    const row = waits?.[kind];
-    if (row && Number.isFinite(row.count) && Number.isFinite(row.ms)) {
-      total[kind].count += row.count;
-      total[kind].ms += row.ms;
-    }
-  }
-}
-
 // ledgers: the repository's run ledgers already read for this call
 // (readRunLedgers); without them every ledger is read here.
-export function computeWorkCost(repoRoot, workId, { excludeRun = null, now = Date.now(), ledgers = null } = {}) {
-  const cost = emptyCost();
+// What a work has consumed so far, across every run of it: review rounds and
+// findings. Runtime ledgers first, run records for runs whose runtime is
+// gone (another machine, a cleaned directory).
+export function computeWorkCost(repoRoot, workId, { ledgers = null } = {}) {
+  const cost = { runs: 0, reviewRounds: 0, findings: 0 };
   const seen = new Set();
   for (const { ledger } of ledgers ?? readRunLedgers(repoRoot)) {
     const state = ledger.state;
@@ -124,26 +103,14 @@ export function computeWorkCost(repoRoot, workId, { excludeRun = null, now = Dat
       continue;
     }
     seen.add(state.run.id);
-    if (state.run.id === excludeRun) {
-      continue;
-    }
-    const row = ledgerCost(ledger, { now });
     cost.runs += 1;
-    cost.reviewRounds += row.reviewRounds;
-    cost.humanWaits += row.humanWaits;
-    addWaits(cost.waits, row.waits);
-    cost.infraFailures += row.infraFailures;
-    cost.workerMs += row.workerMs;
-    track(cost, ledger.events[0]?.ts, ledger.events[ledger.events.length - 1]?.ts);
+    cost.reviewRounds += ledgerCost(ledger).reviewRounds;
   }
   const recordsDir = join(repoRoot, "delivery", "work", workId, "runs");
   if (existsSync(recordsDir)) {
     for (const entry of readdirSync(recordsDir)) {
-      if (seen.has(entry) || entry === excludeRun) {
-        continue;
-      }
       const path = join(recordsDir, entry, "run-record.json");
-      if (!existsSync(path)) {
+      if (seen.has(entry) || !existsSync(path)) {
         continue;
       }
       let record;
@@ -153,52 +120,14 @@ export function computeWorkCost(repoRoot, workId, { excludeRun = null, now = Dat
         continue;
       }
       cost.runs += 1;
-      // Records written before iteration 09 carry attempts and decisions
-      // only; the cost block is preferred when present.
+      // Early records carry attempts only; the cost block is preferred.
       cost.reviewRounds += record.cost?.reviewRounds ?? record.attempts?.review ?? 0;
-      cost.humanWaits += record.cost?.humanWaits ?? record.decisions?.length ?? 0;
-      // Records written before wait kinds existed add no durations.
-      addWaits(cost.waits, record.cost?.waits);
-      cost.infraFailures += record.cost?.infraFailures ?? 0;
-      cost.workerMs += record.cost?.workerMs ?? 0;
-      track(cost, record.startedAt, record.finishedAt);
     }
   }
   cost.findings = readFindingsAccount(repoRoot, workId).filter((row) => row.kind === "finding").length;
   return cost;
 }
 
-function track(cost, firstAt, lastAt) {
-  if (firstAt && (!cost.firstAt || firstAt < cost.firstAt)) {
-    cost.firstAt = firstAt;
-  }
-  if (lastAt && (!cost.lastAt || lastAt > cost.lastAt)) {
-    cost.lastAt = lastAt;
-  }
-}
-
-export function formatWorkerMs(ms) {
-  if (!ms || ms < 1000) {
-    return "0s";
-  }
-  if (ms < 60000) {
-    return `${Math.round(ms / 1000)}s`;
-  }
-  const totalMinutes = Math.round(ms / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return hours > 0 ? `${hours}h${String(minutes).padStart(2, "0")}m` : `${minutes}m`;
-}
-
 export function renderWorkCost(cost) {
-  const waits = WAIT_KINDS.filter((kind) => cost.waits?.[kind]?.count > 0).map(
-    (kind) => `${kind} ${formatWorkerMs(cost.waits[kind].ms)}`,
-  );
-  return [
-    `review rounds ${cost.reviewRounds}`,
-    `findings ${cost.findings}`,
-    `human waits ${cost.humanWaits}${waits.length > 0 ? ` (${waits.join(" · ")})` : ""}`,
-    ...(cost.infraFailures > 0 ? [`infra failures ${cost.infraFailures}`] : []),
-    `worker ${formatWorkerMs(cost.workerMs)}`,
-  ].join(" · ");
+  return `review rounds ${cost.reviewRounds} · findings ${cost.findings}`;
 }

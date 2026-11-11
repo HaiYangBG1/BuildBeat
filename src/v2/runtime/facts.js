@@ -161,8 +161,8 @@ function touches(file, [start, end]) {
 // the named commits is in this repository.
 export function checkFacts(repoRoot, workId, { against = "HEAD", label = "HEAD" } = {}) {
   const dir = join(repoRoot, "delivery", "work", workId);
-  const file = existsSync(join(dir, "work.md")) ? "work.md" : existsSync(join(dir, "intent.md")) ? "intent.md" : null;
-  if (!file) return null;
+  const file = "work.md";
+  if (!existsSync(join(dir, file))) return null;
   const sections = parseFacts(readFileSync(join(dir, file), "utf8"));
   if (!sections.length) return null;
   const names = sections.flatMap((item) => item.commits);

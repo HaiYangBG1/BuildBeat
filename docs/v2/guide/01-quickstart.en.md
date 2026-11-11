@@ -1,72 +1,33 @@
 # Quickstart
 
-Install the runtime: `npm install --global @haiyangbg/buildbeat@latest` (Node ≥ 20). Before upgrading from 3.x, finish or cancel runs still in progress with their original 3.x runtime, see [Migration](../../MIGRATION.md); never replace a runtime underneath an active run. When upgrading from 4.x to 5.0, read "4.x → 5.0" in the migration note first: closing a work needs `result.md`.
+Install the runtime: `npm install --global @haiyangbg/buildbeat@latest` (Node ≥ 20). Upgrading from a version before 6: finish or cancel work in progress with the old version first. Records left by old versions need no change; closed works show as before, and an unclosed work in the old format shows as `LEGACY`.
 
 1. Check Node ≥20, Git, Bash and an authenticated AI tool. Keep project-owned instructions.
 2. The templates ship with the npm package under `$(npm root -g)/@haiyangbg/buildbeat/templates/`. Install `v2/AGENTS.md` and `v2/CLAUDE.md` according to the tool's loading rules; copy runtime exclusions from `gitignore.template` (in `templates/`, not in `v2/`). `delivery/` goes into Git with the code; do not exclude it in `.gitignore` or `.git/info/exclude`. Screenshots, archives and logs under it stay out of Git; the template already has the rules.
-3. Create delivery/work/WORK-X/work.md following the eight sections of work.example.md: goal, why now, facts checked (the commit checked on in its heading, each fact with its source, code as `path:<start>-<end>`), scope, decisions before starting, acceptance, implementation plan and stop conditions. Headings may be in the project's own language.
-4. Copy templates/v2/envelope/ to delivery/envelope/ and configure real tool and verification commands. New work needs no workflow.yaml copy.
-5. After the user accepts the work, use the commands below. Detach long runs from short host timeouts and handle the decision shown by status. After the merge (and a passing readback when a release is configured), write delivery/work/WORK-X/result.md from result.example.md, then close the work with the last command.
+3. Copy `v2/run-config.example.yaml` to `delivery/run-config.yaml` and `v2/envelope/` to `delivery/envelope/`, replace the verification and review commands with real ones, and commit. This config says how a commit is verified and reviewed in this project; every work shares it. `buildbeat check --repo .` checks that it is written correctly.
+4. Create delivery/work/WORK-X/work.md following the eight sections of `v2/work.example.md`: goal, why now, facts checked (the commit checked on in its heading, each fact with its source, code as `path:<start>-<end>`), scope, decisions before starting, acceptance, implementation plan and stop conditions. Headings may be in the project's own language. Commit it: only changes after this commit count as this work's.
+5. After the user accepts the work, the session writes the code, commits it, and sends the commit for review. A review runs the verification in a temporary checkout of that commit, has a read-only reviewer look at it, and stops at the human decision. An approval names the full commit. After the merge (and a passing readback when the work declares a release), write delivery/work/WORK-X/result.md from `v2/result.example.md`, then close the work with the last command.
 
 ```bash
-buildbeat accept --repo . --work WORK-X --by owner
-buildbeat check --config delivery/work/WORK-X/run-config.yaml
-buildbeat run --config delivery/work/WORK-X/run-config.yaml
+buildbeat accept --repo . --work WORK-X --as human --by owner
+buildbeat check --repo . --work WORK-X
+buildbeat review --repo . --work WORK-X
 buildbeat status --repo . --work WORK-X
-buildbeat decide --repo . --work WORK-X --action close --by owner
+buildbeat decide --repo . --work WORK-X --action approve --candidate <full SHA> --as human --by owner
+buildbeat decide --repo . --work WORK-X --action close --as human --by owner
 ```
 
+The project config needs at least these two entries:
+
 ```yaml
-# BuildBeat v2 run 配置样板。拷到 delivery/work/<WORK-ID>/run-config.yaml 后改 work / run / allowedPaths / workers。
-# 路径相对本文件解析。严格 YAML 子集：只有块列表与块映射（列表项可与键同缩进），行内只允许空的 [] / {}，无锚点，注释必须独占一行。
-# 起跑前：buildbeat check --config <本文件>；起跑：buildbeat run --config <本文件>
-repo: ../../..
-work: WORK-X
-# 家族名；run 自动编成 RUN-X-01/02…，--new 开新一轮
-run: RUN-X
-# builder / fixer 只能改这些目录；越界改动不成为候选
-allowedPaths:
-  - src
-  - tests
-# off = P0/P1 finding 直接派 fixer；高风险项目改成 required，每轮先停人分诊再派 fixer
-reviewTriage: off
-# 非只读步成功不扣次数；review 按轮计费。review 不收敛（修过的 finding 又出现，或阻断数多于上一轮）才在 enter-fix 停人。
-# reviewRoundsPerWork 是 review 轮数唯一的上限（默认 6），跨本 Work 所有 Run 累计，对应 intent 的止损线；
-# 到顶的阻断 review 在 enter-fix 一次批准修复、重验、再审。总 attempt 超过（配置值 + 人批扩额）的 3 倍前仍兜底停人。
-budgets:
-  reviewRoundsPerWork: 6
-# 默认一个仓库同时只驱动一个 Run。确认本项目的测试不抢固定端口、不共用数据库后，
-# 可加 parallel: true，让本 Work 的 Run 与其他同样打开开关的 Work 并行（同一 Work 仍互斥）
-# 同树 + 同命令 + 同信封已通过就复用 verify 证据
-cache:
-  verify: tree
-# 内核把 prompts/<worker>.md 喂给 worker（$BUILDBEAT_PROMPT）；模板见 templates/v2/envelope/prompts/
-envelope:
-  prompts: ../../envelope/prompts
-  vars:
-    component: app
-# worker 输出落成证据前按这些 JS 正则脱敏（不支持 (?i) 这类内联标志）
-redact:
-  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
-# worker 以隔离 worktree 为 cwd 运行；delivery/envelope/worker.sh 已随仓库进 worktree。
-# 换工具只改 `--` 后面的命令：codex exec … / claude -p … / 任意脚本。
 workers:
-  builder:
-    command: bash
-    args:
-      - delivery/envelope/worker.sh
-      - builder
-      - --
-      - codex
-      - exec
-      - -s
-      - workspace-write
-  # 真实测试命令；环境不满足就 exit 75（内核当基础设施故障停人）
+  # The real test command; exit 75 when the environment is not ready (tool trouble, not a verdict on the commit)
   verifier:
     command: bash
     args:
       - -lc
       - npm test
+  # Read-only review. To change tools, change only the command after `--`
   reviewer:
     command: bash
     args:
@@ -77,21 +38,14 @@ workers:
       - exec
       - -s
       - read-only
-  # 不能省：没配它，verify 失败 / review 阻断时 Run 停人等手修
-  fixer:
-    command: bash
-    args:
-      - delivery/envelope/worker.sh
-      - fixer
-      - --
-      - codex
-      - exec
-      - -s
-      - workspace-write
+envelope:
+  prompts: envelope/prompts
 ```
 
-[Migration](../../MIGRATION.md) · [Worker contract](05-worker-contract.en.md) · [Recovery](10-recovery.en.md)
+The sample also has `requires` (environment checks before a review), `redact` (masking in evidence), `requireScreenshot` (projects with a UI), `release` (the readback command) and `maxReviewSeverity`. When one work must differ from the project, write only the keys to override in `delivery/work/WORK-X/run-config.yaml`; that file also takes `allowedPaths` (the directories this work may change) and `base` (the commit the work starts from). An unknown key is an error.
 
-Before starting, commit work.md and worker scripts into the selected base so the isolated checkout sees the accepted scope. Acceptance records may be committed afterward.
+A review ends in one of three ways. `FAILED`: the verification failed or the commit changed a directory out of scope; fix and send again. `CANCELLED`: a tool had trouble, which is not a verdict on the commit; send again when the environment is back. Waiting for the human decision: an approval is refused while a P0 or P1 finding is undecided. Fix in a new commit and send it; the earlier round is superseded.
+
+[Worker contract](05-worker-contract.en.md) · [Recovery](10-recovery.en.md)
 
 For a main repository with code repositories, use `buildbeat status --repo . --all-repos` for pending decisions and open work across repositories; add `--work <ID>` or `--json` as needed. See [Session handoff](11-session-handoff.en.md).
