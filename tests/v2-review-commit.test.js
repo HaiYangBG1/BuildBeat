@@ -455,8 +455,11 @@ function released() {
     return null;
   }
   const dir = tempDir("bb-v2-released-");
-  const archive = execFileSync("git", ["-C", ROOT, "archive", "v5.5.0", "bin", "src", "package.json"], { maxBuffer: 1 << 28 });
-  execFileSync("tar", ["-x", "-C", dir], { input: archive });
+  // Through a file: tar may stop reading at the end-of-archive marker, and a
+  // pipe still being written to then fails with EPIPE.
+  const archive = join(tempDir("bb-v2-released-tar-"), "runtime.tar");
+  execFileSync("git", ["-C", ROOT, "archive", "-o", archive, "v5.5.0", "bin", "src", "package.json"]);
+  execFileSync("tar", ["-x", "-f", archive, "-C", dir]);
   assert.equal(JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version, "5.5.0");
   return (args) => execFileSync("node", [join(dir, "bin", "buildbeat.js"), ...args], { encoding: "utf8" });
 }
