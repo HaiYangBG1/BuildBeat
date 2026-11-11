@@ -17,6 +17,8 @@ allowedPaths:
   - evals
   - delivery/run-config.yaml
   - delivery/envelope
+  # The work's own verifier (verify.sh) and baseline change with the stages.
+  - delivery/work/WORK-CLEAN-START
   - .buildbeat/observe.yaml
   - .claude-plugin
   - .github/workflows/ci.yml
