@@ -109,19 +109,23 @@ test("the paths a reader of work.md names are checked against allowedPaths, then
   // After: every changed file is named, or lies in a named directory.
   assert.deepEqual(test1(named(["src/", "docs/guide.md"]), ["src"]), cover(true));
   assert.deepEqual(test1(named(["`src/feature.txt`"]), null), cover(false, ["docs/guide.md"]));
-  // Records under delivery/, this work's or another's, are not what the reader is asked about.
-  commit(root, `records of two works\n\nWork: ${WORK}`, { "src/feature.txt": "hello again\n", "delivery/work/WORK-B/notes.md": "b\n", [`delivery/work/${WORK}/notes.md`]: "a\n", "delivery/run-config.yaml": PROJECT_CONFIG + "\n" });
+  // Works' folders, this work's or another's, hold records the reader is
+  // not asked about; the project's own files under delivery/ still count.
+  commit(root, `records of two works\n\nWork: ${WORK}`, { "src/feature.txt": "hello again\n", "delivery/work/WORK-B/notes.md": "b\n", [`delivery/work/${WORK}/notes.md`]: "a\n" });
   assert.deepEqual(test1(named(["src", "docs"]), null), cover(true));
+  commit(root, `the wrapper too\n\nWork: ${WORK}`, { "src/feature.txt": "hello\n", "delivery/envelope/worker.sh": "#!/bin/sh\n" });
+  assert.deepEqual(test1(named(["src", "docs"]), null), cover(false, ["delivery/envelope/worker.sh"]));
+  assert.deepEqual(test1(named(["src", "docs", "delivery/envelope"]), null), cover(true));
   // Another file of the same directory does not cover this one.
-  assert.deepEqual(test1(named(["src/other.txt", "docs"]), null), cover(false, ["src/feature.txt"]));
+  assert.deepEqual(test1(named(["src/other.txt", "docs", "delivery/envelope"]), null), cover(false, ["src/feature.txt"]));
 
   // A merge counts for what it brought in from the side branch.
   git(root, ["checkout", "-q", "-b", "side"]);
   commit(root, "side work", { "lib/side.js": "side\n" });
   git(root, ["checkout", "-q", "main"]);
   git(root, ["merge", "-q", "--no-ff", "side", "-m", `merge side\n\nWork: ${WORK}`]);
-  assert.deepEqual(test1(named(["src", "docs"]), null), cover(false, ["lib/side.js"]));
-  assert.equal(test1(named(["src", "docs", "lib"]), null)[0].ok, true);
+  assert.deepEqual(test1(named(["src", "docs", "delivery/envelope"]), null), cover(false, ["lib/side.js"]));
+  assert.equal(test1(named(["src", "docs", "delivery/envelope", "lib"]), null)[0].ok, true);
 });
 
 test("a reader of result.md is checked on the approved commit and on the write-back lines Git confirms", () => {

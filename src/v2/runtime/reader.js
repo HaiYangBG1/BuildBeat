@@ -110,10 +110,11 @@ export function parseAnswers(raw, docName) {
 }
 
 // The code and documents the work's commits changed, or null when it has no
-// code commit on the current branch yet. Nothing under delivery/ counts:
-// those are records, and one commit often carries records of several works
-// (a reader of ten documents of this repository was marked wrong for not
-// naming other works' folders).
+// code commit on the current branch yet. Works' folders do not count: they
+// hold records, and one commit often carries records of several works (a
+// reader of ten documents of this repository was marked wrong for not
+// naming other works' folders). The rest of delivery/ is the project's own
+// configuration and counts.
 function changedPaths(repoRoot, workId) {
   const commits = codeCommitsOf(repoRoot, currentRef(repoRoot), [workId]).get(workId) ?? [];
   if (commits.length === 0) return null;
@@ -125,7 +126,7 @@ function changedPaths(repoRoot, workId) {
       ? git(repoRoot, ["diff", "--no-renames", "--name-only", "-z", parent, commit])
       : git(repoRoot, ["show", "--no-renames", "--format=", "--name-only", "-z", commit]);
     for (const path of listed.split("\0")) {
-      if (path && !path.startsWith("delivery/")) paths.add(path);
+      if (path && !path.startsWith("delivery/work/")) paths.add(path);
     }
   }
   return [...paths].sort();
