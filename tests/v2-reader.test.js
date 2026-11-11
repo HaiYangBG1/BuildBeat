@@ -85,15 +85,17 @@ test("the paths a reader of work.md names are checked against allowedPaths, then
   const { root } = fixture({ prefix: "bb-reader-" });
   const test1 = (answers, allowedPaths) => runReaderTest({ repoRoot: root, workId: WORK, adapter: reader(answers), allowedPaths }).checks;
   const named = (paths) => WORK_ANSWERS.map((answer, index) => (index === 1 ? paths : answer));
-  assert.deepEqual(test1(named(["src/feature.txt"]), ["src"]), [{ question: 2, against: "allowedPaths", ok: true, missed: [] }]);
-  assert.deepEqual(test1(named(["src/feature.txt", "docs/guide.md"]), ["src"]), [{ question: 2, against: "allowedPaths", ok: false, missed: ["docs/guide.md"] }]);
-  // A bare directory name in a list is a path; a word in a sentence is not.
-  assert.deepEqual(test1(named(["src"]), ["src"]), [{ question: 2, against: "allowedPaths", ok: true, missed: [] }]);
-  assert.deepEqual(test1(named("only `src` and what tests need"), ["src"]), [{ question: 2, against: "allowedPaths", ok: true, missed: [] }]);
-  assert.deepEqual(test1(named(["文档/说明.md", "src/my file.js"]), ["src", "文档"]), [{ question: 2, against: "allowedPaths", ok: true, missed: [] }]);
-  assert.deepEqual(test1(named(["src/ 下的导出代码", "docs/guide.md @ abc1234 — the guide"]), ["src"])[0].missed, ["docs/guide.md"]);
-  // An answer that names no path is not confirmed.
-  assert.equal(test1(named("everything it needs"), ["src"])[0].ok, false);
+  const scope = (ok, missed = []) => [{ question: 2, against: "allowedPaths", ok, missed }];
+  // Before any commit: the answer has to cover every area the work may change.
+  assert.deepEqual(test1(named(["src/feature.txt"]), ["src"]), scope(true));
+  assert.deepEqual(test1(named(["src"]), ["src"]), scope(true));
+  assert.deepEqual(test1(named("修改 `src/feature.txt`，其余不动"), ["src"]), scope(true));
+  assert.deepEqual(test1(named(["修改 src/feature.txt"]), ["src", "docs/guide"]), scope(false, ["docs/guide"]));
+  // A directory above an area covers it; a longer name is another name.
+  assert.deepEqual(test1(named(["docs"]), ["docs/guide"]), scope(true));
+  assert.deepEqual(test1(named(["my-src/x.js", "src.old", "resrc"]), ["src"]), scope(false, ["src"]));
+  assert.deepEqual(test1(named(["文档/说明.md", "src/my file.js"]), ["src", "文档"]), scope(true));
+  assert.deepEqual(test1(named("everything it needs"), ["src"]), scope(false, ["src"]));
 
   commit(root, `add the feature\n\nWork: ${WORK}`, { "src/feature.txt": "hello\n", "docs/guide.md": "guide\n" });
   const against = "the paths the work's commits changed";

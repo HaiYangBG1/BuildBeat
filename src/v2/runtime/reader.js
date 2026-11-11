@@ -146,49 +146,33 @@ function approvedCommits(repoRoot, workId) {
   return commits;
 }
 
-// The paths an answer names. A list item or a backticked span that is one
-// token is a path as it stands ("src"), and so is a whole list item that
-// looks like a path even with spaces in it; inside prose only a token with
-// a slash or a file extension counts, so ordinary words are not paths.
-const PART = "\\p{L}\\p{N}_@.*-";
-const TOKEN = new RegExp(`^[${PART}/]+$`, "u");
-const LOOSE = new RegExp(`[${PART}]+(?:/[${PART}]+)*/?`, "gu");
-const pathLike = (token) => token.includes("/") || /\.[\p{L}\p{N}]+$/u.test(token);
-function pathsIn(answer) {
-  const found = [];
-  for (const item of Array.isArray(answer) ? answer : [answer]) {
-    const whole = item.trim().replace(/^`|`$/g, "");
-    if (Array.isArray(answer) && (TOKEN.test(whole) || (pathLike(whole) && /(?:\/|\.[\p{L}\p{N}]+)$/u.test(whole) && !/[\n，。；：,;:@]/.test(whole)))) {
-      found.push(whole);
-      continue;
-    }
-    found.push(...[...item.matchAll(/`([^`]+)`/g)].map((match) => match[1].trim()).filter((span) => TOKEN.test(span) || pathLike(span)));
-    found.push(...(item.match(LOOSE) ?? []).filter(pathLike));
-  }
-  return [...new Set(found.map((token) => token.replace(/\/\*+$|\/$/, "")).filter(Boolean))];
-}
-// Whether the text names exactly this path: not as part of a longer one.
-function namesPath(text, path) {
+// Whether the text names this path: the path as it stands, not as part of
+// a longer name. Nothing is parsed out of the answer; the paths come from
+// Git and the config and are looked for in what the reader wrote.
+const PART = "\\p{L}\\p{N}_@*-";
+function names(text, path) {
   const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(?<![${PART}/])${escaped}(?![\\p{L}\\p{N}_@*/-])(?!\\.[\\p{L}\\p{N}])`, "u").test(text);
+  return new RegExp(`(?<![${PART}./])${escaped}(?![${PART}])(?!\\.[\\p{L}\\p{N}])`, "u").test(text);
 }
-const under = (path, area) => path === area || path.startsWith(`${area}/`);
+// Whether the text names the path or a directory it lies in.
+function covers(text, path) {
+  const parts = path.split("/");
+  return parts.some((_, index) => names(text, parts.slice(0, index + 1).join("/")));
+}
 
 // The answers something other than the document can confirm. A check with
 // nothing to compare against is left out: it is not checked, not wrong.
 export function checkAnswers({ repoRoot, workId, doc, answers, allowedPaths = null }) {
   const checks = [];
   if (doc.name === "work.md") {
-    const named = pathsIn(answers[1]);
+    // Does what the reader would change cover what the work really changed
+    // or, before any commit, every area it may change?
+    const text = asText(answers[1]);
     const changed = changedPaths(repoRoot, workId);
-    if (changed) {
-      // Every file the work really changed lies in something the reader named.
-      const missed = changed.filter((path) => !named.some((area) => under(path, area)));
-      checks.push({ question: 2, against: "the paths the work's commits changed", ok: missed.length === 0, missed });
-    } else if (allowedPaths) {
-      // No commit yet: whatever the reader would change must be in scope.
-      const missed = named.filter((path) => !allowedPaths.some((area) => under(path, area) || under(area, path)));
-      checks.push({ question: 2, against: "allowedPaths", ok: named.length > 0 && missed.length === 0, missed });
+    const expected = changed ?? allowedPaths;
+    if (expected) {
+      const missed = expected.filter((path) => !covers(text, path));
+      checks.push({ question: 2, against: changed ? "the paths the work's commits changed" : "allowedPaths", ok: missed.length === 0, missed });
     }
     return checks;
   }
@@ -213,7 +197,7 @@ export function checkAnswers({ repoRoot, workId, doc, answers, allowedPaths = nu
   const written = checkPromotions(repoRoot, workId, parsePromotions(doc.text)).filter((item) => item.ok).map((item) => item.path);
   if (written.length > 0) {
     const text = asText(answers[3]);
-    const missed = [...new Set(written)].filter((path) => !namesPath(text, path));
+    const missed = [...new Set(written)].filter((path) => !names(text, path));
     checks.push({ question: 4, against: "the write-back lines Git confirms", ok: missed.length === 0, missed });
   }
   return checks;
