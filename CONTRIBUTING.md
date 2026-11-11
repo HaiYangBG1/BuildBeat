@@ -7,15 +7,15 @@ Contributions should start from a reproducible delivery failure mode: a real inc
 | Question | Authority | What it is not |
 |---|---|---|
 | How a session should use BuildBeat, what it says to the user, which command it runs | `SKILL.md` (usage routing and behaviour) plus `templates/` | Not the specification of the state machine |
-| The format of the run ledger | `docs/v2/SPEC-0001-events-v1.md` (frozen; additive changes only) | Not a description of commands or configuration |
+| The format of the run ledger | `docs/SPEC-0001-events-v1.md` (frozen; additive changes only) | Not a description of commands or configuration |
 | What the runtime does | `src/` and `tests/` | Not a licence to change the ledger format silently |
 
-When these disagree, the disagreement is the bug: either fix the code and add a test, or revise the document. Never "fix" it by editing only the guide. `docs/v2/guide/` and `README*` are operator views derived from the above.
+When these disagree, the disagreement is the bug: either fix the code and add a test, or revise the document. Never "fix" it by editing only the guide. `docs/guide/` and `README*` are operator views derived from the above.
 
 ## Branches and releases
 
 - `main` is protected: pull request only, seven required checks (static/docs, envelope script behaviour on two OSes, CLI on three Node/OS combinations, CodeQL), branch must be up to date, rules apply to admins, no force-push, no deletion. Zero required reviewers: a solo maintainer merges their own PR once the checks are green.
-- Day-to-day development happens on `v2`; feature branches fork from it and open PRs against `main` (stack them when one depends on another). CI runs on every PR and on pushes to `main` and `v2`.
+- Development happens on feature branches that fork from `main` and open PRs against it (stack them when one depends on another). CI runs on every PR and on pushes to `main`.
 - Stable releases publish from the tip of `main` to dist-tag `latest`; pre-releases publish from the dispatching release branch to dist-tag `next` and never move `latest`. The exact mechanics, invariants, and the post-release synchronization checklist are in [`docs/RELEASING.md`](docs/RELEASING.md).
 
 ## Local setup
@@ -41,9 +41,9 @@ Shell changes should also pass `bash -n` and ShellCheck. Workflow changes should
 - Update `CHANGELOG.md` (under `## Unreleased`) for every user-visible, workflow, release, or governance change.
 - The approved simplification is a breaking candidate; new operations, custom workflow languages, and mandatory governance templates are outside its scope. Legacy compatibility must fail closed.
 
-When workflow semantics change, update `SKILL.md`, the affected templates, both READMEs, and tests together. When a documented sample changes, make sure a test still parses or runs it (`tests/v2-templates-firstrun.test.js` covers the run-config samples).
+When workflow semantics change, update `SKILL.md`, the affected templates, both READMEs, and tests together. When a documented sample changes, make sure a test still parses or runs it (`tests/templates-firstrun.test.js` covers the run-config samples).
 - Add regression evidence and call out compatibility, migration, security, and rollback boundaries.
-- To read structured lines (promotion, relation and ref lines and the like) out of a Markdown page, use `textLines` in `src/v2/runtime/closeout.js`. It follows Markdown's rules for fenced and indented code, inline code spans, backslash escapes and HTML comments that open mid-line or span lines; do not write another line scanner. Three review rounds of one work went to edge cases a hand-written scanner had missed.
+- To read structured lines (promotion, relation and ref lines and the like) out of a Markdown page, use `textLines` in `src/runtime/closeout.js`. It follows Markdown's rules for fenced and indented code, inline code spans, backslash escapes and HTML comments that open mid-line or span lines; do not write another line scanner. Three review rounds of one work went to edge cases a hand-written scanner had missed.
 - When code parses the output of a Git command meant for people (`diff`, `log`, `blame`, `status`), pin what user settings can change: patch prefixes (`--src-prefix=a/ --dst-prefix=b/`), `--no-color`, `--no-ext-diff`, `--no-renames` wherever paths are compared, `-z` or `-c core.quotePath=false` for paths, `-c log.follow=false -c log.showSignature=false` for `log`, `--no-ignore-revs-file` for `blame`, and an explicit `--untracked-files=<mode>` for `status`. To learn what changed, compare two commits directly or ask Git's own history commands; do not replay patches commit by commit. One work's hand-written line tracking drew four P1 findings in a single review round.
 - `lessons.md` and `evals/` take real incidents only: an eval is added red first, then made green by the fix. Do not add lessons for hypothetical failures.
 - Never include credentials, private project source, personal data, company or internal-system names, or local paths.

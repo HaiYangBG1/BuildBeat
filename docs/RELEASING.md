@@ -9,14 +9,14 @@ Release evidence at source package version `@haiyangbg/buildbeat@5.5.0`; latest 
 | Channel | Source | dist-tag | How |
 |---|---|---|---|
 | Stable | tip of `main` (a release branch → pull request → merge commit → annotated tag `vX.Y.Z` on that commit) | `latest` | `workflow_dispatch` of `publish.yml` with the exact tag; the workflow refuses a tag that is not on `main` for the stable channel |
-| Pre-release | the dispatching release branch (normally `v2`), version `X.Y.Z-beta.N` | `next` | same dispatch; `latest` never moves for a pre-release |
+| Pre-release | the dispatching release branch, version `X.Y.Z-beta.N` | `next` | same dispatch; `latest` never moves for a pre-release |
 
-`main` is protected (pull request only, seven required checks, admins included, no force-push); day-to-day work lands on `v2` and reaches `main` through PRs. Since 2.0.0 `latest` is the v2 line; `next` is only for later pre-releases.
+`main` is protected (pull request only, seven required checks, admins included, no force-push); work lands on feature branches and reaches `main` through PRs. `next` is only for pre-releases.
 
 ## Release invariants
 
 1. One npm version maps to one immutable annotated Git tag and one exact source commit. Never move a published version's tag.
-2. The runtime version comes from `package.json` (`buildbeat --version`). Project templates under `templates/v2/` are copied into projects by hand; a package release never rewrites a project's files.
+2. The runtime version comes from `package.json` (`buildbeat --version`). Project templates under `templates/` are copied into projects by hand; a package release never rewrites a project's files.
 3. Publish only from a clean worktree whose `HEAD`, tag target, tested commit, and packed artifact all match.
 4. `publishConfig.registry` stays pinned to `https://registry.npmjs.org/`; a developer's mirror configuration must not redirect a public release.
 5. A successful `npm publish` response is not enough. Registry metadata, tarball contents, an isolated install, the executable version, and a read-only command must be checked independently.
@@ -135,7 +135,7 @@ Publishing the artifact is one surface. These are the others; each has drifted a
 - [ ] `CHANGELOG.md`: `## Unreleased` renamed to the version with date and the publication paragraph (run id, dist-tag, readback).
 - [ ] the current-state paragraph at the top of this runbook names the new version and the previous stable moves to a dated past tense — never two "current" versions in one runbook.
 - [ ] `README.md` / `README.en.md`: version and channel claims (`@latest` is what it says it is), no `@next` install line unless a pre-release is being announced as such.
-- [ ] `README.md` / `README.en.md` getting-started install block and the opening of `docs/v2/guide/01-quickstart.md` / `.en.md`: a stable-channel install line, with no unreleased-candidate wording left behind.
+- [ ] `README.md` / `README.en.md` getting-started install block and the opening of `docs/guide/01-quickstart.md` / `.en.md`: a stable-channel install line, with no unreleased-candidate wording left behind.
 - [ ] `SKILL.md` runtime-version section: names the runtime majors the released Skill supports, so a plugin refresh never hands an older installed runtime commands it lacks.
 - [ ] `docs/CAPABILITY-MATRIX.md` status line and distribution section.
 - [ ] Active RFC / plan documents whose channel policy the release changed get a dated "生效修订" note; history keeps its original text.

@@ -1,5 +1,5 @@
-// Frozen copy of src/v2/engine/yaml-subset.js as it was before WORK-YAML-SUBSET,
-// kept only so tests/v2-yaml-subset-fixes.test.js can prove every YAML file the
+// Frozen copy of src/engine/yaml-subset.js as it was before WORK-YAML-SUBSET,
+// kept only so tests/yaml-subset-fixes.test.js can prove every YAML file the
 // old parser accepted still parses to exactly the same value. Do not edit.
 
 // Fail-closed strict YAML subset parser for BuildBeat v2 config files.

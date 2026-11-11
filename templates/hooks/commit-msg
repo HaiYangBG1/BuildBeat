@@ -1,0 +1,55 @@
+#!/bin/sh
+# BuildBeat commit-msg hook (templates/hooks/commit-msg).
+#
+# Adds a "Work: <ID>" trailer to a commit message that has none, when its
+# subject names exactly one work that has a folder under delivery/work/;
+# when the subject names none, the branch name is read the same way. A
+# subject naming two or more works is ambiguous and adds nothing, whatever
+# the branch is called. Anything else is left as it is,
+# and the hook never stops a commit. It needs only sh and Git, not the
+# BuildBeat runtime. Install it with `buildbeat hooks install --repo .`, or
+# copy it to .git/hooks/commit-msg and make it executable.
+#
+# A name counts when it stands on its own: the text is cut at every
+# character other than letters, digits, ".", "_" and "-", and dots, dashes
+# and underscores at either end of a piece are dropped. history --path and
+# status read old subjects by the same rule.
+
+message="$1"
+[ -f "$message" ] || exit 0
+top=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+works="$top/delivery/work"
+[ -d "$works" ] || exit 0
+
+# A message that already carries a Work: trailer keeps it (amend included).
+if git interpret-trailers --parse <"$message" 2>/dev/null | grep -qi '^work:'; then
+  exit 0
+fi
+
+# The one work a line of text names, or nothing.
+named() {
+  printf '%s\n' "$1" | LC_ALL=C tr -c 'A-Za-z0-9._-' '\n' |
+    sed -e 's/^[._-]*//' -e 's/[._-]*$//' | LC_ALL=C sort -u |
+    while IFS= read -r piece; do
+      [ -n "$piece" ] || continue
+      [ -d "$works/$piece" ] && printf '%s\n' "$piece"
+    done
+}
+
+count() {
+  if [ -z "$1" ]; then echo 0; else printf '%s\n' "$1" | wc -l | tr -d ' '; fi
+}
+
+subject=$(grep -v '^#' "$message" | sed -n '/[^[:space:]]/{p;q;}')
+work=$(named "$subject")
+case "$(count "$work")" in
+  1) ;;
+  0)
+    work=$(named "$(git symbolic-ref --short -q HEAD 2>/dev/null)")
+    [ "$(count "$work")" = 1 ] || exit 0
+    ;;
+  *) exit 0 ;;
+esac
+
+git interpret-trailers --in-place --if-exists doNothing --trailer "Work: $work" "$message" || true
+exit 0

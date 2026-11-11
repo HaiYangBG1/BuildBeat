@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shell-level contract of the envelope wrapper shipped to users
-# (templates/v2/envelope/worker.sh), run on macOS (bash 3.2) and Linux in
+# (templates/envelope/worker.sh), run on macOS (bash 3.2) and Linux in
 # CI. Written for bash 3.2: no associative arrays, no mapfile.
 set -uo pipefail
 
@@ -9,7 +9,7 @@ set -uo pipefail
 unset BUILDBEAT_OUTPUT BUILDBEAT_PROMPT BUILDBEAT_INPUT
 
 REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-WORKER="$REPO_ROOT/templates/v2/envelope/worker.sh"
+WORKER="$REPO_ROOT/templates/envelope/worker.sh"
 # The shell that runs worker.sh (run configs invoke it as `bash worker.sh`).
 # CI pins /bin/bash on macOS, the bash 3.2 users get by default.
 BASH_UNDER_TEST="${BASH_UNDER_TEST:-bash}"

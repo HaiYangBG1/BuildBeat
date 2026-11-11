@@ -2,7 +2,7 @@
 # Packaged first review: pack the npm artifact, install it into an isolated
 # prefix, and review a commit from the *installed* templates with a scripted
 # reviewer until the owner approves it. This proves the published package
-# carries every path the quickstart relies on (bin/, templates/v2/), not
+# carries every path the quickstart relies on (bin/, templates/), not
 # that a real model can complete a task. Source-tree tests cannot catch a
 # file missing from package.json "files"; this one can.
 set -euo pipefail
@@ -60,20 +60,20 @@ PKG_DIR="$PREFIX/lib/node_modules/@haiyangbg/buildbeat"
 [ -x "$BIN_DIR/buildbeat" ] || fail "installed package has no executable buildbeat"
 pass "packed artifact installs the buildbeat executable"
 for relative in \
-  templates/v2/run-config.example.yaml \
-  templates/v2/work.example.md \
-  templates/v2/result.example.md \
-  templates/v2/envelope/worker.sh \
-  templates/v2/envelope/prompts/reviewer.md \
-  templates/v2/AGENTS.md \
-  docs/v2/guide/01-quickstart.md; do
+  templates/run-config.example.yaml \
+  templates/work.example.md \
+  templates/result.example.md \
+  templates/envelope/worker.sh \
+  templates/envelope/prompts/reviewer.md \
+  templates/AGENTS.md \
+  docs/guide/01-quickstart.md; do
   [ -f "$PKG_DIR/$relative" ] || fail "packed artifact is missing $relative"
 done
 pass "packed artifact carries the quickstart's templates, envelope, and guide"
 for relative in \
-  src/v2/presets/software-delivery.yaml \
-  templates/v2/envelope/prompts/builder.md \
-  templates/v2/envelope/prompts/fixer.md; do
+  src/presets/software-delivery.yaml \
+  templates/envelope/prompts/builder.md \
+  templates/envelope/prompts/fixer.md; do
   [ ! -e "$PKG_DIR/$relative" ] || fail "packed artifact still ships $relative"
 done
 pass "packed artifact ships no builder or fixer prompt and no workflow preset"
@@ -81,16 +81,16 @@ for relative in \
   docs/README.md \
   docs/CAPABILITY-MATRIX.md \
   docs/RELEASING.md \
-  docs/v2/SPEC-0001-events-v1.md \
-  docs/v2/guide/README.md \
-  docs/v2/guide/11-session-handoff.md; do
+  docs/SPEC-0001-events-v1.md \
+  docs/guide/README.md \
+  docs/guide/11-session-handoff.md; do
   [ -f "$PKG_DIR/$relative" ] || fail "packed artifact is missing current doc $relative"
 done
 pass "packed artifact carries every current doc (index, matrix, ledger format, guides)"
 # History before 6.0 is at tag v5.5.0, not in the tree; nothing of it may
 # come back into the package.
 for relative in docs/MIGRATION.md docs/history docs/releases CHANGELOG-v1.md \
-  docs/v2/RFC-0001-product-definition.md docs/v2/RFC-0002-domain-model.md docs/v2/RFC-0003-workflow-policy.md; do
+  docs/v2 templates/v2 src/v2; do
   [ ! -e "$PKG_DIR/$relative" ] || fail "packed artifact ships removed history: $relative"
 done
 pass "packed artifact carries no history document"
@@ -102,7 +102,7 @@ pass "packed artifact carries CHANGELOG.md"
 OUTPUT="$("$BIN_DIR/buildbeat" 2>&1 || true)"
 expect_contains "BuildBeat runtime" "installed buildbeat prints its usage"
 
-# 2. Fixture project laid out the way docs/v2/guide/01-quickstart.md does,
+# 2. Fixture project laid out the way docs/guide/01-quickstart.md does,
 #    reading every BuildBeat file from the installed package.
 PROJECT="$TMP_ROOT/project"
 mkdir -p "$PROJECT"
@@ -111,7 +111,7 @@ git -C "$PROJECT" config user.email "pilot@example.com"
 git -C "$PROJECT" config user.name "Pilot"
 mkdir -p "$PROJECT/src" "$PROJECT/tools" "$PROJECT/delivery/work/WORK-PACK"
 printf '.buildbeat/\n' > "$PROJECT/.gitignore"
-cp -R "$PKG_DIR/templates/v2/envelope" "$PROJECT/delivery/envelope"
+cp -R "$PKG_DIR/templates/envelope" "$PROJECT/delivery/envelope"
 
 cat > "$PROJECT/tools/fake-reviewer.sh" <<'AGENT'
 #!/usr/bin/env bash
@@ -125,7 +125,7 @@ AGENT
 # The installed sample, with codex swapped for the scripted reviewer and the
 # verifier pointed at the file the change adds.
 sed -e 's|      - npm test|      - test -f src/feature.txt|' \
-  "$PKG_DIR/templates/v2/run-config.example.yaml" \
+  "$PKG_DIR/templates/run-config.example.yaml" \
   | awk '
       /^      - codex$/ { print "      - bash"; print "      - tools/fake-reviewer.sh"; skip = 3; next }
       skip > 0 { skip--; next }

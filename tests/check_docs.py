@@ -31,35 +31,35 @@ ACTIVE_DOCS = (
     "docs/README.md",
     "docs/CAPABILITY-MATRIX.md",
     "docs/RELEASING.md",
-    "docs/v2/guide/README.md",
-    "docs/v2/guide/README.en.md",
-    "docs/v2/guide/00-how-to-talk.md",
-    "docs/v2/guide/00-how-to-talk.en.md",
-    "docs/v2/guide/01-quickstart.md",
-    "docs/v2/guide/01-quickstart.en.md",
-    "docs/v2/guide/02-workflow-guide.md",
-    "docs/v2/guide/02-workflow-guide.en.md",
-    "docs/v2/guide/03-policy-guide.md",
-    "docs/v2/guide/03-policy-guide.en.md",
-    "docs/v2/guide/04-adapter-guide.md",
-    "docs/v2/guide/04-adapter-guide.en.md",
-    "docs/v2/guide/05-worker-contract.md",
-    "docs/v2/guide/05-worker-contract.en.md",
-    "docs/v2/guide/06-evidence-guide.md",
-    "docs/v2/guide/06-evidence-guide.en.md",
-    "docs/v2/guide/07-approval-guide.md",
-    "docs/v2/guide/07-approval-guide.en.md",
-    "docs/v2/guide/09-security-boundaries.md",
-    "docs/v2/guide/09-security-boundaries.en.md",
-    "docs/v2/guide/10-recovery.md",
-    "docs/v2/guide/10-recovery.en.md",
-    "docs/v2/guide/11-session-handoff.md",
-    "docs/v2/guide/11-session-handoff.en.md",
-    "docs/v2/guide/12-without-runtime.md",
-    "docs/v2/guide/12-without-runtime.en.md",
-    "templates/v2/AGENTS.md",
-    "templates/v2/指挥台.md",
-    "templates/v2/CLAUDE.md",
+    "docs/guide/README.md",
+    "docs/guide/README.en.md",
+    "docs/guide/00-how-to-talk.md",
+    "docs/guide/00-how-to-talk.en.md",
+    "docs/guide/01-quickstart.md",
+    "docs/guide/01-quickstart.en.md",
+    "docs/guide/02-workflow-guide.md",
+    "docs/guide/02-workflow-guide.en.md",
+    "docs/guide/03-policy-guide.md",
+    "docs/guide/03-policy-guide.en.md",
+    "docs/guide/04-adapter-guide.md",
+    "docs/guide/04-adapter-guide.en.md",
+    "docs/guide/05-worker-contract.md",
+    "docs/guide/05-worker-contract.en.md",
+    "docs/guide/06-evidence-guide.md",
+    "docs/guide/06-evidence-guide.en.md",
+    "docs/guide/07-approval-guide.md",
+    "docs/guide/07-approval-guide.en.md",
+    "docs/guide/09-security-boundaries.md",
+    "docs/guide/09-security-boundaries.en.md",
+    "docs/guide/10-recovery.md",
+    "docs/guide/10-recovery.en.md",
+    "docs/guide/11-session-handoff.md",
+    "docs/guide/11-session-handoff.en.md",
+    "docs/guide/12-without-runtime.md",
+    "docs/guide/12-without-runtime.en.md",
+    "templates/AGENTS.md",
+    "templates/指挥台.md",
+    "templates/CLAUDE.md",
     "plugins/buildbeat/README.md",
     "tests/README.md",
     "example/README.md",
@@ -90,13 +90,13 @@ STALE_ACTIVE_CLAIMS = (
 
 CRITICAL_TEMPLATE_FILES = (
     "templates/gitignore.template",
-    "templates/v2/AGENTS.md",
-    "templates/v2/CLAUDE.md",
-    "templates/v2/指挥台.md",
-    "templates/v2/run-config.example.yaml",
-    "templates/v2/work.example.md",
-    "templates/v2/envelope/worker.sh",
-    "templates/v2/envelope/prompts/reviewer.md",
+    "templates/AGENTS.md",
+    "templates/CLAUDE.md",
+    "templates/指挥台.md",
+    "templates/run-config.example.yaml",
+    "templates/work.example.md",
+    "templates/envelope/worker.sh",
+    "templates/envelope/prompts/reviewer.md",
     "example/README.md",
     "example/AGENTS.md",
     "example/delivery/run-config.yaml",
@@ -113,12 +113,12 @@ CRITICAL_CLI_FILES = (
     "docs/RELEASING.md",
     "package-lock.json",
     "package.json",
-    "src/v2/cli/run.js",
-    "src/v2/cli/review-config.js",
-    "src/v2/engine/workflow.js",
+    "src/cli/run.js",
+    "src/cli/review-config.js",
+    "src/engine/workflow.js",
     "tests/publish-workflow.test.js",
     "tests/pack-firstrun.test.sh",
-    "tests/v2-templates-firstrun.test.js",
+    "tests/templates-firstrun.test.js",
 )
 CRITICAL_GOVERNANCE_FILES = (
     ".github/CODEOWNERS",
@@ -132,7 +132,7 @@ CRITICAL_GOVERNANCE_FILES = (
     "CONTRIBUTING.md",
     "SECURITY.md",
     "docs/CAPABILITY-MATRIX.md",
-    "docs/v2/SPEC-0001-events-v1.md",
+    "docs/SPEC-0001-events-v1.md",
 )
 CRITICAL_PLUGIN_FILES = (
     ".claude-plugin/marketplace.json",
@@ -149,12 +149,11 @@ REMOVED_PATHS = (
     "docs/CLI.md",
     "docs/CHECKS.md",
     "docs/LEGACY-V1.16-MIGRATION.md",
-    "docs/v2/guide/08-migration-v1.md",
-    "templates/AGENTS.md",
+    "docs/guide/08-migration-v1.md",
     "templates/scripts",
-    "src/v2/observe",
-    "src/v2/presets/release-readback.yaml",
-    "src/v2/presets/policies/ui-render-gate.yaml",
+    "src/observe",
+    "src/presets/release-readback.yaml",
+    "src/presets/policies/ui-render-gate.yaml",
     "templates/.claude",
     "tests/cli.test.js",
     "tests/test-scripts.sh",
@@ -166,14 +165,14 @@ REMOVED_PATHS = (
     "templates/team/APPROVALS.md",
     # A page whose only content was a runtime version to keep up to date
     # (WORK-LIVE-FACTS); AGENTS.md says where to look instead.
-    "templates/v2/BUILDBEAT.md",
+    "templates/BUILDBEAT.md",
     "example/BUILDBEAT.md",
     # The runtime no longer writes code or drives a fix loop: it verifies and
     # reviews a commit the session made (WORK-CLEAN-START).
-    "src/v2/presets",
-    "src/v2/adapters/mock.js",
-    "templates/v2/envelope/prompts/builder.md",
-    "templates/v2/envelope/prompts/fixer.md",
+    "src/presets",
+    "src/adapters/mock.js",
+    "templates/envelope/prompts/builder.md",
+    "templates/envelope/prompts/fixer.md",
     "example/delivery/envelope/prompts/builder.md",
     "example/delivery/envelope/prompts/fixer.md",
     "example/delivery/work/WORK-EXPORT-DATE-FILTER/intent.md",
@@ -186,9 +185,10 @@ REMOVED_PATHS = (
     "CHANGELOG-v1.md",
     "docs/history",
     "docs/releases",
-    "docs/v2/RFC-0001-product-definition.md",
-    "docs/v2/RFC-0002-domain-model.md",
-    "docs/v2/RFC-0003-workflow-policy.md",
+    # One product, no generation in the paths (WORK-DROP-V2-PATHS).
+    "src/v2",
+    "docs/v2",
+    "templates/v2",
 )
 
 
@@ -305,7 +305,7 @@ def check_readme_shape() -> list[str]:
         targets = set(MARKDOWN_LINK.findall(content))
         # Keep links to what a reader cannot do without; the rest of the
         # guide (migration, recovery, handoff) is linked from the quickstart.
-        for target in (f"docs/v2/guide/01-quickstart{suffix}", "CONTRIBUTING.md", "LICENSE"):
+        for target in (f"docs/guide/01-quickstart{suffix}", "CONTRIBUTING.md", "LICENSE"):
             if target not in targets:
                 errors.append(f"{filename}: missing user entry point {target}")
         for boundary in (".buildbeat/runtime/", ".buildbeat/worktrees/"):
@@ -594,7 +594,7 @@ def check_cli_package() -> list[str]:
         errors.append("package.json: the only executable is buildbeat -> bin/buildbeat.js")
     package_files = package.get("files", [])
     for required in (
-        "bin/", "src/", "docs/README.md", "docs/CAPABILITY-MATRIX.md", "docs/RELEASING.md", "docs/v2/",
+        "bin/", "src/", "docs/README.md", "docs/CAPABILITY-MATRIX.md", "docs/RELEASING.md", "docs/guide/", "docs/SPEC-0001-events-v1.md",
         "example/", "templates/", "SKILL.md", "lessons.md", "CHANGELOG.md",
     ):
         if required not in package_files:
@@ -776,10 +776,10 @@ def check_active_docs_currency() -> list[str]:
         errors.append("SKILL.md: frontmatter description not found in the first lines")
 
     # Worker envelope: the documented finding shape must be the parsed one.
-    contract = (ROOT / "docs/v2/guide/05-worker-contract.md").read_text(encoding="utf-8")
+    contract = (ROOT / "docs/guide/05-worker-contract.md").read_text(encoding="utf-8")
     for fragment in ('"severity": "P1", "summary"', "`P0` / `P1` 阻断", "`invalid-output`"):
         if fragment not in contract:
-            errors.append(f"docs/v2/guide/05-worker-contract.md: missing parser-aligned contract fragment {fragment}")
+            errors.append(f"docs/guide/05-worker-contract.md: missing parser-aligned contract fragment {fragment}")
 
     # Every documented install line in active docs must use the stable channel.
     for relative in ACTIVE_DOCS:
@@ -841,7 +841,7 @@ def check_lesson_citations() -> list[str]:
     """lessons.md was renumbered once (3.0.0) and stale numbers pointed at the
     wrong entries; cite a lesson by its title, never by its number."""
     errors: list[str] = []
-    roots = [ROOT / "src", ROOT / "templates", ROOT / "docs" / "v2" / "guide", ROOT / "docs" / "v2" / "skill"]
+    roots = [ROOT / "src", ROOT / "templates", ROOT / "docs" / "guide"]
     files = [ROOT / "SKILL.md"]
     for root in roots:
         if root.exists():
@@ -871,7 +871,7 @@ def check_without_runtime_guide() -> list[str]:
     errors: list[str] = []
     shapes = {}
     for suffix in (".md", ".en.md"):
-        relative = f"docs/v2/guide/12-without-runtime{suffix}"
+        relative = f"docs/guide/12-without-runtime{suffix}"
         text = (ROOT / relative).read_text(encoding="utf-8")
         blocks = re.findall(r"```json\n(.*?)\n\s*```", text, re.DOTALL)
         blocks += re.findall(r"`(\{[^`]*\})`", text)
@@ -883,11 +883,11 @@ def check_without_runtime_guide() -> list[str]:
             errors.append(f"{relative}: record example is not valid JSON ({error})")
             shapes[suffix] = None
     if shapes.get(".md") is not None and shapes.get(".md") != shapes.get(".en.md"):
-        errors.append("docs/v2/guide/12-without-runtime: zh/en record examples differ")
+        errors.append("docs/guide/12-without-runtime: zh/en record examples differ")
     for relative, target in (
-        ("SKILL.md", "docs/v2/guide/12-without-runtime.md"),
-        ("docs/v2/guide/README.md", "12-without-runtime.md"),
-        ("docs/v2/guide/README.en.md", "12-without-runtime.en.md"),
+        ("SKILL.md", "docs/guide/12-without-runtime.md"),
+        ("docs/guide/README.md", "12-without-runtime.md"),
+        ("docs/guide/README.en.md", "12-without-runtime.en.md"),
     ):
         if f"]({target})" not in (ROOT / relative).read_text(encoding="utf-8"):
             errors.append(f"{relative}: must link {target}")

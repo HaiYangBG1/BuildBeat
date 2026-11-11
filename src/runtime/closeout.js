@@ -1,0 +1,304 @@
+// Close-out (WORK-CONTEXT-CLOSEOUT): every work closes with a result page,
+// delivery/work/<ID>/result.md, saying what was delivered, what was decided,
+// what is left and which conclusions were written into the project's own
+// documents. The runtime never writes the page. It binds the page's digest
+// to the close decision and reads each "<path> @ <commit>" line back from
+// Git, so "it is in AGENTS.md now" is a fact, not the session's word.
+// Real cost behind it: in the pilot workspace 15 of 21 release readback
+// scripts only checked Git, written so that works that never ship could
+// close; close conclusions were one-line strings carrying the delivery, the
+// leftovers and the lessons; the same environment facts were rediscovered
+// work after work.
+
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join, posix } from "node:path";
+
+import { branchName, codeCommitsOf } from "./work-commits.js";
+
+// A line in result.md that records a conclusion written into the project:
+// "- <path> @ <commit> — <what>". The path may be in backticks (and then
+// may contain spaces); the commit is 7 to 40 hex digits.
+const PROMOTION =
+  /^ {0,3}[-*+]\s+(?:`([^`]+)`|([^\s`]+))\s+@\s+`?([0-9a-fA-F]{7,40})`?(?=\s|$)/;
+
+// Text lines of a Markdown page outside fenced code, indented code and HTML
+// comments, so a template's guidance kept in comments or an example in a code
+// block is neither the summary nor a promotion (nor a link between works).
+// Code is recognised first: a comment marker inside a code block or an inline
+// code span (or escaped with a backslash) is text, not the start of a comment. A comment may open or close
+// anywhere else on a line and span several lines; what lies outside it is the
+// line's text.
+export function textLines(text, { codeSpans = true } = {}) {
+  const lines = [];
+  let fence = null;
+  let comment = false;
+  let indented = false;
+  let blankBefore = true;
+  for (const raw of text.split(/\r?\n/)) {
+    if (fence) {
+      if (raw.trim().startsWith(fence)) fence = null;
+      continue;
+    }
+    if (!comment) {
+      // An indented code block starts after a blank line and runs on through
+      // further indented lines.
+      if (/^( {4}|\t)/.test(raw) && raw.trim() !== "" && (blankBefore || indented)) {
+        indented = true;
+        blankBefore = false;
+        continue;
+      }
+      const opening = /^ {0,3}(`{3,}|~{3,})/.exec(raw);
+      if (opening) {
+        fence = opening[1];
+        indented = false;
+        blankBefore = false;
+        continue;
+      }
+    }
+    const before = comment;
+    let kept = "";
+    let dropped = false;
+    let at = 0;
+    while (at < raw.length) {
+      if (comment) {
+        const end = raw.indexOf("-->", at);
+        if (end < 0) break;
+        comment = false;
+        at = end + 3;
+      } else if (raw[at] === "\\" && /[!-/:-@[-`{-~]/.test(raw[at + 1] ?? "")) {
+        // A backslash-escaped punctuation character is plain text: \` opens
+        // no code span and \<!-- no comment.
+        kept += raw.slice(at, at + 2);
+        at += 2;
+      } else if (raw[at] === "`") {
+        // A code span closes at the next run of exactly as many backticks;
+        // without one, the backticks are plain text.
+        const run = /^`+/.exec(raw.slice(at))[0];
+        const runs = /`+/g;
+        runs.lastIndex = at + run.length;
+        let close = -1;
+        for (let match = runs.exec(raw); match; match = runs.exec(raw)) {
+          if (match[0].length === run.length) {
+            close = match.index;
+            break;
+          }
+        }
+        const stop = close < 0 ? at + run.length : close + run.length;
+        // codeSpans: false leaves a closed span out (the draft check reads
+        // past code); its boundaries are the ones found here, before any
+        // comment on the line is removed.
+        if (close < 0 || codeSpans) kept += raw.slice(at, stop);
+        else {
+          kept += " ";
+          dropped = true;
+        }
+        at = stop;
+      } else if (raw.startsWith("<!--", at)) {
+        comment = true;
+        at += 4;
+      } else {
+        kept += raw[at];
+        at += 1;
+      }
+    }
+    // A line whose only text was a dropped code span is still a line of the
+    // paragraph: it does not count as blank, so the line after it is not
+    // read as indented code.
+    if (kept.trim() === "" && !dropped) {
+      // A blank line (not one that was all comment) ends a paragraph.
+      if (!before && !comment && raw.trim() === "") {
+        lines.push("");
+        blankBefore = true;
+      }
+      continue;
+    }
+    indented = false;
+    blankBefore = false;
+    lines.push(kept);
+  }
+  return lines;
+}
+
+// The first line that is neither empty nor a heading: what status shows
+// for a closed work when the close decision gives no --result.
+export function resultSummary(text) {
+  for (const raw of textLines(text)) {
+    const line = raw.trim();
+    if (line !== "" && !line.startsWith("#")) return line;
+  }
+  return "";
+}
+
+export function parsePromotions(text) {
+  const promotions = [];
+  for (const raw of textLines(text)) {
+    const match = PROMOTION.exec(raw);
+    if (match) {
+      promotions.push({ path: match[1] ?? match[2], commit: match[3].toLowerCase() });
+    }
+  }
+  return promotions;
+}
+
+export function resultPath(repoRoot, workId) {
+  return join(repoRoot, "delivery", "work", workId, "result.md");
+}
+
+export function readResult(repoRoot, workId) {
+  const path = resultPath(repoRoot, workId);
+  if (!existsSync(path)) {
+    return { exists: false };
+  }
+  const bytes = readFileSync(path);
+  const text = bytes.toString("utf8");
+  return {
+    exists: true,
+    // Same bytes as `shasum -a 256 result.md`, so a hand-written close
+    // line can carry the digest too.
+    digest: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
+    summary: resultSummary(text),
+    promotions: parsePromotions(text),
+    draft: isDraft(text),
+  };
+}
+
+// A result page drafted from commits (WORK-COMMITTED-WORKS): `decide --action
+// close --draft` writes it, and closing refuses it until someone has read
+// it, deleted its first line and filled in or deleted every "<fill in"
+// placeholder. The marker is an HTML comment, so it is never the summary.
+// Both count wherever they stand outside code, so moving the marker below a
+// blank line or a heading does not hide it, while a hand-written page may
+// quote either in a code block or in inline code and still close
+// (WORK-FALSE-POSITIVES: a result page describing the check quoted the
+// placeholder in inline code and could not close). textLines drops
+// comments, so the marker is first turned into visible text and then read
+// the same way as the placeholders.
+const DRAFT_MARKER = "<!-- buildbeat draft: check every section against Git and the work, then delete this line -->";
+const DRAFT_SHOWN = 20;
+
+const DRAFT_SEEN = "\u0001buildbeat-draft\u0001";
+
+export function isDraft(text) {
+  const shown = text.replace(/<!--\s*buildbeat draft:/g, (marker) => `${DRAFT_SEEN}${marker}`);
+  return textLines(shown, { codeSpans: false }).some((line) => line.includes(DRAFT_SEEN) || line.includes("<fill in"));
+}
+
+export class DraftError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "DraftError";
+  }
+}
+
+// Writes delivery/work/<ID>/result.md from the code commits on the current
+// branch that name the work. It never overwrites a page and never closes.
+export function writeResultDraft({ repoRoot, workId, closed = false }) {
+  const path = resultPath(repoRoot, workId);
+  if (closed) throw new DraftError(`${workId} is already closed`);
+  if (existsSync(path)) throw new DraftError(`delivery/work/${workId}/result.md already exists; edit it instead`);
+  const branch = branchName(repoRoot);
+  const commits = codeCommitsOf(repoRoot, branch, [workId]).get(workId) ?? [];
+  if (commits.length === 0) {
+    throw new DraftError(
+      `no commits on ${branch} outside delivery/ trace to ${workId}; write delivery/work/${workId}/result.md by hand (template: templates/result.example.md)`,
+    );
+  }
+  const day = (item) => new Date(item.time * 1000).toISOString().slice(0, 10);
+  const latest = commits[0];
+  const first = commits.at(-1);
+  const span = day(first) === day(latest) ? ` on ${day(latest)}` : `, ${day(first)} to ${day(latest)}`;
+  const count = `${commits.length} commit${commits.length === 1 ? "" : "s"}`;
+  const listed = commits.slice(0, DRAFT_SHOWN).map((item) => `- ${item.commit.slice(0, 7)} ${day(item)} ${item.subject}`);
+  if (commits.length > DRAFT_SHOWN) listed.push(`- and ${commits.length - DRAFT_SHOWN} more`);
+  const text = [
+    DRAFT_MARKER,
+    `# ${workId} result`,
+    "",
+    `Delivered in ${count} on ${branch}${span}; latest ${latest.commit.slice(0, 7)} "${latest.subject}". Confirmed by <fill in: who checked it, and where it runs>.`,
+    "",
+    ...listed,
+    "",
+    "## Decided",
+    '- <fill in: decisions later readers need, or "none">',
+    "",
+    "## Left over",
+    '- <fill in: what was not done and where it went, or "none">',
+    "",
+    "## Written into the project",
+    '- <fill in: "path @ commit — what was added or corrected", or "none" and why>',
+    "",
+  ].join("\n");
+  writeFileSync(path, text, { encoding: "utf8", flag: "wx" });
+  return { path, commits: commits.length, branch };
+}
+
+function git(repoRoot, args) {
+  return execFileSync("git", ["-C", repoRoot, ...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+}
+
+// The branch the main checkout is on: the same ref status uses to decide
+// that a candidate was merged.
+export function currentRef(repoRoot) {
+  try {
+    return git(repoRoot, ["rev-parse", "--abbrev-ref", "HEAD"]).trim() || "HEAD";
+  } catch {
+    return "HEAD";
+  }
+}
+
+function resolveCommit(repoRoot, commit) {
+  try {
+    return git(repoRoot, ["rev-parse", "--verify", "--quiet", `${commit}^{commit}`]).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function onRef(repoRoot, commit, ref) {
+  try {
+    git(repoRoot, ["merge-base", "--is-ancestor", commit, ref]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Files the commit changes. A merge commit is read against its first
+// parent: a document merged in through a merge commit counts for the merge
+// as well as for the commit that wrote it. Renames list both paths.
+function changedPaths(repoRoot, commit) {
+  const parents = git(repoRoot, ["rev-list", "--parents", "-n", "1", commit]).trim().split(/\s+/).slice(1);
+  const args = parents.length === 0
+    ? ["diff-tree", "-r", "--root", "--no-commit-id", "--name-only", "--no-renames", "-z", commit]
+    : ["diff-tree", "-r", "--name-only", "--no-renames", "-z", parents[0], commit];
+  return git(repoRoot, args).split("\0").filter(Boolean);
+}
+
+// Checks every promotion line against Git and returns each with ok and,
+// when it fails, the problem in the words the close refusal uses.
+export function checkPromotions(repoRoot, workId, promotions, { ref = currentRef(repoRoot) } = {}) {
+  const workFolder = `delivery/work/${workId}`;
+  return promotions.map((item) => {
+    const shown = `${item.path} @ ${item.commit}`;
+    const path = posix.normalize(item.path.replace(/^\.\//, ""));
+    if (path === workFolder || path.startsWith(`${workFolder}/`)) {
+      return { path, commit: item.commit, ok: false, problem: `${item.path}: inside the work's own folder, not the project` };
+    }
+    const full = resolveCommit(repoRoot, item.commit);
+    if (!full) {
+      return { path, commit: item.commit, ok: false, problem: `${shown}: unknown commit` };
+    }
+    if (!onRef(repoRoot, full, ref)) {
+      return { path, commit: full, ok: false, problem: `${shown}: commit not on ${ref}` };
+    }
+    if (!changedPaths(repoRoot, full).includes(path)) {
+      return { path, commit: full, ok: false, problem: `${shown}: the commit does not change ${item.path}` };
+    }
+    return { path, commit: full, ok: true };
+  });
+}

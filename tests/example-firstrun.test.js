@@ -5,7 +5,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, w
 import { join } from "node:path";
 import test from "node:test";
 
-import { parseYamlSubset } from "../src/v2/engine/yaml-subset.js";
+import { parseYamlSubset } from "../src/engine/yaml-subset.js";
 import { tempDir } from "./support/tmp.js";
 
 // The shipped example/ is a snapshot of a fictional project after one work

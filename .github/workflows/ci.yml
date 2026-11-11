@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - v2
 
 permissions:
   contents: read
@@ -22,13 +21,13 @@ jobs:
           fetch-depth: 0
 
       - name: Check Shell syntax
-        run: bash -n .github/scripts/*.sh tests/*.sh templates/v2/envelope/*.sh
+        run: bash -n .github/scripts/*.sh tests/*.sh templates/envelope/*.sh
 
       - name: Run ShellCheck
         run: |
           sudo apt-get update
           sudo apt-get install --yes shellcheck
-          shellcheck -x .github/scripts/*.sh tests/*.sh templates/v2/envelope/*.sh
+          shellcheck -x .github/scripts/*.sh tests/*.sh templates/envelope/*.sh
 
       - name: Check documentation
         run: bash tests/check-docs.sh

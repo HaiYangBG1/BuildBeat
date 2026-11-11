@@ -1,7 +1,7 @@
 # BuildBeat capability matrix / 能力矩阵
 
 Two ways to use it. Skill → project records keeps each work's context in Git
-with no runtime: [Skill and project files only](v2/guide/12-without-runtime.en.md)
+with no runtime: [Skill and project files only](guide/12-without-runtime.en.md)
 states what is written by hand and what must not be claimed. Skill → local
 runtime → project records adds verification and an independent read-only review
 of a commit, approval bound to that commit, and the runtime's checks of the
@@ -25,4 +25,4 @@ codex exec; other tools need their own validation.
 
 Records left by earlier versions are not changed. Closed works still show as
 closed; an unclosed work in the earlier format shows as `LEGACY`.
-[Guides](v2/guide/README.md) describe current usage.
+[Guides](guide/README.md) describe current usage.

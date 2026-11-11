@@ -13,5 +13,5 @@ not shipped.
 
 To try it, copy the folder, rename `gitignore.template` to `.gitignore`,
 `git init`, commit, and follow the
-[quickstart](../docs/v2/guide/01-quickstart.md). The example shows the
+[quickstart](../docs/guide/01-quickstart.md). The example shows the
 records; it does not prove what a real model can do.

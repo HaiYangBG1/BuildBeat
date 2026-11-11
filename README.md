@@ -128,7 +128,7 @@ AI 说「改好了，测试都过了」，你不敢全信，只能自己再跑�
 </tr>
 </table>
 
-> 从代码查需求、自己读测试结果、代码变了的提醒，需要装运行时。不装运行时、只让 AI 工具读项目文件，其余部分照样能用，见[只用 Skill 和项目文件](docs/v2/guide/12-without-runtime.md)。
+> 从代码查需求、自己读测试结果、代码变了的提醒，需要装运行时。不装运行时、只让 AI 工具读项目文件，其余部分照样能用，见[只用 Skill 和项目文件](docs/guide/12-without-runtime.md)。
 
 ## 开始用
 
@@ -143,7 +143,7 @@ AI 说「改好了，测试都过了」，你不敢全信，只能自己再跑�
    npm install --global @haiyangbg/buildbeat@latest
    buildbeat --version
    如果本机装的是 6 以前的版本，并且还有没跑完的工作，先用旧版跑完或取消，再升级。
-3. 读一遍 npm 包里的 SKILL.md 和 docs/v2/guide/01-quickstart.md（在 $(npm root -g)/@haiyangbg/buildbeat/ 下），之后都按 SKILL.md 的方式干活。
+3. 读一遍 npm 包里的 SKILL.md 和 docs/guide/01-quickstart.md（在 $(npm root -g)/@haiyangbg/buildbeat/ 下），之后都按 SKILL.md 的方式干活。
 4. 按快速开始把模板放进这个项目、补好 .gitignore。代码由你来写；审查默认用本机已登录的另一个 AI 命令行工具，拿不准就问我。
 5. 弄好后用一两句话告诉我可以开始了。之后我只用平常的话跟你说要做什么，命令都由你来跑。
 ```
@@ -161,9 +161,9 @@ AI 说「改好了，测试都过了」，你不敢全信，只能自己再跑�
 
 </details>
 
-想自己动手一步步装，见[快速开始](docs/v2/guide/01-quickstart.md)。
+想自己动手一步步装，见[快速开始](docs/guide/01-quickstart.md)。
 
-不想装 Node 或运行时？只用 Skill 和项目文件也行，见[只用 Skill 和项目文件](docs/v2/guide/12-without-runtime.md)。
+不想装 Node 或运行时？只用 Skill 和项目文件也行，见[只用 Skill 和项目文件](docs/guide/12-without-runtime.md)。
 
 ## 用起来是什么样
 

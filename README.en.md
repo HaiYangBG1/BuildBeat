@@ -128,7 +128,7 @@ The AI says "done, all tests pass", and you don't quite trust it, so you run and
 </tr>
 </table>
 
-> Tracing code back to its work, reading test results itself and the heads-up when code changes need the runtime. Without it, letting your AI tool read the project files covers the rest; see [Skill and project files only](docs/v2/guide/12-without-runtime.en.md).
+> Tracing code back to its work, reading test results itself and the heads-up when code changes need the runtime. Without it, letting your AI tool read the project files covers the rest; see [Skill and project files only](docs/guide/12-without-runtime.en.md).
 
 ## Get started
 
@@ -143,7 +143,7 @@ Please set up BuildBeat (https://github.com/HaiYangBG1/BuildBeat) in this projec
    npm install --global @haiyangbg/buildbeat@latest
    buildbeat --version
    If a version before 6 is installed and still has unfinished work, finish or cancel it with the old version before upgrading.
-3. Read SKILL.md and docs/v2/guide/01-quickstart.en.md from the npm package (under $(npm root -g)/@haiyangbg/buildbeat/) and work the way SKILL.md describes from now on.
+3. Read SKILL.md and docs/guide/01-quickstart.en.md from the npm package (under $(npm root -g)/@haiyangbg/buildbeat/) and work the way SKILL.md describes from now on.
 4. Following the quickstart, put the templates into this project and update .gitignore. You write the code; for the review, use another AI command-line tool already signed in on this machine by default; ask me if unsure.
 5. When you're done, tell me in a sentence or two that we can start. From then on I'll just tell you in plain words what I want, and you run the commands.
 ```
@@ -161,9 +161,9 @@ Once it's set up, just talk to it; common situations are under "What it looks li
 
 </details>
 
-To install step by step yourself, see the [quickstart](docs/v2/guide/01-quickstart.en.md).
+To install step by step yourself, see the [quickstart](docs/guide/01-quickstart.en.md).
 
-No Node or runtime? Skill and project files alone work too; see [Skill and project files only](docs/v2/guide/12-without-runtime.en.md).
+No Node or runtime? Skill and project files alone work too; see [Skill and project files only](docs/guide/12-without-runtime.en.md).
 
 ## What it looks like
 

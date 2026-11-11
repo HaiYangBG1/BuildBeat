@@ -12,9 +12,9 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { acceptWork, approveReview } from "../../src/v2/runtime/decisions.js";
-import { nextAttemptId } from "../../src/v2/runtime/envelope.js";
-import { reviewCommit } from "../../src/v2/runtime/orchestrator.js";
+import { acceptWork, approveReview } from "../../src/runtime/decisions.js";
+import { nextAttemptId } from "../../src/runtime/envelope.js";
+import { reviewCommit } from "../../src/runtime/orchestrator.js";
 import { tempDir } from "./tmp.js";
 
 export const ROOT = join(import.meta.dirname, "..", "..");
@@ -78,7 +78,7 @@ export function commit(root, message, files = {}) {
 }
 
 // An empty repository on branch main with one baseline commit.
-export function emptyRepo(prefix = "bb-v2-") {
+export function emptyRepo(prefix = "bb-") {
   const root = tempDir(prefix);
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
@@ -102,7 +102,7 @@ export function addWork(root, work, { text = WORK_MD, workConfig = null, accept 
 
 // A repository with the project run config and the reviewer script, then one
 // work (WORK-A unless named) whose work.md commit is `base`.
-export function fixture({ prefix = "bb-v2-review-", work = "WORK-A", projectConfig = PROJECT_CONFIG, workConfig = null, accept = true } = {}) {
+export function fixture({ prefix = "bb-review-", work = "WORK-A", projectConfig = PROJECT_CONFIG, workConfig = null, accept = true } = {}) {
   const root = emptyRepo(prefix);
   commit(root, "baseline", {
     ".gitignore": ".buildbeat/\n",

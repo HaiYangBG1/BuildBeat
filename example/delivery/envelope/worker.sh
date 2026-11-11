@@ -4,7 +4,7 @@
 #   bash delivery/envelope/worker.sh reviewer -- <tool command...>
 #   bash delivery/envelope/worker.sh reader -- <tool command...>    （读者测试，行为相同）
 #
-# 做的事（每一条都对应 docs/v2/guide/05-worker-contract.md 的一条合同）：
+# 做的事（每一条都对应 docs/guide/05-worker-contract.md 的一条合同）：
 #   1. 工具不在 PATH → exit 75（EX_TEMPFAIL）：记为工具故障，不算这个提交的问题；
 #   2. 有 $BUILDBEAT_PROMPT 就把 prompt 文本作为最后一个参数追加给工具（codex exec / claude -p 都吃位置参数）；
 #   3. 工具的 stdout 落到 $BUILDBEAT_OUTPUT（工具自己写了该文件则不覆盖）；不改文件、不 commit；
