@@ -7,10 +7,10 @@ Contributions should start from a reproducible delivery failure mode: a real inc
 | Question | Authority | What it is not |
 |---|---|---|
 | How a session should use BuildBeat, what it says to the user, which command it runs | `SKILL.md` (usage routing and behaviour) plus `templates/` | Not the specification of the state machine |
-| What the runtime must do: workflow, policy, approval, events | `docs/v2/RFC-0001/2/3` and `docs/v2/SPEC-0001` (dated revision notes on top; bodies keep their original text) | Not a description of what the code currently does |
-| What the code does today | `src/` and `tests/` | Not a licence to redefine the RFCs silently |
+| The format of the run ledger | `docs/v2/SPEC-0001-events-v1.md` (frozen; additive changes only) | Not a description of commands or configuration |
+| What the runtime does | `src/` and `tests/` | Not a licence to change the ledger format silently |
 
-When these disagree, the disagreement is the bug: either fix the code and add a test, or revise the RFC/SPEC with a dated note. Never "fix" it by editing only the guide. `docs/v2/guide/` and `README*` are operator views derived from the above.
+When these disagree, the disagreement is the bug: either fix the code and add a test, or revise the document. Never "fix" it by editing only the guide. `docs/v2/guide/` and `README*` are operator views derived from the above.
 
 ## Branches and releases
 

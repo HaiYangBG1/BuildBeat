@@ -12,7 +12,7 @@
 | 做事 | AI 工具按平常的方式改代码、跑测试，合并走项目原来的流程 | 在隔离工作树里自动实现、验证、审查、修复，带证据停在人的合并决定 |
 | 看进度 | 读 `delivery/work/` 下的文件 | `buildbeat status` 汇总所有工作和待决定的事 |
 
-只用文件时，没有自动闭环、隔离工作树、批准校验、预算和中断恢复，AI 不得声称有这些。自己跑的测试照实说是自己跑的。
+只用文件时，没有运行时跑的验证、独立审查、范围检查和批准校验，AI 不得声称有这些。自己跑的测试照实说是自己跑的。
 
 ## 怎么开始
 
@@ -54,11 +54,11 @@
 | `work.md` | 目标、起因、已核实的现状、范围、开工前待拍板、验收、实施计划、停止条件 |
 | `decisions.jsonl` | 接受、批准、关窗等决定，一行一个 JSON |
 | `review-findings.jsonl` | 审查发现与人的裁决 |
-| `runs/<RUN>/run-record.json` | 已结束 Run 的终态、候选、证据摘要与成本 |
+| `runs/<RUN>/run-record.json` | 已结束的一轮审查的结局、被审的提交、证据摘要与成本 |
 | `releases.jsonl` | 合并后的上线回读记录 |
 | `result.md` | 关窗时写：做成了什么、定了什么、剩下什么、写进了项目哪些文档 |
 
-正在进行的 Run 台账在运行它的机器的 `.buildbeat/runtime/` 中，不进 Git；进度以那一方的 `buildbeat status` 为准。
+正在等决定的一轮审查，台账在运行它的机器的 `.buildbeat/runtime/` 中，不进 Git；进度以那一方的 `buildbeat status` 为准。
 
 ## 可以写
 
@@ -91,12 +91,12 @@
 
 ## 不得做
 
-- 批准或拒绝 Run、采纳候选：这些决定由运行时写入 Run 台账，并在盖章前重新回读候选与证据。
-- 写或改 Run 台账、`run-record.json`、`releases.jsonl` 或任何证据；声称运行时的验证、审查、上线回读或写回核对已经通过。
+- 批准或拒绝一个提交：这些决定由运行时写入台账，并在记录前重新核对提交与证据。
+- 写或改台账、`run-record.json`、`releases.jsonl` 或任何证据；声称运行时的验证、审查、上线回读或写回核对已经通过。
 - 以别人的名义写决定；修改已有行。
 
 ## 以后加上运行时
 
 想让 AI 在隔离工作树里自动实现、验证、审查、修复，想让机器替你核对上面这些记录，或者工作多了要一眼看全进度，就按[快速开始](01-quickstart.md)装上运行时。已经写下的文件不用改：
 
-运行 `buildbeat status --repo . --work <ID>`：新改的 `work.md` 显示为待接受，手写的接受行与裁决行按同样的摘要与指纹规则生效；`result.md` 的写回行会被现场核对（✓/✗），关窗后 `result.md` 又改过也会标出。没跑过 Run、已经有代码提交的工作显示为 `COMMITTED`，可以用 `buildbeat decide --repo . --work <ID> --action close --draft` 按提交生成 `result.md` 初稿，改好后关窗。之后 `buildbeat run --config <config>` 接着交付。同一个项目里，装了运行时的人和没装的人用的是同一批文件。
+运行 `buildbeat status --repo . --work <ID>`：新改的 `work.md` 显示为待接受，手写的接受行与裁决行按同样的摘要与指纹规则生效；`result.md` 的写回行会被现场核对（✓/✗），关窗后 `result.md` 又改过也会标出。没送审过、已经有代码提交的工作显示为 `COMMITTED`，可以用 `buildbeat decide --repo . --work <ID> --action close --draft` 按提交生成 `result.md` 初稿，改好后关窗。之后写好项目的 `delivery/run-config.yaml`，就能用 `buildbeat review --repo . --work <ID>` 送审。同一个项目里，装了运行时的人和没装的人用的是同一批文件。

@@ -1,19 +1,14 @@
-# Recovery and diagnostics
+# When something goes wrong
 
 [简体中文](10-recovery.md)
 
-At the merge decision, `run --adopt`, `decide --action fix` and the approval command’s `--candidate` binding require runtime 4.2 or later.
+There is no run to recover: a review round either finishes or is void, and the next review starts from the beginning.
 
-- run resumes the unique nonterminal run in its family; choose --run when ambiguous. Archived work needs explicit --new to start another attempt.
-- An interrupted step reruns itself from the ledger. Handle a dirty worktree first. After committing a manual fix, --adopt checks the actual HEAD and continues at verify.
-- The merge decision also accepts a manual repair: the new HEAD must descend from the candidate and stay in scope. Alternatively use `decide --action fix --repo <repo> --run <RUN> --reason <what to repair> --by <name>` with a configured fixer, then `run --config <config> --run <RUN>`. Both paths verify and review again before another merge decision, preserving review budgets and historical evidence.
-- After repair, read the refreshed status card and copy its approval command with `--candidate <full SHA>`; old or unbound approvals fail with `approval stale`.
-- Reclaim a lock only when its owner is on this host and provably dead. Keep live, foreign-host and unidentified locks. stop is not a process-kill command.
-- Timeouts, crashes, malformed envelopes and exit 75 are infra: no fixer and no failure-budget charge. Decide and continue once the environment recovers.
-- A corrupt ledger exposes only its valid prefix and refuses appends. history --verify replays and validates without silently repairing it. Preserve the scene and candidate.
-- Changed workflow digests or frozen safeguards prevent resume. Unsupported old custom/release flows must finish on the old runtime.
-- Terminal records survive runtime cleanup; active process/worktree state does not migrate through Git. Do not routinely delete runtime files.
-- gc plans first and only collects compacted terminal runs. Dirty trees and unique candidates are retained by default; stale lock owners must be proven dead.
-- STALLED defaults to 15 minutes without output. Status shows elapsed/typical duration and recent output; it does not kill processes.
-
-[Migration and rollback](../../MIGRATION.md).
+- A round is `CANCELLED`: tool trouble. `status --repo . --run <RUN>` shows the reason and `check --repo . --work <ID>` shows the environment; `review` again once it is back.
+- A round is `FAILED`: a problem with the commit. Read the verification log, fix in a new commit and send it.
+- The review process was killed, or the machine was shut down: that round stays at running. The next review of the same work records it as `CANCELLED` and removes its checkout.
+- The message `another review is running in this repository`: a round is running; wait for it to end. When the process holding the lock is gone, the lock is reclaimed automatically; a lock from another machine, or one whose holder cannot be identified, is kept.
+- An approval is refused with `approval stale`: the commit waiting for a decision is no longer the one you wrote. Run `status --repo . --work <ID>` again and use the full commit hash it gives.
+- A damaged ledger: only the valid first part is read, further writes to it are refused, and it is not repaired silently. Keep things as they are; sending for review again opens a new round.
+- `.buildbeat/runtime/` was deleted: finished rounds have records in `delivery/work/<ID>/runs/` and show as usual; the round still waiting for a decision is gone, so send for review again.
+- Records left by old versions need no change. A run of an old version that has not ended is finished or cancelled with the old version; an unclosed work in the old format shows as `LEGACY`: read its folder, or write result.md and close it.

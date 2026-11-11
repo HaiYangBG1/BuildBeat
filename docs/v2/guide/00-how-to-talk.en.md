@@ -4,14 +4,15 @@
 
 | You say | The session does |
 |---|---|
-| Continue this project | Read project instructions, work records, and status; identify the active run |
-| Prepare this feature | Write work.md: goal, scope, acceptance criteria, implementation plan |
-| Accept and start | Record the acceptance, then run; reuse existing explicit authorization |
-| Where are we, what needs my decision? | Show candidate, evidence, findings, decision subject and next step |
-| I fixed it | Read back the clean tree and commit, then run --adopt to verify |
-| Reject or cancel | Record the reason and preserve history; handle a live lock-owning driver separately |
-| Switch sessions | Save missing facts and retain active runtime files; continue from project records |
+| Continue this project | Reads the project entry file and the work records, looks at `status`, and says where each work stands and what is waiting for your decision |
+| Prepare this feature | Writes a work.md: goal, why now, facts checked, scope, decisions before starting, acceptance, plan, stop conditions |
+| Accept, start | Records your acceptance, then writes the code and commits it itself |
+| Send it for review | Hands the commit to the runtime: it runs the project's verification and has a read-only AI that took no part in writing it review it |
+| Where are we, what needs my decision? | Lists this commit's verification result, the review findings and the decisions waiting for you |
+| This finding needs no change | Records your ruling and the reason; the same finding does not block again |
+| Approve / reject | Records your decision on this commit; an approval only means it is ready to merge |
+| Switch sessions | Writes facts not yet on disk into the project; the new session carries on from the project records |
 
-The loop ends at the merge decision. Merge, push, deployment and publication each require their corresponding authorization.
+Merge, push, deployment and publication each need their own authorization.
 
-For a main repository with code repositories, inspect them together with `buildbeat status --repo . --all-repos`. See [Session handoff](11-session-handoff.en.md) for discovery, filters and settled counts.
+For a main repository with several code repositories, look at them together with `buildbeat status --repo . --all-repos`; see [Session handoff](11-session-handoff.en.md).

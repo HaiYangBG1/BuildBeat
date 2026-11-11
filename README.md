@@ -115,7 +115,7 @@ AI 工具自带的记忆，是围着人设计的：记在某个人的账号里�
 
 ### ⑤ 做没做完，看证据
 
-AI 说「改好了，测试都过了」，你不敢全信，只能自己再跑一遍、再看一遍。BuildBeat 自己去读测试结果，再让另一个只读的 AI 审查，有问题就修，修完重新测、重新审，最后停下来等你拍板，什么时候、谁同意的都有记录。
+AI 说「改好了，测试都过了」，你不敢全信，只能自己再跑一遍、再看一遍。AI 写完提交后，BuildBeat 自己在这个提交上跑项目的测试、读结果，再让另一个没参与写的只读 AI 审查；有问题，AI 改完再送一遍。最后停下来等你拍板，批准记在那个提交上，什么时候、谁同意的都有记录。
 
 <picture>
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/evidence-zh-dark-narrow.png">
@@ -142,9 +142,9 @@ AI 说「改好了，测试都过了」，你不敢全信，只能自己再跑�
    npm view @haiyangbg/buildbeat@latest version
    npm install --global @haiyangbg/buildbeat@latest
    buildbeat --version
-   如果本机已经装了 3.x，并且还有没跑完的工作，先用旧版跑完或取消，再升级。
+   如果本机装的是 6 以前的版本，并且还有没跑完的工作，先用旧版跑完或取消，再升级。
 3. 读一遍 npm 包里的 SKILL.md 和 docs/v2/guide/01-quickstart.md（在 $(npm root -g)/@haiyangbg/buildbeat/ 下），之后都按 SKILL.md 的方式干活。
-4. 按快速开始把模板放进这个项目、补好 .gitignore。实现、审查、修复默认用本机已登录的 AI 命令行工具，拿不准就问我。
+4. 按快速开始把模板放进这个项目、补好 .gitignore。代码由你来写；审查默认用本机已登录的另一个 AI 命令行工具，拿不准就问我。
 5. 弄好后用一两句话告诉我可以开始了。之后我只用平常的话跟你说要做什么，命令都由你来跑。
 ```
 
@@ -172,12 +172,12 @@ AI 说「改好了，测试都过了」，你不敢全信，只能自己再跑�
 | **第一次用** | **你**：（复制上面那段）<br>**AI**：装好了，可以开始了。 |
 | **开始一项工作** | **你**：给账本加个导出 CSV 的功能。<br>**AI**：写好了 `work.md`：导出当前筛选的账目，带逗号的字段加引号，测试全过才算完。你看行吗？<br>**你**：行，开工。 |
 | **换会话、换电脑、换人** | **你**：到哪了？<br>**AI**：「导出 CSV」做完了，等你拍板。第一轮审查发现带逗号没加引号，已经修好、重新测过，第二轮通过了。<br>**你**：批准，合并吧。 |
-| **想再改改** | **你**：空表也要能导出。<br>**AI**：好，我接着改，重新测、重新审，过了再叫你。 |
-| **你自己动手改了** | **你**：按钮文案我改了，已经提交。<br>**AI**：看到了，我把你的改动重新测一遍、审一遍。 |
+| **想再改改** | **你**：空表也要能导出。<br>**AI**：好，我改完提交，重新送去测、送去审，过了再叫你。 |
+| **你自己动手改了** | **你**：按钮文案我改了，已经提交。<br>**AI**：看到了，我把你的提交送去测一遍、审一遍。 |
 | **卡住了** | **AI**：停下来了：本地数据库没启动。这不是代码问题，我没改代码。<br>**你**：开好了，继续。 |
-| **好几个仓库** | **你**：所有仓库到哪了？<br>**AI**：两个仓库一共三项工作：一项等你拍板，两项还在跑。 |
+| **好几个仓库** | **你**：所有仓库到哪了？<br>**AI**：两个仓库一共三项工作：一项等你拍板，两项还在做。 |
 
-它会停下来找你的情况只有这几种：做完了等你拍板、预算用完、审查一直不收敛、环境出了问题。
+它会停下来找你的情况只有这几种：工作说明要你确认、审完等你拍板、审查的问题要你裁决、环境出了问题。
 
 <details>
 <summary>「到哪了？」时 AI 背后看到的输出</summary>
@@ -185,16 +185,16 @@ AI 说「改好了，测试都过了」，你不敢全信，只能自己再跑�
 ```text
 $ buildbeat status --repo . --work WORK-CSV-EXPORT
 WORK-CSV-EXPORT  MERGE_DECISION
-  [P1 0b5e258117cb5602] (accept) csv: quote fields that contain commas
-  work.md ✓ · runs 1
-  cost: review rounds 2 · findings 1 · human waits 1 (open 33s) · worker 2s
+  [P1 0b5e258117cb5602] (open) csv: quote fields that contain commas
+  work.md ✓ · runs 2 · unadjudicated P0/P1 findings 1
+  cost: review rounds 2 · findings 1
+  latest RUN-CSV-EXPORT-02 WAITING_HUMAN candidate f3db37d waiting enter-wait-merge
 work WORK-CSV-EXPORT:
-  RUN-CSV-EXPORT-01 [final-decision] enter-wait-merge — waiting 33s
-    candidate: ede20b668cb04ae30cba1676b5e031930e711c8d
-    next: buildbeat decide --action approve … --candidate ede20b6… --by <you>
-    next: buildbeat decide --action reject … --reason <why> --by <you>
-    next: buildbeat run … --adopt <sha> --by <you>   # commit a manual repair in the run worktree …
-    next: buildbeat decide … --action fix --reason <what to repair> --by <you>
+  RUN-CSV-EXPORT-02 [final-decision] enter-wait-merge — waiting 33s
+    candidate: f3db37deac08fd6f00a4891af8067c92436bd9ea
+    reason: verified and reviewed with no blocking finding; the decision on this commit is the person's
+    next: buildbeat decide --repo . --work WORK-CSV-EXPORT --action approve --candidate f3db37d… --by <you>
+    next: buildbeat decide --repo . --work WORK-CSV-EXPORT --action reject --reason <why> --by <you>
 ```
 
 </details>
@@ -214,27 +214,27 @@ work WORK-CSV-EXPORT:
 ├── AGENTS.md、CLAUDE.md            告诉 AI 工具：这个项目用 BuildBeat
 ├── .gitignore                      加上下面两行 .buildbeat/ 目录
 ├── delivery/                       跟着 Git 走
+│   ├── run-config.yaml             这个项目里一个提交怎么测、让谁审
 │   ├── envelope/
-│   │   ├── worker.sh               把 AI 工具包成 BuildBeat 能调用的一步
-│   │   └── prompts/                实现、审查、修复各自的提示词
+│   │   ├── worker.sh               把审查用的 AI 工具包成 BuildBeat 能调用的一步
+│   │   └── prompts/                审查的提示词
 │   └── work/
 │       └── WORK-X/                 一项工作一个文件夹
 │           ├── work.md             要做什么、做到什么算完
-│           ├── run-config.yaml     用哪个 AI、跑什么测试、能改哪些目录
+│           ├── run-config.yaml     可选：这项工作能改哪些目录、和项目不一样的配置
 │           ├── decisions.jsonl     接受、批准、关闭这些决定
 │           ├── review-findings.jsonl  审查挑出的问题和你的裁决
 │           ├── releases.jsonl      上线后的检查记录（用到才有）
 │           ├── result.md           关窗时写：做成了什么、剩下什么、写进了哪些项目文档
 │           └── runs/RUN-X-01/
-│               └── run-record.json 这一轮的结果、证据和成本
+│               └── run-record.json 这一轮审查的结果、证据和成本
 └── .buildbeat/
-    ├── notify.yaml                 可选：等你拍板时发 webhook 或钉钉通知
-    ├── runtime/                    只在本机：正在跑的台账、日志、截图
-    └── worktrees/                  只在本机：AI 干活用的隔离副本
+    ├── runtime/                    只在本机：每轮审查的台账、日志、截图
+    └── worktrees/                  只在本机：送审时的临时检出，审完就删
 ```
 
 - `delivery/` 进 Git：换会话、换软件、换电脑、换人，拉下代码就能接着干；不要在 `.gitignore` 或 `.git/info/exclude` 里排除它。里面的截图、压缩包和日志只留本机，不进 Git。工作文件夹只放这项工作的记录，外加它确实要用的少量文件（比如验证脚本）；命令输出、回读结果、一次性脚本不放进去，结论写进 `result.md`，以后还要用的脚本放进项目自己的目录。记录以外的文件超过 10 个时，`accept` 和 `check` 会提醒。
-- `.buildbeat/runtime/`、`.buildbeat/worktrees/` 只在本机：正在跑的那一轮不跟着 Git 走，要在原来那台机器上跑完或停掉
+- `.buildbeat/runtime/`、`.buildbeat/worktrees/` 只在本机：还在等你拍板的那一轮不跟着 Git 走，换了机器重新送审一次
 - 没装 BuildBeat 的人和 AI 也能读这些文件、起草 `work.md`
 
 参与贡献看[贡献指南](CONTRIBUTING.md)，代码以 [MIT 许可证](LICENSE)开源。

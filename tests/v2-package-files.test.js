@@ -6,9 +6,7 @@ import test from "node:test";
 
 const ROOT = join(import.meta.dirname, "..");
 
-// The package ships docs/ by whitelist (docs/history and docs/releases stay
-// in the repository). The expected list is the published 3.1.0 package plus
-// the SKILL.md reference files under docs/v2/skill/. A change here is a
+// The package ships docs/ by whitelist. A change to the expected list is a
 // release decision: regenerate tests/support/package-files.txt on purpose
 // (npm pack --dry-run --json) and say why in the Changelog.
 test("the packed file list is exactly the expected list", () => {

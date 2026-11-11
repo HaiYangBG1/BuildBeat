@@ -23,8 +23,9 @@ test("status derives each work's stage and next move from its records, its runs 
   const root = emptyRepo("bb-v2-overview-");
   commit(root, "baseline", { ".gitignore": ".buildbeat/\n", "README.md": "fixture\n" });
 
-  // A folder without work.md; one an earlier version left records in.
-  write(root, "delivery/work/WORK-A/notes.md", "not a description\n");
+  // A folder without work.md or anything that describes a work; one an
+  // earlier version left records in.
+  write(root, "delivery/work/WORK-A/sketch.txt", "not a description\n");
   write(root, "delivery/work/WORK-L/intent.md", "# WORK-L\n");
   write(root, "delivery/work/WORK-L/plan.md", "# plan WORK-L\n");
   write(root, "delivery/work/WORK-L/decisions.jsonl", `${JSON.stringify({ transition: "accept-intent", decision: "approved", by: "owner" })}\n`);

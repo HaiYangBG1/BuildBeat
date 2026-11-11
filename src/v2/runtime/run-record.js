@@ -1,4 +1,4 @@
-// Terminal-run compaction per docs/v2/RFC-0002-domain-model.md §6: before any
+// Terminal-run compaction: before any
 // runtime cleanup, a terminal Run must be compacted into an immutable
 // run-record in the Git plane. Long-term audit must never depend on the
 // runtime directory still existing.

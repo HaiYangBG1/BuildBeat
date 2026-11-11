@@ -12,7 +12,7 @@ One person or a whole team can keep each requirement's context in Git with nothi
 | Doing the work | Your AI tool edits code and runs tests as usual; merging follows the project's own process | Automatic build, verify, review and fix in isolated worktrees, stopping with evidence at a person's merge decision |
 | Progress | Read the files under `delivery/work/` | `buildbeat status` sums up every work and every pending decision |
 
-With files only there is no automatic loop, isolated worktree, approval binding, budget or recovery, and an AI must not claim any of them. Tests you run yourself are reported as run by you.
+With files only there is no verification run by the runtime, no independent review, no scope check and no approval binding, and an AI must not claim any of them. Tests you run yourself are reported as run by you.
 
 ## How to start
 
@@ -54,11 +54,11 @@ When a new session or another person picks a work up, they read `work.md`, `deci
 | `work.md` | Goal, why now, facts checked, scope, decisions before starting, acceptance, implementation plan, stop conditions |
 | `decisions.jsonl` | Acceptances, approvals, closures; one JSON object per line |
 | `review-findings.jsonl` | Review findings and human verdicts |
-| `runs/<RUN>/run-record.json` | Terminal state, candidate, evidence digests and cost of finished runs |
+| `runs/<RUN>/run-record.json` | Outcome, reviewed commit, evidence digests and cost of a finished review round |
 | `releases.jsonl` | Release readbacks after the merge |
 | `result.md` | Written at closing: what was delivered, what was decided, what is left, what was written into the project's documents |
 
-The ledger of a run in progress lives in `.buildbeat/runtime/` on the machine running it and is not in Git; that side's `buildbeat status` is authoritative for progress.
+The ledger of a review round waiting for a decision lives in `.buildbeat/runtime/` on the machine running it and is not in Git; that side's `buildbeat status` is authoritative for progress.
 
 ## What you can write
 
@@ -91,12 +91,12 @@ Each line must be one complete JSON object; only append, never edit earlier line
 
 ## What you must not do
 
-- Approve or reject a run, or adopt a candidate: the runtime records these in the run ledger and re-reads the candidate and evidence before stamping.
-- Write or edit a run ledger, `run-record.json`, `releases.jsonl` or any evidence; claim that the runtime's verification, review, release readback or promotion check has passed.
+- Approve or reject a commit: the runtime records these in the ledger and re-checks the commit and evidence before recording.
+- Write or edit the ledger, `run-record.json`, `releases.jsonl` or any evidence; claim that the runtime's verification, review, release readback or promotion check has passed.
 - Record a decision in someone else's name, or edit existing lines.
 
 ## Adding the runtime later
 
 When you want the AI to build, verify, review and fix in isolated worktrees, want a machine to check the records above, or have enough works that you need everything in one view, install the runtime as in the [quickstart](01-quickstart.en.md). The files you already wrote stay as they are:
 
-Run `buildbeat status --repo . --work <ID>`: a newly edited `work.md` shows as awaiting acceptance, and hand-written acceptance and adjudication lines take effect under the same digest and fingerprint rules; the promotion lines in `result.md` are checked live (✓/✗), and a `result.md` changed after the close is flagged. A work with code commits but no run shows as `COMMITTED`; `buildbeat decide --repo . --work <ID> --action close --draft` writes a `result.md` draft from its commits to edit before closing. Then `buildbeat run --config <config>` carries delivery on. In one project, people with the runtime and people without it share the same files.
+Run `buildbeat status --repo . --work <ID>`: a newly edited `work.md` shows as awaiting acceptance, and hand-written acceptance and adjudication lines take effect under the same digest and fingerprint rules; the promotion lines in `result.md` are checked live (✓/✗), and a `result.md` changed after the close is flagged. A work with code commits that was never sent for review shows as `COMMITTED`; `buildbeat decide --repo . --work <ID> --action close --draft` writes a `result.md` draft from its commits to edit before closing. After that, write the project's `delivery/run-config.yaml`, and `buildbeat review --repo . --work <ID>` sends a commit for review. In one project, people with the runtime and people without it share the same files.

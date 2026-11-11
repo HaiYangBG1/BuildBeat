@@ -1,4 +1,4 @@
-// Evidence Collector v0 per docs/v2/RFC-0002-domain-model.md §4: evidence is
+// Evidence collector: evidence is
 // what the runner read back (exit codes, logs, git state), never what a
 // worker said. Raw logs stay in the runtime plane; the returned record is the
 // contract-shaped fact the ledger and manifests reference.

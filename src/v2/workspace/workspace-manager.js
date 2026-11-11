@@ -1,4 +1,4 @@
-// Workspace manager per docs/v2/RFC-0002-domain-model.md: every Run works in
+// Workspace manager: every Run works in
 // an isolated git worktree; the candidate is whatever git reads back, never
 // what a worker claims. Locks are mkdir-atomic and record their owner, so a
 // lock whose owner process is provably gone can be reclaimed. Run branches

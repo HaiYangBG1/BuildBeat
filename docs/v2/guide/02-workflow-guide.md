@@ -1,19 +1,42 @@
-# 固定交付流程与配置
+# 一轮审查与配置
 
 [English](02-workflow-guide.en.md)
 
-内置流程：build → verify → review → wait-merge；verify 失败或 review 有 P0/P1 时进入 fix → verify。新配置省略 workflow、riskPreset 和 policies，不再编写自定义流程或规则语言。
+代码由会话写、会话提交。运行时只做一件事：`buildbeat review --repo . --work <ID> [--commit <sha>]` 把这个提交送去验证和审查。
 
-- `workers` 配置 builder/verifier/reviewer/fixer 的命令；`allowedPaths` 限定修改范围。缺 worker 时停人接管。
-- `reviewTriage: off` 是默认值；确需先裁决再修复的项目可设 required。
-- `budgets.reviewRoundsPerWork` 默认 6，跨 Work 全部 Run 累计；可给单步设置 maxAttempts。非只读步骤成功与环境故障不扣失败预算，仍有总尝试兜底。
-- 同一问题修后重现（包含换措辞）或阻断数增加即停人；裁决仍按精确指纹。
-- `stopAt` 可在固定流程的指定步骤前停人；`maxReviewSeverity: P3` 可提高最终审查要求，默认 P2。
-- `parallel: true` 允许不同 Work 同时推进；同一 Work 互斥。端口、数据库等外部资源必须独立。
-- `cache: {verify: tree}` 的含义是按代码树、worker 命令和信封摘要复用成功验证；YAML 实际写法见样板，非空行内集合不支持。失败和脏树不复用，依赖外部变化的测试不要启用。
-- `requires` 支持命令版本和项目探针；`envelope` 支持角色提示词、变量与 Git pin；`redact` 只脱敏最终证据日志，实时输出可能含原始内容。
-- 配置先整体校验，未知键、错误类型和拼写会一次报清。
+一轮是固定的三步，不能配置：
 
-旧版官方 delivery 文件可以兼容读取，保留原摘要和限制；自定义/上线流程明确拒绝，不自动降级。见 [迁移指南](../../MIGRATION.md)。
+1. 在这个提交的临时检出里跑项目的验证命令。
+2. 验证通过后，请只读的审查者看这项工作从起点到这个提交的改动。
+3. 删掉检出，停下等人的决定。
 
-测试框架须排除 `.buildbeat/**`，避免收集隔离工作树中的测试。
+运行时不写代码、不重试、不修复。收场有三种：
+
+- `FAILED`：验证没过，提交改了 `allowedPaths` 之外的目录，或验证后检出不干净、HEAD 被挪动。这是提交的问题，修好再送。
+- `CANCELLED`：超时、崩溃、exit 75、审查者没交报告或报告读不懂、审查者动了文件。这是工具的问题，不是对提交的判定，环境好了再送。
+- 等人决定：验证过了、审完了。还有没裁决的 P0、P1 时批准会被拒。
+
+修在新提交里再送审；同一项工作还在等决定的旧一轮自动记为 `SUPERSEDED`。审查进程被杀掉的那一轮，由下一次送审记为 `CANCELLED`。一个仓库同一时间只跑一轮审查。
+
+## 配置
+
+项目一份 `delivery/run-config.yaml`，样板是 `templates/v2/run-config.example.yaml`：
+
+- `workers.verifier`、`workers.reviewer`：两条命令（`command`、`args`，可写 `timeoutMs`、`env`、`inheritEnv`）。
+- `envelope`：审查提示词所在目录和变量。
+- `requires`：开跑前要有的命令和最低版本，缺了直接报清楚。
+- `redact`：证据日志落盘前脱敏用的正则。
+- `requireScreenshot: true`：有界面的项目，见[证据](06-evidence-guide.md)。
+- `maxReviewSeverity`：默认 `P2`，即 P0、P1 拦批准；写 `P3` 则 P2 也拦。
+- `release`：上线回读命令，见[决定与证据](07-approval-guide.md)。
+
+单项工作要和项目不一样时，在 `delivery/work/<ID>/run-config.yaml` 里只写要覆盖的键。那里还能写：
+
+- `allowedPaths`：这项工作能改哪些目录。工作自己的文件夹总是允许。
+- `base`：这项工作从哪个提交算起。不写就是最后一次改它 work.md 的那个提交，所以 work.md 要先于代码提交。
+
+写了不认识的键、类型不对、拼错，`buildbeat check --repo . [--work <ID>]` 和 `review` 都会一次报清，并指出是哪份文件。
+
+运行编号是 `RUN-<工作编号去掉 WORK->-<两位序号>`，每送审一次加一。
+
+测试框架要排除 `.buildbeat/**`，免得收集到临时检出里的测试。
