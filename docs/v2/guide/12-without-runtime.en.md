@@ -9,7 +9,7 @@ One person or a whole team can keep each requirement's context in Git with nothi
 | | Skill and project files only | With the runtime as well |
 |---|---|---|
 | Requirement context | `work.md`, decisions, `result.md`, relation lines, facts with code pointers and `Work:` trailers in commits, all in Git with the code | The same, and the runtime checks them: whether an acceptance went stale, whether a write-back's commit is on the main branch, whether the code a fact points at changed, which work a line of code came from |
-| Doing the work | Your AI tool edits code and runs tests as usual; merging follows the project's own process | Automatic build, verify, review and fix in isolated worktrees, stopping with evidence at a person's merge decision |
+| Doing the work | Your AI tool edits code and runs tests as usual; merging follows the project's own process | Your AI tool still writes and commits the code; the runtime runs the project's verification on that commit, has a read-only AI review it, and stops with evidence at a person's decision, with the approval bound to that commit |
 | Progress | Read the files under `delivery/work/` | `buildbeat status` sums up every work and every pending decision |
 
 With files only there is no verification run by the runtime, no independent review, no scope check and no approval binding, and an AI must not claim any of them. Tests you run yourself are reported as run by you.
@@ -97,6 +97,6 @@ Each line must be one complete JSON object; only append, never edit earlier line
 
 ## Adding the runtime later
 
-When you want the AI to build, verify, review and fix in isolated worktrees, want a machine to check the records above, or have enough works that you need everything in one view, install the runtime as in the [quickstart](01-quickstart.en.md). The files you already wrote stay as they are:
+When you want each commit verified by the runtime and reviewed independently, with the approval bound to the commit, want a machine to check the records above, or have enough works that you need everything in one view, install the runtime as in the [quickstart](01-quickstart.en.md). The files you already wrote stay as they are:
 
 Run `buildbeat status --repo . --work <ID>`: a newly edited `work.md` shows as awaiting acceptance, and hand-written acceptance and adjudication lines take effect under the same digest and fingerprint rules; the promotion lines in `result.md` are checked live (✓/✗), and a `result.md` changed after the close is flagged. A work with code commits that was never sent for review shows as `COMMITTED`; `buildbeat decide --repo . --work <ID> --action close --draft` writes a `result.md` draft from its commits to edit before closing. After that, write the project's `delivery/run-config.yaml`, and `buildbeat review --repo . --work <ID>` sends a commit for review. In one project, people with the runtime and people without it share the same files.

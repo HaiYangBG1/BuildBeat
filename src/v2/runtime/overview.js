@@ -211,11 +211,14 @@ function ledgersOf(repoRoot, context) {
 }
 
 // What says a folder without work.md once held a work: records, or a
-// description in an earlier version's format (any other Markdown or YAML
-// file). They stay in Git and are not read.
+// description in an earlier version's format, which is any Markdown or YAML
+// file this version does not itself put there before work.md (a run config,
+// notes, environment facts). They stay in Git and are not read.
 const RECORDS = ["decisions.jsonl", "review-findings.jsonl", "releases.jsonl", "result.md", "runs"];
+const DRAFT_FILES = /^(?:run-config.*\.yaml|notes\.md|env-facts\.md)$/;
 const heldWork = (workDir) =>
-  directory(workDir) && readdirSync(workDir).some((name) => RECORDS.includes(name) || /\.(md|ya?ml)$/.test(name));
+  directory(workDir) &&
+  readdirSync(workDir).some((name) => RECORDS.includes(name) || (/\.(md|ya?ml)$/.test(name) && !DRAFT_FILES.test(name)));
 
 export function computeOverview(
   repoRoot,

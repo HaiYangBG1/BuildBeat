@@ -23,9 +23,10 @@ test("status derives each work's stage and next move from its records, its runs 
   const root = emptyRepo("bb-v2-overview-");
   commit(root, "baseline", { ".gitignore": ".buildbeat/\n", "README.md": "fixture\n" });
 
-  // A folder without work.md or anything that describes a work; one an
+  // A new draft: notes and a run config, no work.md yet. And a folder an
   // earlier version left records in.
-  write(root, "delivery/work/WORK-A/sketch.txt", "not a description\n");
+  write(root, "delivery/work/WORK-A/notes.md", "not a description\n");
+  write(root, "delivery/work/WORK-A/run-config.yaml", "allowedPaths:\n  - src\n");
   write(root, "delivery/work/WORK-L/intent.md", "# WORK-L\n");
   write(root, "delivery/work/WORK-L/plan.md", "# plan WORK-L\n");
   write(root, "delivery/work/WORK-L/decisions.jsonl", `${JSON.stringify({ transition: "accept-intent", decision: "approved", by: "owner" })}\n`);
