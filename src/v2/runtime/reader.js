@@ -109,12 +109,14 @@ export function parseAnswers(raw, docName) {
   return { answers };
 }
 
-// Paths the work's commits changed outside its own folder, or null when it
-// has no code commit on the current branch yet.
+// The code and documents the work's commits changed, or null when it has no
+// code commit on the current branch yet. Nothing under delivery/ counts:
+// those are records, and one commit often carries records of several works
+// (a reader of ten documents of this repository was marked wrong for not
+// naming other works' folders).
 function changedPaths(repoRoot, workId) {
   const commits = codeCommitsOf(repoRoot, currentRef(repoRoot), [workId]).get(workId) ?? [];
   if (commits.length === 0) return null;
-  const own = `delivery/work/${workId}/`;
   const paths = new Set();
   for (const { commit } of commits) {
     // Against the first parent, so a merge counts for what it brought in.
@@ -123,7 +125,7 @@ function changedPaths(repoRoot, workId) {
       ? git(repoRoot, ["diff", "--no-renames", "--name-only", "-z", parent, commit])
       : git(repoRoot, ["show", "--no-renames", "--format=", "--name-only", "-z", commit]);
     for (const path of listed.split("\0")) {
-      if (path && !path.startsWith(own)) paths.add(path);
+      if (path && !path.startsWith("delivery/")) paths.add(path);
     }
   }
   return [...paths].sort();

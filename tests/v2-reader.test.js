@@ -109,6 +109,9 @@ test("the paths a reader of work.md names are checked against allowedPaths, then
   // After: every changed file is named, or lies in a named directory.
   assert.deepEqual(test1(named(["src/", "docs/guide.md"]), ["src"]), cover(true));
   assert.deepEqual(test1(named(["`src/feature.txt`"]), null), cover(false, ["docs/guide.md"]));
+  // Records under delivery/, this work's or another's, are not what the reader is asked about.
+  commit(root, `records of two works\n\nWork: ${WORK}`, { "src/feature.txt": "hello again\n", "delivery/work/WORK-B/notes.md": "b\n", [`delivery/work/${WORK}/notes.md`]: "a\n", "delivery/run-config.yaml": PROJECT_CONFIG + "\n" });
+  assert.deepEqual(test1(named(["src", "docs"]), null), cover(true));
   // Another file of the same directory does not cover this one.
   assert.deepEqual(test1(named(["src/other.txt", "docs"]), null), cover(false, ["src/feature.txt"]));
 
