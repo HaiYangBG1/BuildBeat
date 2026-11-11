@@ -16,6 +16,7 @@ import { latestAdjudications, readFindingsAccount } from "./findings.js";
 import { nextReply } from "./hints.js";
 import { readReleases } from "./release.js";
 import { computeWorkCost, renderWorkCost } from "./work-cost.js";
+import { readerStanding, renderReaderStanding } from "./reader.js";
 import { codeCommitsOf } from "./work-commits.js";
 
 function sha256File(path) {
@@ -446,6 +447,7 @@ export function computeOverview(
           }
         : {}),
       runs: runs.length,
+      reader: readerStanding(repoRoot, workId),
       cost: runs.length > 0 ? computeWorkCost(repoRoot, workId, { ledgers: ledgersOf(repoRoot, context) }) : null,
       latest: latest
         ? {
@@ -561,6 +563,7 @@ export function renderOverview(rows, { decisions = false, extra = null } = {}) {
       const subject = latest.subject.length > 80 ? `${latest.subject.slice(0, 80)}…` : latest.subject;
       lines.push(`  committed: ${commits} commit${commits === 1 ? "" : "s"} on ${branch} outside its folder, latest ${latest.commit.slice(0, 7)} @ ${latest.at.slice(0, 10)} ${subject}`);
     }
+    if (row.reader) lines.push(`  ${renderReaderStanding(row.reader)}`);
     if (row.cost) {
       // What this work has already consumed across every run, superseded
       // ones included: the number a "continue or cut" decision needs.

@@ -26,6 +26,8 @@ const PROJECT_KEYS = [
 ];
 const WORK_KEYS = [...PROJECT_KEYS, "allowedPaths", "base"];
 const WORKERS = ["verifier", "reviewer"];
+// Optional: the reader of a reader test; the reviewer's command when absent.
+const KNOWN_WORKERS = [...WORKERS, "reader"];
 const ENVELOPE_KEYS = ["prompts", "vars", "pin"];
 const LISTS = ["requires", "redact", "allowedPaths"];
 
@@ -168,8 +170,8 @@ function shapeProblems(config, keys) {
       problems.push("workers: must be a map of worker name -> { command, args, ... }");
     } else {
       for (const [name, spec] of Object.entries(config.workers)) {
-        if (!WORKERS.includes(name)) {
-          problems.push(unknownKey("workers.", name, WORKERS));
+        if (!KNOWN_WORKERS.includes(name)) {
+          problems.push(unknownKey("workers.", name, KNOWN_WORKERS));
         } else {
           problems.push(...checkCommandSpec(`workers.${name}`, spec));
         }
@@ -281,7 +283,8 @@ export function loadReviewConfig(repoRoot, workId = null, { workers: needWorkers
   }
 
   const adapters = {};
-  for (const name of WORKERS.filter((worker) => config.workers[worker])) {
+  const workerEnv = {};
+  for (const name of KNOWN_WORKERS.filter((worker) => config.workers[worker])) {
     const spec = config.workers[name];
     adapters[name] = createShellAdapter({
       name: `shell:${name}`,
@@ -289,7 +292,7 @@ export function loadReviewConfig(repoRoot, workId = null, { workers: needWorkers
       args: spec.args ?? [],
       timeoutMs: spec.timeoutMs,
       inheritEnv: spec.inheritEnv === true,
-      env: workerEnvOverrides(name, spec.env),
+      env: (workerEnv[name] = workerEnvOverrides(name, spec.env)),
     });
   }
   const redact = (config.redact ?? []).map((pattern) => {
@@ -320,8 +323,9 @@ export function loadReviewConfig(repoRoot, workId = null, { workers: needWorkers
     // RUN-<work id without its WORK- prefix>; the runtime numbers each review.
     family: workId ? `RUN-${workId.replace(/^WORK-/, "")}` : null,
     adapters,
+    workerEnv,
     adapterConfigs: config.workers,
-    envelope: envelopeDir ? loadEnvelope(config, envelopeDir, WORKERS) : null,
+    envelope: envelopeDir ? loadEnvelope(config, envelopeDir, KNOWN_WORKERS) : null,
     redact,
     requires: config.requires ?? [],
     release: config.release

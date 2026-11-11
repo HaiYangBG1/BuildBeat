@@ -298,7 +298,7 @@ test("the JSON of one repository's status keeps its shape", () => {
   const expected = {
     works: [{ work: "LOCAL", stage: "WORK_DRAFT", intent: draft, plan: draft,
       workArtifact: "work", envFacts: false, openFindings: 0, findings: [], decisions: [], runs: 0,
-      cost: null, latest: null, merged: false, mergedCandidate: null,
+      reader: null, cost: null, latest: null, merged: false, mergedCandidate: null,
       next: "buildbeat accept --repo . --work LOCAL --by <you>" }],
     pending: [],
   };

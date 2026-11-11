@@ -2,6 +2,7 @@
 # BuildBeat worker 包装：把任意 CLI Agent 接成只读审查者。
 #
 #   bash delivery/envelope/worker.sh reviewer -- <tool command...>
+#   bash delivery/envelope/worker.sh reader -- <tool command...>    （读者测试，行为相同）
 #
 # 做的事（每一条都对应 docs/v2/guide/05-worker-contract.md 的一条合同）：
 #   1. 工具不在 PATH → exit 75（EX_TEMPFAIL）：记为工具故障，不算这个提交的问题；
@@ -16,8 +17,8 @@ shift || true
 if [ "${1:-}" = "--" ]; then
   shift
 fi
-if [ "$role" != "reviewer" ] || [ "$#" -eq 0 ]; then
-  echo "usage: worker.sh reviewer -- <tool command...>" >&2
+if { [ "$role" != "reviewer" ] && [ "$role" != "reader" ]; } || [ "$#" -eq 0 ]; then
+  echo "usage: worker.sh reviewer|reader -- <tool command...>" >&2
   exit 64
 fi
 

@@ -6,6 +6,16 @@
 
 A work has exactly one work.md. `buildbeat accept --repo . --work <ID>` records the digest of that file at that moment; once the file changes, the earlier acceptance no longer holds. Accepting does not start the work.
 
+## Reader test
+
+`buildbeat reader --repo . --work <ID> [--doc work|result]` hands one document to a read-only AI with no context: it is given only the text of that document, runs in a new empty directory outside the project, and answers a fixed set of questions (seven for work.md, five for result.md; the last asks what it still does not know and could only guess). Without `--doc`, result.md is read when there is one, work.md otherwise.
+
+Three things come out: the answers it read out; what it could not answer; and, for the answers Git and the records can confirm, a ✓ or ✗ from the runtime. Only three are checked: for work.md, "which directories or files change" against the paths the work's commits really changed (against `allowedPaths` while there is no commit); for result.md, "in which commit" against the approved commit, and "which documents were written" against the write-back lines Git confirms. With nothing to compare against, an answer is not checked, which is not the same as wrong.
+
+Each result is appended to `delivery/work/<ID>/reader-tests.jsonl` with the document's digest and size. `status --work <ID>` shows `reader: work.md · answered <n>/<m> · unanswered <k> · checked <a>/<b> · <KB> KB`, and `reader: work.md changed since its reader test` once the document has changed. There is no total score, and neither acceptance nor closing is blocked; `accept` prints one reminder when the current work.md was never tested.
+
+The reader is `workers.reader` from the config, or the command of `workers.reviewer` when that is absent, with the prompt `prompts/reader.md`. On a timeout, a crash, exit 75 or an unreadable answer the command exits 1 and records nothing. The runtime cannot stop a tool from reading other files; it only keeps the project away from the reader.
+
 ## Approving or rejecting a commit
 
 After a review stops, `buildbeat status --repo . --work <ID>` lists the commit waiting for a decision, the verification and review evidence, the review findings, and commands you can copy as they are:

@@ -18,6 +18,7 @@ description: BuildBeat 把每项需求为什么做、定了什么、做到哪记
 | 这段代码为什么这样 | `buildbeat history --repo . --path <文件>[:<行>[-<行>]]`，再读列出的 work.md、result.md 和决定；追不到的行如实说，不按提交标题猜 |
 | 准备一项工作 | 先在已关工作的 `result.md` 里搜相关结论和遗留；照 `templates/v2/work.example.md` 的八节写 `delivery/work/<ID>/work.md`（写法见下），提交 |
 | 接手放了一阵的工作 | `status --repo . --work <ID>` 看 `facts:`；列为变了或找不到的重新核实，更新现状和标题里的提交号后重新接受 |
+| 让没上下文的读者读一遍 | `buildbeat reader --repo . --work <ID>`：一个只看得到这份文档的只读 AI 回答几个固定问题。把它读出来的答案给用户看，它答不出的地方由你决定补不补进文档。写完 work.md、写完 result.md 各测一次；不拦接受和关窗 |
 | 接受工作说明 | `buildbeat accept --repo . --work <ID> --as human --by <owner> [--note <原话>]`；用户已明确授权就直接记，不重复问 |
 | 写代码 | 会话自己写、自己提交，提交信息末尾空一行写 `Work: <ID>`。work.md 要先于代码提交：它那个提交之后的改动才算这项工作的 |
 | 送审 | `buildbeat review --repo . --work <ID> [--commit <sha>]`，不写就是 HEAD。可能跑很久，脱离宿主的短超时启动 |

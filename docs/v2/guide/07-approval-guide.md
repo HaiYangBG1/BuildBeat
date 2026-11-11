@@ -6,6 +6,16 @@
 
 一项工作只有一份 work.md。`buildbeat accept --repo . --work <ID>` 记下的是这份文件当时的摘要；文件再改，旧的接受就失效。接受不会自动开工。
 
+## 读者测试
+
+`buildbeat reader --repo . --work <ID> [--doc work|result]` 把一份文档交给一个没有任何上下文的只读 AI：只给它这一份文档的正文，它在项目之外一个新建的空目录里运行，回答一组固定的问题（work.md 七问，result.md 五问，最后一问是"还有什么不知道、只能猜的"）。不写 `--doc` 时，有 result.md 就测它，没有就测 work.md。
+
+出来三样东西：它读出来的答案；它答不出的地方；能和 Git、记录对上的答案由运行时核对并标出 ✓ 或 ✗。只核对三项：work.md 的"要改哪些目录或文件"对照这项工作的提交实际改过的路径（还没有提交时对照 `allowedPaths`）；result.md 的"在哪个提交"对照被批准的提交；"写进了哪些文档"对照 Git 核对通过的写回行。没有可对照的事实就不核对，不算错。
+
+每次结果连同文档的摘要和字节数追加到 `delivery/work/<ID>/reader-tests.jsonl`。`status --work <ID>` 显示 `reader: work.md · answered <n>/<m> · unanswered <k> · checked <a>/<b> · <KB> KB`，文档改过后显示 `reader: work.md changed since its reader test`。不打总分，不拦接受和关窗；当前这份 work.md 没测过时 `accept` 提醒一行。
+
+读者用配置里的 `workers.reader`；没写就用 `workers.reviewer` 的命令，提示词是 `prompts/reader.md`。工具超时、崩溃、exit 75 或答案读不懂时退出码 1，不写记录。运行时拦不住工具读别的文件，它只是不把项目给读者。
+
 ## 批准或拒绝一个提交
 
 送审停下后，`buildbeat status --repo . --work <ID>` 列出等待决定的提交、验证和审查的证据、审查问题，以及可以直接复制的命令：

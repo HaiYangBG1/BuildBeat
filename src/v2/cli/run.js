@@ -32,6 +32,8 @@ import { closeWork, renderReleases, runReadback, summarizeReleases } from "../ru
 import { writeResultDraft } from "../runtime/closeout.js";
 import { installCommitHook, trailerWarning } from "../runtime/hooks.js";
 import { reviewCommit } from "../runtime/orchestrator.js";
+import { absoluteArgs, readerStanding, READER_QUESTIONS, runReaderTest } from "../runtime/reader.js";
+import { createShellAdapter } from "../adapters/shell.js";
 import { describeActor, selfMergeApproval } from "../runtime/actor.js";
 import { EventLedger } from "../storage/event-ledger.js";
 import { loadReviewConfig } from "./review-config.js";
@@ -42,6 +44,7 @@ Usage:
   buildbeat --version
   buildbeat accept --repo <path> --work <WORK-ID> [--by <name>] [--as human|agent] [--note <text>]
   buildbeat review --repo <path> --work <WORK-ID> [--commit <sha>]
+  buildbeat reader --repo <path> --work <WORK-ID> [--doc work|result]
   buildbeat decide --repo <path> --work <WORK-ID> --action approve --candidate <sha> [--by <name>] [--as human|agent]
   buildbeat decide --repo <path> --work <WORK-ID> --action reject --reason <text> [--by <name>] [--as human|agent]
   buildbeat decide --repo <path> --work <WORK-ID> --action accept|dismiss --fingerprint <fp> [--by <name>] [--as human|agent] [--note <text>]
@@ -290,6 +293,63 @@ function commandAccept(flags) {
   console.log(
     "  note: editing work.md after acceptance makes its acceptance stale",
   );
+  if (!readerStanding(repoRoot, flags.work, "work")?.current) {
+    console.log(`  note: delivery/work/${flags.work}/work.md has no reader test; buildbeat reader --repo ${repoLabelFor(repoRoot, flags.repo)} --work ${flags.work}`);
+  }
+}
+
+// Reader test: a reader with no context answers fixed questions about one
+// document of the work, in an empty directory outside the repository.
+function commandReader(flags) {
+  const workId = workIdOf(flags, "reader");
+  const repoRoot = resolve(flags.repo);
+  let options;
+  try {
+    options = loadReviewConfig(repoRoot, workId, { workers: false });
+  } catch {
+    // A work an earlier version configured: its document can still be read
+    // with the project's reader.
+    options = loadReviewConfig(repoRoot, null, { workers: false });
+  }
+  const spec = options.adapterConfigs.reader ?? options.adapterConfigs.reviewer;
+  if (!spec) {
+    throw new Error(`reader needs workers.reader or workers.reviewer in ${options.files.join(" or ")}`);
+  }
+  const adapter = createShellAdapter({
+    name: `shell:${options.adapterConfigs.reader ? "reader" : "reviewer"}`,
+    command: spec.command,
+    args: absoluteArgs(repoRoot, (spec.args ?? []).map(String)),
+    timeoutMs: spec.timeoutMs,
+    inheritEnv: spec.inheritEnv === true,
+    env: options.workerEnv[options.adapterConfigs.reader ? "reader" : "reviewer"],
+  });
+  const row = runReaderTest({
+    repoRoot,
+    workId,
+    doc: flags.doc ?? null,
+    adapter,
+    instructions: options.envelope?.prompts?.reader?.text ?? null,
+    allowedPaths: options.allowedPaths,
+    redact: options.redact,
+  });
+  const questions = READER_QUESTIONS[row.doc];
+  console.log(`reader read delivery/work/${workId}/${row.doc} (${(row.bytes / 1024).toFixed(1)} KB, ${row.digest.slice(0, 19)})`);
+  row.answers.forEach((answer, index) => {
+    const last = index === questions.length - 1;
+    const lines = Array.isArray(answer) ? answer : [answer];
+    console.log(`${index + 1}. ${questions[index]}`);
+    if (lines.every((line) => line.trim() === "")) {
+      console.log(last ? "   (nothing)" : "   (no answer)");
+    }
+    for (const line of lines.filter((item) => item.trim() !== "")) {
+      console.log(`   ${Array.isArray(answer) ? "- " : ""}${line}`);
+    }
+    const check = row.checks.find((item) => item.question === index + 1);
+    if (check) {
+      console.log(`   ${check.ok ? "✓" : "✗"} checked against ${check.against}${check.missed.length ? `: missing ${check.missed.join(", ")}` : ""}`);
+    }
+  });
+  console.log(`recorded in delivery/work/${workId}/reader-tests.jsonl`);
 }
 
 // Which works wrote these lines (WORK-CODE-TRACE): blame at HEAD, mapped to
@@ -765,6 +825,7 @@ async function main() {
   const commands = {
     accept: commandAccept,
     review: commandReview,
+    reader: commandReader,
     decide: commandDecide,
     release: commandRelease,
     status: commandStatus,

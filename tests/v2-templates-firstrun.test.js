@@ -42,7 +42,7 @@ test("every documented run config sample parses with the strict YAML subset and 
   const example = parseYamlSubset(readFileSync(join(TEMPLATES, "run-config.example.yaml"), "utf8"));
   assert.deepEqual(Object.keys(example.workers).sort(), ["reviewer", "verifier"]);
   assert.equal(example.envelope.prompts, "envelope/prompts");
-  assert.deepEqual(readdirSync(join(TEMPLATES, "envelope", "prompts")), ["reviewer.md"]);
+  assert.deepEqual(readdirSync(join(TEMPLATES, "envelope", "prompts")), ["reader.md", "reviewer.md"]);
   for (const relative of ["docs/v2/guide/01-quickstart.md", "docs/v2/guide/01-quickstart.en.md"]) {
     const blocks = yamlBlocks(readFileSync(join(ROOT, relative), "utf8"));
     assert.ok(blocks.length > 0, `${relative}: no run config sample found`);
@@ -106,7 +106,7 @@ test("the templates carry a commit from review to the owner's approval with a sc
   assert.match(checkOut, /run config: delivery\/run-config\.yaml\n/);
   assert.match(checkOut, /reviewer: bash delivery\/envelope\/worker\.sh reviewer -- bash tools\/fake-reviewer\.sh/);
   assert.match(checkOut, /environment: allowlist; host credentials withheld/);
-  assert.match(checkOut, /prompts: envelope\/prompts \(reviewer\) sha256:/);
+  assert.match(checkOut, /prompts: envelope\/prompts \(reviewer, reader\) sha256:/);
   assert.match(checkOut, /node: OK/);
   assert.match(checkOut, /work\.md: accepted by owner/);
 

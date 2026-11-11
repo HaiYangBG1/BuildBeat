@@ -22,7 +22,7 @@
 
 项目一份 `delivery/run-config.yaml`，样板是 `templates/v2/run-config.example.yaml`：
 
-- `workers.verifier`、`workers.reviewer`：两条命令（`command`、`args`，可写 `timeoutMs`、`env`、`inheritEnv`）。
+- `workers.verifier`、`workers.reviewer`：两条命令（`command`、`args`，可写 `timeoutMs`、`env`、`inheritEnv`）。可选的 `workers.reader` 是[读者测试](07-approval-guide.md)用的，不写就用审查者的命令。
 - `envelope`：审查提示词所在目录和变量。
 - `requires`：开跑前要有的命令和最低版本，缺了直接报清楚。
 - `redact`：证据日志落盘前脱敏用的正则。

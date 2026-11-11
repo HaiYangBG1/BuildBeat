@@ -22,7 +22,7 @@ Fix in a new commit and send it for review; an earlier round of the same work th
 
 A project has one `delivery/run-config.yaml`; the sample is `templates/v2/run-config.example.yaml`:
 
-- `workers.verifier`, `workers.reviewer`: the two commands (`command`, `args`, and optionally `timeoutMs`, `env`, `inheritEnv`).
+- `workers.verifier`, `workers.reviewer`: the two commands (`command`, `args`, and optionally `timeoutMs`, `env`, `inheritEnv`). The optional `workers.reader` is for the [reader test](07-approval-guide.en.md); without it the reviewer's command is used.
 - `envelope`: the directory of the review prompts, and variables.
 - `requires`: commands and minimum versions that must be there before a round starts; a missing one is reported plainly at once.
 - `redact`: regular expressions for masking evidence logs before they are written to disk.

@@ -62,6 +62,7 @@ repo=$(new_repo usage)
 check "no arguments is a usage error (64)" "$(run_worker "$repo")" 64
 check "a role without a tool is a usage error (64)" "$(run_worker "$repo" reviewer)" 64
 check "a tool missing from PATH is an infrastructure exit (75)" "$(run_worker "$repo" reviewer -- no-such-tool-for-buildbeat)" 75
+check "the reader role runs the tool like the reviewer role" "$(run_worker "$repo" reader -- true)" 0
 check "an unknown role is a usage error (64)" "$(run_worker "$repo" painter -- true)" 64
 check "the writing roles of earlier versions are usage errors (64)" "$(run_worker "$repo" builder -- true)$(run_worker "$repo" fixer -- true)" 6464
 

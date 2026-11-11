@@ -37,7 +37,7 @@ test("the example's shipped records are consistent with each other and with its 
   const project = parseYamlSubset(readFileSync(join(EXAMPLE, "delivery", "run-config.yaml"), "utf8"));
   assert.deepEqual(Object.keys(project.workers).sort(), ["reviewer", "verifier"]);
   assert.equal(project.envelope.prompts, "envelope/prompts");
-  assert.deepEqual(readdirSync(join(EXAMPLE, "delivery", "envelope", "prompts")), ["reviewer.md"]);
+  assert.deepEqual(readdirSync(join(EXAMPLE, "delivery", "envelope", "prompts")), ["reader.md", "reviewer.md"]);
   assert.ok(existsSync(join(EXAMPLE, "delivery", "envelope", "worker.sh")));
   // The work overrides one thing and keeps the project's workers.
   assert.deepEqual(parseYamlSubset(readFileSync(join(EXAMPLE, WORK_DIR, "run-config.yaml"), "utf8")), { allowedPaths: ["src", "tests"] });

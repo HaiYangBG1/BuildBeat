@@ -37,6 +37,7 @@ docs/v2/guide/README.md
 example/AGENTS.md
 example/CLAUDE.md
 example/README.md
+example/delivery/envelope/prompts/reader.md
 example/delivery/envelope/prompts/reviewer.md
 example/delivery/envelope/worker.sh
 example/delivery/run-config.yaml
@@ -78,6 +79,7 @@ src/v2/runtime/hooks.js
 src/v2/runtime/orchestrator.js
 src/v2/runtime/overview-repos.js
 src/v2/runtime/overview.js
+src/v2/runtime/reader.js
 src/v2/runtime/release.js
 src/v2/runtime/repo-ref.js
 src/v2/runtime/run-record.js
@@ -89,6 +91,7 @@ src/v2/workspace/workspace-manager.js
 templates/gitignore.template
 templates/v2/AGENTS.md
 templates/v2/CLAUDE.md
+templates/v2/envelope/prompts/reader.md
 templates/v2/envelope/prompts/reviewer.md
 templates/v2/envelope/worker.sh
 templates/v2/hooks/commit-msg
