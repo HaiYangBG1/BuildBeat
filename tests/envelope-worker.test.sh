@@ -4,6 +4,10 @@
 # CI. Written for bash 3.2: no associative arrays, no mapfile.
 set -uo pipefail
 
+# The suite may itself run as a verifier of a BuildBeat review: what that
+# review handed its worker must not reach the workers under test.
+unset BUILDBEAT_OUTPUT BUILDBEAT_PROMPT BUILDBEAT_INPUT
+
 REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORKER="$REPO_ROOT/templates/v2/envelope/worker.sh"
 # The shell that runs worker.sh (run configs invoke it as `bash worker.sh`).
