@@ -116,7 +116,12 @@ function changedPaths(repoRoot, workId) {
   const own = `delivery/work/${workId}/`;
   const paths = new Set();
   for (const { commit } of commits) {
-    for (const path of git(repoRoot, ["show", "--no-renames", "--format=", "--name-only", "-z", commit]).split("\0")) {
+    // Against the first parent, so a merge counts for what it brought in.
+    const parent = git(repoRoot, ["rev-list", "--parents", "-n", "1", commit]).trim().split(" ")[1];
+    const listed = parent
+      ? git(repoRoot, ["diff", "--no-renames", "--name-only", "-z", parent, commit])
+      : git(repoRoot, ["show", "--no-renames", "--format=", "--name-only", "-z", commit]);
+    for (const path of listed.split("\0")) {
       if (path && !path.startsWith(own)) paths.add(path);
     }
   }
@@ -141,11 +146,20 @@ function approvedCommits(repoRoot, workId) {
   return commits;
 }
 
-const pathsIn = (answer) =>
-  [...asText(answer).matchAll(/[A-Za-z0-9_@.-]+(?:\/[A-Za-z0-9_@.*-]+)*\/?/g)]
-    .map((match) => match[0])
-    .filter((token) => token.includes("/") || /\.[A-Za-z0-9]+$/.test(token))
-    .map((token) => token.replace(/\/\*+$|\/$/, ""));
+// The paths an answer names. A list item or a backticked span that is one
+// token is a path as it stands ("src"); inside prose only a token with a
+// slash or a file extension counts, so ordinary words are not paths.
+const TOKEN = /^[A-Za-z0-9_@.*/-]+$/;
+function pathsIn(answer) {
+  const found = [];
+  for (const item of Array.isArray(answer) ? answer : [answer]) {
+    const whole = item.trim().replace(/^`|`$/g, "");
+    const spans = [...item.matchAll(/`([^`]+)`/g)].map((match) => match[1].trim()).filter((span) => TOKEN.test(span));
+    const loose = (item.match(/[A-Za-z0-9_@.-]+(?:\/[A-Za-z0-9_@.*-]+)*\/?/g) ?? []).filter((token) => token.includes("/") || /\.[A-Za-z0-9]+$/.test(token));
+    found.push(...(Array.isArray(answer) && TOKEN.test(whole) ? [whole] : [...spans, ...loose]));
+  }
+  return [...new Set(found.map((token) => token.replace(/\/\*+$|\/$/, "")).filter(Boolean))];
+}
 const under = (path, area) => path === area || path.startsWith(`${area}/`);
 
 // The answers something other than the document can confirm. A check with
@@ -186,8 +200,8 @@ export function checkAnswers({ repoRoot, workId, doc, answers, allowedPaths = nu
   }
   const written = checkPromotions(repoRoot, workId, parsePromotions(doc.text)).filter((item) => item.ok).map((item) => item.path);
   if (written.length > 0) {
-    const text = asText(answers[3]);
-    const missed = [...new Set(written)].filter((path) => !text.includes(path));
+    const named = pathsIn(answers[3]);
+    const missed = [...new Set(written)].filter((path) => !named.includes(path));
     checks.push({ question: 4, against: "the write-back lines Git confirms", ok: missed.length === 0, missed });
   }
   return checks;
@@ -195,7 +209,7 @@ export function checkAnswers({ repoRoot, workId, doc, answers, allowedPaths = nu
 
 // Runs the reader on one document and records the result. Tool trouble
 // (timeout, crash, exit 75, no usable report) throws and records nothing.
-export function runReaderTest({ repoRoot, workId, doc: docName = null, adapter, instructions = null, allowedPaths = null, timeoutMs, redact = [], now = () => new Date().toISOString() }) {
+export function runReaderTest({ repoRoot, workId, doc: docName = null, adapter, instructions = null, vars = undefined, allowedPaths = null, timeoutMs, redact = [], now = () => new Date().toISOString() }) {
   const doc = readerDoc(repoRoot, workId, docName);
   // Two new directories outside the repository: the empty one the reader
   // works in, and one for what passes between it and the runtime.
@@ -216,6 +230,7 @@ export function runReaderTest({ repoRoot, workId, doc: docName = null, adapter, 
       timeoutMs,
       outputPath,
       promptPath,
+      vars,
     });
     const trouble = result.timedOut
       ? "timeout"
@@ -298,9 +313,9 @@ export function renderReaderStanding(standing) {
   return `reader: ${standing.doc} · answered ${standing.answered}/${standing.questions} · unanswered ${standing.unanswered} · checked ${standing.confirmed}/${standing.checked} · ${(standing.bytes / 1024).toFixed(1)} KB`;
 }
 
-// The arguments of a worker command with files of the repository made
-// absolute: the reader does not run inside the repository, so a wrapper
-// named relative to it would not be found.
+// A worker's command and arguments with files of the repository made
+// absolute: the reader does not run inside the repository, so a script or
+// wrapper named relative to it would not be found.
 export function absoluteArgs(repoRoot, args) {
   return args.map((arg) => (!isAbsolute(arg) && /[/.]/.test(arg) && !/^\.+$/.test(arg) && existsSync(join(repoRoot, arg)) ? join(repoRoot, arg) : arg));
 }

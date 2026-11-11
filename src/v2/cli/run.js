@@ -317,7 +317,7 @@ function commandReader(flags) {
   }
   const adapter = createShellAdapter({
     name: `shell:${options.adapterConfigs.reader ? "reader" : "reviewer"}`,
-    command: spec.command,
+    command: absoluteArgs(repoRoot, [spec.command])[0],
     args: absoluteArgs(repoRoot, (spec.args ?? []).map(String)),
     timeoutMs: spec.timeoutMs,
     inheritEnv: spec.inheritEnv === true,
@@ -329,6 +329,7 @@ function commandReader(flags) {
     doc: flags.doc ?? null,
     adapter,
     instructions: options.envelope?.prompts?.reader?.text ?? null,
+    vars: options.envelope?.vars,
     allowedPaths: options.allowedPaths,
     redact: options.redact,
   });

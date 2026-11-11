@@ -3,7 +3,7 @@
 // they prove what the reader is given, what is recorded and what is checked,
 // not that a real model reads well.
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -29,21 +29,26 @@ const call = (root, args) => cli(args, { cwd: root });
 // saw there, then answers from the file named by READER_ANSWERS.
 const SCRIPT = [
   "#!/bin/sh",
-  'if [ -n "${READER_PROBE:-}" ]; then { pwd; ls -A | grep -v "^\\.git$" || true; echo "--"; printf "%s" "$BUILDBEAT_INPUT"; } > "$READER_PROBE"; fi',
+  'if [ -n "${READER_PROBE:-}" ]; then { echo "$1"; pwd; ls -A | grep -v "^\\.git$" || true; echo "--"; printf "%s" "$BUILDBEAT_INPUT"; } > "$READER_PROBE"; fi',
   'cat "$READER_ANSWERS" > "$BUILDBEAT_OUTPUT"',
   'exit "${READER_EXIT:-0}"',
   "",
 ].join("\n");
-function scripted({ answers = report(WORK_ANSWERS), own = false, exit = 0 } = {}) {
+function scripted({ answers = report(WORK_ANSWERS), own = false, exit = 0, direct = false } = {}) {
   const side = tempDir("bb-reader-side-");
   const env = ["    env:", `      READER_ANSWERS: ${join(side, "answers.json")}`, `      READER_PROBE: ${join(side, "probe.txt")}`, `      READER_EXIT: "${exit}"`];
-  const command = ["    command: sh", "    args:", "      - tools/reader.sh"];
+  // The script is named relative to the repository, as the command itself
+  // or as an argument, and one argument comes from envelope.vars.
+  const command = direct ? ["    command: tools/reader.sh", "    args:", "      - \"{vars.component}\""] : ["    command: sh", "    args:", "      - tools/reader.sh", "      - \"{vars.component}\""];
+  const envelope = yaml(["envelope:", "  prompts: envelope/prompts", "  vars:", "    component: ledger"]);
   const config = own
-    ? PROJECT_CONFIG + yaml(["  reader:", ...command, ...env])
-    : yaml(["workers:", "  verifier:", "    command: bash", "    args:", "      - -lc", "      - test -f src/feature.txt", "  reviewer:", ...command, ...env]);
+    ? PROJECT_CONFIG + yaml(["  reader:", ...command, ...env]) + envelope
+    : envelope + yaml(["workers:", "  verifier:", "    command: bash", "    args:", "      - -lc", "      - test -f src/feature.txt", "  reviewer:", ...command, ...env]);
   const { root } = fixture({ prefix: "bb-reader-", projectConfig: config, accept: false });
   write(side, "answers.json", answers);
-  commit(root, "the reader script", { "tools/reader.sh": SCRIPT });
+  write(root, "tools/reader.sh", SCRIPT);
+  chmodSync(join(root, "tools", "reader.sh"), 0o755);
+  commit(root, "the reader script and its prompt", { "delivery/envelope/prompts/reader.md": "PROMPT for {{component}}\n" });
   return { root, side };
 }
 
@@ -82,6 +87,9 @@ test("the paths a reader of work.md names are checked against allowedPaths, then
   const named = (paths) => WORK_ANSWERS.map((answer, index) => (index === 1 ? paths : answer));
   assert.deepEqual(test1(named(["src/feature.txt"]), ["src"]), [{ question: 2, against: "allowedPaths", ok: true, missed: [] }]);
   assert.deepEqual(test1(named(["src/feature.txt", "docs/guide.md"]), ["src"]), [{ question: 2, against: "allowedPaths", ok: false, missed: ["docs/guide.md"] }]);
+  // A bare directory name in a list is a path; a word in a sentence is not.
+  assert.deepEqual(test1(named(["src"]), ["src"]), [{ question: 2, against: "allowedPaths", ok: true, missed: [] }]);
+  assert.deepEqual(test1(named("only `src` and what tests need"), ["src"]), [{ question: 2, against: "allowedPaths", ok: true, missed: [] }]);
   // An answer that names no path is not confirmed.
   assert.equal(test1(named("everything it needs"), ["src"])[0].ok, false);
 
@@ -89,6 +97,14 @@ test("the paths a reader of work.md names are checked against allowedPaths, then
   const against = "the paths the work's commits changed";
   assert.deepEqual(test1(named(["src/", "docs/guide.md"]), ["src"]), [{ question: 2, against, ok: true, missed: [] }]);
   assert.deepEqual(test1(named(["`src/feature.txt`"]), null), [{ question: 2, against, ok: false, missed: ["docs/guide.md"] }]);
+
+  // A merge counts for what it brought in from the side branch.
+  git(root, ["checkout", "-q", "-b", "side"]);
+  commit(root, "side work", { "lib/side.js": "side\n" });
+  git(root, ["checkout", "-q", "main"]);
+  git(root, ["merge", "-q", "--no-ff", "side", "-m", `merge side\n\nWork: ${WORK}`]);
+  assert.deepEqual(test1(named(["src", "docs"]), null), [{ question: 2, against, ok: false, missed: ["lib/side.js"] }]);
+  assert.equal(test1(named(["src", "docs", "lib"]), null)[0].ok, true);
 });
 
 test("a reader of result.md is checked on the approved commit and on the write-back lines Git confirms", () => {
@@ -105,6 +121,11 @@ test("a reader of result.md is checked on the approved commit and on the write-b
   assert.deepEqual(checks(RESULT_ANSWERS(merge))[0], commitCheck(true));
   const base = git(root, ["rev-list", "--max-parents=0", "HEAD"]);
   assert.deepEqual(checks(RESULT_ANSWERS(base))[0], commitCheck(false));
+  // A path that merely contains the written one is another path.
+  const near = RESULT_ANSWERS(sha).map((answer, index) => (index === 3 ? ["unrelated/docs/notes.md.bak"] : answer));
+  assert.deepEqual(checks(near)[1], docsCheck(false));
+  const lined = RESULT_ANSWERS(sha).map((answer, index) => (index === 3 ? `docs/notes.md @ ${noted.slice(0, 7)} — the rule` : answer));
+  assert.deepEqual(checks(lined)[1], docsCheck(true));
   const vague = RESULT_ANSWERS(sha).map((answer, index) => (index === 0 ? "Shipped last week." : index === 3 ? ["some documents"] : answer));
   assert.deepEqual(checks(vague), [commitCheck(false), docsCheck(false)]);
   assert.equal(rows(root).at(-1).doc, "result.md");
@@ -154,7 +175,8 @@ test("the CLI reads a document with the reviewer's command when no reader is con
 
   // Where the script ran: an empty directory that is not in the repository;
   // its input names the work and the document, no path.
-  const [where, ...rest] = readFileSync(join(side, "probe.txt"), "utf8").split("\n");
+  const [component, where, ...rest] = readFileSync(join(side, "probe.txt"), "utf8").split("\n");
+  assert.equal(component, "ledger", "envelope.vars reach the reader's arguments");
   assert.equal(where.startsWith(realpathSync(root)), false);
   assert.deepEqual(rest, ["--", JSON.stringify({ step: "reader", workId: WORK, doc: "work.md" })]);
 
@@ -170,11 +192,11 @@ test("the CLI reads a document with the reviewer's command when no reader is con
 });
 
 test("workers.reader is used when configured; a failing reader exits 1 and records nothing; other worker names stay unknown", () => {
-  const own = scripted({ own: true });
+  const own = scripted({ own: true, direct: true });
   const read = call(own.root, ["reader", "--repo", ".", "--work", WORK, "--doc", "work"]);
   assert.equal(read.status, 0, read.all);
   assert.equal(rows(own.root)[0].reader, "shell:reader");
-  assert.match(call(own.root, ["check", "--repo", "."]).out, /^ {2}reader: sh tools\/reader\.sh$/m);
+  assert.match(call(own.root, ["check", "--repo", "."]).out, /^ {2}reader: tools\/reader\.sh \{vars\.component\}$/m);
 
   for (const broken of [scripted({ exit: 75 }), scripted({ answers: "not json" })]) {
     const failed = call(broken.root, ["reader", "--repo", ".", "--work", WORK]);
