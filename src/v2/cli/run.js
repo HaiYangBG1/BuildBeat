@@ -249,7 +249,7 @@ function printPending(flags, rows) {
       console.log(`    reason: ${reason}`);
     }
     for (const line of nextReply({
-      repoLabel: rowRepo === repoRoot ? repoLabelFor(repoRoot, flags.repo) : shellArg(pathLabel(process.cwd(), rowRepo)),
+      repoLabel: realpathSync(rowRepo) === realpathSync(repoRoot) ? repoLabelFor(repoRoot, flags.repo) : shellArg(pathLabel(process.cwd(), rowRepo)),
       state: ledger.state,
     })) {
       console.log(`    next: ${line}`);
@@ -261,12 +261,12 @@ function printPending(flags, rows) {
 // on it: records Git would ignore, files that do not belong in Git, too many
 // files besides the records, facts whose code has changed, commits that name
 // the work without its trailer.
-function workWarnings(repoRoot, workId, repoLabel) {
+function workWarnings(repoRoot, workId, repoLabel, base = null) {
   return [
     ignoredRecordsWarning(repoRoot, workId),
     heavyRecordsWarning(repoRoot, workId),
     extraFilesWarning(repoRoot, workId),
-    factsWarning(repoRoot, workId),
+    factsWarning(repoRoot, workId, base ? { against: base, label: "base" } : {}),
     trailerWarning(repoRoot, repoLabel),
   ].filter(Boolean);
 }
@@ -555,7 +555,7 @@ function commandReview(flags) {
 function commandRelease(flags) {
   const workId = workIdOf(flags, "release");
   const repoRoot = resolve(flags.repo);
-  const options = loadReviewConfig(repoRoot, workId);
+  const options = loadReviewConfig(repoRoot, workId, { workers: false });
   if (!options.release) {
     throw new Error(
       `release needs a release: section in ${options.files.join(" or ")} (command, args, timeoutMs, env, like a worker)`,
@@ -656,7 +656,7 @@ function commandCheck(flags) {
     } else {
       console.log(`work.md: accepted by ${describeActor(description)}`);
     }
-    for (const warning of workWarnings(repoRoot, workId, repoLabel)) {
+    for (const warning of workWarnings(repoRoot, workId, repoLabel, options.base)) {
       console.log(warning);
     }
   }

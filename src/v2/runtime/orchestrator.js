@@ -669,7 +669,8 @@ function runSteps(context) {
 // A newer review of the same work makes an older one still waiting for a
 // decision moot: the person would be approving a commit nobody intends to
 // merge. Real incident: two waiting runs sat in a pilot repository's inbox
-// for a day after their successor had shipped.
+// for a day after their successor had shipped. This includes a run an
+// earlier version left waiting, which nothing else can end.
 function supersedeWaitingRuns(repoRoot, workId, newRunId, now) {
   const superseded = [];
   const skipped = [];

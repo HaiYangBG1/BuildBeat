@@ -251,7 +251,8 @@ function readConfig(repoRoot, ref, keys) {
 // runtime takes. A key the work sets replaces the project's; workers are
 // replaced one by one, so a work can swap its verifier and keep the
 // project's reviewer. Without a work, the project config alone.
-export function loadReviewConfig(repoRoot, workId = null) {
+// `workers: false` is for commands that run no worker (release).
+export function loadReviewConfig(repoRoot, workId = null, { workers: needWorkers = true } = {}) {
   const project = readConfig(repoRoot, PROJECT_CONFIG, PROJECT_KEYS);
   const work = workId ? readConfig(repoRoot, workConfigRef(workId), WORK_KEYS) : null;
   if (!project && !work) {
@@ -272,7 +273,7 @@ export function loadReviewConfig(repoRoot, workId = null) {
     }
   }
   const missing = WORKERS.filter((name) => !config.workers[name]);
-  if (missing.length > 0) {
+  if (needWorkers && missing.length > 0) {
     throw new RunConfigError(
       work && !project ? workConfigRef(workId) : PROJECT_CONFIG,
       missing.map((name) => `workers.${name}: required and missing`),
@@ -280,7 +281,7 @@ export function loadReviewConfig(repoRoot, workId = null) {
   }
 
   const adapters = {};
-  for (const name of WORKERS) {
+  for (const name of WORKERS.filter((worker) => config.workers[worker])) {
     const spec = config.workers[name];
     adapters[name] = createShellAdapter({
       name: `shell:${name}`,

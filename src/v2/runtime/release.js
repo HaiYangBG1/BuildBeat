@@ -365,7 +365,7 @@ export function summarizeReleases(roots) {
 
 export function renderReleases(summary) {
   if (summary.length === 0) {
-    return "releases: none recorded (buildbeat release --config <run-config.yaml> --env <name>)";
+    return "releases: none recorded (buildbeat release --repo <path> --work <WORK-ID> --env <name>)";
   }
   const width = Math.max(...summary.map((item) => (item.env ?? "-").length));
   const lines = ["releases (latest passing readback per environment):"];

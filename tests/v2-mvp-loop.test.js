@@ -1,70 +1,35 @@
-// The MVP promise, end to end on a real test project: given an approved goal
-// and plan, BuildBeat runs Build–Verify–Fix–Review automatically and stops
-// with full evidence before the merge decision. The builder plants a real
-// bug; a real test run catches it; the fixer repairs it; a read-only
-// reviewer passes it; a human approves the final decision.
+// The whole round on a real test project, with shell workers: the session's
+// first commit carries a bug and a real test run fails it; the session's fix
+// is a second commit, which the same test run passes and a read-only
+// reviewer reads; a person approves that commit. Nothing is merged.
 
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
 import { createShellAdapter } from "../src/v2/adapters/shell.js";
-import { loadWorkflow } from "../src/v2/engine/workflow.js";
-import { approveRun } from "../src/v2/runtime/decisions.js";
-import { startRun } from "../src/v2/runtime/orchestrator.js";
+import { approveReview } from "../src/v2/runtime/decisions.js";
+import { sha256Text } from "../src/v2/policy/policy.js";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
-import { tempDir } from "./support/tmp.js";
+import { addWork, commit, emptyRepo, git, record, reviewWith } from "./support/review.js";
 
-const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
-const WORKFLOW = loadWorkflow(PRESET_PATH);
-const DIGEST = "sha256:test-workflow";
-
-function git(cwd, args) {
-  return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
-}
-
-function sha256(text) {
-  return `sha256:${createHash("sha256").update(text, "utf8").digest("hex")}`;
-}
-
-test("planted bug: build red, auto-fix green, read-only review, stop before merge", () => {
-  const root = tempDir("bb-v2-mvp-");
-  execFileSync("git", ["init", "-q", "-b", "main", root]);
-  git(root, ["config", "user.email", "pilot@example.com"]);
-  git(root, ["config", "user.name", "Pilot"]);
-  mkdirSync(join(root, "test"), { recursive: true });
-  writeFileSync(
-    join(root, "test", "calc.test.js"),
-    [
+test("a planted bug fails verify; the fixed commit is verified, reviewed and approved", () => {
+  const root = emptyRepo("bb-v2-mvp-");
+  commit(root, "baseline", {
+    ".gitignore": ".buildbeat/\n",
+    "test/calc.test.js": [
       'import assert from "node:assert/strict";',
       'import test from "node:test";',
       'import { add } from "../lib.js";',
       'test("add", () => { assert.equal(add(2, 2), 4); });',
       "",
     ].join("\n"),
-  );
-  const workDir = join(root, "delivery", "work", "WORK-MVP");
-  mkdirSync(workDir, { recursive: true });
-  const intentText = "# Intent: implement add()\n";
-  const planText = "# Plan: add lib.js exporting add(a, b)\n";
-  writeFileSync(join(workDir, "intent.md"), intentText);
-  writeFileSync(join(workDir, "plan.md"), planText);
-  git(root, ["add", "."]);
-  git(root, ["commit", "-q", "-m", "baseline with accepted intent and plan"]);
-
-  const adapters = {
-    builder: createShellAdapter({
-      name: "shell:builder",
-      command: "bash",
-      // Plants a real bug: add() subtracts.
-      args: [
-        "-lc",
-        "printf 'export function add(a, b) { return a - b; }\\n' > lib.js && git add -A && git commit -qm buggy-candidate",
-      ],
-    }),
+  });
+  const work = "WORK-MVP";
+  const base = addWork(root, work, { text: "# Implement add()\n\n## Goal\nlib.js exports add(a, b).\n" });
+  const planDigest = sha256Text(readFileSync(join(root, "delivery", "work", work, "work.md"), "utf8"));
+  const workers = {
     verifier: createShellAdapter({
       name: "shell:verifier",
       command: "bash",
@@ -73,76 +38,53 @@ test("planted bug: build red, auto-fix green, read-only review, stop before merg
       // runner report to the parent harness and exit 0 on failure.
       args: ["-lc", "unset NODE_TEST_CONTEXT; node --test test/calc.test.js"],
     }),
-    fixer: createShellAdapter({
-      name: "shell:fixer",
-      command: "bash",
-      args: [
-        "-lc",
-        "printf 'export function add(a, b) { return a + b; }\\n' > lib.js && git add -A && git commit -qm fixed-candidate",
-      ],
-    }),
     reviewer: createShellAdapter({
       name: "shell:reviewer",
       command: "bash",
-      args: [
-        "-lc",
-        'printf \'{"status":"succeeded","findings":[]}\' > "$BUILDBEAT_OUTPUT"',
-      ],
+      args: ["-lc", 'printf \'{"findings":[]}\' > "$BUILDBEAT_OUTPUT"'],
     }),
   };
 
-  const result = startRun({
-    repoRoot: root,
-    workflow: WORKFLOW,
-    workflowDigest: DIGEST,
-    workId: "WORK-MVP",
-    runId: "RUN-MVP",
-    entry: "build",
-    adapters,
-    planDigest: sha256(planText),
-    intentDigest: sha256(intentText),
-  });
-  const state = result.state;
+  // add() subtracts.
+  const buggy = commit(root, "add lib.js", { "lib.js": "export function add(a, b) { return a - b; }\n" });
+  const red = reviewWith(root, work, workers);
+  assert.equal(red.runId, "RUN-MVP-01");
+  assert.equal(red.state.terminal.status, "FAILED");
+  assert.match(red.state.terminal.reason, /^verify failed \(exit 1\)$/);
+  assert.equal(red.state.steps.review, undefined, "a commit that fails verify is not reviewed");
+  assert.deepEqual(red.state.evidence.map((item) => [item.kind, item.status, item.subject]), [["command", "failed", buggy]]);
+  assert.equal(record(root, work, "RUN-MVP-01").terminal.status, "FAILED");
 
+  const fixed = commit(root, "fix add()", { "lib.js": "export function add(a, b) { return a + b; }\n" });
+  const green = reviewWith(root, work, workers);
+  const state = green.state;
+  assert.equal(green.runId, "RUN-MVP-02");
   assert.equal(state.run.status, "WAITING_HUMAN");
   assert.equal(state.pendingHuman.kind, "final-decision");
-  assert.equal(state.steps.build.attempts, 1);
-  assert.equal(state.steps.verify.attempts, 2, "verify ran red then green");
-  assert.equal(state.steps.fix.attempts, 1);
+  assert.equal(state.steps.verify.attempts, 1);
   assert.equal(state.steps.review.attempts, 1);
-  assert.equal(state.fingerprints.length, 1, "the red verify left a failure fingerprint");
-
-  const candidate = state.workspaces["RUN-MVP"].candidate;
-  assert.equal(candidate, git(result.workspace.worktreePath, ["rev-parse", "HEAD"]));
-  assert.match(git(result.workspace.worktreePath, ["log", "-1", "--format=%s"]), /fixed-candidate/);
-
-  assert.equal(state.run.planDigest, sha256(planText), "the accepted plan is pinned");
-  assert.equal(state.pendingHuman.subject.planDigest, sha256(planText));
-  assert.equal(state.pendingHuman.subject.candidate, candidate);
-
-  const commandEvidence = state.evidence.filter((item) => item.kind === "command");
-  assert.equal(commandEvidence.length, 5, "build, verify x2, fix, review commands read back");
-  const failedVerify = commandEvidence.filter((item) => item.status === "failed");
-  assert.equal(failedVerify.length, 1);
-  assert.equal(state.evidence.filter((item) => item.kind === "review").length, 1);
-
-  const approvedResult = approveRun(root, "RUN-MVP", {
-    by: "owner",
-    transition: "enter-wait-merge",
-  });
-  assert.equal(approvedResult.approved, true);
-  assert.equal(approvedResult.terminal, true);
-  assert.equal(approvedResult.state.terminal.status, "SUCCEEDED");
-  assert.ok(approvedResult.state.compacted);
-  assert.ok(
-    existsSync(join(root, "delivery", "work", "WORK-MVP", "runs", "RUN-MVP", "run-record.json")),
+  assert.equal(state.workspaces["RUN-MVP-02"].base, base);
+  assert.equal(state.workspaces["RUN-MVP-02"].candidate, fixed);
+  assert.equal(state.run.planDigest, planDigest, "the accepted work.md is pinned");
+  assert.equal(state.pendingHuman.subject.planDigest, planDigest);
+  assert.equal(state.pendingHuman.subject.candidate, fixed);
+  assert.deepEqual(
+    state.evidence.map((item) => [item.kind, item.status, item.subject]),
+    [["command", "passed", fixed], ["command", "passed", fixed], ["review", "passed", fixed]],
   );
 
-  // The whole story replays deterministically from the ledger alone.
-  const reopened = EventLedger.open(result.ledgerPath);
-  assert.equal(reopened.corruption, null);
-  assert.deepEqual(reopened.state, approvedResult.state);
+  const approved = approveReview(root, work, { candidate: fixed, by: "owner", as: "human" });
+  assert.equal(approved.runId, "RUN-MVP-02");
+  assert.equal(approved.state.terminal.status, "SUCCEEDED");
+  assert.ok(approved.state.compacted);
+  assert.ok(existsSync(join(root, "delivery", "work", work, "runs", "RUN-MVP-02", "run-record.json")));
 
-  // No merge happened: main still lacks lib.js.
-  assert.equal(existsSync(join(root, "lib.js")), false);
+  // The whole story replays deterministically from the ledger alone.
+  const reopened = EventLedger.open(green.ledgerPath);
+  assert.equal(reopened.corruption, null);
+  assert.deepEqual(reopened.state, approved.state);
+
+  // Nothing was merged or moved: the branch is where the session left it.
+  assert.equal(git(root, ["rev-parse", "HEAD"]), fixed);
+  assert.equal(git(root, ["branch", "--list", "run/*"]), "");
 });

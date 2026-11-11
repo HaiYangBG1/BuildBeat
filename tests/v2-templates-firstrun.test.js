@@ -43,7 +43,7 @@ test("every documented run config sample parses with the strict YAML subset and 
   assert.deepEqual(Object.keys(example.workers).sort(), ["reviewer", "verifier"]);
   assert.equal(example.envelope.prompts, "envelope/prompts");
   assert.deepEqual(readdirSync(join(TEMPLATES, "envelope", "prompts")), ["reviewer.md"]);
-  for (const relative of ["SKILL.md", "docs/v2/guide/01-quickstart.md"]) {
+  for (const relative of ["docs/v2/guide/01-quickstart.md", "docs/v2/guide/01-quickstart.en.md"]) {
     const blocks = yamlBlocks(readFileSync(join(ROOT, relative), "utf8"));
     assert.ok(blocks.length > 0, `${relative}: no run config sample found`);
     for (const block of blocks) {

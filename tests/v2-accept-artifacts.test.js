@@ -1,57 +1,72 @@
+// `buildbeat accept`: the one thing a person accepts is the work's
+// description, work.md, bound to the bytes it has at that moment.
+
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { acceptArtifacts } from "../src/v2/runtime/decisions.js";
+import { DecisionError, acceptWork } from "../src/v2/runtime/decisions.js";
 import { computeOverview } from "../src/v2/runtime/overview.js";
-import { tempDir } from "./support/tmp.js";
+import { WORK_MD, addWork, cli, emptyRepo, commit, jsonl, write } from "./support/review.js";
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
+const WORK = "WORK-ACC";
 
-function fixture(files) {
-  const root = tempDir("bb-v2-accept-");
-  execFileSync("git", ["init", "-q", "-b", "main", root]);
-  execFileSync("git", ["-C", root, "config", "user.email", "pilot@example.com"]);
-  execFileSync("git", ["-C", root, "config", "user.name", "Pilot"]);
-  writeFileSync(join(root, "README.md"), "fixture\n");
-  execFileSync("git", ["-C", root, "add", "."]);
-  execFileSync("git", ["-C", root, "commit", "-q", "-m", "baseline"]);
-  const dir = join(root, "delivery", "work", "WORK-ACC");
-  mkdirSync(dir, { recursive: true });
-  for (const name of files) {
-    writeFileSync(join(dir, `${name}.md`), `# ${name}\n`);
-  }
-  return { root, decisions: join(dir, "decisions.jsonl") };
+function fixture() {
+  const root = emptyRepo("bb-v2-accept-");
+  commit(root, "baseline", { "README.md": "fixture\n" });
+  return root;
 }
 
-const lines = (path) => readFileSync(path, "utf8").trim().split("\n").map((line) => JSON.parse(line));
-
-test("one accept command records intent and plan, each with its own digest", () => {
-  const { root, decisions } = fixture(["intent", "plan"]);
-  const out = execFileSync("node", [CLI, "accept", "--repo", root, "--work", "WORK-ACC",
-    "--artifact", "intent,plan", "--by", "owner"], { encoding: "utf8" });
-  assert.match(out, /accepted intent as A-WORK-ACC-1/);
-  assert.match(out, /accepted plan as A-WORK-ACC-2/);
-  const rows = lines(decisions);
-  assert.deepEqual(rows.map((row) => row.transition), ["accept-intent", "accept-plan"]);
-  assert.notEqual(rows[0].subject.digest, rows[1].subject.digest);
-  assert.ok(rows.every((row) => row.by === "owner"));
+test("accept records the acceptance of work.md with its digest", () => {
+  const root = fixture();
+  addWork(root, WORK, { accept: false });
+  const accepted = cli(["accept", "--repo", root, "--work", WORK, "--by", "owner", "--as", "human"]);
+  assert.equal(accepted.status, 0, accepted.all);
+  assert.match(accepted.out, /^accepted work as A-WORK-ACC-1 by owner \(person/m);
+  assert.match(accepted.out, /^ {2}digest: sha256:[0-9a-f]{64}$/m);
+  assert.match(accepted.out, /editing work\.md after acceptance makes its acceptance stale/);
+  const [row] = jsonl(root, WORK, "decisions.jsonl");
+  assert.equal(row.transition, "accept-work");
+  assert.equal(row.decision, "approved");
+  assert.equal(row.by, "owner");
+  assert.deepEqual(row.subject, {
+    artifact: "work",
+    digest: `sha256:${createHash("sha256").update(WORK_MD, "utf8").digest("hex")}`,
+  });
 });
 
-test("a missing artifact accepts nothing", () => {
-  const { root, decisions } = fixture(["intent"]);
-  assert.throws(() => acceptArtifacts(root, "WORK-ACC", ["intent", "plan"]), /artifact file missing: .*plan\.md/);
-  assert.equal(existsSync(decisions), false);
+test("nothing but the work's description can be accepted", () => {
+  const root = fixture();
+  addWork(root, WORK, { accept: false });
+  for (const artifact of ["intent", "plan", "intent,plan"]) {
+    const refused = cli(["accept", "--repo", root, "--work", WORK, "--artifact", artifact, "--by", "owner"]);
+    assert.equal(refused.status, 1, artifact);
+    assert.match(refused.err, /accept records the acceptance of the work's description, work\.md/, artifact);
+  }
+  assert.equal(existsSync(join(root, "delivery", "work", WORK, "decisions.jsonl")), false);
 });
 
-test("overview suggests accepting intent and plan together until the intent is accepted", () => {
-  const { root } = fixture(["intent", "plan"]);
-  const [row] = computeOverview(root, { repoLabel: "." });
-  assert.equal(row.stage, "PLAN_DRAFT");
-  assert.match(row.next, /accept --repo \. --work WORK-ACC --artifact intent,plan --by <you>/);
-  acceptArtifacts(root, "WORK-ACC", ["intent"]);
-  const [after] = computeOverview(root, { repoLabel: "." });
-  assert.match(after.next, /--artifact plan --by <you>/);
+test("a missing work.md accepts nothing", () => {
+  const root = fixture();
+  write(root, `delivery/work/${WORK}/notes.md`, "# notes\n");
+  assert.throws(() => acceptWork(root, WORK, { by: "owner", as: "human" }), (error) =>
+    error instanceof DecisionError && /artifact file missing: .*work\.md/.test(error.message));
+  assert.equal(existsSync(join(root, "delivery", "work", WORK, "decisions.jsonl")), false);
+});
+
+test("status asks for the acceptance until work.md is accepted, and again once it is edited", () => {
+  const root = fixture();
+  addWork(root, WORK, { accept: false });
+  const row = () => computeOverview(root, { repoLabel: "." })[0];
+  assert.equal(row().stage, "WORK_DRAFT");
+  assert.equal(row().next, "buildbeat accept --repo . --work WORK-ACC --by <you>");
+
+  acceptWork(root, WORK, { by: "owner", as: "human" });
+  assert.equal(row().stage, "READY_TO_RUN");
+
+  write(root, `delivery/work/${WORK}/work.md`, `${readFileSync(join(root, "delivery", "work", WORK, "work.md"), "utf8")}\nOne more thing.\n`);
+  assert.equal(row().stage, "WORK_STALE");
+  assert.match(row().next, /^buildbeat accept --repo \. --work WORK-ACC --by <you> {3}# work\.md changed since acceptance$/);
 });

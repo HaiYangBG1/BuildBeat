@@ -1,76 +1,67 @@
-// Preflight lane: run one step's worker command in the main checkout with no
-// worktree, no ledger and no evidence — the minute-level dry loop that turned
-// the deploy campaign's idle phase around, productized without blurring the
-// evidence boundary.
+// The dry lane before a review: `buildbeat check` reads the run config and
+// checks the environment the project requires (requires:), and neither runs
+// a worker nor records anything.
 
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { tempDir } from "./support/tmp.js";
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
-const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
+import { PROJECT_CONFIG, cli, fixture, git, yaml } from "./support/review.js";
 
-function fixtureRepo() {
-  const root = tempDir("bb-v2-preflight-");
-  execFileSync("git", ["init", "-q", "-b", "main", root]);
-  execFileSync("git", ["-C", root, "config", "user.email", "pilot@example.com"]);
-  execFileSync("git", ["-C", root, "config", "user.name", "Pilot"]);
-  writeFileSync(join(root, "README.md"), "fixture\n");
-  execFileSync("git", ["-C", root, "add", "."]);
-  execFileSync("git", ["-C", root, "commit", "-q", "-m", "baseline"]);
-  writeFileSync(
-    join(root, "run-config.yaml"),
-    [
-      "repo: .",
-      "work: WORK-PF",
-      "run: RUN-PF",
-      `workflow: ${PRESET}`,
-      "requires:",
-      "  - command: bash",
-      "workers:",
-      "  verifier:",
-      "    command: bash",
-      "    args:",
-      "      - -lc",
-      "      - test -f feature.txt",
-    ].join("\n"),
-  );
-  return root;
+const check = (root, extra = []) => cli(["check", "--repo", ".", ...extra], { cwd: root });
+
+function nothingRecorded(root) {
+  assert.equal(existsSync(join(root, ".buildbeat")), false, "no ledger, no checkout");
+  assert.equal(existsSync(join(root, "delivery", "work", "WORK-A", "runs")), false);
+  assert.equal(git(root, ["branch", "--list", "run/*"]), "");
 }
 
-test("preflight runs the step command against the main checkout and writes nothing", () => {
-  const root = fixtureRepo();
-  const failing = spawnSync(
-    "node",
-    [CLI, "preflight", "--config", join(root, "run-config.yaml"), "--step", "verify"],
-    { encoding: "utf8" },
-  );
-  assert.equal(failing.status, 1, "the worker's exit code passes through");
-  assert.match(failing.stdout, /PREFLIGHT \(dry signal, never evidence\)/);
-  assert.match(failing.stdout, /a Run must reproduce this/);
-  assert.equal(existsSync(join(root, ".buildbeat", "runtime")), false, "no ledger, no runtime");
-  assert.equal(existsSync(join(root, ".buildbeat", "worktrees")), false, "no worktree");
-
-  writeFileSync(join(root, "feature.txt"), "present\n");
-  const passing = spawnSync(
-    "node",
-    [CLI, "preflight", "--config", join(root, "run-config.yaml"), "--step", "verify"],
-    { encoding: "utf8" },
-  );
-  assert.equal(passing.status, 0);
-  assert.match(passing.stdout, /preflight exit=0/);
+test("check reports the environment contract and writes nothing", () => {
+  const { root } = fixture({
+    prefix: "bb-v2-preflight-",
+    projectConfig: PROJECT_CONFIG + yaml([
+      "requires:",
+      "  - command: git",
+      "    min: 1",
+      "  - probe: echo redis 7.2.4",
+      "    name: redis-version",
+      "    expect: redis 7",
+    ]),
+  });
+  const result = check(root, ["--work", "WORK-A"]);
+  assert.equal(result.status, 0, result.all);
+  assert.match(result.out, /^environment contract \(requires\):$/m);
+  assert.match(result.out, /^ {2}git: OK \(\d+\.\d+\.\d+\)$/m);
+  assert.match(result.out, /^ {2}redis-version: OK$/m);
+  assert.match(result.out, /^ready: commit the change, then buildbeat review --repo \. --work WORK-A$/m);
+  // The verifier wants src/feature.txt, which is not there: it was not run.
+  nothingRecorded(root);
 });
 
-test("preflight refuses a step without a configured worker command", () => {
-  const root = fixtureRepo();
-  const result = spawnSync(
-    "node",
-    [CLI, "preflight", "--config", join(root, "run-config.yaml"), "--step", "build"],
-    { encoding: "utf8" },
-  );
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /no configured worker command/);
+test("check fails on an environment the project requires and does not have, naming every problem", () => {
+  const { root } = fixture({
+    prefix: "bb-v2-preflight-",
+    projectConfig: PROJECT_CONFIG + yaml([
+      "requires:",
+      "  - command: git",
+      "    min: 999",
+      "  - command: definitely-not-a-command-xyz",
+      "  - command: git",
+    ]),
+  });
+  const result = check(root);
+  assert.equal(result.status, 1, result.all);
+  assert.match(result.out, /^ {2}PROBLEM git: resolves to \d+\.\d+\.\d+, below required 999$/m);
+  assert.match(result.out, /^ {2}PROBLEM definitely-not-a-command-xyz: not runnable in this environment/m);
+  assert.match(result.out, /^ {2}git: OK/m);
+  assert.doesNotMatch(result.out, /^ready/m);
+  nothingRecorded(root);
+});
+
+test("check says so when the project declares no environment contract", () => {
+  const { root } = fixture({ prefix: "bb-v2-preflight-" });
+  const result = check(root);
+  assert.equal(result.status, 0, result.all);
+  assert.match(result.out, /^environment contract: none declared \(implicit PATH facts stay unchecked\)$/m);
 });

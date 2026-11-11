@@ -1,179 +1,170 @@
+// One review of one commit through the runtime (reviewCommit): verify, then
+// the read-only review, then the run waits for the person. What it records,
+// what it leaves behind, and how it ends a review whose process died.
+
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import test from "node:test";
 
-import { createMockAdapter } from "../src/v2/adapters/mock.js";
-import { createShellAdapter } from "../src/v2/adapters/shell.js";
-import { loadWorkflow } from "../src/v2/engine/workflow.js";
-import { startRun } from "../src/v2/runtime/orchestrator.js";
+import { WORKFLOW_DIGEST, WORKFLOW_NAME } from "../src/v2/engine/workflow.js";
 import { EventLedger } from "../src/v2/storage/event-ledger.js";
-import { acquireLock, releaseLock } from "../src/v2/workspace/workspace-manager.js";
-import { tempDir } from "./support/tmp.js";
+import { acquireLock, createWorkspace, releaseLock } from "../src/v2/workspace/workspace-manager.js";
+import { addWork, commit, fixture, git, record, reviewWith, worker } from "./support/review.js";
 
-const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
-const WORKFLOW = loadWorkflow(PRESET_PATH);
-const DIGEST = "sha256:test-workflow";
+const KERNEL = { kind: "kernel", id: "orchestrator" };
+const TS = "2026-08-28T00:00:00.000Z";
+const ledgerPath = (root, run) => join(root, ".buildbeat", "runtime", "runs", run, "events.jsonl");
 
-function git(cwd, args) {
-  return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
-}
-
-function fixtureRepo() {
-  const root = tempDir("bb-v2-orch-");
-  execFileSync("git", ["init", "-q", "-b", "main", root]);
-  git(root, ["config", "user.email", "pilot@example.com"]);
-  git(root, ["config", "user.name", "Pilot"]);
-  writeFileSync(join(root, "README.md"), "fixture\n");
-  git(root, ["add", "."]);
-  git(root, ["commit", "-q", "-m", "baseline"]);
-  return { root, base: git(root, ["rev-parse", "HEAD"]) };
-}
-
-function mockAdapters(script) {
-  const adapter = createMockAdapter(script);
-  return { builder: adapter, verifier: adapter, fixer: adapter };
-}
-
-function run(root, runId, adapters, overrides = {}) {
-  return startRun({
-    repoRoot: root,
-    workflow: WORKFLOW,
-    workflowDigest: DIGEST,
-    workId: `WORK-${runId}`,
-    runId,
-    entry: "build",
-    stopAt: ["review"],
-    adapters,
-    ...overrides,
-  });
-}
-
-test("build then verify reaches the review boundary and waits for a human", () => {
-  const { root } = fixtureRepo();
-  const result = run(root, "RUN-T1", mockAdapters({ build: ["succeed"], verify: ["succeed"] }));
+test("verify then review leaves the run waiting; its records hold repo-relative paths and replay from the ledger", () => {
+  const { root, base, work } = fixture({ prefix: "bb-v2-orch-" });
+  const sha = commit(root, "add the feature", { "src/feature.txt": "hello\n" });
+  const result = reviewWith(root, work);
   const state = result.state;
+  assert.equal(result.runId, "RUN-A-01");
   assert.equal(state.run.status, "WAITING_HUMAN");
-  assert.equal(state.pendingHuman.transition, "enter-review");
-  assert.equal(state.steps.build.status, "SUCCEEDED");
+  assert.equal(state.pendingHuman.transition, "enter-wait-merge");
   assert.equal(state.steps.verify.status, "SUCCEEDED");
-  assert.equal(state.evidence.length, 2);
+  assert.equal(state.steps.review.status, "SUCCEEDED");
+  // The verify command, the review command and the review report.
+  assert.deepEqual(state.evidence.map((item) => item.kind), ["command", "command", "review"]);
   assert.ok(state.evidence.every((item) => item.status === "passed"));
-  assert.ok(state.lastCheckpoint);
-  assert.equal(state.workspaces["RUN-T1"].repo, ".");
-  assert.equal(state.workspaces["RUN-T1"].worktreePath, ".buildbeat/worktrees/RUN-T1");
+  assert.ok(state.evidence.every((item) => item.subject === sha));
+  assert.equal(state.workspaces["RUN-A-01"].repo, ".");
+  assert.equal(state.workspaces["RUN-A-01"].worktreePath, ".buildbeat/worktrees/RUN-A-01");
+  assert.equal(state.workspaces["RUN-A-01"].base, base);
+  assert.equal(state.workspaces["RUN-A-01"].candidate, sha);
   assert.ok(
-    state.evidence.every((item) => item.ref.startsWith(".buildbeat/runtime/runs/RUN-T1/")),
+    state.evidence.every((item) => item.ref.startsWith(".buildbeat/runtime/runs/RUN-A-01/")),
   );
+  assert.ok(state.evidence.every((item) => existsSync(join(root, item.ref))));
   assert.doesNotMatch(readFileSync(result.ledgerPath, "utf8"), new RegExp(root));
+  // The checkout and its branch are gone when the review returns.
+  assert.equal(existsSync(join(root, ".buildbeat", "worktrees", "RUN-A-01")), false);
+  assert.equal(git(root, ["branch", "--list", "run/*"]), "");
 
   const reopened = EventLedger.open(result.ledgerPath);
   assert.equal(reopened.corruption, null);
   assert.deepEqual(reopened.state, state);
 });
 
-test("a failing verify routes through fix and back to verify", () => {
-  const { root } = fixtureRepo();
-  const result = run(
-    root,
-    "RUN-T2",
-    mockAdapters({ build: ["succeed"], verify: ["fail", "succeed"], fix: ["succeed"] }),
-  );
-  const state = result.state;
-  assert.equal(state.run.status, "WAITING_HUMAN");
-  assert.equal(state.steps.verify.attempts, 2);
-  assert.equal(state.steps.fix.attempts, 1);
-  assert.equal(state.fingerprints.length, 1);
-  assert.ok(state.policyLog.some((entry) => entry.result === "RETRY"));
-});
-
-test("two identical failures in a row stop the loop for a human", () => {
-  const { root } = fixtureRepo();
-  const result = run(
-    root,
-    "RUN-T3",
-    mockAdapters({ build: ["succeed"], verify: ["fail", "fail"], fix: ["succeed"] }),
-  );
-  const state = result.state;
-  assert.equal(state.run.status, "WAITING_HUMAN");
-  assert.equal(state.consecutiveSameFailure, 2);
-  assert.match(state.pendingHuman.reasons[0], /fingerprint/);
-});
-
-test("a failure with no transition stops for a human instead of terminating the run", () => {
-  // Iteration 09: a missing edge is not a verdict on the candidate. A
-  // pilot's backend build failed once and the run died as FAILED with no
-  // way back; now the person decides (rerun or reject).
-  const { root } = fixtureRepo();
-  const result = run(root, "RUN-T4", mockAdapters({ build: ["fail"] }));
-  const state = result.state;
-  assert.equal(state.run.status, "WAITING_HUMAN");
-  assert.equal(state.terminal, null);
-  assert.equal(state.pendingHuman.transition, "resume-build");
-  assert.match(state.pendingHuman.reasons[0], /no transition for \(build, failed\)/);
-});
-
-test("a verify failure on its final attempt stops for a human instead of starting fix", () => {
-  const { root } = fixtureRepo();
-  const result = run(
-    root,
-    "RUN-T4B",
-    mockAdapters({ build: ["succeed"], verify: ["fail"], fix: ["succeed"] }),
-    { maxAttemptsPerStep: 1 },
-  );
-  const state = result.state;
-  assert.equal(state.run.status, "WAITING_HUMAN");
-  assert.equal(state.steps.verify.attempts, 1);
-  assert.equal(state.steps.fix, undefined, "fix never started");
-  assert.match(state.pendingHuman.reasons[0], /budget exhausted/);
-});
-
-test("shell adapters drive a real build and verify with read-back evidence", () => {
-  const { root, base } = fixtureRepo();
-  const adapters = {
-    builder: createShellAdapter({
-      name: "shell:builder",
-      command: "bash",
-      args: ["-lc", "echo done > feature.txt && git add -A && git commit -qm candidate"],
+test("a verify that leaves the checkout dirty fails the run; nothing is reviewed", () => {
+  const { root, work } = fixture({ prefix: "bb-v2-orch-" });
+  const sha = commit(root, "add the feature", { "src/feature.txt": "hello\n" });
+  let reviewed = false;
+  const result = reviewWith(root, work, {
+    verifier: worker(({ workspacePath }) => {
+      writeFileSync(join(workspacePath, "wip.txt"), "wip\n");
+      return {};
     }),
-    verifier: createShellAdapter({
-      name: "shell:verifier",
-      command: "bash",
-      args: ["-lc", "test -f feature.txt"],
+    reviewer: worker(() => {
+      reviewed = true;
+      return { envelope: { findings: [] } };
     }),
+  });
+  const state = result.state;
+  assert.equal(state.terminal.status, "FAILED");
+  assert.match(state.terminal.reason, /step verify left a dirty checkout; verify must leave the commit as it found it/);
+  assert.equal(state.pendingHuman, null);
+  assert.equal(reviewed, false);
+  assert.equal(state.steps.review, undefined);
+  assert.equal(state.workspaces["RUN-A-01"].candidate, sha);
+  assert.equal(existsSync(join(root, ".buildbeat", "worktrees", "RUN-A-01")), false);
+});
+
+test("the locks are released when the review returns, however it ended", () => {
+  const { root, work } = fixture({ prefix: "bb-v2-orch-" });
+  commit(root, "add the feature", { "src/feature.txt": "hello\n" });
+  const free = (...ids) => {
+    for (const id of ids) {
+      acquireLock(root, id);
+      releaseLock(root, id);
+    }
   };
-  const result = run(root, "RUN-T5", adapters);
-  const state = result.state;
-  assert.equal(state.run.status, "WAITING_HUMAN");
-  const workspace = state.workspaces["RUN-T5"];
-  assert.ok(workspace.candidate);
-  assert.notEqual(workspace.candidate, base);
-  assert.equal(workspace.candidate, git(result.workspace.worktreePath, ["rev-parse", "HEAD"]));
-  assert.equal(state.evidence.length, 2);
-  assert.ok(state.evidence.every((item) => item.status === "passed"));
-  assert.ok(state.evidence.every((item) => existsSync(join(root, item.ref))));
+  const waiting = reviewWith(root, work);
+  assert.equal(waiting.state.run.status, "WAITING_HUMAN");
+  free("active-run", waiting.runId);
+
+  const failed = reviewWith(root, work, { verifier: worker({ exitCode: 1 }) });
+  assert.equal(failed.state.terminal.status, "FAILED");
+  free("active-run", failed.runId);
+
+  assert.throws(
+    () => reviewWith(root, work, { runId: "RUN-A-09", verifyCheckout: () => { throw new Error("not this checkout"); } }),
+    /not this checkout/,
+  );
+  free("active-run", "RUN-A-09");
 });
 
-test("a successful step that leaves the tree dirty is a human stop, not a candidate", () => {
-  const { root } = fixtureRepo();
-  const adapters = {
-    builder: createShellAdapter({
-      name: "shell:builder",
-      command: "bash",
-      args: ["-lc", "echo wip > feature.txt"],
-    }),
-  };
-  const result = run(root, "RUN-T6", adapters);
-  const state = result.state;
-  assert.equal(state.run.status, "WAITING_HUMAN");
-  assert.match(state.pendingHuman.reasons[0], /dirty/);
-  assert.equal(state.workspaces["RUN-T6"].candidate, null);
-});
+// The ledger a review leaves when its process dies while verify runs: the
+// run is RUNNING, its step started, its checkout and branch still there.
+// Without a checkout, the process died before it made one.
+function interruptedReview(root, work, runId, { base, sha, checkout = true }) {
+  const workspace = checkout ? createWorkspace({ repoRoot: root, runId, base, at: sha }) : null;
+  const ledger = EventLedger.open(ledgerPath(root, runId));
+  const append = (type, data) =>
+    ledger.append({ type, actor: KERNEL, ts: TS, run: runId, work, data });
+  append("RUN_CREATED", {
+    pass: true,
+    workflowRef: WORKFLOW_NAME,
+    workflowDigest: WORKFLOW_DIGEST,
+    base,
+    riskPreset: "standard",
+    entry: "verify",
+  });
+  append("RUN_STARTED", {});
+  if (workspace) {
+    append("WORKSPACE_BOUND", {
+      workspaceId: runId,
+      repo: ".",
+      branch: workspace.branch,
+      worktreePath: relative(root, workspace.worktreePath),
+      base,
+    });
+    append("CANDIDATE_PINNED", { workspaceId: runId, base, candidate: sha });
+    append("STEP_STARTED", { step: "verify", attempt: 1, worker: "verifier", adapter: "test", workspaceId: runId });
+  }
+  return workspace;
+}
 
-test("the run lock is released when the run stops", () => {
-  const { root } = fixtureRepo();
-  run(root, "RUN-T7", mockAdapters({ build: ["succeed"], verify: ["succeed"] }));
-  acquireLock(root, "RUN-T7");
-  releaseLock(root, "RUN-T7");
+test("a review left running by a process that is gone is ended CANCELLED by the next review of the work", () => {
+  const { root, base, work } = fixture({ prefix: "bb-v2-orch-" });
+  const otherBase = addWork(root, "WORK-B");
+  const first = commit(root, "add the feature", { "src/feature.txt": "helo\n" });
+  const workspace = interruptedReview(root, work, "RUN-A-01", { base, sha: first });
+  interruptedReview(root, "WORK-B", "RUN-B-01", { base: otherBase, sha: first, checkout: false });
+  assert.equal(EventLedger.open(ledgerPath(root, "RUN-A-01")).state.run.status, "RUNNING");
+
+  const second = commit(root, "fix the text", { "src/feature.txt": "hello\n" });
+  const result = reviewWith(root, work);
+  assert.equal(result.runId, "RUN-A-02");
+  assert.deepEqual(result.interrupted, ["RUN-A-01"]);
+  assert.deepEqual(result.superseded, []);
+  assert.equal(result.state.run.status, "WAITING_HUMAN");
+  assert.equal(result.state.pendingHuman.subject.candidate, second);
+
+  // The lost step is closed as a tooling failure, not as a verdict on the
+  // commit, and the run ends without anything to resume.
+  const ended = EventLedger.open(ledgerPath(root, "RUN-A-01"));
+  assert.equal(ended.corruption, null);
+  assert.ok(ended.events.some((event) => event.type === "RUN_INTERRUPTED"));
+  const crashed = ended.events.find((event) => event.type === "STEP_FINISHED");
+  assert.equal(crashed.data.step, "verify");
+  assert.equal(crashed.data.attempt, 1);
+  assert.equal(crashed.data.status, "crashed");
+  assert.equal(crashed.data.infra, true);
+  assert.equal(ended.state.terminal.status, "CANCELLED");
+  assert.match(ended.state.terminal.reason, /interrupted: the process that ran this review is gone; superseded by RUN-A-02/);
+  const kept = record(root, work, "RUN-A-01");
+  assert.equal(kept.terminal.status, "CANCELLED");
+  assert.equal(kept.workspaces["RUN-A-01"].candidate, first);
+  assert.equal(kept.workspaces["RUN-A-01"].worktreePath, ".buildbeat/worktrees/RUN-A-01");
+  // Its checkout and branch went with it.
+  assert.equal(existsSync(workspace.worktreePath), false);
+  assert.equal(git(root, ["branch", "--list", "run/*"]), "");
+
+  // Another work's interrupted review is left for that work's next review.
+  const other = EventLedger.open(ledgerPath(root, "RUN-B-01")).state;
+  assert.equal(other.terminal, null);
+  assert.equal(other.run.status, "RUNNING");
 });

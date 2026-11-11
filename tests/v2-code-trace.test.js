@@ -70,6 +70,13 @@ function cli(cwd, ...args) {
   assert.equal(out.status, 0, out.stderr);
   return out.stdout;
 }
+// What `check` prints about work W; it exits 1 while W is not accepted.
+const checked = (root) => call(root, "check", "--repo", ".", "--work", "W").stdout;
+const PROJECT_CONFIG = [
+  "workers:", "  verifier:", "    command: bash", "    args:", "      - -lc", "      - \"true\"",
+  "  reviewer:", "    command: bash", "    args:", "      - -lc", "      - \"true\"", "",
+].join("\n");
+const WORK_CONFIG = "allowedPaths:\n  - src\n";
 const traced = (cwd, spec) => JSON.parse(cli(cwd, "history", "--repo", ".", "--path", spec, "--json"));
 const lines = (...items) => `${items.join("\n")}\n`;
 
@@ -306,20 +313,18 @@ test("records kept in the checkout around a code repository still trace its line
 test("accept and check warn when delivery/ is ignored by Git, and stay quiet otherwise", () => {
   const root = repo();
   work(root, "W", "Ignored work");
-  write(root, "delivery/work/W/run-config.yaml", [
-    "repo: ../../..", "work: W", "run: RUN-W", "allowedPaths:", "  - src", "workers:", "  verifier:",
-    "    command: bash", "    args:", "      - -lc", "      - \"true\"", "",
-  ].join("\n"));
+  write(root, "delivery/run-config.yaml", PROJECT_CONFIG);
+  write(root, "delivery/work/W/run-config.yaml", WORK_CONFIG);
   const warning = /^warning: delivery\/work\/W\/ is ignored by Git here \(\.gitignore or \.git\/info\/exclude\); its records will not travel with the code$/m;
-  assert.doesNotMatch(cli(root, "check", "--config", "delivery/work/W/run-config.yaml"), warning);
+  assert.doesNotMatch(checked(root), warning);
   appendFileSync(join(root, ".git", "info", "exclude"), "/delivery/\n");
   assert.match(cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner"), warning);
-  assert.match(cli(root, "check", "--config", "delivery/work/W/run-config.yaml"), warning);
+  assert.match(checked(root), warning);
   writeFileSync(join(root, ".git", "info", "exclude"), "");
   write(root, ".gitignore", "delivery/\n");
-  assert.match(cli(root, "check", "--config", "delivery/work/W/run-config.yaml"), warning);
+  assert.match(checked(root), warning);
   writeFileSync(join(root, ".gitignore"), "");
-  assert.doesNotMatch(cli(root, "check", "--config", "delivery/work/W/run-config.yaml"), warning);
+  assert.doesNotMatch(checked(root), warning);
   assert.match(readFileSync(join(root, "delivery/work/W/decisions.jsonl"), "utf8"), /accept-work/);
 });
 
@@ -330,44 +335,41 @@ test("accept and check warn when delivery/ is ignored by Git, and stay quiet oth
 function heavyFixture() {
   const root = repo();
   work(root, "W", "Heavy work");
-  write(root, "delivery/work/W/run-config.yaml", [
-    "repo: ../../..", "work: W", "run: RUN-W", "allowedPaths:", "  - src", "workers:", "  verifier:",
-    "    command: bash", "    args:", "      - -lc", "      - \"true\"", "",
-  ].join("\n"));
+  write(root, "delivery/run-config.yaml", PROJECT_CONFIG);
+  write(root, "delivery/work/W/run-config.yaml", WORK_CONFIG);
   write(root, "delivery/work/W/notes.md", "small notes\n");
   return root;
 }
-const heavyCheck = (root) => cli(root, "check", "--config", "delivery/work/W/run-config.yaml");
 const heavyLine = (text) => text.split("\n").find((line) => line.startsWith("warning: delivery/work/W/ has ")) ?? null;
 const HEAVY_TAIL = "; keep screenshots, archives and logs on this machine (see templates/gitignore.template)";
 
 test("accept and check warn about screenshots, archives, logs and big files that would go into Git", () => {
   const root = heavyFixture();
-  assert.equal(heavyLine(heavyCheck(root)), null);
+  assert.equal(heavyLine(checked(root)), null);
   write(root, "delivery/work/W/evidence/shot.png", "png-bytes");
   write(root, "delivery/work/W/evidence/big.json", `${"x".repeat(300 * 1024 - 1)}\n`);
   const expected = "warning: delivery/work/W/ has 2 file(s) that would go into Git and stay in its history for good: "
     + `evidence/big.json (300 KB), evidence/shot.png (1 KB)${HEAVY_TAIL}`;
-  assert.equal(heavyLine(heavyCheck(root)), expected);
+  assert.equal(heavyLine(checked(root)), expected);
   assert.equal(heavyLine(cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner")), expected);
 
   // With the template's rules the screenshot stays on this machine; the big
   // file still would go into Git.
   writeFileSync(join(root, ".gitignore"), readFileSync(join(ROOT, "templates", "gitignore.template"), "utf8"));
-  assert.equal(heavyLine(heavyCheck(root)),
+  assert.equal(heavyLine(checked(root)),
     `warning: delivery/work/W/ has 1 file(s) that would go into Git and stay in its history for good: evidence/big.json (300 KB)${HEAVY_TAIL}`);
 
   // Once committed it is history already; deleting it would not shrink Git.
   git(root, "add", "--", "delivery/work/W/evidence/big.json");
   git(root, ...IDENTITY, "commit", "-q", "-m", "records");
-  assert.equal(heavyLine(heavyCheck(root)), null);
+  assert.equal(heavyLine(checked(root)), null);
 });
 
 test("the heavy-file warning names five files, sizes past 1024 KB in MB, and counts the rest", () => {
   const root = heavyFixture();
   for (let i = 1; i <= 6; i += 1) write(root, `delivery/work/W/logs/run-${i}.log`, "line\n");
   write(root, "delivery/work/W/bundle.tgz", "x".repeat(1536 * 1024));
-  assert.equal(heavyLine(heavyCheck(root)),
+  assert.equal(heavyLine(checked(root)),
     "warning: delivery/work/W/ has 7 file(s) that would go into Git and stay in its history for good: "
     + `bundle.tgz (1.5 MB), logs/run-1.log (1 KB), logs/run-2.log (1 KB), logs/run-3.log (1 KB), logs/run-4.log (1 KB), and 2 more${HEAVY_TAIL}`);
 });
@@ -394,13 +396,10 @@ test("both gitignore templates keep delivery/ in Git and its screenshots, archiv
 function extrasFixture() {
   const root = repo();
   work(root, "W", "Busy work");
-  const config = [
-    "repo: ../../..", "work: W", "run: RUN-W", "allowedPaths:", "  - src", "workers:", "  verifier:",
-    "    command: bash", "    args:", "      - -lc", "      - \"true\"", "",
-  ].join("\n");
-  write(root, "delivery/work/W/run-config.yaml", config);
-  write(root, "delivery/work/W/run-config-staging.yml", config);
-  for (const path of ["intent.md", "plan.md", "result.md", "env-facts.md"]) write(root, `delivery/work/W/${path}`, "# record\n");
+  write(root, "delivery/run-config.yaml", PROJECT_CONFIG);
+  write(root, "delivery/work/W/run-config.yaml", WORK_CONFIG);
+  write(root, "delivery/work/W/run-config-staging.yml", WORK_CONFIG);
+  for (const path of ["result.md", "env-facts.md"]) write(root, `delivery/work/W/${path}`, "# record\n");
   for (const path of ["decisions.jsonl", "review-findings.jsonl", "releases.jsonl"]) write(root, `delivery/work/W/${path}`, "");
   write(root, "delivery/work/W/runs/RUN-W-01/run-record.json", "{}\n");
   for (let i = 1; i <= 10; i += 1) write(root, `delivery/work/W/out/f${String(i).padStart(2, "0")}.txt`, "output\n");
@@ -412,13 +411,13 @@ const EXTRAS_TAIL = "; keep command output, readback results and one-off scripts
 
 test("accept and check warn when a work's folder holds more than 10 files besides its records", () => {
   const root = extrasFixture();
-  assert.equal(extrasLine(heavyCheck(root)), null);
+  assert.equal(extrasLine(checked(root)), null);
   assert.equal(extrasLine(cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner")), null);
 
   write(root, "delivery/work/W/runs/RUN-W-01/dump.txt", "output\n");
   const expected = "warning: delivery/work/W/ holds 11 files besides its records: "
     + `out/f01.txt, out/f02.txt, out/f03.txt, out/f04.txt, out/f05.txt, and 6 more${EXTRAS_TAIL}`;
-  assert.equal(extrasLine(heavyCheck(root)), expected);
+  assert.equal(extrasLine(checked(root)), expected);
   assert.equal(extrasLine(cli(root, "accept", "--repo", ".", "--work", "W", "--by", "owner")), expected);
 });
 
@@ -427,20 +426,20 @@ test("files already in Git count toward the folder warning, ignored and deleted 
   write(root, "delivery/work/W/out/f11.txt", "output\n");
   git(root, "add", "--", "delivery");
   git(root, ...IDENTITY, "commit", "-q", "-m", "records and output");
-  assert.match(extrasLine(heavyCheck(root)) ?? "", /holds 11 files besides its records/);
+  assert.match(extrasLine(checked(root)) ?? "", /holds 11 files besides its records/);
 
   // A screenshot the template keeps on this machine is not in the folder Git shows.
   writeFileSync(join(root, ".gitignore"), readFileSync(join(ROOT, "templates", "gitignore.template"), "utf8"));
   write(root, "delivery/work/W/out/shot.png", "png-bytes");
-  assert.match(extrasLine(heavyCheck(root)) ?? "", /holds 11 files besides its records/);
+  assert.match(extrasLine(checked(root)) ?? "", /holds 11 files besides its records/);
 
   // Deleting one from the folder brings it back to 10, before the deletion is committed.
   git(root, "rm", "-q", "--cached", "--", "delivery/work/W/out/f11.txt");
   execFileSync("rm", [join(root, "delivery/work/W/out/f11.txt")]);
-  assert.equal(extrasLine(heavyCheck(root)), null);
+  assert.equal(extrasLine(checked(root)), null);
   write(root, "delivery/work/W/out/f11.txt", "output\n");
   execFileSync("rm", [join(root, "delivery/work/W/out/f10.txt")]);
-  assert.equal(extrasLine(heavyCheck(root)), null);
+  assert.equal(extrasLine(checked(root)), null);
 });
 
 // WORK-SCOPE-RENAMES: history --path reads the same on every machine.

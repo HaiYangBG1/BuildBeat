@@ -1,26 +1,29 @@
-// Owner decisions before 4.0 (2026-10-04): UI work can require screenshots
-// of the real render before the merge decision, and a merged Work closes
-// only after the project's own readback of the release has passed.
+// UI work can require screenshots of the real render before the merge
+// decision, and a work with a release closes only after the project's own
+// readback of that release has passed.
 
 import assert from "node:assert/strict";
-import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { deflateSync } from "node:zlib";
 
-import { checkRunConfigShape } from "../src/v2/cli/run-config-check.js";
-import { payloadFor } from "../src/v2/adapters/notification-payload.js";
+import { loadReviewConfig } from "../src/v2/cli/review-config.js";
 import { screenshotFormat } from "../src/v2/evidence/image.js";
-import { EventLedger } from "../src/v2/storage/event-ledger.js";
-import { deliveryChecks, evaluatePolicies } from "../src/v2/policy/policy.js";
-import { buildNotification } from "../src/v2/runtime/notify.js";
+import { mergeChecks } from "../src/v2/policy/policy.js";
+import { approveReview } from "../src/v2/runtime/decisions.js";
 import { runsFor } from "../src/v2/runtime/overview.js";
-import { runReadback } from "../src/v2/runtime/release.js";
+import { closeWork, runReadback } from "../src/v2/runtime/release.js";
+import { EventLedger } from "../src/v2/storage/event-ledger.js";
+import {
+  CLI, PROJECT_CONFIG, approved, cli, commit, fixture, git, jsonl, reviewWith, statusRow, worker, write, yaml,
+} from "./support/review.js";
 import { tempDir } from "./support/tmp.js";
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
+const WORK = "WORK-S";
+
 
 // A genuine RGB PNG, assembled here with its own CRC so the fixture does
 // not depend on the validator under test.
@@ -95,467 +98,391 @@ function makePng(
 }
 const PNG_BYTES = makePng();
 
-function fixture({ verify, review = "", extra = "", workers = ["builder", "verifier", "reviewer", "fixer"] }) {
-  const root = tempDir("bb-shot-");
-  const git = (...args) =>
-    execFileSync("git", ["-C", root, ...args], { encoding: "utf8" }).trim();
-  git("init", "-q", "-b", "main");
-  git("config", "user.name", "Test");
-  git("config", "user.email", "test@example.com");
-  const dir = join(root, "delivery", "work", "WORK-S");
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(join(root, ".gitignore"), ".buildbeat/\n.release-broken\n");
-  writeFileSync(join(dir, "work.md"), "# Goal\nShip the page.\n");
-  writeFileSync(join(root, "shot.png"), PNG_BYTES);
-  writeFileSync(
-    join(root, "worker.sh"),
-    `#!/usr/bin/env bash
-set -eu
-case "$1" in
- build) echo feature > feature.txt; git add feature.txt; git commit -qm feature ;;
- verify) ${verify} ;;
- fix) echo fixed > fixed.txt; git add fixed.txt; git commit -qm fix ;;
- review) ${review} printf '%s\\n' '{"status":"succeeded","findings":[]}' > "$BUILDBEAT_OUTPUT" ;;
-esac
-`,
-  );
-  writeFileSync(
-    join(root, "readback.sh"),
-    `#!/usr/bin/env bash
-if [ -f .release-broken ]; then echo "health: down"; exit 3; fi
-echo "token=abc123"
-echo "health: ok flag=\${RELEASE_FLAG:-unset} sentinel=\${HOST_SENTINEL:-absent}"
-`,
-  );
-  const plain =
-    [
-      "repo: ../../..",
-      "work: WORK-S",
-      "run: RUN-S",
-      "allowedPaths:",
-      "  - feature.txt",
-      "  - fixed.txt",
-      "redact:",
-      '  - "token=\\\\S+"',
-      "workers:",
-      ...["builder", "verifier", "reviewer", "fixer"].flatMap((name, i) =>
-        workers.includes(name)
-          ? [
-              `  ${name}:`,
-              "    command: bash",
-              "    args:",
-              "      - worker.sh",
-              `      - ${["build", "verify", "review", "fix"][i]}`,
-            ]
-          : [],
-      ),
-    ].join("\n") + "\n";
-  const config = join(dir, "run-config.yaml");
-  writeFileSync(config, plain + extra);
-  git("add", ".");
-  git("commit", "-qm", "fixture");
-  const callWith = (env, ...args) =>
-    spawnSync(process.execPath, [CLI, ...args], {
-      cwd: root,
-      encoding: "utf8",
-      env: { ...process.env, ...env },
-    });
-  const call = (...args) => callWith({}, ...args);
-  const ok = (...args) => {
-    const result = call(...args);
-    assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
-    return result.stdout;
-  };
-  const state = (run) =>
-    JSON.parse(ok("status", "--repo", ".", "--run", run, "--json")).state;
-  return { root, dir, config, plain, git, call, callWith, ok, state };
+// A repository with one accepted work and a commit of it to review.
+function uiWork(options = {}) {
+  const made = fixture({ prefix: "bb-shot-", work: WORK, ...options });
+  const sha = commit(made.root, `add the page\n\nWork: ${WORK}`, { "src/feature.txt": "page\n" });
+  return { ...made, sha };
+}
+const SHOTS = { checks: { requireScreenshot: true } };
+// A verifier that passes after `leave` put files into the screenshot
+// directory it was given.
+const rendering = (leave = (dir) => writeFileSync(join(dir, "home.png"), PNG_BYTES)) =>
+  worker(({ extraEnv }) => {
+    leave(extraEnv.BUILDBEAT_SCREENSHOT_DIR);
+    return {};
+  });
+const runFile = (root, run, ...path) => join(root, ".buildbeat", "runtime", "runs", run, ...path);
+const events = (root, run) =>
+  readFileSync(runFile(root, run, "events.jsonl"), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
+const verifyFinished = (root, run) =>
+  events(root, run).find((event) => event.type === "STEP_FINISHED" && event.data.step === "verify");
+const screenshots = (state) => state.evidence.filter((item) => item.kind === "screenshot");
+const approve = (root, sha) => approveReview(root, WORK, { candidate: sha, by: "owner", as: "human" });
+const call = (root, args, env) => cli(args, { cwd: root, env });
+function ok(root, args) {
+  const result = call(root, args);
+  assert.equal(result.status, 0, result.all);
+  return result.out;
 }
 
-const SCREENSHOT = "requireScreenshot: true\n";
-const RENDER = `cp shot.png "$BUILDBEAT_SCREENSHOT_DIR/home.png"`;
-
 test("with requireScreenshot a rendering verify records screenshot evidence the reviewer and the decision card see", () => {
-  const f = fixture({ verify: RENDER, review: `printf '%s' "$BUILDBEAT_INPUT" >&2;`, extra: SCREENSHOT });
-  f.ok("accept", "--repo", ".", "--work", "WORK-S");
-  f.ok("run", "--config", f.config);
-  const state = f.state("RUN-S-01");
+  const { root } = fixture({
+    prefix: "bb-shot-",
+    work: WORK,
+    workConfig: yaml([
+      "requireScreenshot: true",
+      "workers:",
+      "  verifier:", "    command: sh", "    args:", "      - tools/render.sh",
+      "  reviewer:", "    command: sh", "    args:", "      - tools/show-input.sh",
+    ]),
+  });
+  const sha = commit(root, `add the page\n\nWork: ${WORK}`, {
+    "tools/shot.png": PNG_BYTES,
+    "tools/render.sh": 'cp tools/shot.png "$BUILDBEAT_SCREENSHOT_DIR/home.png"\n',
+    // Prints what it was handed, then reports no findings.
+    "tools/show-input.sh": 'printf \'%s\' "$BUILDBEAT_INPUT" >&2\nprintf \'{"findings":[]}\' > "$BUILDBEAT_OUTPUT"\n',
+  });
+  assert.match(ok(root, ["check", "--repo", ".", "--work", WORK]), /^ {2}merge checks: .*, screenshots from verify$/m);
+  ok(root, ["review", "--repo", ".", "--work", WORK]);
+
+  const state = JSON.parse(ok(root, ["status", "--repo", ".", "--run", "RUN-S-01", "--json"])).state;
   assert.equal(state.run.deliveryChecks.requireScreenshot, true);
   assert.equal(state.pendingHuman.transition, "enter-wait-merge");
-  const candidate = state.workspaces["RUN-S-01"].candidate;
-  const shots = state.evidence.filter((item) => item.kind === "screenshot");
+  const shots = screenshots(state);
   assert.equal(shots.length, 1);
-  assert.equal(shots[0].subject, candidate);
+  assert.equal(shots[0].subject, sha);
   assert.equal(shots[0].ref, ".buildbeat/runtime/runs/RUN-S-01/screenshots/verify-1/home.png");
-  assert.equal(
-    shots[0].digest,
-    `sha256:${createHash("sha256").update(PNG_BYTES).digest("hex")}`,
-  );
-  // Outside the candidate: the worktree stays clean.
-  assert.equal(
-    execFileSync("git", ["-C", join(f.root, ".buildbeat/worktrees/RUN-S-01"), "status", "--porcelain"], { encoding: "utf8" }),
-    "",
-  );
-  const reviewLog = readFileSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/logs/review-1.log"), "utf8");
-  assert.match(reviewLog, /"screenshots":\[\{"path":"[^"]+home\.png"/);
-  assert.match(f.ok("status", "--repo", "."), /screenshot: \.buildbeat\/runtime\/runs\/RUN-S-01\/screenshots\/verify-1\/home\.png sha256:/);
+  assert.equal(shots[0].digest, `sha256:${createHash("sha256").update(PNG_BYTES).digest("hex")}`);
+  // The reviewer was shown the file.
+  assert.match(readFileSync(runFile(root, "RUN-S-01", "logs", "review-1.log"), "utf8"), /"screenshots":\[\{"path":"[^"]+home\.png"/);
+  assert.match(ok(root, ["status", "--repo", "."]), /screenshot: \.buildbeat\/runtime\/runs\/RUN-S-01\/screenshots\/verify-1\/home\.png sha256:/);
   // The single-run decision card names the same file and digest.
   assert.match(
-    f.ok("status", "--repo", ".", "--run", "RUN-S-01"),
+    ok(root, ["status", "--repo", ".", "--run", "RUN-S-01"]),
     new RegExp(`evidence \\[passed/L2\\] screenshot \\.buildbeat/runtime/runs/RUN-S-01/screenshots/verify-1/home\\.png ${shots[0].digest}`),
   );
-  f.ok("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "approve", "--transition", "enter-wait-merge");
-  assert.equal(f.state("RUN-S-01").terminal.status, "SUCCEEDED");
+  ok(root, ["decide", "--repo", ".", "--work", WORK, "--action", "approve", "--candidate", sha, "--by", "owner", "--as", "human"]);
+  assert.equal(statusRow(root, WORK).latest.status, "SUCCEEDED");
 });
 
-test("a verify that passes without leaving a screenshot fails as a candidate failure", () => {
-  const f = fixture({
-    verify: "true",
-    extra: `${SCREENSHOT}budgets:\n  maxAttempts:\n    verify: 1\n`,
-  });
-  f.ok("accept", "--repo", ".", "--work", "WORK-S");
-  f.ok("run", "--config", f.config);
-  const events = readFileSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/events.jsonl"), "utf8")
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => JSON.parse(line));
-  const finished = events.find((event) => event.type === "STEP_FINISHED" && event.data.step === "verify");
+test("a verify that passes without leaving a screenshot fails as a failure of the commit", () => {
+  const { root } = uiWork();
+  const result = reviewWith(root, WORK, SHOTS);
+  assert.equal(result.state.terminal.status, "FAILED");
+  assert.equal(result.state.terminal.reason, "verify failed (exit 0): requireScreenshot is on, but verify left no PNG screenshot in BUILDBEAT_SCREENSHOT_DIR");
+  assert.equal(result.state.steps.review, undefined, "nothing was reviewed");
+  const finished = verifyFinished(root, result.runId);
   assert.equal(finished.data.status, "failed");
   assert.equal(finished.data.exitCode, 0);
   assert.equal(finished.data.infra, undefined);
   assert.match(finished.data.reason, /requireScreenshot is on, but verify left no PNG screenshot/);
-  assert.match(
-    readFileSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/logs/verify-1.log"), "utf8"),
-    /requirement: requireScreenshot is on/,
-  );
-  const state = f.state("RUN-S-01");
-  assert.equal(state.pendingHuman.kind, "budget");
-  assert.equal(state.evidence.filter((item) => item.kind === "screenshot").length, 0);
+  assert.match(readFileSync(runFile(root, result.runId, "logs", "verify-1.log"), "utf8"), /requirement: requireScreenshot is on/);
+  assert.equal(screenshots(result.state).length, 0);
 });
 
-test("the screenshot requirement is frozen with the run", () => {
-  const f = fixture({ verify: RENDER, extra: SCREENSHOT });
-  f.ok("accept", "--repo", ".", "--work", "WORK-S");
-  f.ok("run", "--config", f.config);
-  writeFileSync(f.config, f.plain);
-  const refused = f.call("run", "--config", f.config);
-  assert.notEqual(refused.status, 0);
-  assert.match(refused.stderr, /safeguards changed/);
-});
-
-test("a reused verify carries its screenshots to the new candidate", () => {
-  const f = fixture({ verify: RENDER, extra: `${SCREENSHOT}cache:\n  verify: tree\n` });
-  f.ok("accept", "--repo", ".", "--work", "WORK-S");
-  f.ok("run", "--config", f.config);
-  f.ok("run", "--config", f.config, "--new");
-  const state = f.state("RUN-S-02");
-  const candidate = state.workspaces["RUN-S-02"].candidate;
-  const verify = state.evidence.find((item) => item.kind === "command" && item.ref.endsWith("verify-1.log"));
-  assert.equal(verify.reused.run, "RUN-S-01");
-  const shots = state.evidence.filter((item) => item.kind === "screenshot");
-  assert.equal(shots.length, 1);
-  assert.equal(shots[0].subject, candidate);
-  assert.equal(shots[0].reused.run, "RUN-S-01");
-  assert.equal(shots[0].ref, ".buildbeat/runtime/runs/RUN-S-01/screenshots/verify-1/home.png");
-  assert.equal(state.pendingHuman.transition, "enter-wait-merge");
-});
-
-test("the merge floor requires screenshot evidence for the current candidate when enabled", () => {
+test("the merge checks require screenshot evidence for the current commit when enabled", () => {
   const workDir = tempDir("bb-shot-policy-");
-  const policies = deliveryChecks({ requireAcceptance: false, requireScreenshot: true });
   const command = { kind: "command", status: "passed", grade: "L2", subject: "c2", ref: "runs/R/logs/verify-1.log" };
   const review = { kind: "review", status: "passed", grade: "L2", subject: "c2", findings: [] };
-  const judge = (evidence) =>
-    evaluatePolicies(policies, { type: "transition", appliesTo: "enter-wait-merge" }, {
-      state: { evidence },
-      candidate: "c2",
-      workDir,
-    })[0];
+  const judge = (evidence, checks = { requireAcceptance: false, requireScreenshot: true }) =>
+    mergeChecks(checks, { state: { evidence }, candidate: "c2", workDir })[0];
   const missing = judge([command, review]);
   assert.notEqual(missing.result, "PASS");
   assert.match(missing.reason, /screenshot/);
+  assert.equal(judge([command, review], { requireAcceptance: false }).result, "PASS", "not asked for, not required");
   const other = { kind: "screenshot", status: "passed", grade: "L2", subject: "c1", ref: "a.png", source: command.ref };
   assert.notEqual(judge([command, review, other]).result, "PASS");
   const current = { ...other, subject: "c2" };
   assert.equal(judge([command, review, current]).result, "PASS");
-  // Only the latest passed verify's screenshots count for the candidate.
+  // Only the latest passed verify's screenshots count for the commit.
   const later = { ...command, ref: "runs/R/logs/verify-2.log" };
   assert.notEqual(judge([command, current, later, review]).result, "PASS");
   assert.equal(
     judge([command, current, later, { ...current, ref: "b.png", source: later.ref }, review]).result,
     "PASS",
   );
-  assert.throws(() => deliveryChecks({ requireScreenshot: "yes" }), /invalid delivery safeguards/);
 });
 
-test("decision notifications carry screenshot references, never the images", () => {
-  const state = {
-    run: { id: "RUN-N", work: "WORK-N", status: "WAITING_HUMAN", deliveryChecks: { artifact: "work" } },
-    pendingHuman: { transition: "enter-wait-merge", kind: "final-decision", reasons: [], subject: { candidate: "abc1234" } },
-    evidence: [
-      { kind: "command", status: "passed", subject: "old0000", ref: ".buildbeat/runtime/runs/RUN-N/logs/verify-1.log" },
-      { kind: "screenshot", status: "passed", subject: "old0000", ref: "old.png", digest: "sha256:bb", source: ".buildbeat/runtime/runs/RUN-N/logs/verify-1.log" },
-      { kind: "command", status: "passed", subject: "abc1234", ref: ".buildbeat/runtime/runs/RUN-N/logs/verify-2.log" },
-      { kind: "screenshot", status: "passed", subject: "abc1234", ref: ".buildbeat/runtime/runs/RUN-N/screenshots/verify-2/home.png", digest: "sha256:aa", source: ".buildbeat/runtime/runs/RUN-N/logs/verify-2.log" },
-    ],
-    workspaces: {},
+test("the run config validates the screenshot switch and the release command", () => {
+  const root = tempDir("bb-shot-config-");
+  const load = (lines) => {
+    write(root, "delivery/run-config.yaml", PROJECT_CONFIG + yaml(lines));
+    return loadReviewConfig(root);
   };
-  const notification = buildNotification("HUMAN_REQUESTED", { repoLabel: ".", state });
-  assert.deepEqual(notification.screenshots, [
-    { ref: ".buildbeat/runtime/runs/RUN-N/screenshots/verify-2/home.png", digest: "sha256:aa" },
-  ]);
-  const text = payloadFor({ type: "dingtalk", keyword: "BuildBeat" }, notification).text.content;
-  assert.match(text, /screenshot: \.buildbeat\/runtime\/runs\/RUN-N\/screenshots\/verify-2\/home\.png sha256:aa/);
-  assert.doesNotMatch(text, /old\.png/);
+  const valid = load(["requireScreenshot: true", "release:", "  command: bash", "  args:", "    - readback.sh"]);
+  assert.equal(valid.deliveryChecks.requireScreenshot, true);
+  assert.equal(valid.release.command, "bash");
+  assert.deepEqual(valid.release.args, ["readback.sh"]);
+  assert.equal(Object.hasOwn(load([]).deliveryChecks, "requireScreenshot"), false);
+  assert.equal(load([]).release, null);
+  assert.throws(() => load(["requireScreenshot: yes please"]), /requireScreenshot: must be true or false/);
+  assert.throws(() => load(["release:", "  args:", "    - x"]), /release\.command: required/);
+  assert.throws(() => load(["release:", "  command: x", "  shell: true"]), /release\.shell: unknown key/);
 });
 
-test("run config validates the screenshot switch and the release command", () => {
-  const base = { repo: ".", work: "W", run: "R", workers: { verifier: { command: "true" } } };
-  assert.deepEqual(checkRunConfigShape({ ...base, requireScreenshot: true, release: { command: "bash", args: ["readback.sh"] } }), []);
-  assert.match(checkRunConfigShape({ ...base, requireScreenshot: "yes" }).join("\n"), /requireScreenshot: must be true or false/);
-  assert.match(checkRunConfigShape({ ...base, release: { args: ["x"] } }).join("\n"), /release\.command: required/);
-  assert.match(checkRunConfigShape({ ...base, release: { command: "x", shell: true } }).join("\n"), /release\.shell/);
-});
+const READBACK = [
+  "#!/usr/bin/env bash",
+  'if [ -f .release-broken ]; then echo "health: down"; exit 3; fi',
+  'echo "token=abc123"',
+  'echo "health: ok flag=${RELEASE_FLAG:-unset} sentinel=${HOST_SENTINEL:-absent}"',
+  "",
+].join("\n");
+const CHANGE = { "src/feature.txt": "page\n", "readback.sh": READBACK };
+const RELEASE = ["release:", "  command: bash", "  args:", "    - readback.sh"];
+const release = (extra = []) => ["release", "--repo", ".", "--work", WORK, ...extra];
+const close = (extra = []) => ["decide", "--repo", ".", "--work", WORK, "--action", "close", "--by", "owner", "--as", "human", ...extra];
+const overview = (root) => JSON.parse(ok(root, ["status", "--repo", ".", "--work", WORK, "--json"])).works[0];
 
-test("a merged work closes only after a passing release readback", () => {
-  const f = fixture({
-    verify: "true",
-    extra: "release:\n  command: bash\n  args:\n    - readback.sh\n  env:\n    RELEASE_FLAG: on\n",
+test("a work with a release closes only after a passing release readback", () => {
+  const { root } = fixture({
+    prefix: "bb-shot-",
+    work: WORK,
+    // Its own release: section is what makes the work one that has a release.
+    workConfig: yaml(["redact:", '  - "token=\\\\S+"', ...RELEASE, "  env:", "    RELEASE_FLAG: on"]),
   });
-  f.ok("accept", "--repo", ".", "--work", "WORK-S");
-  const early = f.call("release", "--config", f.config);
-  assert.notEqual(early.status, 0);
-  assert.match(early.stderr, /no succeeded run/);
-  f.ok("run", "--config", f.config);
-  f.ok("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "approve", "--transition", "enter-wait-merge");
-  const unmerged = f.call("release", "--config", f.config);
-  assert.notEqual(unmerged.status, 0);
-  assert.match(unmerged.stderr, /is not contained in HEAD .*merge it first/);
-  assert.equal(existsSync(join(f.dir, "releases.jsonl")), false);
-
-  f.git("merge", "-q", "--ff-only", "run/RUN-S-01");
-  const overview = () => JSON.parse(f.ok("status", "--repo", ".", "--work", "WORK-S", "--json")).works[0];
-  assert.match(overview().next, /release it \(a human action\), then buildbeat release --config delivery\/work\/WORK-S\/run-config\.yaml/);
+  const dir = join(root, "delivery", "work", WORK);
+  const { sha } = approved(root, WORK, CHANGE);
+  const merged = overview(root);
+  assert.equal(merged.stage, "MERGED");
+  assert.match(merged.next, /^candidate \w{7} \(RUN-S-01\) is on main; release it \(a human action\), then buildbeat release --repo \. --work WORK-S; then write delivery\/work\/WORK-S\/result\.md, /);
+  const unread = call(root, close(["--result", "released"]));
+  assert.equal(unread.status, 1);
+  assert.match(unread.err, /WORK-S has no readback; run buildbeat release --repo <path> --work WORK-S after the release first/);
 
   // A passing readback followed by a failing one: the latest one decides.
-  assert.match(f.ok("release", "--config", f.config, "--note", "first"), /readback passed/);
-  writeFileSync(join(f.root, ".release-broken"), "");
-  const failed = f.call("release", "--config", f.config, "--note", "after deploy");
+  assert.match(ok(root, release(["--note", "first"])), /readback passed/);
+  writeFileSync(join(root, ".release-broken"), "");
+  const failed = call(root, release(["--note", "after deploy"]));
   assert.equal(failed.status, 1);
-  assert.match(failed.stdout, /readback failed \(exit 3\)/);
-  assert.match(overview().next, /latest readback failed/);
-  const blocked = f.call("decide", "--repo", ".", "--work", "WORK-S", "--action", "close", "--result", "released");
-  assert.notEqual(blocked.status, 0);
-  assert.match(blocked.stderr, /latest readback failed/);
-  assert.equal(
-    readFileSync(join(f.dir, "decisions.jsonl"), "utf8").includes("close-work"),
-    false,
-  );
+  assert.match(failed.out, /readback failed \(exit 3\)/);
+  assert.match(overview(root).next, /latest readback failed/);
+  const blocked = call(root, close(["--result", "released"]));
+  assert.equal(blocked.status, 1);
+  assert.match(blocked.err, /latest readback failed/);
+  assert.equal(readFileSync(join(dir, "decisions.jsonl"), "utf8").includes("close-work"), false);
 
-  rmSync(join(f.root, ".release-broken"));
-  assert.match(
-    f.callWith({ HOST_SENTINEL: "leak" }, "release", "--config", f.config, "--note", "after fix").stdout,
-    /readback passed \(exit 0\)/,
-  );
-  const rows = readFileSync(join(f.dir, "releases.jsonl"), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
+  rmSync(join(root, ".release-broken"));
+  assert.match(call(root, release(["--note", "after fix"]), { HOST_SENTINEL: "leak" }).out, /readback passed \(exit 0\)/);
+  const rows = jsonl(root, WORK, "releases.jsonl");
   assert.equal(rows.length, 3);
   const passed = rows[2];
   assert.equal(passed.status, "passed");
-  assert.equal(passed.commit, f.git("rev-parse", "HEAD"));
-  assert.equal(passed.candidate, f.git("rev-parse", "run/RUN-S-01"));
+  assert.equal(passed.commit, git(root, ["rev-parse", "HEAD"]));
+  assert.equal(passed.run, "RUN-S-01");
+  assert.equal(passed.candidate, sha);
   assert.equal(passed.note, "after fix");
   assert.equal(passed.grade, "L4");
   // Worker environment rules: release.env reaches it, host variables do not.
   assert.deepEqual(passed.tail, ["<REDACTED>", "health: ok flag=on sentinel=absent"]);
   assert.equal(passed.checkout, passed.commit);
-  assert.ok(existsSync(join(f.root, passed.log)));
-  assert.match(overview().next, /readback passed/);
+  assert.ok(existsSync(join(root, passed.log)));
+  assert.doesNotMatch(readFileSync(join(root, passed.log), "utf8"), /abc123/);
+  assert.match(overview(root).next, /readback passed/);
 
   // A passing readback is not enough on its own: the work closes with its
   // result page, and the readback stays bound to the close decision.
-  const pageless = f.call("decide", "--repo", ".", "--work", "WORK-S", "--action", "close", "--result", "released 1.0", "--by", "owner");
-  assert.notEqual(pageless.status, 0);
-  assert.match(pageless.stderr, /closing a work needs delivery\/work\/WORK-S\/result\.md \(template: templates\/v2\/result\.example\.md\)/);
-  writeFileSync(join(f.dir, "result.md"), "# WORK-S result\n\nReleased 1.0 and read back.\n");
-  f.ok("decide", "--repo", ".", "--work", "WORK-S", "--action", "close", "--result", "released 1.0", "--by", "owner");
-  const decisions = readFileSync(join(f.dir, "decisions.jsonl"), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
-  const closed = decisions.at(-1);
+  const pageless = call(root, close(["--result", "released 1.0"]));
+  assert.equal(pageless.status, 1);
+  assert.match(pageless.err, /closing a work needs delivery\/work\/WORK-S\/result\.md \(template: templates\/v2\/result\.example\.md\)/);
+  writeFileSync(join(dir, "result.md"), "# WORK-S result\n\nReleased 1.0 and read back.\n");
+  ok(root, close(["--result", "released 1.0"]));
+  const closed = jsonl(root, WORK, "decisions.jsonl").at(-1);
   assert.equal(closed.transition, "close-work");
   assert.equal(closed.subject.readback, passed.digest);
+  assert.equal(closed.subject.candidate, sha);
   assert.equal(closed.subject.result, "released 1.0");
   assert.match(closed.subject.resultDigest, /^sha256:[0-9a-f]{64}$/);
   assert.deepEqual(closed.subject.promotions, []);
-  assert.equal(overview().stage, "CLOSED");
-  const again = f.call("decide", "--repo", ".", "--work", "WORK-S", "--action", "close", "--result", "again");
-  assert.match(again.stderr, /already closed/);
+  assert.equal(overview(root).stage, "CLOSED");
+  const again = call(root, close(["--result", "again"]));
+  assert.match(again.err, /already closed/);
+});
+
+test("the project's release: is only the default command; a readback, once recorded, must pass before the work closes", () => {
+  const { root } = fixture({ prefix: "bb-shot-", work: WORK, projectConfig: PROJECT_CONFIG + yaml(RELEASE) });
+  const dir = join(root, "delivery", "work", WORK);
+  const { sha } = approved(root, WORK, CHANGE);
+  // The work has no release: of its own, so nothing asks it for a readback.
+  const merged = statusRow(root, WORK);
+  assert.equal(merged.stage, "MERGED");
+  assert.match(merged.next, /^merged; close out: write delivery\/work\/WORK-S\/result\.md, then buildbeat decide /);
+
+  writeFileSync(join(dir, "result.md"), "# WORK-S result\n\nReleased and read back.\n");
+  const spec = loadReviewConfig(root, WORK).release;
+  const readback = () => runReadback({ repoRoot: root, workId: WORK, spec, runs: runsFor(root, WORK) });
+  const closeIt = () => closeWork({ repoRoot: root, workId: WORK, runs: runsFor(root, WORK), by: "owner", as: "human" });
+  // It was read back with the project's command and that failed: the record
+  // is there now, and the latest one decides.
+  writeFileSync(join(root, ".release-broken"), "");
+  assert.equal(readback().status, "failed");
+  assert.throws(closeIt, /the latest readback failed \(exit 3 at /);
+  assert.match(statusRow(root, WORK).next, /^latest readback failed @ \S+ \(exit 3\); fix the release, then buildbeat release /);
+
+  rmSync(join(root, ".release-broken"));
+  const passed = readback();
+  assert.equal(passed.status, "passed");
+  const row = closeIt();
+  assert.equal(row.subject.readback, passed.digest);
+  assert.equal(row.subject.candidate, sha);
+  assert.equal(statusRow(root, WORK).stage, "CLOSED");
 });
 
 test("records written by hand under the without-runtime guide are honoured by the runtime", () => {
-  const f = fixture({ verify: "true" });
+  const { root } = fixture({ prefix: "bb-shot-", work: WORK, accept: false });
+  const dir = join(root, "delivery", "work", WORK);
+  const sha256 = (name) => createHash("sha256").update(readFileSync(join(dir, name))).digest("hex");
   // The acceptance line exactly as docs/v2/guide/12-without-runtime.md
   // shows it, with only its placeholders filled in.
   const guide = readFileSync(join(import.meta.dirname, "..", "docs", "v2", "guide", "12-without-runtime.md"), "utf8");
   const example = JSON.parse(guide.match(/```json\n\s*(\{.*\})\n\s*```/)[1]);
   assert.equal(example.transition, "accept-work");
-  // Fill in only the placeholders; the literal parts stay as documented.
-  example.decisionRef = example.decisionRef.replace("WORK-X", "WORK-S");
+  example.decisionRef = example.decisionRef.replace("WORK-X", WORK);
   example.by = "owner";
-  example.subject.digest = example.subject.digest.replace(
-    /<[^<>]*>/,
-    createHash("sha256").update(readFileSync(join(f.dir, "work.md"))).digest("hex"),
-  );
-  writeFileSync(join(f.dir, "decisions.jsonl"), `${JSON.stringify(example)}\n`);
-  const ready = JSON.parse(f.ok("status", "--repo", ".", "--work", "WORK-S", "--json")).works[0];
-  assert.equal(ready.stage, "READY_TO_RUN");
-  f.ok("run", "--config", f.config);
-  assert.equal(f.state("RUN-S-01").pendingHuman.transition, "enter-wait-merge");
-  f.ok("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "reject", "--reason", "documentation only");
-  // A Work that needs no release closes with the guide's close-work line,
+  example.subject.digest = example.subject.digest.replace(/<[^<>]*>/, sha256("work.md"));
+  writeFileSync(join(dir, "decisions.jsonl"), `${JSON.stringify(example)}\n`);
+  assert.equal(statusRow(root, WORK).stage, "READY_TO_RUN");
+  // The approval checks the acceptance again, and takes the hand-written one.
+  approved(root, WORK);
+  assert.equal(statusRow(root, WORK).stage, "MERGED");
+
+  // A work that needs no release closes with the guide's close-work line,
   // bound to its result page by the page's SHA-256.
-  writeFileSync(join(f.dir, "result.md"), "# WORK-S result\n\nDocs only.\n");
-  const close = JSON.parse(guide.match(/`(\{[^`]*"close-work"[^`]*\})`/)[1]);
-  close.subject.result = "docs only";
-  close.subject.resultDigest = close.subject.resultDigest.replace(
-    /<[^<>]*>/,
-    createHash("sha256").update(readFileSync(join(f.dir, "result.md"))).digest("hex"),
-  );
-  close.by = "owner";
-  writeFileSync(
-    join(f.dir, "decisions.jsonl"),
-    `${readFileSync(join(f.dir, "decisions.jsonl"), "utf8")}${JSON.stringify(close)}\n`,
-  );
-  const closed = JSON.parse(f.ok("status", "--repo", ".", "--work", "WORK-S", "--json")).works[0];
+  writeFileSync(join(dir, "result.md"), "# WORK-S result\n\nDocs only.\n");
+  const closeLine = JSON.parse(guide.match(/`(\{[^`]*"close-work"[^`]*\})`/)[1]);
+  closeLine.subject.result = "docs only";
+  closeLine.subject.resultDigest = closeLine.subject.resultDigest.replace(/<[^<>]*>/, sha256("result.md"));
+  closeLine.by = "owner";
+  writeFileSync(join(dir, "decisions.jsonl"), `${readFileSync(join(dir, "decisions.jsonl"), "utf8")}${JSON.stringify(closeLine)}\n`);
+  const closed = statusRow(root, WORK);
   assert.equal(closed.stage, "CLOSED");
   assert.match(closed.next, /: docs only · written into the project: 0$/);
 });
 
 test("images that are empty, mislabelled or symlinked are not screenshots", () => {
-  const dir = '"$BUILDBEAT_SCREENSHOT_DIR"';
-  const f = fixture({
-    verify: [
-      `: > ${dir}/empty.png`,
-      `printf 'not a jpeg' > ${dir}/bad.jpg`,
-      `printf '\\211PNG\\r\\n\\032\\nreal' > ${dir}/target.bin`,
-      `ln -s ${dir}/target.bin ${dir}/link.png`,
-      `head -c 40 shot.png > ${dir}/header.png`,
-      `cp shot.png ${dir}/photo.jpg`,
-    ].join("; "),
-    extra: `${SCREENSHOT}budgets:\n  maxAttempts:\n    verify: 1\n`,
+  const { root } = uiWork();
+  const result = reviewWith(root, WORK, {
+    ...SHOTS,
+    verifier: rendering((dir) => {
+      writeFileSync(join(dir, "empty.png"), "");
+      writeFileSync(join(dir, "bad.jpg"), "not a jpeg");
+      writeFileSync(join(dir, "target.bin"), Buffer.concat([PNG_BYTES.subarray(0, 8), Buffer.from("real")]));
+      symlinkSync(join(dir, "target.bin"), join(dir, "link.png"));
+      writeFileSync(join(dir, "header.png"), PNG_BYTES.subarray(0, 40));
+      writeFileSync(join(dir, "photo.jpg"), PNG_BYTES);
+    }),
   });
-  f.ok("accept", "--repo", ".", "--work", "WORK-S");
-  f.ok("run", "--config", f.config);
-  const finished = readFileSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/events.jsonl"), "utf8")
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => JSON.parse(line))
-    .find((event) => event.type === "STEP_FINISHED" && event.data.step === "verify");
+  assert.equal(result.state.terminal.status, "FAILED");
+  const finished = verifyFinished(root, result.runId);
   assert.equal(finished.data.status, "failed");
   assert.match(finished.data.reason, /bad\.jpg \(only PNG screenshots are accepted\)/);
   assert.match(finished.data.reason, /photo\.jpg \(only PNG screenshots are accepted\)/);
   assert.match(finished.data.reason, /empty\.png \(not a decodable PNG\)/);
   assert.match(finished.data.reason, /header\.png \(not a decodable PNG\)/);
   assert.match(finished.data.reason, /link\.png \(not a regular file\)/);
-  assert.equal(f.state("RUN-S-01").evidence.filter((item) => item.kind === "screenshot").length, 0);
+  assert.equal(screenshots(result.state).length, 0);
 });
 
 test("approval refuses a screenshot whose file no longer matches its digest", () => {
-  const f = fixture({ verify: RENDER, extra: SCREENSHOT });
-  f.ok("accept", "--repo", ".", "--work", "WORK-S");
-  f.ok("run", "--config", f.config);
-  rmSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/screenshots/verify-1/home.png"));
-  const decisions = readFileSync(join(f.dir, "decisions.jsonl"), "utf8");
-  const refused = f.call("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "approve", "--transition", "enter-wait-merge");
-  assert.notEqual(refused.status, 0);
-  assert.match(refused.stderr, /screenshot evidence no longer matches its file/);
-  assert.equal(readFileSync(join(f.dir, "decisions.jsonl"), "utf8"), decisions);
-  assert.equal(f.state("RUN-S-01").terminal, null);
+  const { root, sha } = uiWork();
+  // The requirement was frozen with the run: the approval reads it from
+  // there, whatever a run config says by then.
+  const result = reviewWith(root, WORK, { ...SHOTS, verifier: rendering() });
+  assert.equal(result.state.run.status, "WAITING_HUMAN");
+  rmSync(runFile(root, result.runId, "screenshots", "verify-1", "home.png"));
+  const decisions = readFileSync(join(root, "delivery", "work", WORK, "decisions.jsonl"), "utf8");
+  assert.throws(() => approve(root, sha), /approval refused by policy: merge-evidence-floor \(screenshot evidence no longer matches its file: /);
+  assert.equal(readFileSync(join(root, "delivery", "work", WORK, "decisions.jsonl"), "utf8"), decisions);
+  assert.equal(EventLedger.open(result.ledgerPath).state.terminal, null);
 });
 
-test("a cached verify whose screenshots are gone runs again", () => {
-  const f = fixture({ verify: RENDER, extra: `${SCREENSHOT}cache:\n  verify: tree\n` });
-  f.ok("accept", "--repo", ".", "--work", "WORK-S");
-  f.ok("run", "--config", f.config);
-  rmSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/screenshots/verify-1/home.png"));
-  f.ok("run", "--config", f.config, "--new");
-  const state = f.state("RUN-S-02");
-  const verify = state.evidence.find((item) => item.kind === "command" && item.ref.endsWith("verify-1.log"));
-  assert.equal(verify.reused, undefined);
-  const shots = state.evidence.filter((item) => item.kind === "screenshot");
+test("a screenshot lost before the decision is replaced by reviewing the same commit again", () => {
+  const { root, sha } = uiWork();
+  const first = reviewWith(root, WORK, { ...SHOTS, verifier: rendering() });
+  rmSync(runFile(root, first.runId, "screenshots", "verify-1", "home.png"));
+  // The reviewer of the second run is shown the new file.
+  let shown = null;
+  const second = reviewWith(root, WORK, {
+    ...SHOTS,
+    verifier: rendering(),
+    reviewer: worker(({ input }) => {
+      shown = input.screenshots;
+      return { envelope: { findings: [] } };
+    }),
+  });
+  assert.equal(second.runId, "RUN-S-02");
+  assert.deepEqual(second.superseded, ["RUN-S-01"]);
+  assert.equal(second.candidate, sha);
+  const shots = screenshots(second.state);
   assert.equal(shots.length, 1);
   assert.equal(shots[0].ref, ".buildbeat/runtime/runs/RUN-S-02/screenshots/verify-1/home.png");
-  assert.equal(shots[0].reused, undefined);
+  assert.equal(shown.length, 1);
+  assert.match(shown[0].path, /RUN-S-02[/\\]screenshots[/\\]verify-1[/\\]home\.png$/);
+  assert.equal(shown[0].digest, shots[0].digest);
+  assert.equal(approve(root, sha).state.terminal.status, "SUCCEEDED");
 });
 
 test("release records the requested ref and the checkout it ran in, with unique logs", () => {
-  const f = fixture({
-    verify: "true",
-    extra: "release:\n  command: bash\n  args:\n    - readback.sh\n",
-  });
-  const base = f.git("rev-parse", "HEAD");
-  f.ok("accept", "--repo", ".", "--work", "WORK-S");
-  f.ok("run", "--config", f.config);
-  f.ok("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "approve", "--transition", "enter-wait-merge");
-  f.git("merge", "-q", "--ff-only", "run/RUN-S-01");
-  f.git("branch", "before", base);
-  f.git("branch", "released", "HEAD");
+  const { root, base } = fixture({ prefix: "bb-shot-", work: WORK, projectConfig: PROJECT_CONFIG + yaml(RELEASE) });
+  const dir = join(root, "delivery", "work", WORK);
+  const { sha } = approved(root, WORK, CHANGE);
+  git(root, ["branch", "before", base]);
+  git(root, ["branch", "released", "HEAD"]);
   // The main checkout moves on after the release.
-  writeFileSync(join(f.root, "later.txt"), "later\n");
-  f.git("add", "later.txt");
-  f.git("commit", "-qm", "later");
+  commit(root, "later", { "later.txt": "later\n" });
 
-  const before = f.call("release", "--config", f.config, "--ref", "before");
-  assert.notEqual(before.status, 0);
-  assert.match(before.stderr, /is not contained in before/);
+  const before = call(root, release(["--ref", "before"]));
+  assert.equal(before.status, 1);
+  assert.match(before.err, new RegExp(`candidate ${sha.slice(0, 7)} \\(RUN-S-01\\) is not contained in before \\(${base.slice(0, 7)}\\); merge it first`));
+  assert.equal(existsSync(join(dir, "releases.jsonl")), false);
 
-  const out = f.ok("release", "--config", f.config, "--ref", "released");
+  const out = ok(root, release(["--ref", "released"]));
   assert.match(out, /readback passed \(exit 0\) for released at/);
   assert.match(out, /the command ran in the main checkout at \w{7}, not at released/);
-  const row = readFileSync(join(f.dir, "releases.jsonl"), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line)).at(-1);
+  const row = jsonl(root, WORK, "releases.jsonl").at(-1);
   assert.equal(row.ref, "released");
-  assert.equal(row.commit, f.git("rev-parse", "released"));
-  assert.equal(row.checkout, f.git("rev-parse", "HEAD"));
+  assert.equal(row.commit, sha);
+  assert.equal(row.checkout, git(root, ["rev-parse", "HEAD"]));
+  assert.notEqual(row.checkout, row.commit);
 
   // A log already named the way a row-count allocator would name the next
   // one belongs to someone else and must survive.
-  const logDir = join(f.root, ".buildbeat", "runtime", "releases", "WORK-S");
-  const rowsBefore = readFileSync(join(f.dir, "releases.jsonl"), "utf8").split("\n").filter(Boolean).length;
-  const foreign = join(logDir, `release-${rowsBefore + 1}.log`);
+  const logDir = join(root, ".buildbeat", "runtime", "releases", WORK);
+  const foreign = join(logDir, `release-${jsonl(root, WORK, "releases.jsonl").length + 1}.log`);
   writeFileSync(foreign, "someone else's log\n");
-  f.ok("release", "--config", f.config, "--ref", "released");
+  ok(root, release(["--ref", "released"]));
   assert.equal(readFileSync(foreign, "utf8"), "someone else's log\n");
-  const latest = readFileSync(join(f.dir, "releases.jsonl"), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line)).at(-1);
-  assert.notEqual(join(f.root, latest.log), foreign);
+  assert.notEqual(join(root, jsonl(root, WORK, "releases.jsonl").at(-1).log), foreign);
 
   // Two readbacks at the same instant still get their own logs.
   const at = "2026-10-04T00:00:00.000Z";
   const spec = { command: "bash", args: ["readback.sh"] };
-  const first = runReadback({ repoRoot: f.root, workId: "WORK-S", spec, runs: runsFor(f.root, "WORK-S"), ts: at });
-  const second = runReadback({ repoRoot: f.root, workId: "WORK-S", spec, runs: runsFor(f.root, "WORK-S"), ts: at });
+  const first = runReadback({ repoRoot: root, workId: WORK, spec, runs: runsFor(root, WORK), ts: at });
+  const second = runReadback({ repoRoot: root, workId: WORK, spec, runs: runsFor(root, WORK), ts: at });
   assert.notEqual(first.log, second.log);
 });
 
 test("concurrent readbacks keep separate logs whose digests match their records", async () => {
-  const f = fixture({
-    verify: "true",
-    extra: "release:\n  command: bash\n  args:\n    - -c\n    - sleep 1; echo health ok\n",
+  const { root } = fixture({
+    prefix: "bb-shot-",
+    work: WORK,
+    projectConfig: PROJECT_CONFIG + yaml(["release:", "  command: bash", "  args:", "    - -c", "    - sleep 1; echo health ok"]),
   });
-  f.ok("accept", "--repo", ".", "--work", "WORK-S");
-  f.ok("run", "--config", f.config);
-  f.ok("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "approve", "--transition", "enter-wait-merge");
-  f.git("merge", "-q", "--ff-only", "run/RUN-S-01");
+  approved(root, WORK);
   // Both processes read the same (empty) releases.jsonl before either
   // appends: an allocator keyed on its row count would hand out one log.
   const launch = () =>
     new Promise((done, fail) => {
-      const child = spawn(process.execPath, [CLI, "release", "--config", f.config], { cwd: f.root });
+      const child = spawn(process.execPath, [CLI, ...release()], { cwd: root });
       child.on("error", fail);
       child.on("close", done);
     });
   assert.deepEqual(await Promise.all([launch(), launch()]), [0, 0]);
-  const rows = readFileSync(join(f.dir, "releases.jsonl"), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
+  const rows = jsonl(root, WORK, "releases.jsonl");
   assert.equal(rows.length, 2);
   assert.notEqual(rows[0].log, rows[1].log);
   for (const row of rows) {
-    const body = readFileSync(join(f.root, row.log), "utf8");
+    const body = readFileSync(join(root, row.log), "utf8");
     assert.equal(row.digest, `sha256:${createHash("sha256").update(body, "utf8").digest("hex")}`);
   }
 });
@@ -638,17 +565,14 @@ test("the screenshot check accepts decodable PNGs and nothing else", () => {
   );
 });
 
-test("a screenshot recorded under looser rules carries neither a merge nor a cached verify", () => {
-  const f = fixture({ verify: RENDER, extra: `${SCREENSHOT}cache:\n  verify: tree\n` });
-  f.ok("accept", "--repo", ".", "--work", "WORK-S");
-  f.ok("run", "--config", f.config);
+test("a screenshot recorded under looser rules does not carry a merge", () => {
+  const { root, sha } = uiWork();
+  const result = reviewWith(root, WORK, { ...SHOTS, verifier: rendering() });
   // A WebP file recorded by an earlier rule set, with a matching digest.
-  const ledgerPath = join(f.root, ".buildbeat/runtime/runs/RUN-S-01/events.jsonl");
-  const ledger = EventLedger.open(ledgerPath);
-  const state = f.state("RUN-S-01");
-  const verify = state.evidence.find((item) => item.kind === "command" && item.ref.endsWith("verify-1.log"));
+  const ledger = EventLedger.open(result.ledgerPath);
+  const verify = ledger.state.evidence.find((item) => item.kind === "command" && item.ref.endsWith("verify-1.log"));
   const webpRef = ".buildbeat/runtime/runs/RUN-S-01/screenshots/verify-1/old.webp";
-  writeFileSync(join(f.root, webpRef), "RIFF-not-checked");
+  writeFileSync(join(root, webpRef), "RIFF-not-checked");
   ledger.append({
     type: "EVIDENCE_RECORDED",
     actor: { kind: "kernel", id: "orchestrator" },
@@ -660,61 +584,28 @@ test("a screenshot recorded under looser rules carries neither a merge nor a cac
       status: "passed",
       grade: "L2",
       source: verify.ref,
-      cacheKey: verify.cacheKey,
     },
   });
-  const refused = f.call("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "approve", "--transition", "enter-wait-merge");
-  assert.notEqual(refused.status, 0);
-  assert.match(refused.stderr, /no longer matches its file: .*old\.webp/);
-  f.ok("run", "--config", f.config, "--new");
-  const next = f.state("RUN-S-02");
-  const rerun = next.evidence.find((item) => item.kind === "command" && item.ref.endsWith("verify-1.log"));
-  assert.equal(rerun.reused, undefined);
+  assert.throws(() => approve(root, sha), /no longer matches its file: .*old\.webp/);
+  assert.equal(EventLedger.open(result.ledgerPath).state.terminal, null);
 });
 
 test("rejected files are reported even when another screenshot passes", () => {
-  const f = fixture({
-    verify: `cp shot.png "$BUILDBEAT_SCREENSHOT_DIR/home.png"; cp shot.png "$BUILDBEAT_SCREENSHOT_DIR/photo.jpg"`,
-    extra: SCREENSHOT,
+  const { root } = uiWork();
+  const result = reviewWith(root, WORK, {
+    ...SHOTS,
+    verifier: rendering((dir) => {
+      writeFileSync(join(dir, "home.png"), PNG_BYTES);
+      writeFileSync(join(dir, "photo.jpg"), PNG_BYTES);
+    }),
   });
-  f.ok("accept", "--repo", ".", "--work", "WORK-S");
-  f.ok("run", "--config", f.config);
-  const finished = readFileSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/events.jsonl"), "utf8")
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => JSON.parse(line))
-    .find((event) => event.type === "STEP_FINISHED" && event.data.step === "verify");
+  assert.equal(result.state.run.status, "WAITING_HUMAN");
+  const finished = verifyFinished(root, result.runId);
   assert.equal(finished.data.status, "succeeded");
   assert.deepEqual(finished.data.screenshotsRejected, ["photo.jpg (only PNG screenshots are accepted)"]);
   assert.match(
-    readFileSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/logs/verify-1.log"), "utf8"),
+    readFileSync(runFile(root, result.runId, "logs", "verify-1.log"), "utf8"),
     /screenshots rejected: photo\.jpg \(only PNG screenshots are accepted\)/,
   );
-  assert.equal(f.state("RUN-S-01").evidence.filter((item) => item.kind === "screenshot").length, 1);
-});
-
-test("re-verifying the same candidate replaces a screenshot lost in between", () => {
-  // The reviewer blocks the first round; with no fixer the run stops, the
-  // first screenshot disappears, and the same commit is handed back.
-  const f = fixture({
-    verify: RENDER,
-    review: `case "$BUILDBEAT_INPUT" in *'"attempt":1,'*) printf '%s\\n' '{"status":"succeeded","findings":[{"severity":"P1","summary":"page.txt:1 needs a second look before merging"}]}' > "$BUILDBEAT_OUTPUT"; exit 0 ;; esac;`,
-    extra: SCREENSHOT,
-    workers: ["builder", "verifier", "reviewer"],
-  });
-  f.ok("accept", "--repo", ".", "--work", "WORK-S");
-  f.ok("run", "--config", f.config);
-  const waiting = f.state("RUN-S-01");
-  assert.equal(waiting.pendingHuman.transition, "enter-fix");
-  const candidate = waiting.workspaces["RUN-S-01"].candidate;
-  rmSync(join(f.root, ".buildbeat/runtime/runs/RUN-S-01/screenshots/verify-1/home.png"));
-  f.ok("run", "--config", f.config, "--run", "RUN-S-01", "--adopt", candidate, "--by", "driver");
-  const state = f.state("RUN-S-01");
-  assert.equal(state.pendingHuman.transition, "enter-wait-merge");
-  assert.equal(state.workspaces["RUN-S-01"].candidate, candidate);
-  // The owner kept the commit as is, so the round-1 finding is dismissed.
-  const finding = JSON.parse(f.ok("status", "--repo", ".", "--work", "WORK-S", "--json")).works[0].findings[0];
-  f.ok("decide", "--repo", ".", "--work", "WORK-S", "--action", "dismiss", "--fingerprint", finding.fingerprint, "--by", "owner");
-  f.ok("decide", "--repo", ".", "--run", "RUN-S-01", "--action", "approve", "--transition", "enter-wait-merge");
-  assert.equal(f.state("RUN-S-01").terminal.status, "SUCCEEDED");
+  assert.equal(screenshots(result.state).length, 1);
 });

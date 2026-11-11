@@ -1,46 +1,37 @@
+// One review runs in a repository at a time. A review that finds the
+// repository busy says who holds it and records nothing.
+
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { acquireLock, listHeldRunLocks, releaseLock } from "../src/v2/workspace/workspace-manager.js";
-import { tempDir } from "./support/tmp.js";
+import { OrchestratorError } from "../src/v2/runtime/orchestrator.js";
+import { acquireLock, releaseLock } from "../src/v2/workspace/workspace-manager.js";
+import { commit, fixture, git, reviewWith } from "./support/review.js";
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
-const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
-
-function git(cwd, args) {
-  return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
-}
-
-test("a start blocked by the repository lock names the run it is queued behind", () => {
+test("a review blocked by the repository lock names the process that holds it", () => {
   // Real incident: a session waited 3h23m behind another work's run with
   // only "another run is active" to go on.
-  const root = tempDir("bb-v2-lock-");
-  execFileSync("git", ["init", "-q", "-b", "main", root]);
-  git(root, ["config", "user.email", "pilot@example.com"]);
-  git(root, ["config", "user.name", "Pilot"]);
-  writeFileSync(join(root, "README.md"), "fixture\n");
-  git(root, ["add", "."]);
-  git(root, ["commit", "-q", "-m", "baseline"]);
-  writeFileSync(
-    join(root, "run-config.yaml"),
-    ["repo: .", "work: WORK-Q", "run: RUN-Q", `workflow: ${PRESET}`, "riskPreset: fast", "entry: build", "workers:", "  builder:", "    command: bash", "    args:", "      - -lc", "      - 'true'"].join("\n"),
-  );
+  const { root, work } = fixture({ prefix: "bb-v2-lock-" });
+  commit(root, "add the feature", { "src/feature.txt": "hello\n" });
   acquireLock(root, "active-run");
-  acquireLock(root, "RUN-BUSY");
   try {
-    assert.deepEqual(listHeldRunLocks(root), ["RUN-BUSY"]);
-    const result = spawnSync(process.execPath, [CLI, "start", "--config", join(root, "run-config.yaml")], { encoding: "utf8" });
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /blocked by RUN-BUSY: \(no ledger found\)/);
-    assert.match(result.stderr, /watch it: buildbeat status --repo <repo-path> --run RUN-BUSY/);
-    assert.match(result.stderr, /queue position/);
-    assert.match(result.stderr, /error: another run is active/);
-    assert.doesNotMatch(result.stderr, new RegExp(root));
+    assert.throws(
+      () => reviewWith(root, work),
+      (error) =>
+        error instanceof OrchestratorError &&
+        /^another review is running in this repository; held by pid \d+ on \S+, acquired \S+.*; that process is still running: wait for it, or end it once you are sure it is stuck$/.test(error.message) &&
+        error.message.includes(`pid ${process.pid} `) &&
+        !error.message.includes(root),
+    );
+    // Nothing was recorded and no checkout was made.
+    assert.equal(existsSync(join(root, ".buildbeat", "runtime", "runs")), false);
+    assert.equal(existsSync(join(root, ".buildbeat", "worktrees")), false);
+    assert.equal(git(root, ["branch", "--list", "run/*"]), "");
   } finally {
-    releaseLock(root, "RUN-BUSY");
     releaseLock(root, "active-run");
   }
+  // Once the holder is done the same review goes through.
+  assert.equal(reviewWith(root, work).state.run.status, "WAITING_HUMAN");
 });

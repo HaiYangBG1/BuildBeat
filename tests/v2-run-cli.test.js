@@ -1,212 +1,171 @@
+// What the command line prints and records around a review: the state of a
+// run, its history, and nothing that only makes sense on this machine.
+
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { tempDir } from "./support/tmp.js";
 
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
-const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
+import { cli, commit, decide, fixture, review, reviewWith, yaml } from "./support/review.js";
 
-function git(cwd, args) {
-  return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
+const WORK = "WORK-A";
+
+// The repository is named by its absolute path and the CLI runs elsewhere,
+// which is when a host path is most tempting to print.
+function assertNoHostPath(text, root, what) {
+  for (const path of new Set([root, realpathSync(root)])) {
+    assert.equal(text.includes(path), false, `${what} carries the repository's absolute path`);
+  }
 }
 
-function cli(args, env) {
-  return execFileSync("node", [CLI, ...args], {
-    encoding: "utf8",
-    env: env ? { ...process.env, ...env } : process.env,
-  });
-}
+test("review, status, decide and history never print or record the repository's absolute path", () => {
+  const { root } = fixture({ prefix: "bb-v2-cli-" });
+  commit(root, "add the feature", { "src/feature.txt": "hello\n" });
 
-function fixtureRepo(prefix) {
-  const root = tempDir(prefix);
-  execFileSync("git", ["init", "-q", "-b", "main", root]);
-  git(root, ["config", "user.email", "pilot@example.com"]);
-  git(root, ["config", "user.name", "Pilot"]);
-  writeFileSync(join(root, "README.md"), "fixture\n");
-  git(root, ["add", "."]);
-  git(root, ["commit", "-q", "-m", "baseline"]);
-  return root;
-}
+  const reviewed = review(root);
+  assert.equal(reviewed.status, 0, reviewed.all);
+  assert.match(reviewed.out, /status: WAITING_HUMAN/);
+  assert.match(reviewed.out, /waiting on human: enter-wait-merge/);
+  assert.match(reviewed.out, /candidate (?!\(none\))/);
+  // Copyable commands name a placeholder instead.
+  assert.match(reviewed.out, /buildbeat decide --repo <repo-path> --work WORK-A --action approve/);
+  assertNoHostPath(reviewed.all, root, "review output");
 
-test("run start, status, and stop work end to end through the CLI", () => {
-  const root = tempDir("bb-v2-cli-");
-  execFileSync("git", ["init", "-q", "-b", "main", root]);
-  git(root, ["config", "user.email", "pilot@example.com"]);
-  git(root, ["config", "user.name", "Pilot"]);
-  writeFileSync(join(root, "README.md"), "fixture\n");
-  git(root, ["add", "."]);
-  git(root, ["commit", "-q", "-m", "baseline"]);
+  const status = cli(["status", "--repo", root, "--run", "RUN-A-01"]);
+  assert.equal(status.status, 0, status.all);
+  assert.match(status.out, /^run: RUN-A-01 \(work WORK-A\)$/m);
+  assert.match(status.out, /^status: WAITING_HUMAN$/m);
+  assert.match(status.out, /^step verify: SUCCEEDED \(attempts 1\)$/m);
+  assert.match(status.out, /^step review: SUCCEEDED \(attempts 1\)$/m);
+  assert.match(status.out, /^evidence \[passed\/L2\] command \.buildbeat\/runtime\/runs\/RUN-A-01\/logs\/verify-1\.log$/m);
+  assertNoHostPath(status.all, root, "status --run");
 
-  writeFileSync(
-    join(root, "run-config.yaml"),
-    [
-      "repo: .",
-      "work: WORK-CLI",
-      "run: RUN-CLI",
-      `workflow: ${PRESET}`,
-      "riskPreset: fast",
-      "entry: build",
-      "stopAt:",
-      "  - review",
-      "workers:",
-      "  builder:",
-      "    command: bash",
-      "    args:",
-      "      - -lc",
-      "      - 'echo done > feature.txt && git add -A && git commit -qm candidate'",
-      "  verifier:",
-      "    command: bash",
-      "    args:",
-      "      - -lc",
-      "      - test -f feature.txt",
-    ].join("\n"),
-  );
+  const works = cli(["status", "--repo", realpathSync(root)]);
+  assert.equal(works.status, 0, works.all);
+  assert.match(works.out, /RUN-A-01 \[final-decision\] enter-wait-merge — waiting /);
+  assert.match(works.out, /^ {4}next: buildbeat decide --repo <repo-path> --work WORK-A --action approve /m);
+  assertNoHostPath(works.all, root, "status");
+  const state = JSON.parse(cli(["status", "--repo", root, "--run", "RUN-A-01", "--json"]).out).state;
+  assertNoHostPath(JSON.stringify(state), root, "status --run --json");
 
-  const startOut = cli(["start", "--config", join(root, "run-config.yaml")]);
-  assert.match(startOut, /status: WAITING_HUMAN/);
-  assert.match(startOut, /waiting on human: enter-review/);
-  assert.match(startOut, /candidate (?!\(none\))/);
-  assert.doesNotMatch(startOut, new RegExp(root));
+  const rejected = decide(root, WORK, ["--action", "reject", "--reason", "test-cancel"]);
+  assert.equal(rejected.status, 0, rejected.all);
+  assert.match(rejected.out, /RUN-A-01 cancelled and compacted/);
+  assertNoHostPath(rejected.all, root, "decide output");
+  for (const name of ["decisions.jsonl", "review-findings.jsonl", join("runs", "RUN-A-01", "run-record.json")]) {
+    let text;
+    try {
+      text = readFileSync(join(root, "delivery", "work", WORK, name), "utf8");
+    } catch (error) {
+      // A review that found nothing writes no findings file.
+      assert.equal(name, "review-findings.jsonl", error.message);
+      continue;
+    }
+    assertNoHostPath(text, root, name);
+  }
+  assertNoHostPath(readFileSync(join(root, ".buildbeat", "runtime", "runs", "RUN-A-01", "events.jsonl"), "utf8"), root, "the run ledger");
 
-  const statusOut = cli(["status", "--repo", root, "--run", "RUN-CLI"]);
-  assert.match(statusOut, /status: WAITING_HUMAN/);
-  assert.match(statusOut, /step build: SUCCEEDED/);
-  assert.match(statusOut, /step verify: SUCCEEDED/);
-  assert.doesNotMatch(statusOut, new RegExp(root));
+  const events = cli(["history", "--repo", root, "--run", "RUN-A-01"]);
+  assert.equal(events.status, 0, events.all);
+  assert.match(events.out, /^1\t.*\tRUN_CREATED\t/m);
+  assert.match(events.out, /\tSTEP_FINISHED\tverify$/m);
+  assert.match(events.out, /\tRUN_TERMINAL\tCANCELLED$/m);
+  assert.match(events.out, /\tRUN_COMPACTED\t/);
+  assertNoHostPath(events.all, root, "history");
 
-  const stopOut = cli(["stop", "--repo", root, "--run", "RUN-CLI", "--reason", "test-cancel"]);
-  assert.match(stopOut, /cancelled and compacted/);
-  assert.ok(
-    existsSync(join(root, "delivery", "work", "WORK-CLI", "runs", "RUN-CLI", "run-record.json")),
-  );
-  assert.doesNotMatch(
-    readFileSync(
-      join(root, "delivery", "work", "WORK-CLI", "runs", "RUN-CLI", "run-record.json"),
-      "utf8",
-    ),
-    new RegExp(root),
-  );
+  const verified = cli(["history", "--repo", root, "--run", "RUN-A-01", "--verify"]);
+  assert.equal(verified.status, 0, verified.all);
+  assert.match(verified.out, /^chain OK: \d+ events verified \(digest\/prev\/seq\)$/m);
+  assert.match(verified.out, /^terminal: CANCELLED \(rejected by owner: test-cancel\)$/m);
+  assert.match(verified.out, /^compacted: delivery\/work\/WORK-A\/runs\/RUN-A-01\/run-record\.json$/m);
+  assertNoHostPath(verified.all, root, "history --verify");
 
-  const stopAgain = cli(["stop", "--repo", root, "--run", "RUN-CLI"]);
-  assert.match(stopAgain, /already terminal: CANCELLED/);
-
-  const eventsOut = cli(["events", "--repo", root, "--run", "RUN-CLI"]);
-  assert.match(eventsOut, /1\t.*\tRUN_CREATED/);
-  assert.match(eventsOut, /RUN_COMPACTED/);
-
-  const replayOut = cli(["replay", "--repo", root, "--run", "RUN-CLI"]);
-  assert.match(replayOut, /chain OK: \d+ events verified/);
-  assert.match(replayOut, /terminal: CANCELLED/);
-
-  const doctorOut = cli(["doctor", "--config", join(root, "run-config.yaml")]);
-  assert.match(doctorOut, /risk preset: fast/);
-  assert.match(doctorOut, /merge-evidence-floor.*LOCAL_ENFORCED \(approve gate/);
-  assert.match(doctorOut, /review=6 \(reviewRoundsPerWork\)/);
-  assert.match(doctorOut, /budgets\.reviewRoundsPerWork: 6 \(default\)/);
-  assert.match(doctorOut, /builder: env allowlist/);
-  assert.match(doctorOut, /no remotes/);
-
-  writeFileSync(join(root, "delivery", "work", "WORK-CLI", "plan.md"), "the plan\n");
-  const acceptOut = cli(["accept", "--repo", root, "--work", "WORK-CLI", "--artifact", "plan", "--by", "owner"]);
-  assert.match(acceptOut, /accepted plan as A-WORK-CLI-\d+/);
-  assert.match(acceptOut, /digest: sha256:/);
+  const check = cli(["check", "--repo", root, "--work", WORK]);
+  assert.equal(check.status, 0, check.all);
+  assert.match(check.out, /^ready: commit the change, then buildbeat review --repo <repo-path> --work WORK-A$/m);
+  assertNoHostPath(check.all, root, "check");
 });
 
-// Real incident class: the adapter guide documents `env:` and `inheritEnv`,
-// doctor reported them, but the CLI loader dropped both before the adapter
-// saw them — start ran a different env posture than doctor described.
-test("run config env posture reaches the worker through the CLI", () => {
+test("the pending list of status names a placeholder when the repository is reached through a symlink", () => {
+  const { root } = fixture({ prefix: "bb-v2-cli-" });
+  commit(root, "add the feature", { "src/feature.txt": "hello\n" });
+  assert.equal(reviewWith(root, WORK).state.run.status, "WAITING_HUMAN");
+  const works = cli(["status", "--repo", root]);
+  assert.equal(works.status, 0, works.all);
+  assert.match(works.out, /^ {4}next: buildbeat decide --repo <repo-path> --work WORK-A --action approve /m);
+  assertNoHostPath(works.all, root, "status");
+});
+
+test("status of a run asks for one target and says when a run has no ledger here", () => {
+  const { root } = fixture({ prefix: "bb-v2-cli-" });
+  const unknown = cli(["status", "--repo", root, "--run", "RUN-A-01"]);
+  assert.equal(unknown.status, 1);
+  assert.match(unknown.err, /^error: no runtime ledger for RUN-A-01; use status --work to read archived records$/m);
+  const both = cli(["status", "--repo", root, "--run", "RUN-A-01", "--work", WORK]);
+  assert.equal(both.status, 1);
+  assert.match(both.err, /status: choose --run or --work/);
+  const noRepo = cli(["status"]);
+  assert.equal(noRepo.status, 1);
+  assert.match(noRepo.err, /status requires --repo/);
+  const badWork = cli(["decide", "--repo", root, "--work", "../escape", "--action", "close"]);
+  assert.equal(badWork.status, 1);
+  assert.match(badWork.err, /--work \.\.\/escape is not a work id/);
+  const noAction = cli(["decide", "--repo", root, "--work", WORK]);
+  assert.equal(noAction.status, 1);
+  assert.match(noAction.err, /decide requires --action approve\|reject, accept\|dismiss with --fingerprint, or close/);
+});
+
+// Real incident class: the guide documented `env:` and `inheritEnv`, the
+// check reported them, but the loader dropped both before the worker saw
+// them, so the run had a different environment than the check described.
+test("a worker's env: and inheritEnv reach it as check describes them", async (t) => {
   const hostEnv = { BB_HOST_SECRET: "must-not-leak" };
+  const verifier = (lines) => yaml(["workers:", "  verifier:", "    command: bash", ...lines]);
+  const run = (root, args) => cli(args, { env: hostEnv, cwd: root });
 
-  const allowlisted = fixtureRepo("bb-v2-cli-env-");
-  writeFileSync(
-    join(allowlisted, "run-config.yaml"),
-    [
-      "repo: .",
-      "work: WORK-ENV",
-      "run: RUN-ENV",
-      `workflow: ${PRESET}`,
-      "riskPreset: fast",
-      "entry: build",
-      "stopAt:",
-      "  - review",
-      "workers:",
-      "  builder:",
-      "    command: bash",
-      "    args:",
-      "      - -lc",
-      "      - 'echo done > feature.txt && git add -A && git commit -qm candidate'",
-      "  verifier:",
-      "    command: bash",
-      "    env:",
-      "      BB_PROBE: hello",
-      "      BB_PORT: 8080",
-      "    args:",
-      "      - -lc",
-      "      - 'test \"$BB_PROBE\" = hello && test \"$BB_PORT\" = 8080 && test -z \"$BB_HOST_SECRET\"'",
-    ].join("\n"),
-  );
-  const doctorOut = cli(["doctor", "--config", join(allowlisted, "run-config.yaml")], hostEnv);
-  assert.match(doctorOut, /verifier: env allowlist/);
-  const startOut = cli(["start", "--config", join(allowlisted, "run-config.yaml")], hostEnv);
-  assert.match(startOut, /status: WAITING_HUMAN/);
-  assert.match(startOut, /waiting on human: enter-review/);
-  const statusOut = cli(["status", "--repo", allowlisted, "--run", "RUN-ENV"], hostEnv);
-  assert.match(statusOut, /step verify: SUCCEEDED/);
+  await t.test("env: adds variables to the allowlist; host variables stay out", () => {
+    const { root } = fixture({
+      prefix: "bb-v2-cli-env-",
+      workConfig: verifier([
+        "    env:", "      BB_PROBE: hello", "      BB_PORT: 8080",
+        "    args:", "      - -lc",
+        "      - 'test \"$BB_PROBE\" = hello && test \"$BB_PORT\" = 8080 && test -z \"$BB_HOST_SECRET\"'",
+      ]),
+    });
+    commit(root, "add the feature", { "src/feature.txt": "hello\n" });
+    const check = run(root, ["check", "--repo", ".", "--work", WORK]);
+    assert.equal(check.status, 0, check.all);
+    assert.match(check.out, /^ {2}verifier: bash -lc .*\n {4}environment: allowlist; host credentials withheld, plus BB_PROBE, BB_PORT$/m);
+    const reviewed = run(root, ["review", "--repo", ".", "--work", WORK]);
+    assert.equal(reviewed.status, 0, reviewed.all);
+    assert.match(reviewed.out, /step verify: SUCCEEDED/);
+    assert.match(reviewed.out, /status: WAITING_HUMAN/);
+  });
 
-  const inherited = fixtureRepo("bb-v2-cli-env-inherit-");
-  writeFileSync(
-    join(inherited, "run-config.yaml"),
-    [
-      "repo: .",
-      "work: WORK-ENV",
-      "run: RUN-ENV",
-      `workflow: ${PRESET}`,
-      "riskPreset: fast",
-      "entry: build",
-      "stopAt:",
-      "  - review",
-      "workers:",
-      "  builder:",
-      "    command: bash",
-      "    args:",
-      "      - -lc",
-      "      - 'echo done > feature.txt && git add -A && git commit -qm candidate'",
-      "  verifier:",
-      "    command: bash",
-      "    inheritEnv: true",
-      "    args:",
-      "      - -lc",
-      "      - 'test \"$BB_HOST_SECRET\" = must-not-leak'",
-    ].join("\n"),
-  );
-  const inheritDoctor = cli(["doctor", "--config", join(inherited, "run-config.yaml")], hostEnv);
-  assert.match(inheritDoctor, /verifier: WARNING inherit/);
-  cli(["start", "--config", join(inherited, "run-config.yaml")], hostEnv);
-  const inheritStatus = cli(["status", "--repo", inherited, "--run", "RUN-ENV"], hostEnv);
-  assert.match(inheritStatus, /step verify: SUCCEEDED/);
+  await t.test("inheritEnv: true hands over the host's environment, and check says so", () => {
+    const { root } = fixture({
+      prefix: "bb-v2-cli-env-inherit-",
+      workConfig: verifier([
+        "    inheritEnv: true",
+        "    args:", "      - -lc", "      - 'test \"$BB_HOST_SECRET\" = must-not-leak'",
+      ]),
+    });
+    commit(root, "add the feature", { "src/feature.txt": "hello\n" });
+    const check = run(root, ["check", "--repo", ".", "--work", WORK]);
+    assert.equal(check.status, 0, check.all);
+    assert.match(check.out, /^ {2}verifier: bash -lc .*\n {4}environment: the host's \(inheritEnv: true\)$/m);
+    const reviewed = run(root, ["review", "--repo", ".", "--work", WORK]);
+    assert.equal(reviewed.status, 0, reviewed.all);
+    assert.match(reviewed.out, /step verify: SUCCEEDED/);
+  });
 
-  const broken = fixtureRepo("bb-v2-cli-env-bad-");
-  writeFileSync(
-    join(broken, "run-config.yaml"),
-    [
-      "repo: .",
-      "work: WORK-ENV",
-      "run: RUN-ENV",
-      `workflow: ${PRESET}`,
-      "riskPreset: fast",
-      "entry: build",
-      "workers:",
-      "  verifier:",
-      "    command: bash",
-      "    env:",
-      "      bad-name: x",
-    ].join("\n"),
-  );
-  assert.throws(
-    () => cli(["doctor", "--config", join(broken, "run-config.yaml")], hostEnv),
-    /workers\.verifier\.env: invalid variable name/,
-  );
+  await t.test("a name that is not a variable name is refused", () => {
+    const { root } = fixture({
+      prefix: "bb-v2-cli-env-bad-",
+      workConfig: verifier(["    env:", "      bad-name: x"]),
+    });
+    const check = run(root, ["check", "--repo", ".", "--work", WORK]);
+    assert.equal(check.status, 1);
+    assert.match(check.err, /workers\.verifier\.env: invalid variable name bad-name/);
+  });
 });

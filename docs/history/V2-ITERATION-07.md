@@ -25,7 +25,7 @@ T1 测试全绿并入 `npm test` 单入口；T2/T3 文档齐十件且互链自�
 ## 进展（2026-08-28）
 
 - **T1**：`src/v2/observe/`（config fail-closed / runner / reducer / triage）+ 3 个 additive 事件类型（`BAND_TRIGGERED`/`INTENT_DRAFTED`/`TRIAGE_RECORDED`，`EVIDENCE_RECORDED` 复用即"同一 Evidence Contract 与台账"的冻结语义）；`EventLedger` reducer 可插拔（additive，默认行为不变）；`tests/v2-observe.test.js` 8 项覆盖 fail-closed/unverified 传导/band 路由/只入队/dismiss 反馈/不变量 23/链纪律。全量 `npm test` **139/139 绿**（观测新增前 131，零回归）。
-- **Self-host 试点**：本仓库真实接入（[`.buildbeat/observe.yaml`](../../.buildbeat/observe.yaml)，探针=`tests/check-docs.sh` 文档漂移守卫）——cycle 1 真实跑通，`docs-drift: passed` 证据入账（`EVIDENCE_RECORDED`，digest 在 observe 台账），无误报、无草稿。
+- **Self-host 试点**：本仓库真实接入（`.buildbeat/observe.yaml`，探针=`tests/check-docs.sh` 文档漂移守卫）——cycle 1 真实跑通，`docs-drift: passed` 证据入账（`EVIDENCE_RECORDED`，digest 在 observe 台账），无误报、无草稿。
 - **T4 核验**：`check:docs` 162 文件全绿；`pack:check` 出包 `2.0.0-beta.1`（141 文件）；`buildbeat-v2` bin 冒烟通过（usage / observe 三子命令 / 错误路径）。
 - **T5 未做**：`npm publish` 是生产动作，等待所有者授权（届时 `prepublishOnly` 会再整套跑一遍作为发布门）。
 

@@ -183,17 +183,18 @@ test("status counts a commit its subject names among a work's commits", () => {
 test("accept and check say when recent commits name a work but carry no trailer, until the hook is installed", () => {
   const root = repo();
   works(root, "WORK-SUBJ");
-  write(root, "delivery/work/WORK-SUBJ/run-config.yaml", [
-    "repo: ../../..", "work: WORK-SUBJ", "run: RUN-SUBJ", "allowedPaths:", "  - src",
-    "workers:", "  verifier:", "    command: bash", "    args:", "      - -lc", "      - \"true\"", "",
+  write(root, "delivery/run-config.yaml", [
+    "workers:", "  verifier:", "    command: bash", "    args:", "      - -lc", "      - \"true\"",
+    "  reviewer:", "    command: bash", "    args:", "      - -lc", "      - \"true\"", "",
   ].join("\n"));
+  const check = () => cli(root, ["check", "--repo", ".", "--work", "WORK-SUBJ"], null);
   commit(root, "feat: one (WORK-SUBJ)");
   commit(root, ["feat: two (WORK-SUBJ)", "Work: WORK-SUBJ"]);
   commit(root, "feat: three, no work named");
   const warning = "warning: 1 of the last 50 commits on main name a work in the subject but carry no Work: trailer; buildbeat hooks install --repo . adds the trailer from now on";
 
   assert.ok(cli(root, ["accept", "--repo", ".", "--work", "WORK-SUBJ", "--by", "owner"], null).split("\n").includes(warning));
-  assert.ok(cli(root, ["check", "--config", "delivery/work/WORK-SUBJ/run-config.yaml"], null).split("\n").includes(warning));
+  assert.ok(check().split("\n").includes(warning));
 
   // A project's own commit-msg keeps it; the copy saved beside it counts only
   // once that hook calls it.
@@ -202,11 +203,11 @@ test("accept and check say when recent commits name a work but carry no trailer,
   writeFileSync(join(hooks, "commit-msg"), "#!/bin/sh\necho project hook\n", { mode: 0o755 });
   cli(root, ["hooks", "install", "--repo", "."], null);
   assert.ok(existsSync(join(hooks, "buildbeat-commit-msg")));
-  assert.ok(cli(root, ["check", "--config", "delivery/work/WORK-SUBJ/run-config.yaml"], null).split("\n").includes(warning));
+  assert.ok(check().split("\n").includes(warning));
   writeFileSync(join(hooks, "commit-msg"), `#!/bin/sh\necho project hook\nsh "${hooks}/buildbeat-commit-msg" "$1"\n`, { mode: 0o755 });
-  assert.ok(!cli(root, ["check", "--config", "delivery/work/WORK-SUBJ/run-config.yaml"], null).includes("carry no Work: trailer"));
+  assert.ok(!check().includes("carry no Work: trailer"));
   // With commit-msg itself BuildBeat's hook, nothing is said either.
   rmSync(join(hooks, "commit-msg"));
   cli(root, ["hooks", "install", "--repo", "."], null);
-  assert.ok(!cli(root, ["check", "--config", "delivery/work/WORK-SUBJ/run-config.yaml"], null).includes("carry no Work: trailer"));
+  assert.ok(!check().includes("carry no Work: trailer"));
 });

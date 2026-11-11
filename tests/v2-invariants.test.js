@@ -1,16 +1,13 @@
-// Deterministic-suite gap fillers (WP5.1): adapter failure shapes end to
-// end, the single-active-run repository lock, and changed-path readback.
+// Failure shapes of a real command end to end, one review per repository at
+// a time, and what counts as a changed path.
 
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { createMockAdapter } from "../src/v2/adapters/mock.js";
 import { createShellAdapter } from "../src/v2/adapters/shell.js";
-import { loadWorkflow } from "../src/v2/engine/workflow.js";
-import { OrchestratorError, startRun } from "../src/v2/runtime/orchestrator.js";
+import { OrchestratorError } from "../src/v2/runtime/orchestrator.js";
 import {
   acquireLock,
   createWorkspace,
@@ -18,95 +15,58 @@ import {
   readback,
   releaseLock,
 } from "../src/v2/workspace/workspace-manager.js";
+import { commit, emptyRepo, fixture, git, reviewWith } from "./support/review.js";
 import { tempDir } from "./support/tmp.js";
 
-const PRESET_PATH = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
-const WORKFLOW = loadWorkflow(PRESET_PATH);
-const DIGEST = "sha256:test-workflow";
-
-function git(cwd, args) {
-  return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
-}
-
 function fixtureRepo() {
-  const root = tempDir("bb-v2-inv-");
-  execFileSync("git", ["init", "-q", "-b", "main", root]);
-  git(root, ["config", "user.email", "pilot@example.com"]);
-  git(root, ["config", "user.name", "Pilot"]);
-  writeFileSync(join(root, "README.md"), "fixture\n");
-  git(root, ["add", "."]);
-  git(root, ["commit", "-q", "-m", "baseline"]);
+  const root = emptyRepo("bb-v2-inv-");
+  commit(root, "baseline", { "README.md": "fixture\n" });
   return { root };
 }
 
-function run(root, runId, adapters, overrides = {}) {
-  return startRun({
-    repoRoot: root,
-    workflow: WORKFLOW,
-    workflowDigest: DIGEST,
-    workId: `WORK-${runId}`,
-    runId,
-    entry: "build",
-    stopAt: ["review"],
-    adapters,
-    ...overrides,
-  });
+function reviewed({ verifier, allowedPaths = null, files = { "src/feature.txt": "hello\n" } }) {
+  const { root, work } = fixture({ prefix: "bb-v2-inv-" });
+  const sha = commit(root, "add the feature", files);
+  const result = reviewWith(root, work, { verifier, allowedPaths });
+  return { root, sha, ...result };
 }
 
-test("a timed-out step is recorded as timeout and fails closed", () => {
-  const { root } = fixtureRepo();
-  const result = run(
-    root,
-    "RUN-I1",
-    {
-      builder: createShellAdapter({ name: "shell:builder", command: "bash", args: ["-c", "sleep 5"] }),
-    },
-    { stepTimeoutMs: 300 },
-  );
-  const state = result.state;
-  assert.equal(state.steps.build.detail, "timeout");
-  // Fails closed: no progress, no fixer; a timeout is a worker-infrastructure
-  // failure and stops for a human (iteration 09), not a terminal FAILED.
-  assert.equal(state.run.status, "WAITING_HUMAN");
-  assert.equal(state.pendingHuman.kind, "infra");
-  assert.equal(state.pendingHuman.transition, "resume-build");
-  assert.equal(state.workspaces["RUN-I1"].candidate, null, "no candidate pinned");
-});
-
-test("an adapter crash leaves a failure fact, never silent progress", () => {
-  const { root } = fixtureRepo();
-  const result = run(root, "RUN-I2", { builder: createMockAdapter({ build: ["crash"] }) });
-  assert.equal(result.state.steps.build.detail, "crashed");
-  assert.equal(result.state.run.status, "WAITING_HUMAN");
-  assert.equal(result.state.pendingHuman.kind, "infra");
-  assert.equal(result.state.steps.build.infraAttempts, 1);
-});
-
-test("a spawn error yields unverified evidence and a crashed step", () => {
-  const { root } = fixtureRepo();
-  const result = run(root, "RUN-I3", {
-    builder: createShellAdapter({ name: "shell:builder", command: "definitely-not-a-command-xyz" }),
+test("a verifier that times out is recorded as timeout and ends the run without a verdict", () => {
+  const { state } = reviewed({
+    verifier: createShellAdapter({ name: "shell:verifier", command: "bash", args: ["-c", "sleep 5"], timeoutMs: 300 }),
   });
-  const state = result.state;
-  assert.equal(state.steps.build.detail, "crashed");
-  assert.equal(state.evidence[0].status, "unverified");
+  assert.equal(state.steps.verify.detail, "timeout");
+  assert.equal(state.terminal.status, "CANCELLED");
+  assert.match(state.terminal.reason, /worker infrastructure failure at verify: timeout; not a candidate defect/);
+  assert.equal(state.steps.review, undefined, "nothing was reviewed");
+  assert.equal(state.evidence[0].status, "failed");
 });
 
-test("only one run can be active per repository", () => {
-  const { root } = fixtureRepo();
+test("a verifier that cannot be started leaves unverified evidence and a crashed step", () => {
+  const { state } = reviewed({
+    verifier: createShellAdapter({ name: "shell:verifier", command: "definitely-not-a-command-xyz" }),
+  });
+  assert.equal(state.steps.verify.detail, "crashed");
+  assert.equal(state.evidence[0].status, "unverified");
+  assert.equal(state.terminal.status, "CANCELLED");
+  assert.equal(state.steps.review, undefined);
+});
+
+test("only one review runs in a repository at a time", () => {
+  const { root, work } = fixture({ prefix: "bb-v2-inv-" });
+  commit(root, "add the feature", { "src/feature.txt": "hello\n" });
   acquireLock(root, "active-run");
   try {
     assert.throws(
-      () => run(root, "RUN-I4", { builder: createMockAdapter({ build: ["succeed"] }) }),
-      OrchestratorError,
+      () => reviewWith(root, work),
+      (error) => error instanceof OrchestratorError && /another review is running in this repository/.test(error.message),
     );
   } finally {
     releaseLock(root, "active-run");
   }
-  const result = run(root, "RUN-I4", {
-    builder: createMockAdapter({ build: ["succeed"] }),
-    verifier: createMockAdapter({ verify: ["succeed"] }),
-  });
+  // The refused review recorded nothing, so the run id is still free.
+  const result = reviewWith(root, work);
+  assert.equal(result.runId, "RUN-A-01");
   assert.equal(result.state.run.status, "WAITING_HUMAN");
 });
 
@@ -146,17 +106,12 @@ test("listChangedPaths reports non-ASCII paths unescaped (real incident: scope c
   assert.ok(changed.every((path) => path.startsWith("pm/")));
 });
 
-// WORK-SCOPE-RENAMES: a move counts on both sides, so a file moved in from
-// outside allowedPaths is out of scope; paths are read with -z and whatever
-// the user's Git settings say.
+// A move counts on both sides, so a file moved in from outside allowedPaths
+// is out of scope; paths are read with -z and whatever the user's Git
+// settings say.
 function moveFixture(runId) {
   const { root } = fixtureRepo();
-  mkdirSync(join(root, "secret"), { recursive: true });
-  mkdirSync(join(root, "src"), { recursive: true });
-  writeFileSync(join(root, "secret", "x.txt"), "secret\n");
-  writeFileSync(join(root, "src", "y.txt"), "inside\n");
-  git(root, ["add", "."]);
-  git(root, ["commit", "-q", "-m", "files"]);
+  commit(root, "files", { "secret/x.txt": "secret\n", "src/y.txt": "inside\n" });
   return createWorkspace({ repoRoot: root, runId, base: "HEAD" });
 }
 const changedPaths = (workspace) => listChangedPaths(workspace.worktreePath, workspace.base).sort();
@@ -234,22 +189,26 @@ test("listChangedPaths keeps names with quotes, tabs, arrows and edge spaces as 
   assert.deepEqual(withGlobalConfig("", () => changedPaths(workspace)), [...committed, ...untracked].sort());
 });
 
-test("a worker that moves a file in from outside the scope stops the run, committed or staged", () => {
-  for (const [runId, script] of [
-    ["RUN-I5K", "mkdir -p lib && git mv README.md lib/README.md && git commit -qm move"],
-    ["RUN-I5L", "mkdir -p lib && git mv README.md lib/README.md"],
-  ]) {
-    const { root } = fixtureRepo();
-    const result = run(
-      root,
-      runId,
-      { builder: createShellAdapter({ name: "shell:builder", command: "bash", args: ["-c", script] }) },
-      { allowedPaths: ["lib"] },
-    );
-    const state = result.state;
-    assert.equal(state.run.status, "WAITING_HUMAN", runId);
-    assert.match(state.pendingHuman.reasons[0], /outside the allowed scope: README\.md$/, runId);
-    assert.equal(state.workspaces[runId].candidate, null, runId);
-    assert.ok(state.policyLog.some((row) => row.policy === "workspace.scope" && row.result === "BLOCK"), runId);
-  }
+test("a file moved in from outside the scope fails the review, moved by the commit or staged by the verifier", () => {
+  const scopeFailure = (state) => {
+    assert.equal(state.terminal.status, "FAILED");
+    assert.match(state.terminal.reason, /outside the allowed scope: tools\/reviewer\.sh$/);
+    assert.ok(state.policyLog.some((row) => row.policy === "workspace.scope" && row.result === "BLOCK"));
+    assert.equal(state.steps.review, undefined, "nothing was reviewed");
+    assert.equal(state.pendingHuman, null);
+  };
+  // The commit itself moves tools/reviewer.sh into src/.
+  const { root, work } = fixture({ prefix: "bb-v2-inv-" });
+  mkdirSync(join(root, "src"));
+  git(root, ["mv", "tools/reviewer.sh", "src/reviewer.sh"]);
+  commit(root, "move in");
+  scopeFailure(reviewWith(root, work, { allowedPaths: ["src"] }).state);
+
+  // The commit is in scope; the verifier stages the move in the checkout.
+  const staged = reviewed({
+    allowedPaths: ["src"],
+    verifier: createShellAdapter({ name: "shell:verifier", command: "bash", args: ["-c", "git mv tools/reviewer.sh src/reviewer.sh"] }),
+  });
+  scopeFailure(staged.state);
+  assert.equal(git(staged.root, ["rev-parse", "HEAD"]), staged.sha);
 });

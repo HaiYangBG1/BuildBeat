@@ -1,24 +1,19 @@
 import assert from "node:assert/strict";
-import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { applyGc, planGc } from "../src/v2/runtime/gc.js";
-import { EventLedger } from "../src/v2/storage/event-ledger.js";
 import {
   acquireLock,
   inspectLock,
-  listHeldRunLocks,
   reclaimStaleLock,
   releaseLock,
   WorkspaceError,
 } from "../src/v2/workspace/workspace-manager.js";
+import { commit, fixture, reviewWith } from "./support/review.js";
 import { tempDir } from "./support/tmp.js";
-
-const CLI = join(import.meta.dirname, "..", "bin", "buildbeat.js");
-const PRESET = join(import.meta.dirname, "..", "src", "v2", "presets", "software-delivery.yaml");
 
 function tempRoot(t) {
   const root = tempDir("bb-stale-locks-");
@@ -113,7 +108,7 @@ test("claims stay inside the lock and go with it on release", (t) => {
   const root = tempRoot(t);
   plantLock(root, "RUN-A", owner(deadPid()));
   acquireLock(root, "RUN-A");
-  assert.deepEqual(listHeldRunLocks(root), ["RUN-A"]);
+  assert.deepEqual(readdirSync(join(root, ".buildbeat", "runtime", "locks")), ["RUN-A.lock"]);
   assert.ok(readdirSync(lockPath(root, "RUN-A")).some((entry) => entry.startsWith("claim-")));
   releaseLock(root, "RUN-A");
   assert.deepEqual(readdirSync(join(root, ".buildbeat", "runtime", "locks")), []);
@@ -209,98 +204,18 @@ test("an alive claimer keeps its claim however long it pauses", (t) => {
   assert.ok(!readdirSync(lockPath(root, "RUN-A")).some((entry) => entry.startsWith(".claim.")));
 });
 
-test("gc reclaims an active-run lock whose owner is gone and keeps a live one", (t) => {
-  const root = tempRoot(t);
-  plantLock(root, "active-run", owner(deadPid()));
-  const rows = planGc(root);
-  assert.equal(rows[0].run, "(repository)");
-  assert.equal(rows[0].actions[0].kind, "remove-lock");
-  const results = applyGc(root, rows);
-  assert.equal(results[0].done, true);
+// A review process that was killed (a host-tool timeout, a reboot) leaves
+// the repository lock and its run lock behind. Nothing is deleted by hand:
+// the next review takes them over. tests/v2-review-commit.test.js kills a
+// real review process; here the locks are planted.
+test("a review takes over the locks a dead process left and releases them when it is done", () => {
+  const { root, work } = fixture({ prefix: "bb-stale-locks-" });
+  commit(root, "add the feature", { "src/feature.txt": "hello\n" });
+  const gone = deadPid();
+  plantLock(root, "active-run", owner(gone, { command: "review" }));
+  plantLock(root, "RUN-A-01", owner(gone, { command: "review" }));
+  const result = reviewWith(root, work, { runId: "RUN-A-01" });
+  assert.equal(result.state.run.status, "WAITING_HUMAN");
   assert.equal(existsSync(lockPath(root, "active-run")), false);
-
-  acquireLock(root, "active-run");
-  const live = planGc(root);
-  assert.equal(live[0].actions.length, 0);
-  assert.match(live[0].keep[0], /active-run lock held by pid \d+ .*still running/);
-});
-
-// Kill recovery: a real driver is SIGKILLed while a worker runs, the way a
-// host-tool timeout or a reboot ends it. Nothing is deleted by hand.
-function killFixture(t) {
-  const root = tempRoot(t);
-  const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8" }).trim();
-  git("init", "-q", "-b", "main");
-  git("config", "user.name", "Test");
-  git("config", "user.email", "test@example.com");
-  writeFileSync(join(root, "README.md"), "fixture\n");
-  git("add", "README.md");
-  git("commit", "-qm", "baseline");
-  const hang = join(root, "hang");
-  writeFileSync(hang, "");
-  const envelope = '      - \'require("node:fs").writeFileSync(process.env.BUILDBEAT_OUTPUT, JSON.stringify({status: "succeeded", findings: []}))\'';
-  const configPath = join(root, "run-config.yaml");
-  writeFileSync(configPath, [
-    "repo: .", "work: WORK-KILL", "run: RUN-KILL", `workflow: ${PRESET}`,
-    "riskPreset: fast", "entry: build", "stopAt:", "  - review", "workers:",
-    "  builder:", `    command: ${process.execPath}`, "    args:", "      - -e", envelope,
-    "  verifier:", `    command: ${process.execPath}`, "    args:", "      - -e",
-    `      - 'if (require("node:fs").existsSync(${JSON.stringify(hang)})) setTimeout(() => {}, 30000)'`,
-    "  reviewer:", `    command: ${process.execPath}`, "    args:", "      - -e", envelope,
-  ].join("\n"));
-  const ledgerPath = join(root, ".buildbeat", "runtime", "runs", "RUN-KILL-01", "events.jsonl");
-  return { root, hang, configPath, ledgerPath };
-}
-
-async function startAndKill(f) {
-  const driver = spawn(process.execPath, [CLI, "start", "--config", f.configPath, "--attempt", "new"], {
-    detached: true,
-    stdio: "ignore",
-  });
-  const deadline = Date.now() + 15000;
-  const verifyStarted = () =>
-    existsSync(f.ledgerPath) &&
-    EventLedger.open(f.ledgerPath).events.some((event) => event.type === "STEP_STARTED" && event.data.step === "verify");
-  while (!verifyStarted()) {
-    assert.ok(Date.now() < deadline, "driver never reached verify");
-    await pause(100);
-  }
-  process.kill(-driver.pid, "SIGKILL");
-  while (true) {
-    try {
-      process.kill(driver.pid, 0);
-    } catch {
-      break;
-    }
-    await pause(50);
-  }
-  rmSync(f.hang);
-  assert.equal(existsSync(lockPath(f.root, "active-run")), true);
-  assert.equal(existsSync(lockPath(f.root, "RUN-KILL-01")), true);
-}
-
-test("after the driver is SIGKILLed mid-step, resume recovers without touching any file", async (t) => {
-  const f = killFixture(t);
-  await startAndKill(f);
-  const resumed = spawnSync(process.execPath, [CLI, "resume", "--config", f.configPath], { encoding: "utf8" });
-  assert.equal(resumed.status, 0, resumed.stdout + resumed.stderr);
-  assert.match(resumed.stderr, /reclaimed stale lock active-run \(owner pid \d+ on .* is gone\)/);
-  assert.match(resumed.stdout, /waiting on human: enter-review/);
-  const ledger = EventLedger.open(f.ledgerPath);
-  assert.ok(ledger.events.some((event) => event.type === "RUN_INTERRUPTED"));
-  assert.equal(ledger.state.steps.verify.attempts, 2);
-  assert.equal(existsSync(lockPath(f.root, "active-run")), false);
-  assert.equal(existsSync(lockPath(f.root, "RUN-KILL-01")), false);
-});
-
-test("after the driver is SIGKILLed, stop cancels the run and the next start is not blocked", async (t) => {
-  const f = killFixture(t);
-  await startAndKill(f);
-  const stopped = spawnSync(process.execPath, [CLI, "stop", "--repo", f.root, "--run", "RUN-KILL-01", "--reason", "driver killed"], { encoding: "utf8" });
-  assert.equal(stopped.status, 0, stopped.stdout + stopped.stderr);
-  assert.equal(EventLedger.open(f.ledgerPath).state.terminal.status, "CANCELLED");
-  const next = spawnSync(process.execPath, [CLI, "start", "--config", f.configPath, "--attempt", "new"], { encoding: "utf8" });
-  assert.equal(next.status, 0, next.stdout + next.stderr);
-  assert.match(next.stdout, /attempt: RUN-KILL-02/);
-  assert.match(next.stdout, /waiting on human: enter-review/);
+  assert.equal(existsSync(lockPath(root, "RUN-A-01")), false);
 });

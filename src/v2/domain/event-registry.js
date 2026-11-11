@@ -10,12 +10,9 @@ import {
   EVIDENCE_GRADES,
   EVIDENCE_STATUSES,
   GATE_RESULTS,
-  OBSERVE_BAND_LEVELS,
-  OBSERVE_SEVERITIES,
   POLICY_PHASES,
   STEP_FINISH_STATUSES,
   TERMINAL_RUN_STATES,
-  TRIAGE_ACTIONS,
 } from "./model.js";
 
 export const ENVELOPE_VERSION = 1;
@@ -41,12 +38,6 @@ export const EVENT_REGISTRY = {
   RUN_INTERRUPTED: ["cause"],
   RUN_TERMINAL: ["status", "reason"],
   RUN_COMPACTED: ["runRecordRef", "runRecordDigest"],
-  // observe v0 (additive per SPEC-0001 evolution rule; RFC-0003 §8 semantics)
-  OBSERVE_CYCLE_STARTED: ["cycle", "configDigest"],
-  OBSERVE_CYCLE_FINISHED: ["cycle", "providersRun"],
-  BAND_TRIGGERED: ["provider", "band", "severity", "fingerprint"],
-  INTENT_DRAFTED: ["intentRef", "provider", "severity", "fingerprint"],
-  TRIAGE_RECORDED: ["intentRef", "action", "fingerprint"],
 };
 
 const EVENT_ENUMS = {
@@ -56,17 +47,12 @@ const EVENT_ENUMS = {
   BUDGET_CONSUMED: { kind: BUDGET_KINDS },
   DECISION_RECORDED: { decision: DECISION_VALUES },
   EVIDENCE_RECORDED: { status: EVIDENCE_STATUSES, grade: EVIDENCE_GRADES },
-  BAND_TRIGGERED: { band: OBSERVE_BAND_LEVELS, severity: OBSERVE_SEVERITIES },
-  INTENT_DRAFTED: { severity: OBSERVE_SEVERITIES },
-  TRIAGE_RECORDED: { action: TRIAGE_ACTIONS },
 };
 
 const REPO_REF_FIELDS = {
   WORKSPACE_BOUND: ["repo", "worktreePath"],
   EVIDENCE_RECORDED: ["evidenceRef"],
   RUN_COMPACTED: ["runRecordRef"],
-  INTENT_DRAFTED: ["intentRef"],
-  TRIAGE_RECORDED: ["intentRef"],
 };
 
 function unsafeRepoRef(value) {

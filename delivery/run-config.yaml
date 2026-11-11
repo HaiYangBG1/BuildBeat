@@ -1,0 +1,32 @@
+# How a commit of this repository is verified and reviewed. Every work shares
+# this file; a work that differs writes only the keys it overrides in
+# delivery/work/<WORK-ID>/run-config.yaml. Paths resolve relative to this file.
+envelope:
+  prompts: envelope/prompts
+  vars:
+    component: buildbeat
+redact:
+  - "(token|secret|password|TOKEN|SECRET|PASSWORD)=\\S+"
+requires:
+  - command: node
+    min: "20"
+  - command: codex
+workers:
+  # The local gate of package.json's prepublishOnly, without publishing.
+  verifier:
+    command: bash
+    timeoutMs: 1800000
+    args:
+      - -lc
+      - npm test && npm run check:docs && npm run test:envelope && npm run test:plugin && npm run test:pack-firstrun && npm run pack:check
+  reviewer:
+    command: bash
+    timeoutMs: 3600000
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - codex
+      - exec
+      - -s
+      - read-only
