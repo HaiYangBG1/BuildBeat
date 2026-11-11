@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/hero.jpg" width="100%" alt="Five notes on a musical staff, build, verify, review, fix and decide, joined by a pulse line that ends in a stack of written sheet music">
+  <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/hero.jpg" width="100%" alt="Five notes on a musical staff, build, verify, review, revise and decide, joined by a pulse line that ends in a stack of written sheet music">
 </p>
 
 <h1 align="center">BuildBeat</h1>
@@ -45,7 +45,7 @@ Long sessions make the AI forget; open a new session or switch tools and you exp
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/handoff-en-dark-narrow.png">
   <source media="(max-width: 600px)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/handoff-en-light-narrow.png">
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/handoff-en-dark.png">
-  <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/handoff-en-light.png" width="100%" alt="Session A (Claude Code), halfway there, writes the checkpoint into project files (work.md, decisions, each run); session B (Codex) reads those files and carries on; picked up weeks later, a heads-up says src/export.js:5-8, mentioned in work.md, has changed">
+  <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/handoff-en-light.png" width="100%" alt="Session A (Claude Code), halfway there, writes the checkpoint into project files (work.md, decisions, each review); session B (Codex) reads those files and carries on; picked up weeks later, a heads-up says src/export.js:5-8, mentioned in work.md, has changed">
 </picture>
 
 </td>
@@ -83,7 +83,7 @@ Everyone knows requirement docs and decision logs should be written, but nobody 
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-dark-narrow.png">
   <source media="(max-width: 600px)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-light-narrow.png">
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-dark.png">
-  <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-light.png" width="100%" alt="The delivery loop: after work.md come build, verify and review; findings go to fix, verify and review again; then the run stops for you to decide; work.md, decisions, findings and each run's final record stay in Git">
+  <img src="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-light.png" width="100%" alt="After work.md the session writes the code and commits, then come verify and review; when the review finds something, the session fixes it and sends the new commit; then it stops for you to decide, and the approval is bound to that commit; work.md, decisions, findings and each review's record stay in Git">
 </picture>
 
 </td>

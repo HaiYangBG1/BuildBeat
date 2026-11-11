@@ -28,16 +28,19 @@ const THEMES = {
 
 const COPY = {
   zh: {
-    nodes: [["work.md", "目标 · 范围 · 验收"], ["实现", "写代码 · 提交"], ["验证", "跑项目真实命令"], ["审查", "独立 · 只读"], ["你来拍板", "批准绑定候选"]],
-    fix: ["修复", "有问题：修复 → 重验 → 再审"],
-    band: "演奏过的乐谱留在 Git：work.md · 决定 · 审查问题 · 每轮运行的终态记录",
-    bandNarrow: ["演奏过的乐谱留在 Git", "work.md · 决定 · 审查问题 · 终态记录"],
+    nodes: [["work.md", "目标 · 范围 · 验收"], ["会话实现", "写代码 · 提交"], ["验证", "跑项目真实命令"], ["审查", "独立 · 只读"], ["你来拍板", "批准绑定这个提交"]],
+    fix: ["会话修改", "有问题：改好，新提交再送审"],
+    fixNarrow: "会话修改",
+    band: "演奏过的乐谱留在 Git：work.md · 决定 · 审查问题 · 每轮审查的记录",
+    bandNarrow: ["演奏过的乐谱留在 Git", "work.md · 决定 · 审查问题 · 审查记录"],
   },
   en: {
-    nodes: [["work.md", "goal · scope · acceptance"], ["Build", "code · commit"], ["Verify", "real commands"], ["Review", "independent, read-only"], ["You decide", "bound to the candidate"]],
-    fix: ["Fix", "findings: fix → verify → review"],
-    band: "The played score stays in Git: work.md · decisions · findings · each run's final record",
-    bandNarrow: ["The played score stays in Git", "work.md · decisions · findings · final records"],
+    nodes: [["work.md", "goal · scope · acceptance"], ["Session builds", "code · commit"], ["Verify", "real commands"], ["Review", "independent, read-only"], ["You decide", "bound to this commit"]],
+    fix: ["Session revises", "findings: fix, send the new commit"],
+    // The phone layout has a small pill beside the notes.
+    fixNarrow: "Revise",
+    band: "The played score stays in Git: work.md · decisions · findings · each review's record",
+    bandNarrow: ["The played score stays in Git", "work.md · decisions · findings · review records"],
   },
 };
 
@@ -129,7 +132,7 @@ function svgNarrow(lang, theme) {
   parts.push(`<path d="M ${right + 4} ${ys[3]} C ${fixX} ${ys[3]}, ${fixX} ${ys[3] - 6}, ${fixX} ${fixY + 18}" fill="none" stroke="${c.accent}" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrow-${theme}-n)"/>`);
   parts.push(`<path d="M ${fixX} ${fixY - 18} C ${fixX} ${ys[2] + 6}, ${fixX} ${ys[2]}, ${right + 8} ${ys[2]}" fill="none" stroke="${c.accent}" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrow-${theme}-n)"/>`);
   parts.push(`<rect x="${fixX - 34}" y="${fixY - 16}" width="68" height="32" rx="16" fill="${c.node}" stroke="${c.nodeStroke}" stroke-width="1.5"/>`);
-  parts.push(`<text x="${fixX}" y="${fixY + 5}" text-anchor="middle" font-family="${FONT}" font-size="14" font-weight="600" fill="${c.text}">${esc(copy.fix[0])}</text>`);
+  parts.push(`<text x="${fixX}" y="${fixY + 5}" text-anchor="middle" font-family="${FONT}" font-size="14" font-weight="600" fill="${c.text}">${esc(copy.fixNarrow)}</text>`);
   ys.forEach((y, i) => {
     const human = i === ys.length - 1;
     const [title, subtitle] = copy.nodes[i];
@@ -202,7 +205,7 @@ const HANDOFF = {
   },
   en: {
     a: ["Session A · Claude Code", "halfway there, session too long"],
-    file: ["Checkpoint in project files", "work.md · decisions · each run"],
+    file: ["Checkpoint in project files", "work.md · decisions · each review"],
     b: ["Session B · Codex", "reads the files, carries on"],
     write: "writes",
     read: "reads",
