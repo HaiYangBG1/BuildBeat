@@ -1,0 +1,1 @@
+{"ts":"2026-11-11T12:50:22.267Z","decisionRef":"A-WORK-README-DIAGRAMS-1","decision":"approved","transition":"accept-work","subject":{"artifact":"work","digest":"sha256:87f2b553e34812a8193ffbc1db98d07025ba178803a582bba5b5cb77151d0367"},"note":"所有者 2026-11-11：准备发 6.0.0（换图是发版前的遗留）","by":"HaiYangBG1","actor":{"kind":"human","id":"HaiYangBG1","source":"flag","via":"agent-session"}}
