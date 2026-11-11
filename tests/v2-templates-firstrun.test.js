@@ -1,22 +1,21 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
 import { parseYamlSubset } from "../src/v2/engine/yaml-subset.js";
 import { tempDir } from "./support/tmp.js";
 
-// Deterministic first run through the shipped v2 templates: the run-config
-// sample, the worker wrapper and the three prompts must carry a run from
-// start to the merge decision with a scripted "agent" standing in for the
-// real tool. This proves the packaged paths, config shape, envelope, commit
-// mechanics and reviewer envelope connect — not that a real model can do
-// the task.
+// Deterministic first review through the shipped templates: the run config
+// sample, the worker wrapper and the reviewer prompt must carry a commit
+// from `review` to the owner's approval, with a scripted reviewer standing
+// in for the real tool. This proves the packaged paths, the config shape,
+// the prompt hand-over and the report format connect, not that a real model
+// can do the task.
 
 const ROOT = join(import.meta.dirname, "..");
 const CLI = join(ROOT, "bin", "buildbeat.js");
-const PRESET = join(ROOT, "src", "v2", "presets", "software-delivery.yaml");
 const TEMPLATES = join(ROOT, "templates", "v2");
 
 function git(cwd, args) {
@@ -27,106 +26,108 @@ function cli(args) {
   return execFileSync("node", [CLI, ...args], { encoding: "utf8" });
 }
 
+// The run config samples in a document: yaml blocks that configure workers.
 function yamlBlocks(markdown) {
   const out = [];
   const re = /```yaml\n([\s\S]*?)```/g;
   let match;
   while ((match = re.exec(markdown))) {
-    if (/^repo:/m.test(match[1])) out.push(match[1]);
+    if (/^workers:/m.test(match[1])) out.push(match[1]);
   }
   return out;
 }
 
-test("every documented run-config sample parses with the strict YAML subset", () => {
+test("every documented run config sample parses with the strict YAML subset and names only what review takes", () => {
+  const known = ["workers", "envelope", "requires", "redact", "release", "requireScreenshot", "maxReviewSeverity"];
   const example = parseYamlSubset(readFileSync(join(TEMPLATES, "run-config.example.yaml"), "utf8"));
-  assert.deepEqual(Object.keys(example.workers).sort(), ["builder", "fixer", "reviewer", "verifier"]);
-  assert.equal(example.envelope.prompts, "../../envelope/prompts");
+  assert.deepEqual(Object.keys(example.workers).sort(), ["reviewer", "verifier"]);
+  assert.equal(example.envelope.prompts, "envelope/prompts");
+  assert.deepEqual(readdirSync(join(TEMPLATES, "envelope", "prompts")), ["reviewer.md"]);
   for (const relative of ["SKILL.md", "docs/v2/guide/01-quickstart.md"]) {
     const blocks = yamlBlocks(readFileSync(join(ROOT, relative), "utf8"));
-    assert.ok(blocks.length > 0, `${relative}: no run-config sample found`);
+    assert.ok(blocks.length > 0, `${relative}: no run config sample found`);
     for (const block of blocks) {
       const config = parseYamlSubset(block);
-      assert.ok(config.workers.fixer, `${relative}: sample must configure a fixer`);
+      assert.deepEqual(Object.keys(config.workers).sort(), ["reviewer", "verifier"], `${relative}: a sample configures a verifier and a reviewer`);
+      for (const key of Object.keys(config)) {
+        assert.ok(known.includes(key), `${relative}: sample uses ${key}, which the project run config does not take`);
+      }
     }
   }
 });
 
-test("templates/v2 envelope drives a run to the merge decision with a scripted agent", () => {
+test("the templates carry a commit from review to the owner's approval with a scripted reviewer", () => {
   const root = tempDir("bb-v2-templates-");
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   git(root, ["config", "user.email", "pilot@example.com"]);
   git(root, ["config", "user.name", "Pilot"]);
 
-  // Project skeleton the way SKILL §8.3 lays it out.
+  // The project skeleton the quickstart lays out.
   mkdirSync(join(root, "src"), { recursive: true });
-  mkdirSync(join(root, "tests"), { recursive: true });
   mkdirSync(join(root, "tools"), { recursive: true });
-  // Empty directories are not tracked, so they would not exist in the worktree.
-  writeFileSync(join(root, "src", ".gitkeep"), "");
-  writeFileSync(join(root, "tests", ".gitkeep"), "");
-  const work = join(root, "delivery", "work", "WORK-T");
-  mkdirSync(work, { recursive: true });
   cpSync(join(TEMPLATES, "envelope"), join(root, "delivery", "envelope"), { recursive: true });
-  cpSync(PRESET, join(work, "workflow.yaml"));
-  writeFileSync(join(work, "work.md"), "# plan\n1. write src/feature.txt\n");
+  writeFileSync(join(root, ".gitignore"), ".buildbeat/\n");
   writeFileSync(join(root, "README.md"), "fixture\n");
 
-  // Scripted agent: role comes from the wrapper's tool args, the prompt
-  // arrives as the final positional argument exactly like codex/claude.
+  // The scripted reviewer checks what it was handed (the work description,
+  // where the change starts, a prompt that names work.md) and answers the
+  // way agents do: the JSON report inside a ```json fence.
   writeFileSync(
-    join(root, "tools", "fake-agent.sh"),
+    join(root, "tools", "fake-reviewer.sh"),
     [
       "#!/usr/bin/env bash",
       "set -euo pipefail",
-      "role=$1",
-      `node -e 'const i=JSON.parse(process.env.BUILDBEAT_INPUT);const fs=require("node:fs");if(i.workArtifact?.ref!=="delivery/work/WORK-T/work.md"||!fs.existsSync(i.workArtifact.ref)||!fs.readFileSync(process.env.BUILDBEAT_PROMPT,"utf8").includes("work.md"))process.exit(9)'`,
+      `node -e 'const i=JSON.parse(process.env.BUILDBEAT_INPUT);const fs=require("node:fs");if(i.workArtifact?.ref!=="delivery/work/WORK-T/work.md"||!fs.existsSync(i.workArtifact.ref)||!/^[0-9a-f]{40}$/.test(i.base)||!fs.readFileSync(process.env.BUILDBEAT_PROMPT,"utf8").includes("work.md"))process.exit(9)'`,
       "prompt=${@: -1}",
-      "case \"$role\" in",
-      "  build) [ -n \"$prompt\" ] || exit 9; echo feature > src/feature.txt ;;",
-      "  fix) [ -n \"$prompt\" ] || exit 9; echo fixed > src/fixed.txt ;;",
-      "  review) [ -n \"$prompt\" ] || exit 9; echo '```json'; echo '{\"status\":\"succeeded\",\"findings\":[{\"severity\":\"P2\",\"summary\":\"naming could be clearer\"}]}'; echo '```' ;;",
-      "esac",
+      "[ -n \"$prompt\" ] || exit 9",
+      "echo '```json'; echo '{\"status\":\"succeeded\",\"findings\":[{\"severity\":\"P2\",\"summary\":\"naming could be clearer\"}]}'; echo '```'",
     ].join("\n"),
   );
 
-  // The sample config with the codex commands swapped for the scripted agent
-  // and the verifier made to fail once (fix path) then pass.
+  // The sample config with codex swapped for the scripted reviewer and the
+  // verifier pointed at a file the change will add.
   const sample = readFileSync(join(TEMPLATES, "run-config.example.yaml"), "utf8")
-    .replace("work: WORK-X", "work: WORK-T")
-    .replace("run: RUN-X", "run: RUN-T")
-    .replace(/      - codex\n      - exec\n      - -s\n      - workspace-write\n/, "      - bash\n      - tools/fake-agent.sh\n      - build\n")
-    .replace(/      - codex\n      - exec\n      - -s\n      - read-only\n/, "      - bash\n      - tools/fake-agent.sh\n      - review\n")
-    .replace(/      - codex\n      - exec\n      - -s\n      - workspace-write\n/, "      - bash\n      - tools/fake-agent.sh\n      - fix\n")
-    .replace("      - npm test\n", "      - test -f src/feature.txt && test -f src/fixed.txt\n");
+    .replace(/      - codex\n      - exec\n      - -s\n      - read-only\n/, "      - bash\n      - tools/fake-reviewer.sh\n")
+    .replace("      - npm test\n", "      - test -f src/feature.txt\n");
   assert.doesNotMatch(sample, /^\s+- codex$/m);
-  writeFileSync(join(work, "run-config.yaml"), sample);
-
+  writeFileSync(join(root, "delivery", "run-config.yaml"), sample);
   git(root, ["add", "."]);
   git(root, ["commit", "-q", "-m", "baseline"]);
 
-  const acceptOut = cli(["accept", "--repo", root, "--work", "WORK-T", "--artifact", "work", "--by", "owner"]);
+  mkdirSync(join(root, "delivery", "work", "WORK-T"), { recursive: true });
+  writeFileSync(join(root, "delivery", "work", "WORK-T", "work.md"), "# Add the feature\n\n## Goal\nwrite src/feature.txt\n");
+  git(root, ["add", "."]);
+  git(root, ["commit", "-q", "-m", "describe WORK-T"]);
+
+  const acceptOut = cli(["accept", "--repo", root, "--work", "WORK-T", "--by", "owner", "--as", "human"]);
   assert.match(acceptOut, /accepted work as A-WORK-T-\d+/);
 
-  const doctorOut = cli(["doctor", "--config", join(work, "run-config.yaml")]);
-  assert.match(doctorOut, /risk preset: standard/);
-  assert.match(doctorOut, /builder: env allowlist/);
-  assert.match(doctorOut, /work\.md: accepted/);
+  const checkOut = cli(["check", "--repo", root, "--work", "WORK-T"]);
+  assert.match(checkOut, /run config: delivery\/run-config\.yaml\n/);
+  assert.match(checkOut, /reviewer: bash delivery\/envelope\/worker\.sh reviewer -- bash tools\/fake-reviewer\.sh/);
+  assert.match(checkOut, /environment: allowlist; host credentials withheld/);
+  assert.match(checkOut, /prompts: envelope\/prompts \(reviewer\) sha256:/);
+  assert.match(checkOut, /node: OK/);
+  assert.match(checkOut, /work\.md: accepted by owner/);
 
-  const startOut = cli(["start", "--config", join(work, "run-config.yaml"), "--attempt", "new"]);
-  assert.match(startOut, /status: WAITING_HUMAN/);
-  assert.match(startOut, /waiting on human: enter-wait-merge/);
+  writeFileSync(join(root, "src", "feature.txt"), "feature\n");
+  git(root, ["add", "."]);
+  git(root, ["commit", "-q", "-m", "add the feature\n\nWork: WORK-T"]);
+  const sha = git(root, ["rev-parse", "HEAD"]);
+
+  const reviewOut = cli(["review", "--repo", root, "--work", "WORK-T"]);
+  assert.match(reviewOut, /reviewing \w{7} as RUN-T-01/);
+  assert.match(reviewOut, /status: WAITING_HUMAN/);
+  assert.match(reviewOut, /waiting on human: enter-wait-merge/);
 
   const statusOut = cli(["status", "--repo", root, "--run", "RUN-T-01"]);
-  assert.match(statusOut, /step build: SUCCEEDED \(attempts 1\)/);
-  assert.match(statusOut, /step verify: SUCCEEDED \(attempts 2\)/); // first verify failed: fixed.txt missing
-  assert.match(statusOut, /step fix: SUCCEEDED \(attempts 1\)/);
+  assert.match(statusOut, /step verify: SUCCEEDED \(attempts 1\)/);
   assert.match(statusOut, /step review: SUCCEEDED \(attempts 1\)/);
-  assert.match(statusOut, /evidence \[failed\/L2\] command .*verify-1\.log/);
-  assert.match(statusOut, /evidence \[passed\/L2\] command .*verify-2\.log/);
+  assert.match(statusOut, /evidence \[passed\/L2\] command .*verify-1\.log/);
   assert.match(statusOut, /evidence \[passed\/L2\] review .*review-1\.json/);
   assert.doesNotMatch(statusOut, /invalid-output|infra/);
-  // The wrapper hands the tool's stdout over verbatim; a ```json fence is
-  // tolerated by the kernel's parser, so strip it the same way here.
+  // The wrapper hands the tool's stdout over verbatim; one ```json fence is
+  // tolerated by the runtime's parser, so strip it the same way here.
   const rawEnvelope = readFileSync(
     join(root, ".buildbeat", "runtime", "runs", "RUN-T-01", "outputs", "review-1.json"),
     "utf8",
@@ -135,15 +136,12 @@ test("templates/v2 envelope drives a run to the merge decision with a scripted a
   assert.equal(reviewEnvelope.status, "succeeded");
   assert.deepEqual(reviewEnvelope.findings, [{ severity: "P2", summary: "naming could be clearer" }]);
 
-  // The wrapper committed for the workers; the candidate carries both files.
-  const candidate = statusOut.match(/candidate ([0-9a-f]{7,40})/)?.[1];
-  assert.ok(candidate, "candidate sha missing from status");
-  const tree = git(root, ["ls-tree", "-r", "--name-only", candidate]);
-  assert.match(tree, /src\/feature\.txt/);
-  assert.match(tree, /src\/fixed\.txt/);
-  const log = git(root, ["log", "--format=%s", `main..${candidate}`]);
-  assert.match(log, /fixer: RUN-T-01 attempt \d+/);
-  assert.match(log, /builder: RUN-T-01 attempt \d+/);
+  // A P2 finding is recorded and does not block the approval.
+  const approveOut = cli(["decide", "--repo", root, "--work", "WORK-T", "--action", "approve", "--candidate", sha, "--by", "owner", "--as", "human"]);
+  assert.match(approveOut, /RUN-T-01 is terminal: SUCCEEDED/);
+  const workOut = cli(["status", "--repo", root, "--work", "WORK-T"]);
+  assert.match(workOut, /WORK-T {2}MERGED/);
+  assert.match(workOut, /cost: review rounds 1 · findings 1/);
 });
 
 test("worker.sh reports a missing tool as infrastructure (exit 75)", () => {
@@ -151,7 +149,7 @@ test("worker.sh reports a missing tool as infrastructure (exit 75)", () => {
   execFileSync("git", ["init", "-q", root]);
   let code = 0;
   try {
-    execFileSync("bash", [join(TEMPLATES, "envelope", "worker.sh"), "builder", "--", "definitely-not-a-tool-xyz"], {
+    execFileSync("bash", [join(TEMPLATES, "envelope", "worker.sh"), "reviewer", "--", "definitely-not-a-tool-xyz"], {
       cwd: root,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],

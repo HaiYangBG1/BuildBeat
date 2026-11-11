@@ -38,4 +38,4 @@ Confirmed by a person: what only a person or production can confirm.
 The smallest sequence of steps that reaches the acceptance.
 
 ## Stop conditions
-When to stop and ask instead of guessing: a fact turns out different, the scope has to grow, something irreversible comes up. The review-round budget lives in run-config.yaml.
+When to stop and ask instead of guessing: a fact turns out different, the scope has to grow, something irreversible comes up.

@@ -1,0 +1,123 @@
+{
+  "run": "RUN-EXPORT-DATE-FILTER-01",
+  "work": "WORK-EXPORT-DATE-FILTER",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 17,
+    "lastDigest": "sha256:5f7a3a6dd90b031c2a6940eaed2ba06f38df4836ea7dc2d61b81db6288e9f42e"
+  },
+  "startedAt": "2026-11-10T16:27:41.703Z",
+  "finishedAt": "2026-11-10T16:27:43.562Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 1,
+        "ms": 294
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 1406
+  },
+  "workspaces": {
+    "RUN-EXPORT-DATE-FILTER-01": {
+      "repo": ".",
+      "branch": "run/RUN-EXPORT-DATE-FILTER-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-EXPORT-DATE-FILTER-01",
+      "base": "5534fa5d395fb2b1646b2d8caea62de1a592c0cd",
+      "candidate": "139977dac780b228780f37ea5954501477b637dd"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-EXPORT-DATE-FILTER-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "139977dac780b228780f37ea5954501477b637dd",
+      "digest": "sha256:f39e9b0b0f44689e9af2ea1dc44eb6efe03db864a2a058fa426835348f3184d7",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-EXPORT-DATE-FILTER-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "139977dac780b228780f37ea5954501477b637dd",
+      "digest": "sha256:65e74ebc4aadc1dfdfc7592cd887170a7f220f10015d68b49aa76813950ab57e",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-EXPORT-DATE-FILTER-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "139977dac780b228780f37ea5954501477b637dd",
+      "digest": "sha256:7c00d8d23d7d1b3f56006f4686a99bd8b3cc0839f105b524cabadd50dfa04f67",
+      "status": "passed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P2",
+          "summary": "日期区间用字符串比较依赖 YYYY-MM-DD 格式，已有校验兜底，但可以在 export.js 顶部注释里写明这个前提"
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "139977dac780b228780f37ea5954501477b637dd",
+        "planDigest": "sha256:20be68657a22dc7d7e8d6f162fc4a5d3cb6af6f9c79cb169d464fe9e4a0041b9",
+        "evidenceDigest": "sha256:7c00d8d23d7d1b3f56006f4686a99bd8b3cc0839f105b524cabadd50dfa04f67"
+      },
+      "decisionRef": "D-RUN-EXPORT-DATE-FILTER-01-1",
+      "actor": {
+        "kind": "human",
+        "id": "小周",
+        "source": "flag"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-EXPORT-DATE-FILTER-01-1",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "139977dac780b228780f37ea5954501477b637dd",
+        "planDigest": "sha256:20be68657a22dc7d7e8d6f162fc4a5d3cb6af6f9c79cb169d464fe9e4a0041b9",
+        "evidenceDigest": "sha256:7c00d8d23d7d1b3f56006f4686a99bd8b3cc0839f105b524cabadd50dfa04f67"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
