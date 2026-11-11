@@ -1,0 +1,61 @@
+{
+  "run": "RUN-CLEAN-START-03",
+  "work": "WORK-CLEAN-START",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-CLEAN-START-04 (same work WORK-CLEAN-START)"
+  },
+  "events": {
+    "from": 1,
+    "to": 5,
+    "lastDigest": "sha256:6a4d057de5c37d459ed733cdfb0432c0d91d1e0027d461aafaabb2b596c8365e"
+  },
+  "startedAt": "2026-11-10T14:55:48.798Z",
+  "finishedAt": "2026-11-11T03:31:24.482Z",
+  "attempts": {},
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 0,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 45335682
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 0
+  },
+  "workspaces": {
+    "RUN-CLEAN-START-03": {
+      "repo": ".",
+      "branch": "run/RUN-CLEAN-START-03",
+      "worktreePath": ".buildbeat/worktrees/RUN-CLEAN-START-03",
+      "base": "577ac7718b0b43d2b22cf792f2e7d9a5080337f1",
+      "candidate": null
+    }
+  },
+  "evidence": [],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}
