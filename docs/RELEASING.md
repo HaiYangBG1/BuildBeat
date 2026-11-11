@@ -2,7 +2,7 @@
 
 This runbook governs BuildBeat's public npm distribution. The canonical package is `@haiyangbg/buildbeat` in `HaiYangBG1/BuildBeat`; the only executable is `buildbeat`. No other package name or executable alias receives publications.
 
-Release evidence at source package version `@haiyangbg/buildbeat@6.0.0`; latest independently verified BuildBeat npm distribution `@haiyangbg/buildbeat@5.5.0` (dist-tag `latest`; `next` stays at `5.4.0` until the owner moves it with npm 2FA), anchored by annotated tag `v5.5.0` at commit `a83b84b` and workflow run [42020765897](https://github.com/HaiYangBG1/BuildBeat/actions/runs/42020765897). From 6.0 on, the evidence of a release (run id, tag, commit, readback) is the publication paragraph of its `CHANGELOG.md` entry; the evidence files of earlier releases are in the repository at tag `v5.5.0` under `docs/releases/`.
+Release evidence at source package version `@haiyangbg/buildbeat@6.0.0`; latest independently verified BuildBeat npm distribution `@haiyangbg/buildbeat@6.0.0` (dist-tag `latest`; `next` stays at `5.5.0` until the owner moves it with npm 2FA), anchored by annotated tag `v6.0.0` at commit `f4b8615` and workflow run [43028519165](https://github.com/HaiYangBG1/BuildBeat/actions/runs/43028519165). From 6.0 on, the evidence of a release (run id, tag, commit, readback) is the publication paragraph of its `CHANGELOG.md` entry; the evidence files of earlier releases are in the repository at tag `v5.5.0` under `docs/releases/`.
 
 ## Channels and branches
 
