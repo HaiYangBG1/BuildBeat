@@ -1,0 +1,91 @@
+{
+  "run": "RUN-READER-TEST-06",
+  "work": "WORK-READER-TEST",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-READER-TEST-07 (same work WORK-READER-TEST)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:bf8ddc4416d19b5e28d9d2d4e26a14628439bdfd1b3ba770c97e5c8461a9387b"
+  },
+  "startedAt": "2026-11-11T11:39:26.680Z",
+  "finishedAt": "2026-11-11T11:49:10.473Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 378392
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 205181
+  },
+  "workspaces": {
+    "RUN-READER-TEST-06": {
+      "repo": ".",
+      "branch": "run/RUN-READER-TEST-06",
+      "worktreePath": ".buildbeat/worktrees/RUN-READER-TEST-06",
+      "base": "a6ee6fe240a49e498f8f63da4c3eafbe95f0aa65",
+      "candidate": "599a7f4dccc3b5490bbd52e2853d77c59620c0be"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-READER-TEST-06/logs/verify-1.log",
+      "kind": "command",
+      "subject": "599a7f4dccc3b5490bbd52e2853d77c59620c0be",
+      "digest": "sha256:80aa202655c0ef8b7dd3018313555b87ab7d056c317cb203a5c0a1daaa5178f0",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-READER-TEST-06/logs/review-1.log",
+      "kind": "command",
+      "subject": "599a7f4dccc3b5490bbd52e2853d77c59620c0be",
+      "digest": "sha256:34eb535bd294f7409ef0890a5bfd2c0e4914daaa6372fb916062500f5d757040",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-READER-TEST-06/outputs/review-1.json",
+      "kind": "review",
+      "subject": "599a7f4dccc3b5490bbd52e2853d77c59620c0be",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}
