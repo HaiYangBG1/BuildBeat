@@ -1,0 +1,215 @@
+{
+  "run": "RUN-CLEAN-START-05",
+  "work": "WORK-CLEAN-START",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 45,
+    "lastDigest": "sha256:579e3c3deba97230474d406e15112cdb02bef5314f6075858cb49136f58928fe"
+  },
+  "startedAt": "2026-11-11T03:58:48.746Z",
+  "finishedAt": "2026-11-11T04:58:53.156Z",
+  "attempts": {
+    "verify": 2,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 10
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 3,
+    "waits": {
+      "decided": {
+        "count": 3,
+        "ms": 2985764
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 617743
+  },
+  "workspaces": {
+    "RUN-CLEAN-START-05": {
+      "repo": ".",
+      "branch": "run/RUN-CLEAN-START-05",
+      "worktreePath": ".buildbeat/worktrees/RUN-CLEAN-START-05",
+      "base": "c79e5afba1ee1d9215d9a4592aa208db5a822f0f",
+      "candidate": "959839f74f78b7cee4a75ed43586f41ba26cc2ca"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-05/logs/verify-1.log",
+      "kind": "command",
+      "subject": "dcc6d3a277c6e546829a104ac0a4170fae650324",
+      "digest": "sha256:cc6015e6cc0537d7404c52eb2f0f345e6450c6d8805c2da23428c5b2bc913828",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:4bcd6facd0102332366e6049292d057e1756b7087d94737b34d26811dbcf943f"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-05/logs/review-1.log",
+      "kind": "command",
+      "subject": "dcc6d3a277c6e546829a104ac0a4170fae650324",
+      "digest": "sha256:7b0e05936e3e5673b875d52089fb7fafa3ff27d7082eef9cb7771c4f6ab38c06",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-05/outputs/review-1.json",
+      "kind": "review",
+      "subject": "dcc6d3a277c6e546829a104ac0a4170fae650324",
+      "digest": "sha256:a1600f68c7266b45ad791085cc257a4604fbd74310e0283ecbae1bb1e835f426",
+      "status": "passed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P2",
+          "summary": "src/v2/runtime/overview.js:218 将任意 Markdown/YAML 文件视为旧工作证据，导致仅有 notes.md 或当前格式 run-config.yaml、尚未创建 work.md 的新工作被误标为 LEGACY，并提示关窗而非补写工作说明；应保留新草稿与旧格式工作的区分。"
+        },
+        {
+          "severity": "P2",
+          "summary": "docs/v2/guide/12-without-runtime.md:12、100 及英文对应位置仍宣称运行时会自动实现和修复代码，与已确认的减法目标及当前功能不符，未完成第三段要求的指南更新。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-05/logs/verify-2.log",
+      "kind": "command",
+      "subject": "959839f74f78b7cee4a75ed43586f41ba26cc2ca",
+      "digest": "sha256:e455cc65ae810a7315c8acb86ab14f59113c06a422f3ca31a0d7914645363b95",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:53dc297ab0031cc4e73a0ac94279f2053bde48a6ba194b7f521419cb1bacebdd"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-05/logs/review-2.log",
+      "kind": "command",
+      "subject": "959839f74f78b7cee4a75ed43586f41ba26cc2ca",
+      "digest": "sha256:3bfe366a2ceb0db69353c66328346d84222453ac63340f0d98c45911f6a90b6f",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-05/outputs/review-2.json",
+      "kind": "review",
+      "subject": "959839f74f78b7cee4a75ed43586f41ba26cc2ca",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "dcc6d3a277c6e546829a104ac0a4170fae650324",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-CLEAN-START-05-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      },
+      "adopted": "dcc6d3a277c6e546829a104ac0a4170fae650324",
+      "resumeAt": "verify"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "959839f74f78b7cee4a75ed43586f41ba26cc2ca",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:a1600f68c7266b45ad791085cc257a4604fbd74310e0283ecbae1bb1e835f426"
+      },
+      "decisionRef": "D-RUN-CLEAN-START-05-2",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      },
+      "adopted": "959839f74f78b7cee4a75ed43586f41ba26cc2ca",
+      "resumeAt": "verify"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "959839f74f78b7cee4a75ed43586f41ba26cc2ca",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-CLEAN-START-05-3",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-CLEAN-START-05-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "dcc6d3a277c6e546829a104ac0a4170fae650324",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-CLEAN-START-05-2",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "959839f74f78b7cee4a75ed43586f41ba26cc2ca",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:a1600f68c7266b45ad791085cc257a4604fbd74310e0283ecbae1bb1e835f426"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-CLEAN-START-05-3",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "959839f74f78b7cee4a75ed43586f41ba26cc2ca",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
