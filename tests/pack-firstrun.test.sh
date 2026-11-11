@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# Packaged first run: pack the npm artifact, install it into an isolated
-# prefix, and drive a v2 run from the *installed* templates and presets with
-# a scripted agent until it stops at the merge decision. This proves the
-# published package carries every path the quickstart relies on
-# (bin/, src/v2/presets/, templates/v2/envelope/) — not that a real model
-# can complete a task. Source-tree tests cannot catch a file missing from
-# package.json "files"; this one can.
+# Packaged first review: pack the npm artifact, install it into an isolated
+# prefix, and review a commit from the *installed* templates with a scripted
+# reviewer until the owner approves it. This proves the published package
+# carries every path the quickstart relies on (bin/, templates/), not
+# that a real model can complete a task. Source-tree tests cannot catch a
+# file missing from package.json "files"; this one can.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -61,144 +60,117 @@ PKG_DIR="$PREFIX/lib/node_modules/@haiyangbg/buildbeat"
 [ -x "$BIN_DIR/buildbeat" ] || fail "installed package has no executable buildbeat"
 pass "packed artifact installs the buildbeat executable"
 for relative in \
-  src/v2/presets/software-delivery.yaml \
-  templates/v2/run-config.example.yaml \
-  templates/v2/envelope/worker.sh \
-  templates/v2/envelope/prompts/builder.md \
-  templates/v2/envelope/prompts/reviewer.md \
-  templates/v2/envelope/prompts/fixer.md \
-  templates/v2/AGENTS.md \
-  docs/v2/guide/01-quickstart.md; do
+  templates/run-config.example.yaml \
+  templates/work.example.md \
+  templates/result.example.md \
+  templates/envelope/worker.sh \
+  templates/envelope/prompts/reviewer.md \
+  templates/AGENTS.md \
+  docs/guide/01-quickstart.md; do
   [ -f "$PKG_DIR/$relative" ] || fail "packed artifact is missing $relative"
 done
-pass "packed artifact carries the quickstart's preset, templates, envelope, and guide"
+pass "packed artifact carries the quickstart's templates, envelope, and guide"
+for relative in \
+  src/presets/software-delivery.yaml \
+  templates/envelope/prompts/builder.md \
+  templates/envelope/prompts/fixer.md; do
+  [ ! -e "$PKG_DIR/$relative" ] || fail "packed artifact still ships $relative"
+done
+pass "packed artifact ships no builder or fixer prompt and no workflow preset"
 for relative in \
   docs/README.md \
   docs/CAPABILITY-MATRIX.md \
   docs/RELEASING.md \
-  docs/v2/RFC-0001-product-definition.md \
-  docs/v2/RFC-0002-domain-model.md \
-  docs/v2/RFC-0003-workflow-policy.md \
-  docs/v2/SPEC-0001-events-v1.md \
-  docs/v2/guide/README.md \
-  docs/v2/guide/11-session-handoff.md; do
+  docs/SPEC-0001-events-v1.md \
+  docs/guide/README.md \
+  docs/guide/11-session-handoff.md; do
   [ -f "$PKG_DIR/$relative" ] || fail "packed artifact is missing current doc $relative"
 done
-pass "packed artifact carries every current doc (index, matrix, RFC/SPEC, guides)"
-# Historical records (iteration logs, release evidence, pilots, plans) stay in
-# the repository only; package.json "files" negates them so installs do not
-# carry them. Guard the negation so a later edit cannot quietly ship them again.
-HISTORICAL_SHIPPED="$(cd "$PKG_DIR/docs" && find . -type f \( \
-  -name '*-RELEASE-EVIDENCE-*.md' -o -name 'V2-ITERATION-*.md' -o -name 'PHASE*.md' \
-  -o -name 'V2-PLAN.md' -o -name 'V2-PROPOSAL.md' -o -name 'V2-DECISIONS.md' \
-  -o -name 'V2-D2-DECISION-CARD.md' -o -name 'ROADMAP.md' -o -name 'EXECUTION-PLAN.md' \
-  -o -name 'CLI-STRATEGY-*.md' -o -name 'CLI-PILOT-*.md' -o -name 'M[124]-*.md' \
-  -o -name 'BuildBeat v2*.md' \) | sort)"
-[ -z "$HISTORICAL_SHIPPED" ] || { OUTPUT="$HISTORICAL_SHIPPED"; fail "packed artifact ships historical docs that package.json files should exclude"; }
-pass "packed artifact excludes historical docs (iteration logs, release evidence, pilots, plans)"
-[ -f "$PKG_DIR/example/delivery/work/WORK-EXPORT-DATE-FILTER/run-config.yaml" ] || fail "packed artifact is missing the example project"
+pass "packed artifact carries every current doc (index, matrix, ledger format, guides)"
+# History before 6.0 is at tag v5.5.0, not in the tree; nothing of it may
+# come back into the package.
+for relative in docs/MIGRATION.md docs/history docs/releases CHANGELOG-v1.md \
+  docs/v2 templates/v2 src/v2; do
+  [ ! -e "$PKG_DIR/$relative" ] || fail "packed artifact ships removed history: $relative"
+done
+pass "packed artifact carries no history document"
+[ -f "$PKG_DIR/example/delivery/run-config.yaml" ] || fail "packed artifact is missing the example project's run config"
+[ -f "$PKG_DIR/example/delivery/work/WORK-EXPORT-DATE-FILTER/work.md" ] || fail "packed artifact is missing the example project's work"
 [ -f "$PKG_DIR/CHANGELOG.md" ] || fail "packed artifact is missing CHANGELOG.md"
-[ ! -e "$PKG_DIR/CHANGELOG-v1.md" ] || fail "packed artifact ships the repository-only CHANGELOG-v1.md"
-pass "packed artifact carries CHANGELOG.md and not the v1 changelog archive"
+pass "packed artifact carries CHANGELOG.md"
 
 OUTPUT="$("$BIN_DIR/buildbeat" 2>&1 || true)"
 expect_contains "BuildBeat runtime" "installed buildbeat prints its usage"
 
-# 2. Fixture project laid out the way docs/v2/guide/01-quickstart.md §1 does,
+# 2. Fixture project laid out the way docs/guide/01-quickstart.md does,
 #    reading every BuildBeat file from the installed package.
 PROJECT="$TMP_ROOT/project"
 mkdir -p "$PROJECT"
 git init -q -b main "$PROJECT"
 git -C "$PROJECT" config user.email "pilot@example.com"
 git -C "$PROJECT" config user.name "Pilot"
-mkdir -p "$PROJECT/src" "$PROJECT/tests" "$PROJECT/tools" "$PROJECT/delivery/work/WORK-PACK"
-: > "$PROJECT/src/.gitkeep"
-: > "$PROJECT/tests/.gitkeep"
-printf '# plan\n1. write src/feature.txt\n' > "$PROJECT/delivery/work/WORK-PACK/work.md"
-cp "$PKG_DIR/src/v2/presets/software-delivery.yaml" "$PROJECT/delivery/work/WORK-PACK/workflow.yaml"
-cp -R "$PKG_DIR/templates/v2/envelope" "$PROJECT/delivery/envelope"
+mkdir -p "$PROJECT/src" "$PROJECT/tools" "$PROJECT/delivery/work/WORK-PACK"
+printf '.buildbeat/\n' > "$PROJECT/.gitignore"
+cp -R "$PKG_DIR/templates/envelope" "$PROJECT/delivery/envelope"
 
-cat > "$PROJECT/tools/fake-agent.sh" <<'AGENT'
+cat > "$PROJECT/tools/fake-reviewer.sh" <<'AGENT'
 #!/usr/bin/env bash
 set -euo pipefail
-role=$1
 node -e 'const i=JSON.parse(process.env.BUILDBEAT_INPUT);const fs=require("node:fs");if(i.workArtifact?.ref!=="delivery/work/WORK-PACK/work.md"||!fs.existsSync(i.workArtifact.ref)||!fs.readFileSync(process.env.BUILDBEAT_PROMPT,"utf8").includes("work.md"))process.exit(9)'
 prompt=${@: -1}
-case "$role" in
-  build) [ -n "$prompt" ] || exit 9; echo feature > src/feature.txt ;;
-  fix) [ -n "$prompt" ] || exit 9; echo fixed > src/fixed.txt ;;
-  review) [ -n "$prompt" ] || exit 9; printf '%s\n' '{"status":"succeeded","findings":[{"severity":"P2","summary":"naming could be clearer"}]}' ;;
-esac
+[ -n "$prompt" ] || exit 9
+printf '%s\n' '{"status":"succeeded","findings":[{"severity":"P2","summary":"naming could be clearer"}]}'
 AGENT
 
-cat > "$PROJECT/delivery/work/WORK-PACK/run-config.yaml" <<'CONFIG'
-repo: ../../..
-work: WORK-PACK
-run: RUN-PACK
-allowedPaths:
-  - src
-  - tests
-envelope:
-  prompts: ../../envelope/prompts
-workers:
-  builder:
-    command: bash
-    args:
-      - delivery/envelope/worker.sh
-      - builder
-      - --
-      - bash
-      - tools/fake-agent.sh
-      - build
-  verifier:
-    command: bash
-    args:
-      - -lc
-      - test -f src/feature.txt && test -f src/fixed.txt
-  reviewer:
-    command: bash
-    args:
-      - delivery/envelope/worker.sh
-      - reviewer
-      - --
-      - bash
-      - tools/fake-agent.sh
-      - review
-  fixer:
-    command: bash
-    args:
-      - delivery/envelope/worker.sh
-      - fixer
-      - --
-      - bash
-      - tools/fake-agent.sh
-      - fix
-CONFIG
-
+# The installed sample, with codex swapped for the scripted reviewer and the
+# verifier pointed at the file the change adds.
+sed -e 's|      - npm test|      - test -f src/feature.txt|' \
+  "$PKG_DIR/templates/run-config.example.yaml" \
+  | awk '
+      /^      - codex$/ { print "      - bash"; print "      - tools/fake-reviewer.sh"; skip = 3; next }
+      skip > 0 { skip--; next }
+      { print }
+    ' > "$PROJECT/delivery/run-config.yaml"
+if grep -q '^ *- codex$' "$PROJECT/delivery/run-config.yaml"; then fail "the sample still names codex after the swap"; fi
 git -C "$PROJECT" add .
 git -C "$PROJECT" commit -q -m "baseline"
 
-# 3. The quickstart order: accept -> doctor -> start -> read evidence.
+printf '# Add the feature\n\n## Goal\nwrite src/feature.txt\n' > "$PROJECT/delivery/work/WORK-PACK/work.md"
+git -C "$PROJECT" add .
+git -C "$PROJECT" commit -q -m "describe WORK-PACK"
+
+# 3. The quickstart order: accept -> check -> commit -> review -> approve.
 export PATH="$BIN_DIR:$PATH"
-OUTPUT="$(cd "$PROJECT" && buildbeat accept --repo . --work WORK-PACK --artifact work --by owner 2>&1)"
+OUTPUT="$(cd "$PROJECT" && buildbeat accept --repo . --work WORK-PACK --by owner --as human 2>&1)"
 expect_contains "accepted work as A-WORK-PACK-" "accept records the work digest"
 
-OUTPUT="$(cd "$PROJECT" && buildbeat check --config delivery/work/WORK-PACK/run-config.yaml 2>&1)"
+OUTPUT="$(cd "$PROJECT" && buildbeat check --repo . --work WORK-PACK 2>&1)"
 expect_contains "work.md: accepted" "check reads the accepted work"
-expect_contains "fixer: env allowlist" "check reports the fixer's env posture"
+expect_contains "environment: allowlist; host credentials withheld" "check reports the workers' environment"
+expect_contains "ready: commit the change, then buildbeat review --repo . --work WORK-PACK" "check says what comes next"
 
-OUTPUT="$(cd "$PROJECT" && buildbeat run --config delivery/work/WORK-PACK/run-config.yaml 2>&1)"
-expect_contains "status: WAITING_HUMAN" "run stops for a human"
-expect_contains "waiting on human: enter-wait-merge" "run stops at the merge decision"
-expect_not_contains "$TMP_ROOT" "run output never prints the host absolute path"
+echo feature > "$PROJECT/src/feature.txt"
+git -C "$PROJECT" add .
+git -C "$PROJECT" commit -q -m "add the feature" -m "Work: WORK-PACK"
+CANDIDATE="$(git -C "$PROJECT" rev-parse HEAD)"
+
+OUTPUT="$(cd "$PROJECT" && buildbeat review --repo . --work WORK-PACK 2>&1)"
+expect_contains "status: WAITING_HUMAN" "review stops for the owner"
+expect_contains "waiting on human: enter-wait-merge" "review stops at the merge decision"
+expect_contains "--action approve --candidate $CANDIDATE" "review prints the approval of this commit"
+expect_not_contains "$TMP_ROOT" "review output never prints the host absolute path"
 
 OUTPUT="$(cd "$PROJECT" && buildbeat status --repo . --run RUN-PACK-01 2>&1)"
-expect_contains "step verify: SUCCEEDED (attempts 2)" "verify failed once and passed after the fixer"
-expect_contains "step fix: SUCCEEDED (attempts 1)" "the packaged wrapper drove the fixer"
-expect_contains "evidence [passed/L2] review" "the reviewer envelope became evidence"
+expect_contains "step verify: SUCCEEDED (attempts 1)" "the project's verify command ran on the commit"
+expect_contains "evidence [passed/L2] review" "the reviewer's report became evidence"
 expect_not_contains "infra" "no step was misread as an infrastructure failure"
 
-OUTPUT="$(cd "$PROJECT" && buildbeat status --repo . 2>&1)"
-expect_contains "WORK-PACK" "status lists the work"
+OUTPUT="$(cd "$PROJECT" && buildbeat decide --repo . --work WORK-PACK --action approve --candidate "$CANDIDATE" --by owner --as human 2>&1)"
+expect_contains "RUN-PACK-01 is terminal: SUCCEEDED" "the owner's approval of the commit is recorded"
 
-printf 'PASS: packaged first run reached the merge decision from the installed artifact (%d assertions)\n' "$ASSERTIONS"
+OUTPUT="$(cd "$PROJECT" && buildbeat status --repo . 2>&1)"
+expect_contains "WORK-PACK  MERGED" "status shows the approved work"
+[ ! -e "$PROJECT/.buildbeat/worktrees/RUN-PACK-01" ] || fail "the review checkout was left behind"
+pass "the review checkout is gone"
+
+printf 'PASS: packaged first review reached the approval from the installed artifact (%d assertions)\n' "$ASSERTIONS"

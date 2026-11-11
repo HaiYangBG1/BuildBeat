@@ -1,0 +1,119 @@
+{
+  "run": "RUN-STALE-FINDINGS-01",
+  "work": "WORK-STALE-FINDINGS",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 17,
+    "lastDigest": "sha256:f2ef724bddeef9a56ed8cffe616ab3393c87406e3636502167da1b2f000894c8"
+  },
+  "startedAt": "2026-11-11T12:19:11.480Z",
+  "finishedAt": "2026-11-11T12:30:29.663Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 1,
+        "ms": 443749
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 234220
+  },
+  "workspaces": {
+    "RUN-STALE-FINDINGS-01": {
+      "repo": ".",
+      "branch": "run/RUN-STALE-FINDINGS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-STALE-FINDINGS-01",
+      "base": "8adba471ca13a78d5eff0848b48da3b88e7c9f71",
+      "candidate": "2024f1a3a22e78e9eab7b99acbddb84f060c8d70"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-STALE-FINDINGS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "2024f1a3a22e78e9eab7b99acbddb84f060c8d70",
+      "digest": "sha256:97a048fb7e9b81853f35ffb7c5fd373f2ac4c198d7d9ac0cbf30f18f7e0a90dd",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-STALE-FINDINGS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "2024f1a3a22e78e9eab7b99acbddb84f060c8d70",
+      "digest": "sha256:eb8528b9fc345500393df3813e447de86ba374cf3b1182e1e3eee81662619a99",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-STALE-FINDINGS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "2024f1a3a22e78e9eab7b99acbddb84f060c8d70",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "2024f1a3a22e78e9eab7b99acbddb84f060c8d70",
+        "planDigest": "sha256:8755c4bc0be7bc90b8a15da0b7e20f230736834f8217c9e9b83ee6d18101009f",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-STALE-FINDINGS-01-1",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-STALE-FINDINGS-01-1",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "2024f1a3a22e78e9eab7b99acbddb84f060c8d70",
+        "planDigest": "sha256:8755c4bc0be7bc90b8a15da0b7e20f230736834f8217c9e9b83ee6d18101009f",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

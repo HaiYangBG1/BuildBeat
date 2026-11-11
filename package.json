@@ -1,7 +1,7 @@
 {
   "name": "@haiyangbg/buildbeat",
-  "version": "5.5.0",
-  "description": "BuildBeat: Git-based project context management. Why each piece of work was done, what was decided and where it stands live in Git with the code, so any session, tool or person can pick it up; AI build-test-review loops stop for a human decision.",
+  "version": "6.0.0",
+  "description": "BuildBeat: Git-based project context management. Why each piece of work was done, what was decided and where it stands live in Git with the code, so any session, tool or person can pick it up; a commit is verified, reviewed read-only by another AI, and approved by a human.",
   "type": "module",
   "bin": {
     "buildbeat": "bin/buildbeat.js"
@@ -11,9 +11,8 @@
     "docs/README.md",
     "docs/CAPABILITY-MATRIX.md",
     "docs/RELEASING.md",
-    "docs/MIGRATION.md",
-    "docs/v2/",
-    "!docs/v2/M[124]-*.md",
+    "docs/guide/",
+    "docs/SPEC-0001-events-v1.md",
     "example/",
     "src/",
     "templates/",

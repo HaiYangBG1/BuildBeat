@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - v2
 
 permissions:
   contents: read
@@ -22,13 +21,13 @@ jobs:
           fetch-depth: 0
 
       - name: Check Shell syntax
-        run: bash -n .github/scripts/*.sh tests/*.sh templates/v2/envelope/*.sh
+        run: bash -n .github/scripts/*.sh tests/*.sh templates/envelope/*.sh
 
       - name: Run ShellCheck
         run: |
           sudo apt-get update
           sudo apt-get install --yes shellcheck
-          shellcheck -x .github/scripts/*.sh tests/*.sh templates/v2/envelope/*.sh
+          shellcheck -x .github/scripts/*.sh tests/*.sh templates/envelope/*.sh
 
       - name: Check documentation
         run: bash tests/check-docs.sh
@@ -83,8 +82,13 @@ jobs:
           - os: macos-latest
             node: 24
     steps:
+      # Full history and tags: one test reads this version's records with
+      # the runtime of the v5.5.0 tag.
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -100,5 +104,5 @@ jobs:
       - name: Audit package contents
         run: npm run pack:check
 
-      - name: Packaged first run (install the packed artifact, drive a run to the merge decision)
+      - name: Packaged first review (install the packed artifact, review a commit to the approval)
         run: npm run test:pack-firstrun

@@ -1,0 +1,6 @@
+# What WORK-README-DIAGRAMS may change; everything else comes from delivery/run-config.yaml.
+allowedPaths:
+  - docs/assets/readme
+  - README.md
+  - README.en.md
+  - tests

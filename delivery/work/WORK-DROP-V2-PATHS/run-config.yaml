@@ -1,0 +1,22 @@
+# What WORK-DROP-V2-PATHS may change; everything else comes from delivery/run-config.yaml.
+allowedPaths:
+  - src
+  - bin
+  - tests
+  - docs
+  - templates
+  - example
+  - plugins
+  - evals
+  - delivery/envelope
+  - delivery/run-config.yaml
+  - .github/workflows/ci.yml
+  - .github/workflows/codeql.yml
+  - .claude-plugin
+  - SKILL.md
+  - README.md
+  - README.en.md
+  - CONTRIBUTING.md
+  - CHANGELOG.md
+  - lessons.md
+  - package.json

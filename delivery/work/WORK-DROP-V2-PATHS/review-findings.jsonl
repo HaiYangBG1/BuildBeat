@@ -1,0 +1,1 @@
+{"ts":"2026-11-11T12:54:52.818Z","kind":"finding","run":"RUN-DROP-V2-PATHS-01","step":"review","attempt":1,"id":"F-RUN-DROP-V2-PATHS-01-review-1-1","severity":"P2","summary":"tests/check_docs.py:189-191 和 tests/pack-firstrun.test.sh:93 新增旧路径字面量，导致 work.md 明确要求无结果的旧路径 git grep 验收命令仍返回四处命中。","fingerprint":"b5192642d679c33b"}

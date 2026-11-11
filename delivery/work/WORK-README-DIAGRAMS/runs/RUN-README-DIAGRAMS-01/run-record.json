@@ -1,0 +1,124 @@
+{
+  "run": "RUN-README-DIAGRAMS-01",
+  "work": "WORK-README-DIAGRAMS",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 17,
+    "lastDigest": "sha256:ddcb7202bdf6570237d3dc9181cdf52fa19dfe422144e09c4aeefef9ab2c135d"
+  },
+  "startedAt": "2026-11-11T12:55:12.108Z",
+  "finishedAt": "2026-11-11T13:00:21.953Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 1,
+        "ms": 58579
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 251072
+  },
+  "workspaces": {
+    "RUN-README-DIAGRAMS-01": {
+      "repo": ".",
+      "branch": "run/RUN-README-DIAGRAMS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-README-DIAGRAMS-01",
+      "base": "8a8c05d1ababee8f74ebba9a99f35fc5f13762d6",
+      "candidate": "d6aa769a87332aeff9f1a37106e6017ecb03a730"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-DIAGRAMS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "d6aa769a87332aeff9f1a37106e6017ecb03a730",
+      "digest": "sha256:7dde4e86af6b3f1fff8affe5e66c5a0374a3d6231f8ae37bdc7970071ca6b6d2",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-DIAGRAMS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "d6aa769a87332aeff9f1a37106e6017ecb03a730",
+      "digest": "sha256:df6c7b839fc357e3cec88443ac894140ac329dc9f08076b574447932136d003c",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-README-DIAGRAMS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "d6aa769a87332aeff9f1a37106e6017ecb03a730",
+      "digest": "sha256:c2644c77f77c30b303e63a7469849588e730ab97d97c5455ccb8425739ee4c90",
+      "status": "passed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P2",
+          "summary": "docs/assets/readme/diagrams.mjs 的 en.fixNarrow 将已确认的“Session revises”改为未经批准的“Revise”，使英文窄版回路丢失“由会话修改”的职责说明，与工作说明要求不符。"
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d6aa769a87332aeff9f1a37106e6017ecb03a730",
+        "planDigest": "sha256:87f2b553e34812a8193ffbc1db98d07025ba178803a582bba5b5cb77151d0367",
+        "evidenceDigest": "sha256:c2644c77f77c30b303e63a7469849588e730ab97d97c5455ccb8425739ee4c90"
+      },
+      "decisionRef": "D-RUN-README-DIAGRAMS-01-1",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-README-DIAGRAMS-01-1",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d6aa769a87332aeff9f1a37106e6017ecb03a730",
+        "planDigest": "sha256:87f2b553e34812a8193ffbc1db98d07025ba178803a582bba5b5cb77151d0367",
+        "evidenceDigest": "sha256:c2644c77f77c30b303e63a7469849588e730ab97d97c5455ccb8425739ee4c90"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

@@ -2,7 +2,7 @@
 // when the test file finishes, whatever its assertions did: without this,
 // one full `npm test` left ~150 directories (~24 MB, git worktrees
 // included) in $TMPDIR. Test files use tempDir() instead of mkdtempSync;
-// tests/v2-test-hygiene.test.js keeps it that way.
+// tests/test-hygiene.test.js keeps it that way.
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

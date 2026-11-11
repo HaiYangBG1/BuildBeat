@@ -1,0 +1,1 @@
+{"ts":"2026-11-10T16:27:43.268Z","kind":"finding","run":"RUN-EXPORT-DATE-FILTER-01","step":"review","attempt":1,"id":"F-RUN-EXPORT-DATE-FILTER-01-review-1-1","severity":"P2","summary":"日期区间用字符串比较依赖 YYYY-MM-DD 格式，已有校验兜底，但可以在 export.js 顶部注释里写明这个前提","fingerprint":"58e58f3bd78f7435"}

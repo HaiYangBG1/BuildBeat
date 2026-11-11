@@ -1,0 +1,10 @@
+# What WORK-READER-TEST may change; everything else comes from delivery/run-config.yaml.
+allowedPaths:
+  - src
+  - tests
+  - templates
+  - example/delivery/envelope
+  - delivery/envelope
+  - docs/v2/guide
+  - SKILL.md
+  - CHANGELOG.md

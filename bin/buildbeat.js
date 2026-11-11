@@ -14,4 +14,4 @@ if (major < 20) {
   process.exit(1);
 }
 
-import("../src/v2/cli/run.js");
+import("../src/cli/run.js");

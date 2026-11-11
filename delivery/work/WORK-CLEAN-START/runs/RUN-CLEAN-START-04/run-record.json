@@ -1,0 +1,256 @@
+{
+  "run": "RUN-CLEAN-START-04",
+  "work": "WORK-CLEAN-START",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 53,
+    "lastDigest": "sha256:3b1b6762c7bff992493ba6678a55dac5ac4fc139ea394204ac9a01f6450c6ef0"
+  },
+  "startedAt": "2026-11-11T03:31:24.484Z",
+  "finishedAt": "2026-11-11T03:58:28.619Z",
+  "attempts": {
+    "verify": 3,
+    "review": 2
+  },
+  "budgets": {
+    "attempts": {
+      "consumed": 2,
+      "remaining": 10
+    }
+  },
+  "cost": {
+    "reviewRounds": 2,
+    "humanWaits": 4,
+    "waits": {
+      "decided": {
+        "count": 4,
+        "ms": 457127
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 1,
+    "workerMs": 1165590
+  },
+  "workspaces": {
+    "RUN-CLEAN-START-04": {
+      "repo": ".",
+      "branch": "run/RUN-CLEAN-START-04",
+      "worktreePath": ".buildbeat/worktrees/RUN-CLEAN-START-04",
+      "base": "14093299b86f9af7fce9238376b3ce3a54163d8a",
+      "candidate": "d557022273c99f3f1c2abf38f915c6cdbcb97eeb"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-04/logs/verify-1.log",
+      "kind": "command",
+      "subject": "e1e17c74dd77c8769abd514d5480dd4ff252fbf4",
+      "digest": "sha256:56a3b8008bee51d54dbfa0c6d3f744d4a22dd0ee6234c6c532d2d4e234b37c35",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:82554fe5cceed9a88ab16d13cc2ab21cc2689aa8b30635ad5fb6c4932b578f2d"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-04/logs/verify-2.log",
+      "kind": "command",
+      "subject": "4f254e05318089c3a855c5fbbf54a985ad654219",
+      "digest": "sha256:8cdd4b94f28856e7c8a619fb1b7371ddd5bc99869128d80706c7f7c1737f9ab7",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:148fd199119c7a76cfcc7a7041cc76fa9cc2728a292807132e8b5fde24f8bf23"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-04/logs/review-1.log",
+      "kind": "command",
+      "subject": "4f254e05318089c3a855c5fbbf54a985ad654219",
+      "digest": "sha256:97c948783f1fb7899d8611b75bfc97a2ad5406784a6c2dd6136373c33a92e60c",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-04/outputs/review-1.json",
+      "kind": "review",
+      "subject": "4f254e05318089c3a855c5fbbf54a985ad654219",
+      "digest": "sha256:58e8019ddad874c8cf0f96fcd67d5db73142ce3770e5135571646abea290dc1c",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P0",
+          "summary": "src/v2/runtime/orchestrator.js:723 移除了中断清理的 pass 限制，同一工作再次送审会对中断的旧 builder/fixer 工作区执行 worktree remove --force 和 branch -D，导致其中未提交的修改直接丢失；应仅自动清理临时审查检出。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/overview-repos.js:165 的关窗检查忽略项目级 release 配置：工作继承 delivery/run-config.yaml 的回读命令却未单独声明 release 时，closeWork 允许未经回读直接关窗，违反配置继承及保留上线回读约束的要求。"
+        },
+        {
+          "severity": "P2",
+          "summary": "src/v2/runtime/overview.js:241 仅凭决定等记录识别旧工作，只有 intent.md、plan.md 且尚无决定记录的旧草稿会显示 NO_INTENT 并提示新建 work.md，未按工作说明第 8 项显示 LEGACY 和对应处理提示。"
+        }
+      ]
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-04/logs/verify-3.log",
+      "kind": "command",
+      "subject": "d557022273c99f3f1c2abf38f915c6cdbcb97eeb",
+      "digest": "sha256:84886417bcf40ad6673a8d8f7c08ba4ef7b1abb33ef6a65a40969070d60024b7",
+      "status": "passed",
+      "grade": "L2",
+      "cacheKey": "sha256:4b52731838b5f2a60254d3b282279ddaf78e8d87acc545e7f737289b0caaa3dd"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-04/logs/review-2.log",
+      "kind": "command",
+      "subject": "d557022273c99f3f1c2abf38f915c6cdbcb97eeb",
+      "digest": "sha256:890dc8b8910906a0a2a4278c761793ab3f51de6227cd63346bb901151f96bdf7",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-CLEAN-START-04/outputs/review-2.json",
+      "kind": "review",
+      "subject": "d557022273c99f3f1c2abf38f915c6cdbcb97eeb",
+      "digest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75",
+      "status": "passed",
+      "grade": "L2",
+      "findings": []
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "e1e17c74dd77c8769abd514d5480dd4ff252fbf4",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "decisionRef": "D-RUN-CLEAN-START-04-1",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      },
+      "adopted": "e1e17c74dd77c8769abd514d5480dd4ff252fbf4",
+      "resumeAt": "verify"
+    },
+    {
+      "decision": "approved",
+      "transition": "resume-verify",
+      "subject": {
+        "candidate": "4f254e05318089c3a855c5fbbf54a985ad654219",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:56a3b8008bee51d54dbfa0c6d3f744d4a22dd0ee6234c6c532d2d4e234b37c35"
+      },
+      "decisionRef": "D-RUN-CLEAN-START-04-2",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      },
+      "adopted": "4f254e05318089c3a855c5fbbf54a985ad654219",
+      "resumeAt": "verify"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "d557022273c99f3f1c2abf38f915c6cdbcb97eeb",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:58e8019ddad874c8cf0f96fcd67d5db73142ce3770e5135571646abea290dc1c"
+      },
+      "decisionRef": "D-RUN-CLEAN-START-04-3",
+      "actor": {
+        "kind": "agent",
+        "id": "claude-code",
+        "source": "flag"
+      },
+      "adopted": "d557022273c99f3f1c2abf38f915c6cdbcb97eeb",
+      "resumeAt": "verify"
+    },
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d557022273c99f3f1c2abf38f915c6cdbcb97eeb",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "decisionRef": "D-RUN-CLEAN-START-04-4",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-CLEAN-START-04-1",
+      "transition": "enter-build",
+      "subject": {
+        "candidate": "e1e17c74dd77c8769abd514d5480dd4ff252fbf4",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "UNVERIFIED"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-CLEAN-START-04-2",
+      "transition": "resume-verify",
+      "subject": {
+        "candidate": "4f254e05318089c3a855c5fbbf54a985ad654219",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:56a3b8008bee51d54dbfa0c6d3f744d4a22dd0ee6234c6c532d2d4e234b37c35"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-CLEAN-START-04-3",
+      "transition": "enter-fix",
+      "subject": {
+        "candidate": "d557022273c99f3f1c2abf38f915c6cdbcb97eeb",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:58e8019ddad874c8cf0f96fcd67d5db73142ce3770e5135571646abea290dc1c"
+      },
+      "stale": false,
+      "resumeAt": "verify"
+    },
+    {
+      "decisionRef": "D-RUN-CLEAN-START-04-4",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "d557022273c99f3f1c2abf38f915c6cdbcb97eeb",
+        "planDigest": "sha256:3f13e9619375e35beb917e224673e1a5f8d143cc93b5a36b02e0379d25a5a3f4",
+        "evidenceDigest": "sha256:739263d05a36f48e3c4b206eb44d6faf85ae4a172437a6bba99e3388a7839b75"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

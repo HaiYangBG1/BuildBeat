@@ -113,7 +113,7 @@ plugins = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 matching = [item for item in plugins if item.get("id") == "buildbeat@buildbeat-plugins"]
 assert len(matching) == 1
 plugin = matching[0]
-assert plugin.get("version") == "0.6.5"
+assert plugin.get("version") == "0.7.0"
 assert plugin.get("scope") == "user"
 assert plugin.get("enabled") is True
 
@@ -136,11 +136,11 @@ for relative in templates docs example; do
     fail "$relative was not dereferenced into a regular cached directory"
   fi
 done
-[ -f "$INSTALL_PATH/docs/v2/guide/01-quickstart.md" ] \
+[ -f "$INSTALL_PATH/docs/guide/01-quickstart.md" ] \
   || fail "installed plugin is missing reference documentation"
 # A team without the runtime starts from the plugin alone: guide 12 must ship.
 for guide in 12-without-runtime.md 12-without-runtime.en.md; do
-  cmp -s "$REPO_ROOT/docs/v2/guide/$guide" "$INSTALL_PATH/docs/v2/guide/$guide" \
+  cmp -s "$REPO_ROOT/docs/guide/$guide" "$INSTALL_PATH/docs/guide/$guide" \
     || fail "installed plugin is missing or differs on the files-only guide: $guide"
 done
 [ -f "$INSTALL_PATH/example/README.md" ] \
@@ -154,8 +154,8 @@ cmp -s "$REPO_ROOT/SKILL.md" "$INSTALL_PATH/SKILL.md" \
   || fail "installed root skill differs from the canonical SKILL.md"
 for template in work.example.md result.example.md; do
   cmp -s \
-    "$REPO_ROOT/templates/v2/$template" \
-    "$INSTALL_PATH/templates/v2/$template" \
+    "$REPO_ROOT/templates/$template" \
+    "$INSTALL_PATH/templates/$template" \
     || fail "installed templates differ from the canonical repository source: $template"
 done
 [ ! -e "$INSTALL_PATH/templates/standards" ] || fail "retired governance templates are still installed by default"

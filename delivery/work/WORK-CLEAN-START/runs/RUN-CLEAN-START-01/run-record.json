@@ -1,0 +1,61 @@
+{
+  "run": "RUN-CLEAN-START-01",
+  "work": "WORK-CLEAN-START",
+  "workflow": "software-delivery",
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "CANCELLED",
+    "reason": "scope to be rewritten after the subtraction list (owner chose: list first, then one combined work)"
+  },
+  "events": {
+    "from": 1,
+    "to": 5,
+    "lastDigest": "sha256:1c83f873fd4195f43ad40cd1b41dcca40a2821d1ae72a844dd9b0c25f74ea85c"
+  },
+  "startedAt": "2026-11-10T13:45:03.187Z",
+  "finishedAt": "2026-11-10T13:51:47.205Z",
+  "attempts": {},
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 0,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 1,
+        "ms": 404016
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 0
+  },
+  "workspaces": {
+    "RUN-CLEAN-START-01": {
+      "repo": ".",
+      "branch": "run/RUN-CLEAN-START-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-CLEAN-START-01",
+      "base": "27e05ae6a8d12cfff305bb04f09c331130d9d824",
+      "candidate": null
+    }
+  },
+  "evidence": [],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

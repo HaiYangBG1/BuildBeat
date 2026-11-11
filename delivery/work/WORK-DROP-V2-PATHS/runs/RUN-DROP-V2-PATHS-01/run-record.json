@@ -1,0 +1,124 @@
+{
+  "run": "RUN-DROP-V2-PATHS-01",
+  "work": "WORK-DROP-V2-PATHS",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 17,
+    "lastDigest": "sha256:d95f77df89628d8bc49021fbe41d2280735da020931f155faf502f107a017dbb"
+  },
+  "startedAt": "2026-11-11T12:49:43.547Z",
+  "finishedAt": "2026-11-11T13:00:21.774Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 1,
+        "ms": 328955
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 309044
+  },
+  "workspaces": {
+    "RUN-DROP-V2-PATHS-01": {
+      "repo": ".",
+      "branch": "run/RUN-DROP-V2-PATHS-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-DROP-V2-PATHS-01",
+      "base": "3d880cbf5ba79020aa0c895e24993e7d93f9ee3b",
+      "candidate": "70fcaf6f348d20aeb187638a2a982f04669b2315"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-DROP-V2-PATHS-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "70fcaf6f348d20aeb187638a2a982f04669b2315",
+      "digest": "sha256:8ab9274989de7d08ed88737e7743220443338cb9e481076ae81078d4a9a0cc91",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-DROP-V2-PATHS-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "70fcaf6f348d20aeb187638a2a982f04669b2315",
+      "digest": "sha256:78597844ad10e69cb3e247b300a0979fa7169ad1b01d7c07ebabbb6c9ab59d78",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-DROP-V2-PATHS-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "70fcaf6f348d20aeb187638a2a982f04669b2315",
+      "digest": "sha256:283cd7d959b3aa65cb892b2d0fa9b917a1d454dec55a2a215ebc39bcddeeb8e8",
+      "status": "passed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P2",
+          "summary": "tests/check_docs.py:189-191 和 tests/pack-firstrun.test.sh:93 新增旧路径字面量，导致 work.md 明确要求无结果的旧路径 git grep 验收命令仍返回四处命中。"
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "70fcaf6f348d20aeb187638a2a982f04669b2315",
+        "planDigest": "sha256:cea330d6acb5b937a03c7e425c3665cbc15d142ccfcbba7e5826a50094c38208",
+        "evidenceDigest": "sha256:283cd7d959b3aa65cb892b2d0fa9b917a1d454dec55a2a215ebc39bcddeeb8e8"
+      },
+      "decisionRef": "D-RUN-DROP-V2-PATHS-01-1",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-DROP-V2-PATHS-01-1",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "70fcaf6f348d20aeb187638a2a982f04669b2315",
+        "planDigest": "sha256:cea330d6acb5b937a03c7e425c3665cbc15d142ccfcbba7e5826a50094c38208",
+        "evidenceDigest": "sha256:283cd7d959b3aa65cb892b2d0fa9b917a1d454dec55a2a215ebc39bcddeeb8e8"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
