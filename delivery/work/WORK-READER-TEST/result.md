@@ -2,7 +2,7 @@
 
 多了一条命令 `buildbeat reader --repo <path> --work <ID> [--doc work|result]`：把一份 work.md 或 result.md 交给一个只看得到这份文档的只读 AI，它在项目之外的空目录里回答固定问题，答案、答不出的清单和核对结果记进 `delivery/work/<ID>/reader-tests.jsonl`。所有者批准的提交是 `3860ca5`，在会话分支 `claude/open-source-project-review-9d8d4f` 上，没有推送，没有发版。这是第一项用这个分支上的新运行时（`node bin/buildbeat.js review`）送审的工作。
 
-数字：`src` 8,336 行（线是 8,400）；测试 345 项；独立审查 8 轮（原定上限 6，后两轮经所有者同意）。
+数字：`src` 8,336 行（线是 8,400）；测试 344 项全部通过；独立审查 8 轮（原定上限 6，后两轮经所有者同意）。
 
 ## 本仓实测（2026-11-11，codex exec 只读，每份约 1 分钟）
 
