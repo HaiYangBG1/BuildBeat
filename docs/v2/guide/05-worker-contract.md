@@ -1,15 +1,15 @@
-# Worker 合同
+# 审查者和验证者的合同
 
 [English](05-worker-contract.en.md)
 
-builder/fixer 只修改允许的范围并提交候选；verifier 运行真实验收命令；reviewer 独立、只读，检查固定候选。随包信封替 builder/fixer 机械提交，提交信息末尾空一行带 `Work: <工作编号>`（取自 `BUILDBEAT_INPUT` 的 `workId`），`buildbeat history --path` 从代码找回工作时认它。
+验证者跑项目真实的验收命令。它不改文件、不挪动 HEAD；验证后检出不干净或 HEAD 变了，这一轮记为 `FAILED`。
 
-结构化输出：`{"status":"succeeded","findings":[{"severity": "P1", "summary": "具体问题"}]}`。severity 为 P0–P3，summary 为字符串；`P0` / `P1` 阻断并触发修复。只读步骤前后工作树变化会阻断结果。
+审查者独立、只读，看的是固定的一个提交。它动了检出里的文件，这一轮记为 `CANCELLED`，报告作废。
 
-reviewer 输入包含历史裁决 anchor 和可用的 lastReviewed 增量范围；fixer 输入包含本轮问题及裁决状态。提示词可以使用它们，不能自行批准。
+审查报告写进 `$BUILDBEAT_OUTPUT`：`{"status":"succeeded","findings":[{"severity": "P1", "summary": "具体问题"}]}`。severity 是 P0–P3，summary 是字符串；`P0` / `P1` 阻断批准。没有问题也要交 `{"findings": []}`。报告外面包一层 json 代码块可以接受。
 
-环境缺工具、后端不可用、沙箱禁止必要操作等用 exit 75；不要通过修改业务代码掩盖环境问题。日志不得主动输出凭据。实际候选、退出码和证据都由内核回读，自述不能替代事实。
+读不懂的报告、缺 severity 的问题、退出 0 却没写报告（只打印在 stdout 不算），都记为 `invalid-output`，属于工具故障，不能据此要求改代码。
 
-无效信封记为 `invalid-output`，属于环境故障，不能据此要求修改业务代码。审查步骤退出 0 却没有把报告写进 `$BUILDBEAT_OUTPUT`（只打印在 stdout 不算）同样记为 `invalid-output` 并停人；没有问题也要交 `{"findings": []}`。
+审查者的输入里有工作说明（`workArtifact`：仓内路径和已接受的摘要）、起点提交、上次审查过的提交和历史裁决。提示词可以用它们；审查者不能自行批准。
 
-`BUILDBEAT_INPUT.workArtifact` carries the selected repository-relative `ref` and accepted `digest`. Read that artifact; use work.md first and legacy intent/plan only when work.md is absent.
+环境缺工具、后端不可用、沙箱禁止必要操作，用 exit 75；不要通过改代码掩盖环境问题。日志不要输出凭据。提交、退出码和证据都由运行时自己回读，自述不能替代事实。

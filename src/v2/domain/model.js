@@ -1,4 +1,4 @@
-// v2 domain constants. Source of truth: docs/v2/RFC-0002-domain-model.md and
+// Domain constants. The event side follows
 // docs/v2/SPEC-0001-events-v1.md (FROZEN; additive-only evolution).
 
 export const WORK_STATES = ["OPEN", "COMPLETED", "CANCELLED"];

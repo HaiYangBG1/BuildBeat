@@ -115,7 +115,7 @@ Three months later nobody remembers why a piece of code is written the way it is
 
 ### ⑤ Done means evidence, not the AI's word
 
-The AI says "done, all tests pass", and you don't quite trust it, so you run and read everything again yourself. BuildBeat reads the test results itself, has another read-only AI review the change, fixes what's found, tests and reviews again, then stops for your decision, with a record of who approved and when.
+The AI says "done, all tests pass", and you don't quite trust it, so you run and read everything again yourself. Once the AI has committed its change, BuildBeat runs the project's tests on that commit and reads the results itself, then has another read-only AI, one that did not write the code, review it. If something is found, the AI fixes it and sends the new commit. Then it stops for your decision; the approval is recorded on that commit, with who approved and when.
 
 <picture>
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/evidence-en-dark-narrow.png">
@@ -142,9 +142,9 @@ Please set up BuildBeat (https://github.com/HaiYangBG1/BuildBeat) in this projec
    npm view @haiyangbg/buildbeat@latest version
    npm install --global @haiyangbg/buildbeat@latest
    buildbeat --version
-   If a 3.x version is installed and still has unfinished work, finish or cancel it with the old version before upgrading.
+   If a version before 6 is installed and still has unfinished work, finish or cancel it with the old version before upgrading.
 3. Read SKILL.md and docs/v2/guide/01-quickstart.en.md from the npm package (under $(npm root -g)/@haiyangbg/buildbeat/) and work the way SKILL.md describes from now on.
-4. Following the quickstart, put the templates into this project and update .gitignore. By default, use the AI command-line tool already signed in on this machine for building, reviewing and fixing; ask me if unsure.
+4. Following the quickstart, put the templates into this project and update .gitignore. You write the code; for the review, use another AI command-line tool already signed in on this machine by default; ask me if unsure.
 5. When you're done, tell me in a sentence or two that we can start. From then on I'll just tell you in plain words what I want, and you run the commands.
 ```
 
@@ -172,12 +172,12 @@ No Node or runtime? Skill and project files alone work too; see [Skill and proje
 | **First time** | **You**: (paste the text above)<br>**AI**: All set, we can start. |
 | **Starting a work** | **You**: Add CSV export to the ledger.<br>**AI**: I wrote `work.md`: export the filtered entries, quote fields with commas, done when all tests pass. Look right?<br>**You**: Yes, go. |
 | **New session, computer or person** | **You**: Where are we?<br>**AI**: "CSV export" is done and waiting for your go-ahead. The first review found unquoted commas; that's fixed and retested, and the second review passed.<br>**You**: Approve and merge it. |
-| **One more change** | **You**: Empty lists should export too.<br>**AI**: OK, I'll keep going, test and review again, and call you when it passes. |
-| **You changed something yourself** | **You**: I reworded the button and committed it.<br>**AI**: Got it, I'll test and review your change again. |
+| **One more change** | **You**: Empty lists should export too.<br>**AI**: OK, I'll commit the change, send it for testing and review again, and call you when it passes. |
+| **You changed something yourself** | **You**: I reworded the button and committed it.<br>**AI**: Got it, I'll send your commit for testing and review. |
 | **Stuck** | **AI**: I've stopped: the local database isn't running. That's not a code problem, so I haven't touched the code.<br>**You**: It's up, continue. |
-| **Several repositories** | **You**: Where are all the repos at?<br>**AI**: Three works across two repos: one waits for your go-ahead, two are still running. |
+| **Several repositories** | **You**: Where are all the repos at?<br>**AI**: Three works across two repos: one waits for your go-ahead, two are still in progress. |
 
-It only stops to find you in these cases: the work is done and waits for your go-ahead, the budget is used up, a review keeps finding new problems, or the environment is broken.
+It only stops to find you in these cases: a work description needs your OK, a reviewed commit waits for your go-ahead, a finding needs your ruling, or the environment is broken.
 
 <details>
 <summary>What the AI sees behind "Where are we?"</summary>
@@ -185,16 +185,16 @@ It only stops to find you in these cases: the work is done and waits for your go
 ```text
 $ buildbeat status --repo . --work WORK-CSV-EXPORT
 WORK-CSV-EXPORT  MERGE_DECISION
-  [P1 0b5e258117cb5602] (accept) csv: quote fields that contain commas
-  work.md ✓ · runs 1
-  cost: review rounds 2 · findings 1 · human waits 1 (open 33s) · worker 2s
+  [P1 0b5e258117cb5602] (open) csv: quote fields that contain commas
+  work.md ✓ · runs 2 · unadjudicated P0/P1 findings 1
+  cost: review rounds 2 · findings 1
+  latest RUN-CSV-EXPORT-02 WAITING_HUMAN candidate f3db37d waiting enter-wait-merge
 work WORK-CSV-EXPORT:
-  RUN-CSV-EXPORT-01 [final-decision] enter-wait-merge — waiting 33s
-    candidate: ede20b668cb04ae30cba1676b5e031930e711c8d
-    next: buildbeat decide --action approve … --candidate ede20b6… --by <you>
-    next: buildbeat decide --action reject … --reason <why> --by <you>
-    next: buildbeat run … --adopt <sha> --by <you>   # commit a manual repair in the run worktree …
-    next: buildbeat decide … --action fix --reason <what to repair> --by <you>
+  RUN-CSV-EXPORT-02 [final-decision] enter-wait-merge — waiting 33s
+    candidate: f3db37deac08fd6f00a4891af8067c92436bd9ea
+    reason: verified and reviewed with no blocking finding; the decision on this commit is the person's
+    next: buildbeat decide --repo . --work WORK-CSV-EXPORT --action approve --candidate f3db37d… --by <you>
+    next: buildbeat decide --repo . --work WORK-CSV-EXPORT --action reject --reason <why> --by <you>
 ```
 
 </details>
@@ -214,27 +214,27 @@ your-project/
 ├── AGENTS.md, CLAUDE.md            tell AI tools this project uses BuildBeat
 ├── .gitignore                      add the two .buildbeat/ folders below
 ├── delivery/                       travels with Git
+│   ├── run-config.yaml             how a commit is tested and who reviews it in this project
 │   ├── envelope/
-│   │   ├── worker.sh               wraps an AI tool as a step BuildBeat can call
-│   │   └── prompts/                prompts for build, review and fix
+│   │   ├── worker.sh               wraps the reviewing AI tool as a step BuildBeat can call
+│   │   └── prompts/                the review prompt
 │   └── work/
 │       └── WORK-X/                 one folder per work
 │           ├── work.md             what to do and what counts as done
-│           ├── run-config.yaml     which AI, which tests, which folders it may change
+│           ├── run-config.yaml     optional: folders this work may change, settings that differ from the project
 │           ├── decisions.jsonl     accept, approve, close and other decisions
 │           ├── review-findings.jsonl  problems the review found and your rulings
 │           ├── releases.jsonl      checks after going live (only if used)
 │           ├── result.md           written at closing: what was delivered, what is left, what went into project docs
 │           └── runs/RUN-X-01/
-│               └── run-record.json this run's outcome, evidence and cost
+│               └── run-record.json this review's outcome, evidence and cost
 └── .buildbeat/
-    ├── notify.yaml                 optional: webhook or DingTalk alerts when you're needed
-    ├── runtime/                    this machine only: live ledger, logs, screenshots
-    └── worktrees/                  this machine only: isolated copies the AI works in
+    ├── runtime/                    this machine only: each review's ledger, logs, screenshots
+    └── worktrees/                  this machine only: the temporary checkout of a review, removed afterwards
 ```
 
 - `delivery/` goes into Git: switching sessions, tools, computers or people just means pulling the code and carrying on; do not exclude it in `.gitignore` or `.git/info/exclude`. Screenshots, archives and logs under it stay on this machine, out of Git. A work's folder holds its records and the few files the work itself needs, such as its verify script. Command output, readback results and one-off scripts stay out: write the conclusions into `result.md` and keep scripts you will run again in the project's own directories. `accept` and `check` warn when more than 10 files besides the records are there.
-- `.buildbeat/runtime/` and `.buildbeat/worktrees/` stay on this machine: a run in progress does not travel with Git, so finish or stop it where it started
+- `.buildbeat/runtime/` and `.buildbeat/worktrees/` stay on this machine: a review still waiting for your decision does not travel with Git; on another machine, send the commit for review again
 - People and AI tools without BuildBeat installed can still read these files and draft `work.md`
 
 To contribute, see [Contributing](CONTRIBUTING.md); the code is open source under the [MIT license](LICENSE).

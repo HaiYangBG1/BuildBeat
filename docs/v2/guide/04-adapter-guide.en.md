@@ -1,13 +1,20 @@
-# Worker integration
+# Connecting the verification command and the review tool
 
 [简体中文](04-adapter-guide.md)
 
-The Shell Adapter runs a configured AI CLI or script in the isolated worktree. The chosen tool owns its model, authentication and business capability. Recorded real AI worker evidence covers codex exec; other tools need their own validation.
+The verifier and the reviewer are each one command in the config, run in a temporary checkout of the commit. The model, authentication and capability come from the tool you use. The shipped `templates/v2/envelope/worker.sh` passes the prompt to the review tool as the last argument and hands its output back; to change tools, change only the command after `--`.
 
-BUILDBEAT_INPUT carries work/step context, and BUILDBEAT_PROMPT points to the materialized prompt. Structured steps write BUILDBEAT_OUTPUT. The runner reads verifier exit codes and logs. The shipped worker.sh handles arguments, commits and envelopes.
+What the runtime gives a command:
 
-The default environment allowlist is PATH HOME LANG LC_ALL TMPDIR TERM USER SHELL. env injects named values; inheritEnv explicitly enables inheritance. Files under HOME are outside this boundary.
+- `BUILDBEAT_INPUT`: JSON with the work id, the step, the path and digest of the work description (`workArtifact`), the starting commit (`base`), the commit reviewed last time and earlier rulings.
+- `BUILDBEAT_PROMPT`: this round's prompt file (reviewer only).
+- `BUILDBEAT_OUTPUT`: the reviewer writes its report here.
+- `BUILDBEAT_SCREENSHOT_DIR`: the directory the verification command writes screenshots to (when screenshots are configured).
 
-Timeouts, crashes, invalid JSON and exit 75 are infrastructure failures: stop for a human without dispatching a fixer. Ordinary nonzero exits are candidate failures. Live stdout/stderr supports status and becomes evidence logs when the step finishes.
+For the verifier only the exit code and the log count: 0 is a pass, 75 means the environment is not ready, any other nonzero code means this commit failed.
 
-The Mock Adapter validates deterministic protocol behavior, not real model capability.
+By default the environment carries only `PATH HOME LANG LC_ALL TMPDIR TERM USER SHELL`; `env` lists the extra variables to pass in, and `inheritEnv: true` inherits everything. `check` prints the environment each command actually gets. Files under HOME are outside this isolation.
+
+A timeout, a crash, an unreadable report and exit 75 are all recorded as tool trouble, and the round is `CANCELLED`.
+
+Which tools really work has to be verified for each one; a scripted reviewer only proves that the flow connects, not what a real model can do.

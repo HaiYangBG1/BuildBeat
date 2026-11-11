@@ -30,7 +30,6 @@ ACTIVE_DOCS = (
     "lessons.md",
     "docs/README.md",
     "docs/CAPABILITY-MATRIX.md",
-    "docs/MIGRATION.md",
     "docs/RELEASING.md",
     "docs/v2/guide/README.md",
     "docs/v2/guide/README.en.md",
@@ -133,10 +132,6 @@ CRITICAL_GOVERNANCE_FILES = (
     "CONTRIBUTING.md",
     "SECURITY.md",
     "docs/CAPABILITY-MATRIX.md",
-    "docs/MIGRATION.md",
-    "docs/v2/RFC-0001-product-definition.md",
-    "docs/v2/RFC-0002-domain-model.md",
-    "docs/v2/RFC-0003-workflow-policy.md",
     "docs/v2/SPEC-0001-events-v1.md",
 )
 CRITICAL_PLUGIN_FILES = (
@@ -186,6 +181,14 @@ REMOVED_PATHS = (
     "example/delivery/work/WORK-EXPORT-DATE-FILTER/workflow.yaml",
     "example/.buildbeat/notify.yaml",
     ".buildbeat/observe.yaml",
+    # History before 6.0 lives at tag v5.5.0, not in the tree.
+    "docs/MIGRATION.md",
+    "CHANGELOG-v1.md",
+    "docs/history",
+    "docs/releases",
+    "docs/v2/RFC-0001-product-definition.md",
+    "docs/v2/RFC-0002-domain-model.md",
+    "docs/v2/RFC-0003-workflow-policy.md",
 )
 
 
@@ -232,7 +235,12 @@ def check_relative_links(paths: list[Path]) -> list[str]:
         "#",
     )
 
+    work_records = ROOT / "delivery" / "work"
     for path in paths:
+        # A work's folder is a record of its own date: what it linked to may
+        # have been removed since, and records are not rewritten.
+        if work_records in path.parents:
+            continue
         text = path.read_text(encoding="utf-8")
         for match in MARKDOWN_LINK.finditer(text):
             target = link_target(match.group(1))
@@ -552,10 +560,16 @@ def check_cli_package() -> list[str]:
         changelog,
         re.MULTILINE,
     )
+    # The changelog was restarted at 6.0: until the first release heading
+    # exists, the released version is the tag its opening line points at.
+    earlier = re.search(r"^Earlier history: see tag v(\d+\.\d+\.\d+)\.$", changelog, re.MULTILINE)
+    if earlier is None:
+        errors.append("CHANGELOG.md: must open with 'Earlier history: see tag v<version>.'")
     if version_match is None:
         errors.append("package.json: version must use three-part SemVer")
     elif latest_match is None:
-        errors.append("CHANGELOG.md: latest release heading is missing")
+        if earlier is not None and earlier.group(1) != version:
+            errors.append("package.json: version does not match the tag the changelog starts from, and no release heading exists")
     else:
         latest_version = ".".join(
             (latest_match.group(1), latest_match.group(2), latest_match.group(3) or "0")
@@ -585,10 +599,9 @@ def check_cli_package() -> list[str]:
     ):
         if required not in package_files:
             errors.append(f"package.json: published files must include {required}")
-    # docs/ ships by whitelist: history and release evidence live in
-    # docs/history/ and docs/releases/ and must never be packed by default.
-    if "docs/" in package_files or any(entry.startswith(("docs/history", "docs/releases")) for entry in package_files):
-        errors.append("package.json: docs/ ships by whitelist; do not publish docs/ wholesale or docs/history|releases")
+    # docs/ ships by whitelist.
+    if "docs/" in package_files:
+        errors.append("package.json: docs/ ships by whitelist; do not publish docs/ wholesale")
     if package.get("engines", {}).get("node") != ">=20":
         errors.append("package.json: supported Node floor must stay explicit at >=20")
     if package.get("dependencies") not in (None, {}):

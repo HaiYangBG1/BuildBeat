@@ -81,31 +81,23 @@ for relative in \
   docs/README.md \
   docs/CAPABILITY-MATRIX.md \
   docs/RELEASING.md \
-  docs/v2/RFC-0001-product-definition.md \
-  docs/v2/RFC-0002-domain-model.md \
-  docs/v2/RFC-0003-workflow-policy.md \
   docs/v2/SPEC-0001-events-v1.md \
   docs/v2/guide/README.md \
   docs/v2/guide/11-session-handoff.md; do
   [ -f "$PKG_DIR/$relative" ] || fail "packed artifact is missing current doc $relative"
 done
-pass "packed artifact carries every current doc (index, matrix, RFC/SPEC, guides)"
-# Historical records (iteration logs, release evidence, pilots, plans) stay in
-# the repository only; package.json "files" negates them so installs do not
-# carry them. Guard the negation so a later edit cannot quietly ship them again.
-HISTORICAL_SHIPPED="$(cd "$PKG_DIR/docs" && find . -type f \( \
-  -name '*-RELEASE-EVIDENCE-*.md' -o -name 'V2-ITERATION-*.md' -o -name 'PHASE*.md' \
-  -o -name 'V2-PLAN.md' -o -name 'V2-PROPOSAL.md' -o -name 'V2-DECISIONS.md' \
-  -o -name 'V2-D2-DECISION-CARD.md' -o -name 'ROADMAP.md' -o -name 'EXECUTION-PLAN.md' \
-  -o -name 'CLI-STRATEGY-*.md' -o -name 'CLI-PILOT-*.md' -o -name 'M[124]-*.md' \
-  -o -name 'BuildBeat v2*.md' \) | sort)"
-[ -z "$HISTORICAL_SHIPPED" ] || { OUTPUT="$HISTORICAL_SHIPPED"; fail "packed artifact ships historical docs that package.json files should exclude"; }
-pass "packed artifact excludes historical docs (iteration logs, release evidence, pilots, plans)"
+pass "packed artifact carries every current doc (index, matrix, ledger format, guides)"
+# History before 6.0 is at tag v5.5.0, not in the tree; nothing of it may
+# come back into the package.
+for relative in docs/MIGRATION.md docs/history docs/releases CHANGELOG-v1.md \
+  docs/v2/RFC-0001-product-definition.md docs/v2/RFC-0002-domain-model.md docs/v2/RFC-0003-workflow-policy.md; do
+  [ ! -e "$PKG_DIR/$relative" ] || fail "packed artifact ships removed history: $relative"
+done
+pass "packed artifact carries no history document"
 [ -f "$PKG_DIR/example/delivery/run-config.yaml" ] || fail "packed artifact is missing the example project's run config"
 [ -f "$PKG_DIR/example/delivery/work/WORK-EXPORT-DATE-FILTER/work.md" ] || fail "packed artifact is missing the example project's work"
 [ -f "$PKG_DIR/CHANGELOG.md" ] || fail "packed artifact is missing CHANGELOG.md"
-[ ! -e "$PKG_DIR/CHANGELOG-v1.md" ] || fail "packed artifact ships the repository-only CHANGELOG-v1.md"
-pass "packed artifact carries CHANGELOG.md and not the v1 changelog archive"
+pass "packed artifact carries CHANGELOG.md"
 
 OUTPUT="$("$BIN_DIR/buildbeat" 2>&1 || true)"
 expect_contains "BuildBeat runtime" "installed buildbeat prints its usage"

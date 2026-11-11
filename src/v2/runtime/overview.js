@@ -210,9 +210,15 @@ function ledgersOf(repoRoot, context) {
   return context.ledgers.get(repoRoot);
 }
 
-// The files that say a folder without work.md once held a work: records an
-// earlier version wrote in its own format. They stay in Git and are not read.
-const RECORDS = ["decisions.jsonl", "review-findings.jsonl", "releases.jsonl", "result.md", "runs", "intent.md", "plan.md", "workflow.yaml"];
+// What says a folder without work.md once held a work: records, or a
+// description in an earlier version's format, which is any Markdown or YAML
+// file this version does not itself put there before work.md (a run config,
+// notes, environment facts). They stay in Git and are not read.
+const RECORDS = ["decisions.jsonl", "review-findings.jsonl", "releases.jsonl", "result.md", "runs"];
+const DRAFT_FILES = /^(?:run-config.*\.yaml|notes\.md|env-facts\.md)$/;
+const heldWork = (workDir) =>
+  directory(workDir) &&
+  readdirSync(workDir).some((name) => RECORDS.includes(name) || (/\.(md|ya?ml)$/.test(name) && !DRAFT_FILES.test(name)));
 
 export function computeOverview(
   repoRoot,
@@ -238,7 +244,7 @@ export function computeOverview(
     const runs = runsFor(repoRoot, workId, ledgersOf(repoRoot, context));
     const decisions = readJsonl(join(workDir, "decisions.jsonl"));
     const description = descriptionStatus(workDir, decisions);
-    const legacy = !description.exists && RECORDS.some((name) => existsSync(join(workDir, name)));
+    const legacy = !description.exists && heldWork(workDir);
     if (!description.exists && !legacy && runs.length === 0 && !directory(workDir)) continue;
     const envFacts = existsSync(join(workDir, "env-facts.md"));
     const findingRows = readFindingsAccount(repoRoot, workId);

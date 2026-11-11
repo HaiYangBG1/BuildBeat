@@ -5,12 +5,8 @@ README.md
 SKILL.md
 bin/buildbeat.js
 docs/CAPABILITY-MATRIX.md
-docs/MIGRATION.md
 docs/README.md
 docs/RELEASING.md
-docs/v2/RFC-0001-product-definition.md
-docs/v2/RFC-0002-domain-model.md
-docs/v2/RFC-0003-workflow-policy.md
 docs/v2/SPEC-0001-events-v1.md
 docs/v2/guide/00-how-to-talk.en.md
 docs/v2/guide/00-how-to-talk.md
