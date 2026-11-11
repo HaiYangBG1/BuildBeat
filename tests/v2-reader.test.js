@@ -85,29 +85,35 @@ test("the paths a reader of work.md names are checked against allowedPaths, then
   const { root } = fixture({ prefix: "bb-reader-" });
   const test1 = (answers, allowedPaths) => runReaderTest({ repoRoot: root, workId: WORK, adapter: reader(answers), allowedPaths }).checks;
   const named = (paths) => WORK_ANSWERS.map((answer, index) => (index === 1 ? paths : answer));
-  const scope = (ok, missed = []) => [{ question: 2, against: "allowedPaths", ok, missed }];
-  // Before any commit: the answer has to cover every area the work may change.
+  const scope = (ok, outside = []) => [{ question: 2, against: "allowedPaths", ok, missed: [], outside }];
+  // Before any commit: everything the reader would change must be in scope.
   assert.deepEqual(test1(named(["src/feature.txt"]), ["src"]), scope(true));
-  assert.deepEqual(test1(named(["src"]), ["src"]), scope(true));
-  assert.deepEqual(test1(named("修改 `src/feature.txt`，其余不动"), ["src"]), scope(true));
-  assert.deepEqual(test1(named(["修改 src/feature.txt"]), ["src", "docs/guide"]), scope(false, ["docs/guide"]));
-  // A directory above an area covers it; a longer name is another name.
-  assert.deepEqual(test1(named(["docs"]), ["docs/guide"]), scope(true));
-  assert.deepEqual(test1(named(["my-src/x.js", "src.old", "resrc"]), ["src"]), scope(false, ["src"]));
+  assert.deepEqual(test1(named(["`src/`", "src/**"]), ["src"]), scope(true));
+  assert.deepEqual(test1(named(["src/feature.txt", "docs/guide.md"]), ["src"]), scope(false, ["docs/guide.md"]));
+  // A directory above an area is wider than the scope; a longer name is another name.
+  assert.deepEqual(test1(named(["docs"]), ["docs/guide"]), scope(false, ["docs"]));
+  assert.deepEqual(test1(named(["src.old", "my-src/x.js"]), ["src"]), scope(false, ["src.old", "my-src/x.js"]));
   assert.deepEqual(test1(named(["文档/说明.md", "src/my file.js"]), ["src", "文档"]), scope(true));
-  assert.deepEqual(test1(named("everything it needs"), ["src"]), scope(false, ["src"]));
+  // An item is one path and nothing else: prose is not parsed for paths.
+  assert.deepEqual(test1(named(["修改 src/feature.txt"]), ["src"]), scope(false, ["修改 src/feature.txt"]));
+  assert.deepEqual(test1(named("everything it needs"), ["src"]), scope(false, ["everything it needs"]));
+  assert.deepEqual(test1(named([]), ["src"]), scope(false));
 
   commit(root, `add the feature\n\nWork: ${WORK}`, { "src/feature.txt": "hello\n", "docs/guide.md": "guide\n" });
   const against = "the paths the work's commits changed";
-  assert.deepEqual(test1(named(["src/", "docs/guide.md"]), ["src"]), [{ question: 2, against, ok: true, missed: [] }]);
-  assert.deepEqual(test1(named(["`src/feature.txt`"]), null), [{ question: 2, against, ok: false, missed: ["docs/guide.md"] }]);
+  const cover = (ok, missed = []) => [{ question: 2, against, ok, missed, outside: [] }];
+  // After: every changed file is named, or lies in a named directory.
+  assert.deepEqual(test1(named(["src/", "docs/guide.md"]), ["src"]), cover(true));
+  assert.deepEqual(test1(named(["`src/feature.txt`"]), null), cover(false, ["docs/guide.md"]));
+  // Another file of the same directory does not cover this one.
+  assert.deepEqual(test1(named(["src/other.txt", "docs"]), null), cover(false, ["src/feature.txt"]));
 
   // A merge counts for what it brought in from the side branch.
   git(root, ["checkout", "-q", "-b", "side"]);
   commit(root, "side work", { "lib/side.js": "side\n" });
   git(root, ["checkout", "-q", "main"]);
   git(root, ["merge", "-q", "--no-ff", "side", "-m", `merge side\n\nWork: ${WORK}`]);
-  assert.deepEqual(test1(named(["src", "docs"]), null), [{ question: 2, against, ok: false, missed: ["lib/side.js"] }]);
+  assert.deepEqual(test1(named(["src", "docs"]), null), cover(false, ["lib/side.js"]));
   assert.equal(test1(named(["src", "docs", "lib"]), null)[0].ok, true);
 });
 
@@ -118,8 +124,8 @@ test("a reader of result.md is checked on the approved commit and on the write-b
   const merge = commit(root, "later work on main", { "README.md": "more\n" });
   write(root, `delivery/work/${WORK}/result.md`, `# ${WORK}\n\nShipped.\n\n## Written into the project\n- docs/notes.md @ ${noted.slice(0, 7)} — the rule\n- docs/missing.md @ ${noted.slice(0, 7)} — not in that commit\n`);
   const checks = (answers) => runReaderTest({ repoRoot: root, workId: WORK, adapter: reader(answers) }).checks;
-  const commitCheck = (ok) => ({ question: 1, against: "the commits approved for this work", ok, missed: ok ? [] : [sha.slice(0, 7)] });
-  const docsCheck = (ok) => ({ question: 4, against: "the write-back lines Git confirms", ok, missed: ok ? [] : ["docs/notes.md"] });
+  const commitCheck = (ok) => ({ question: 1, against: "the commits approved for this work", ok, missed: ok ? [] : [sha.slice(0, 7)], outside: [] });
+  const docsCheck = (ok) => ({ question: 4, against: "the write-back lines Git confirms", ok, missed: ok ? [] : ["docs/notes.md"], outside: [] });
   assert.deepEqual(checks(RESULT_ANSWERS(sha)), [commitCheck(true), docsCheck(true)]);
   // A later commit that contains the approved one counts; an unrelated or unnamed one does not.
   assert.deepEqual(checks(RESULT_ANSWERS(merge))[0], commitCheck(true));

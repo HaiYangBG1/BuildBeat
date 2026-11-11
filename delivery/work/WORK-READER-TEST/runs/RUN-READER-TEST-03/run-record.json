@@ -1,0 +1,96 @@
+{
+  "run": "RUN-READER-TEST-03",
+  "work": "WORK-READER-TEST",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-READER-TEST-04 (same work WORK-READER-TEST)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:689a1b0b5e40c21148b8657c38324d09be1095bd183b99ec86e3279edaf9cf10"
+  },
+  "startedAt": "2026-11-11T11:17:59.548Z",
+  "finishedAt": "2026-11-11T11:24:21.851Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 123191
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 258880
+  },
+  "workspaces": {
+    "RUN-READER-TEST-03": {
+      "repo": ".",
+      "branch": "run/RUN-READER-TEST-03",
+      "worktreePath": ".buildbeat/worktrees/RUN-READER-TEST-03",
+      "base": "a6ee6fe240a49e498f8f63da4c3eafbe95f0aa65",
+      "candidate": "523cda6df45da5b85ea09155b9e6b0083cf6d3e3"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-READER-TEST-03/logs/verify-1.log",
+      "kind": "command",
+      "subject": "523cda6df45da5b85ea09155b9e6b0083cf6d3e3",
+      "digest": "sha256:1b04b54ab46890179adcb645dfc17099e28dc26e72350d4190fb7bc8e30232b0",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-READER-TEST-03/logs/review-1.log",
+      "kind": "command",
+      "subject": "523cda6df45da5b85ea09155b9e6b0083cf6d3e3",
+      "digest": "sha256:5b15e77ffcf9c9acc7642d5e74cc828e0b327a42f8408d4292b0533c4a447179",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-READER-TEST-03/outputs/review-1.json",
+      "kind": "review",
+      "subject": "523cda6df45da5b85ea09155b9e6b0083cf6d3e3",
+      "digest": "sha256:0f6df2c2a09320cace13c2ae0bbf764c0b4a1502caaf4c2b1240369d0da9223d",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/reader.js:161 将带说明文字且以扩展名结尾的列表项整体当作路径，导致合法答案 [\"修改 src/feature.txt\"] 在 allowedPaths 为 [\"src\"] 时由正确变为错误，破坏带说明文字的路径答案核对。"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

@@ -70,7 +70,8 @@ export function readerPrompt(doc, instructions = null) {
   return [
     (instructions ?? DEFAULT_PROMPT).trim(),
     "",
-    "回答下面的问题。每个答案是一段短文字或一个字符串列表；路径一条一项；最后一个问题的答案必须是列表，没有就给空列表。",
+    "回答下面的问题。每个答案是一段短文字或一个字符串列表；最后一个问题的答案必须是列表，没有就给空列表。",
+    ...(doc.name === "work.md" ? ["第 2 问的答案是路径列表：一项只写一个目录或文件的路径，不加任何说明。"] : []),
     ...questions.map((question, index) => `${index + 1}. ${question}`),
     "",
     "最后只输出一个 JSON 对象，不要别的文字（可以裹一层 ```json 代码栏），键是问题编号：",
@@ -146,33 +147,39 @@ function approvedCommits(repoRoot, workId) {
   return commits;
 }
 
-// Whether the text names this path: the path as it stands, not as part of
-// a longer name. Nothing is parsed out of the answer; the paths come from
-// Git and the config and are looked for in what the reader wrote.
-const PART = "\\p{L}\\p{N}_@*-";
+// Whether the text names exactly this path, not a longer one around it.
+// For result.md, whose readers copy whole write-back lines: the paths come
+// from Git and are looked for in what the reader wrote.
 function names(text, path) {
+  const part = "\\p{L}\\p{N}_@*-";
   const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(?<![${PART}./])${escaped}(?![${PART}])(?!\\.[\\p{L}\\p{N}])`, "u").test(text);
+  return new RegExp(`(?<![${part}./])${escaped}(?![${part}/])(?!\\.[\\p{L}\\p{N}])`, "u").test(text);
 }
-// Whether the text names the path or a directory it lies in.
-function covers(text, path) {
-  const parts = path.split("/");
-  return parts.some((_, index) => names(text, parts.slice(0, index + 1).join("/")));
-}
+// The reader of work.md is asked for one path per item and nothing else,
+// so each item is a path as it stands: nothing is parsed out of prose, and
+// an item that carries prose is a path nothing lies under.
+const pathItems = (answer) =>
+  (Array.isArray(answer) ? answer : [answer])
+    .map((item) => item.trim().replace(/^`|`$/g, "").replace(/\/\*{0,2}$/, ""))
+    .filter(Boolean);
+const under = (path, area) => path === area || path.startsWith(`${area}/`);
 
 // The answers something other than the document can confirm. A check with
 // nothing to compare against is left out: it is not checked, not wrong.
 export function checkAnswers({ repoRoot, workId, doc, answers, allowedPaths = null }) {
   const checks = [];
   if (doc.name === "work.md") {
-    // Does what the reader would change cover what the work really changed
-    // or, before any commit, every area it may change?
-    const text = asText(answers[1]);
+    const named = pathItems(answers[1]);
     const changed = changedPaths(repoRoot, workId);
-    const expected = changed ?? allowedPaths;
-    if (expected) {
-      const missed = expected.filter((path) => !covers(text, path));
-      checks.push({ question: 2, against: changed ? "the paths the work's commits changed" : "allowedPaths", ok: missed.length === 0, missed });
+    if (changed) {
+      // Every file the work really changed is one the reader named, or lies
+      // in a directory it named.
+      const missed = changed.filter((path) => !named.some((area) => under(path, area)));
+      checks.push({ question: 2, against: "the paths the work's commits changed", ok: missed.length === 0, missed, outside: [] });
+    } else if (allowedPaths) {
+      // No commit yet: everything the reader would change must be in scope.
+      const outside = named.filter((path) => !allowedPaths.some((area) => under(path, area)));
+      checks.push({ question: 2, against: "allowedPaths", ok: named.length > 0 && outside.length === 0, missed: [], outside });
     }
     return checks;
   }
@@ -192,13 +199,13 @@ export function checkAnswers({ repoRoot, workId, doc, answers, allowedPaths = nu
         }
       }),
     );
-    checks.push({ question: 1, against: "the commits approved for this work", ok, missed: ok ? [] : approved.map((commit) => commit.slice(0, 7)) });
+    checks.push({ question: 1, against: "the commits approved for this work", ok, missed: ok ? [] : approved.map((commit) => commit.slice(0, 7)), outside: [] });
   }
   const written = checkPromotions(repoRoot, workId, parsePromotions(doc.text)).filter((item) => item.ok).map((item) => item.path);
   if (written.length > 0) {
     const text = asText(answers[3]);
     const missed = [...new Set(written)].filter((path) => !names(text, path));
-    checks.push({ question: 4, against: "the write-back lines Git confirms", ok: missed.length === 0, missed });
+    checks.push({ question: 4, against: "the write-back lines Git confirms", ok: missed.length === 0, missed, outside: [] });
   }
   return checks;
 }

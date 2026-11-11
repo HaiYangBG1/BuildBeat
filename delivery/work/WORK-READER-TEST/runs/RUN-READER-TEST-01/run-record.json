@@ -1,0 +1,112 @@
+{
+  "run": "RUN-READER-TEST-01",
+  "work": "WORK-READER-TEST",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-READER-TEST-02 (same work WORK-READER-TEST)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:60614f216d1c799aba87f7f81b17e1e5231106643b2219cc12196542300ab245"
+  },
+  "startedAt": "2026-11-11T11:02:11.521Z",
+  "finishedAt": "2026-11-11T11:11:06.531Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 137177
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 397622
+  },
+  "workspaces": {
+    "RUN-READER-TEST-01": {
+      "repo": ".",
+      "branch": "run/RUN-READER-TEST-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-READER-TEST-01",
+      "base": "a6ee6fe240a49e498f8f63da4c3eafbe95f0aa65",
+      "candidate": "b72cb2b1688f0e42bde17127bc5b4e135979d87c"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-READER-TEST-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "b72cb2b1688f0e42bde17127bc5b4e135979d87c",
+      "digest": "sha256:34c2c34b6b7f3455dab3cbae2aeacdc7b91d30efb799cdc2ed4062efd52e41b3",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-READER-TEST-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "b72cb2b1688f0e42bde17127bc5b4e135979d87c",
+      "digest": "sha256:e28ad8397e9024a7b2fb0b13aa4133299334e06857748329d68a36804d0fcd5d",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-READER-TEST-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "b72cb2b1688f0e42bde17127bc5b4e135979d87c",
+      "digest": "sha256:fce2532728663c79ff6d802a6422c7cfaa0c2cf629744b6a110cb382136cf1cd",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/reader.js:147 丢弃 src、tests 等不带斜杠的目录名，导致正确回答 [\"src\"] 在 allowedPaths 为 [\"src\"] 时仍被判错。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/reader.js:119 使用 git show 默认方式读取合并提交，遗漏相对第一父提交引入的文件，导致读者漏答这些实际改动路径仍被判对。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/reader.js:190 用子串匹配核对写回路径，回答 unrelated/docs/README.md.bak 也能匹配 docs/README.md，导致错误路径被标为已核对正确。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/v2/runtime/reader.js:211 调用 adapter.execute 时未传递 envelope.vars，导致复用 reviewer 或配置 reader 时，命令参数中的 {vars.*} 保留原文，无法按配置运行。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/v2/cli/run.js:320 只将 args 中的仓内路径转为绝对路径，未处理 command，导致配置 command: ./tools/reader.sh 等有效相对命令时在临时目录启动失败。"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}
