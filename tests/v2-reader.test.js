@@ -90,6 +90,10 @@ test("the paths a reader of work.md names are checked against allowedPaths, then
   assert.deepEqual(test1(named(["src/feature.txt"]), ["src"]), scope(true));
   assert.deepEqual(test1(named(["`src/`", "src/**"]), ["src"]), scope(true));
   assert.deepEqual(test1(named(["src/feature.txt", "docs/guide.md"]), ["src"]), scope(false, ["docs/guide.md"]));
+  // The scope as a review reads it: an entry with or without a trailing
+  // slash, and the work's own folder always.
+  assert.deepEqual(test1(named(["src/feature.txt", "./docs/a.md", `delivery/work/${WORK}/result.md`]), ["src/", "docs"]), scope(true));
+  assert.deepEqual(test1(named(["delivery/work/WORK-B/work.md"]), ["src/"]), scope(false, ["delivery/work/WORK-B/work.md"]));
   // A directory above an area is wider than the scope; a longer name is another name.
   assert.deepEqual(test1(named(["docs"]), ["docs/guide"]), scope(false, ["docs"]));
   assert.deepEqual(test1(named(["src.old", "my-src/x.js"]), ["src"]), scope(false, ["src.old", "my-src/x.js"]));

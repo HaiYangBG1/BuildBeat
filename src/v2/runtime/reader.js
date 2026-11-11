@@ -158,10 +158,10 @@ function names(text, path) {
 // The reader of work.md is asked for one path per item and nothing else,
 // so each item is a path as it stands: nothing is parsed out of prose, and
 // an item that carries prose is a path nothing lies under.
-const pathItems = (answer) =>
-  (Array.isArray(answer) ? answer : [answer])
-    .map((item) => item.trim().replace(/^`|`$/g, "").replace(/\/\*{0,2}$/, ""))
-    .filter(Boolean);
+// One spelling for a path a reader wrote: no backticks, no leading ./, no
+// trailing slash or glob.
+const plain = (path) => path.trim().replace(/^`|`$/g, "").replace(/^(?:\.\/)+/, "").replace(/\/\*{0,2}$/, "");
+const pathItems = (answer) => (Array.isArray(answer) ? answer : [answer]).filter((item) => item.trim() !== "").map(plain);
 const under = (path, area) => path === area || path.startsWith(`${area}/`);
 
 // The answers something other than the document can confirm. A check with
@@ -178,7 +178,10 @@ export function checkAnswers({ repoRoot, workId, doc, answers, allowedPaths = nu
       checks.push({ question: 2, against: "the paths the work's commits changed", ok: missed.length === 0, missed, outside: [] });
     } else if (allowedPaths) {
       // No commit yet: everything the reader would change must be in scope.
-      const outside = named.filter((path) => !allowedPaths.some((area) => under(path, area)));
+      // The scope as a review reads it: each entry a path or a directory,
+      // with or without a trailing slash, plus the work's own folder.
+      const areas = [...allowedPaths.map((area) => String(area).replace(/\/$/, "")), `delivery/work/${workId}`];
+      const outside = named.filter((path) => !areas.some((area) => under(path, area)));
       checks.push({ question: 2, against: "allowedPaths", ok: named.length > 0 && outside.length === 0, missed: [], outside });
     }
     return checks;
