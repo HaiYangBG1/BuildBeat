@@ -77,7 +77,7 @@ A tool's own memory is built around a person: it lives in one person's account, 
 
 ### ③ The record is left behind as you work
 
-Everyone knows requirement docs and decision logs should be written, but nobody has the time, and what does get written goes stale fast. In BuildBeat they're left behind as the work happens: the AI first writes a work.md for you to read; once you agree, decisions, test results and review findings are all recorded, and a summary is left when it's done.
+Everyone knows requirement docs and decision logs should be written, but nobody has the time, and what does get written goes stale fast. In BuildBeat they're left behind as the work happens: the AI first writes a work.md for you to read; once you agree, decisions, test results and review findings are all recorded, and a summary is left when it's done. You can also check whether someone else can follow these documents: a read-only AI with no context reads just that one document, and you see what it understood and where it could only guess.
 
 <picture>
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-en-dark-narrow.png">
@@ -217,13 +217,14 @@ your-project/
 │   ├── run-config.yaml             how a commit is tested and who reviews it in this project
 │   ├── envelope/
 │   │   ├── worker.sh               wraps the reviewing AI tool as a step BuildBeat can call
-│   │   └── prompts/                the review prompt
+│   │   └── prompts/                the review and reader-test prompts
 │   └── work/
 │       └── WORK-X/                 one folder per work
 │           ├── work.md             what to do and what counts as done
 │           ├── run-config.yaml     optional: folders this work may change, settings that differ from the project
 │           ├── decisions.jsonl     accept, approve, close and other decisions
 │           ├── review-findings.jsonl  problems the review found and your rulings
+│           ├── reader-tests.jsonl  reader-test records (only if used)
 │           ├── releases.jsonl      checks after going live (only if used)
 │           ├── result.md           written at closing: what was delivered, what is left, what went into project docs
 │           └── runs/RUN-X-01/
