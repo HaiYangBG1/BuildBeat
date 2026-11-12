@@ -77,7 +77,7 @@ AI 工具自带的记忆，是围着人设计的：记在某个人的账号里�
 
 ### ③ 记录是干活时顺手留下的
 
-需求文档和决定记录，大家都知道该写，但没人有空写，写了也很快过时。在 BuildBeat 里，这些是干活时顺手留下的：AI 先写一份 work.md 给你看，你点头后，决定、测试结果和审查意见都会记下来，做完再留一份结论。
+需求文档和决定记录，大家都知道该写，但没人有空写，写了也很快过时。在 BuildBeat 里，这些是干活时顺手留下的：AI 先写一份 work.md 给你看，你点头后，决定、测试结果和审查意见都会记下来，做完再留一份结论。这些文档别人读不读得懂也能试：让一个没看过任何上下文的只读 AI 只读这一份，看它读出了什么、哪里只能猜。
 
 <picture>
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HaiYangBG1/BuildBeat/main/docs/assets/readme/loop-zh-dark-narrow.png">
@@ -217,13 +217,14 @@ work WORK-CSV-EXPORT:
 │   ├── run-config.yaml             这个项目里一个提交怎么测、让谁审
 │   ├── envelope/
 │   │   ├── worker.sh               把审查用的 AI 工具包成 BuildBeat 能调用的一步
-│   │   └── prompts/                审查的提示词
+│   │   └── prompts/                审查和读者测试的提示词
 │   └── work/
 │       └── WORK-X/                 一项工作一个文件夹
 │           ├── work.md             要做什么、做到什么算完
 │           ├── run-config.yaml     可选：这项工作能改哪些目录、和项目不一样的配置
 │           ├── decisions.jsonl     接受、批准、关闭这些决定
 │           ├── review-findings.jsonl  审查挑出的问题和你的裁决
+│           ├── reader-tests.jsonl  读者测试的记录（用到才有）
 │           ├── releases.jsonl      上线后的检查记录（用到才有）
 │           ├── result.md           关窗时写：做成了什么、剩下什么、写进了哪些项目文档
 │           └── runs/RUN-X-01/
