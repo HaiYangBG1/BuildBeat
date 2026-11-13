@@ -4,8 +4,8 @@
 
 <h1 align="center">BuildBeat</h1>
 
-<h3 align="center">基于 Git 的项目上下文管理</h3>
-<p align="center">每项需求为什么做、定了什么、做到哪，都跟代码一起存在 Git 里，<br>换会话、换工具、换人都能接着干。</p>
+<h3 align="center">换会话、换工具、换人，项目都能接着干</h3>
+<p align="center">每项需求为什么做、定了什么、做到哪，都跟代码一起存在 Git 里<br>适合一个人同时开几个会话、用几个 AI 工具，也适合几个人一起做一个项目</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@haiyangbg/buildbeat"><img alt="npm 版本" src="https://img.shields.io/npm/v/@haiyangbg/buildbeat?color=d97706&amp;label=npm"></a>
