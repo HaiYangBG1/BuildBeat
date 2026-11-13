@@ -4,8 +4,8 @@
 
 <h1 align="center">BuildBeat</h1>
 
-<h3 align="center">Git-based project context management</h3>
-<p align="center">Why each piece of work was done, what was decided and where it stands, all kept in Git with the code,<br>so any session, tool or person can pick up where it left off.</p>
+<h3 align="center">Switch sessions, tools or people, and the project carries on</h3>
+<p align="center">Why each piece of work was done, what was decided and where it stands, all kept in Git with the code<br>For one person running several sessions and AI tools, and for a team working on one project</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@haiyangbg/buildbeat"><img alt="npm version" src="https://img.shields.io/npm/v/@haiyangbg/buildbeat?color=d97706&amp;label=npm"></a>
