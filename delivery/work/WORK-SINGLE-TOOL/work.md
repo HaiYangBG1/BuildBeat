@@ -11,7 +11,7 @@
 
 ## 起因
 
-2026-11-18 所有者说：「当前buildbeat明确会要求有第二个agent，可能会卡主一些人，因为很多人可能只有一个？这种情况下怎么解决？」会话查过后答：不需要第二个产品，样板写死了 codex、文案写"另一个 AI"才会卡人。所有者说：「做成一项工作」。第一版说明拿 `claude -p` 当只有一个工具时的写法，所有者指出：「用户也不一定用的claude」。
+2026-11-18 所有者说：「当前buildbeat明确会要求有第二个agent，可能会卡主一些人，因为很多人可能只有一个？这种情况下怎么解决？」会话查过后答：不需要第二个产品，样板写死了 codex、文案写"另一个 AI"才会卡人。所有者说：「做成一项工作」。第一版说明拿 `claude -p` 当只有一个工具时的写法，所有者指出：「用户也不一定用的claude」。随后所有者说：「用WorkBuddy做测试」。
 
 ## 已核实的现状（2026-11-18，`4a62c92`）
 
@@ -25,6 +25,7 @@
 - 能力矩阵写着真实 AI 审查只用 codex exec 跑过（`docs/CAPABILITY-MATRIX.md:23-24`）。
 - Skill 已经说"审查者是另一个上下文里的只读 AI"（`SKILL.md:43-43`），配置一节没提只有一个工具时怎么配（`SKILL.md:61-65`）。
 - 本机装了 `codex`、`claude`、`cursor-agent`、`gemini` 四个（`command -v`）；`copilot`、`qwen`、`opencode`、`aider` 没装。
+- 本机装了 WorkBuddy 5.5.6（`/Applications/WorkBuddy.app`）。它的 App 包里自带一个命令行 `codebuddy` 2.137.1（`Contents/Resources/app.asar.unpacked/cli/bin/codebuddy`），不在 PATH 上；参数和 `claude` 一样有 `-p`、`--tools`、`--allowedTools`、`--permission-mode dontAsk`（它的 `--help`）。用它跑审查提示词时报 401，要在这个命令行里单独 `/login`；报 401 时退出码是 0、输出为空，运行时会当成没交报告，这一轮 `CANCELLED`。
 - 测试按样板里 `- codex` 四行做替换（`tests/templates-firstrun.test.js:87-92`、`tests/pack-firstrun.test.sh:125-134`），样板默认值改掉要连带改测试。
 - `src` 现在 8,347 行（`find src -name '*.js' | xargs cat | wc -l`）。
 
@@ -42,7 +43,8 @@
 - 指南 `04-adapter-guide`（中英）加一节"只有一个 AI 工具"：原理、常见工具写法表（codex、claude、cursor-agent、gemini，再列 copilot、qwen 等常见的几个标"没实测"）、为什么这样也算独立、它弱在哪、没有命令行无头模式怎么办。快速开始（中英）配置示例后加一句指过去。
 - Skill 配置一节加一句。
 - `check` 检查每个 worker 实际要跑的工具在不在 PATH，不在记为 PROBLEM 并给改法；补测试。
-- 本机能登录的工具各用真实送审跑一次本工作的提交，结果写进 result.md；跑通的写进能力矩阵。
+- 实测以 WorkBuddy 为主：只装了 WorkBuddy 的人，照指南把审查者配成它自带的 `codebuddy`（写绝对路径或加进 PATH），真实送审本工作的提交。指南的表里写上 WorkBuddy 这一行和它命令行的位置。
+- 本机其余能登录的工具也各跑一次，结果写进 result.md；跑通的写进能力矩阵。
 
 不做：
 
@@ -69,7 +71,8 @@
 
 - `npm test && npm run check:docs && npm run test:envelope && npm run test:plugin && npm run test:pack-firstrun && npm run pack:check` 全过（本仓的验证命令）。
 - 新测试：审查工具不在 PATH 时 `check` 打印上面那行并退出 1；在 PATH 时不报。
-- 本机能登录的每个工具，用指南里的写法当审查者对本工作的提交真实送审一次，交回能读的报告（不是 `CANCELLED`）。命令与结果写进 result.md；指南的表和能力矩阵与这些结果一致。
+- 用 WorkBuddy 自带的 `codebuddy` 按指南写法当审查者，对本工作的提交真实送审，交回能读的报告（不是 `CANCELLED`）。
+- 本机其余能登录的工具同样各送审一次。命令与结果写进 result.md；指南的表和能力矩阵与这些结果一致。
 - 读 README 安装提示第 4 步，只有一个工具、而且不是 Codex 或 Claude Code 的人，知道该怎么配。
 
 ## 实施计划
@@ -77,11 +80,11 @@
 1. 改 `check`，补测试。
 2. 查各工具 `--help`，写指南的表；改样板、快速开始、Skill、README 中英。
 3. 提交，`buildbeat review` 送审（本仓配置，codex 审）。
-4. 本机能登录的工具逐个换进工作自己的 `run-config.yaml` 当审查者再送审，确认交回报告；按结果改表和能力矩阵，提交、再送审一次。
+4. 所有者在终端给 WorkBuddy 的命令行登录后，先把它换进工作自己的 `run-config.yaml` 当审查者送审；再把本机其余能登录的工具逐个换进去送审，确认交回报告；按结果改表和能力矩阵，提交、再送审一次。
 5. 停在合并决定。
 
 ## 停止条件
 
 - 某个工具跑起来改了检出里的文件或交不出 JSON：停下，把输出给所有者看，不硬调提示词。
-- 本机四个工具里除 codex 外一个都登录不上：停下说明，表里只标 codex 实测过。
+- WorkBuddy 的命令行登录不上：停下说明，不拿别的工具顶替它的验收。
 - 审查 6 轮还有 P0/P1。
