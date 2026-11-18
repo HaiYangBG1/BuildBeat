@@ -176,8 +176,10 @@ test("check names a worker's tool this machine does not have", () => {
   assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-ai-tool is not on PATH/);
   write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - delivery/envelope/worker.sh", "      - reviewer", "      - --"]));
   assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: names no tool after "--"/);
-  write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - -o", "      - pipefail", "      - delivery/envelope/worker.sh", "      - reviewer", "      - --", "      - no-such-ai-tool"]));
-  assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-ai-tool is not on PATH/);
+  for (const options of [["-o", "pipefail"], ["-euo", "pipefail"]]) {
+    write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", ...options.map((arg) => `      - ${arg}`), "      - delivery/envelope/worker.sh", "      - reviewer", "      - --", "      - no-such-ai-tool"]));
+    assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-ai-tool is not on PATH/);
+  }
   // Only a command that is worker.sh, or a shell running it, wraps a tool;
   // the runtime fills vars into args, never into the command.
   write(root, "delivery/run-config.yaml", reviewer(["    command: no-such-runner", "    args:", "      - x", "      - delivery/envelope/worker.sh", "      - --", "      - node"]));

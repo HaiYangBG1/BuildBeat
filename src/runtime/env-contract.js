@@ -159,8 +159,8 @@ export function missingWorkerTools(workers, { repoRoot, env = {}, vars = {} }) {
 // A shell's script: its first argument past options and their values; none with -c.
 function scriptAt(line) {
   for (let index = 1; index < line.length; index += 1) {
-    if (/^([-+][oO]|--rcfile|--init-file)$/.test(line[index])) index += 1;
-    else if (/^[-+][a-zA-Z]*c[a-zA-Z]*$/.test(line[index])) return -1;
+    if (/^[-+][a-zA-Z]*c[a-zA-Z]*$/.test(line[index])) return -1;
+    else if (/^([-+][a-zA-Z]*[oO]|--rcfile|--init-file)$/.test(line[index])) index += 1;
     else if (!/^[-+]/.test(line[index])) return index;
   }
   return -1;
