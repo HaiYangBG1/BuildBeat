@@ -7,7 +7,7 @@
 
 import { spawnSync } from "node:child_process";
 import { accessSync, constants, statSync } from "node:fs";
-import { delimiter, isAbsolute, join } from "node:path";
+import { delimiter, isAbsolute, join, resolve } from "node:path";
 
 export class EnvContractError extends Error {
   constructor(message) {
@@ -139,29 +139,34 @@ export function assertRequires(requires) {
 // The program a worker runs, when this machine does not have it: the command
 // itself, or the tool after "--" when the command wraps one with worker.sh
 // (WORK-SINGLE-TOOL). Found later, every review of the commit would end
-// CANCELLED instead.
-export function missingWorkerTools(workers, repoRoot) {
+// CANCELLED instead. Looked up on the worker's own PATH, after the config's
+// vars are filled in; a name still holding a runtime placeholder is skipped.
+export function missingWorkerTools(workers, { repoRoot, env = {}, vars = {} }) {
   const missing = [];
   for (const [worker, spec] of Object.entries(workers ?? {})) {
-    const args = (spec?.args ?? []).map(String);
-    const dash = args.indexOf("--");
-    const tool = dash > 0 && /worker\.sh$/.test(args[0]) ? args[dash + 1] : spec?.command;
-    if (typeof tool === "string" && tool !== "" && !runnable(tool, repoRoot)) {
+    const fill = (text) => Object.entries(vars).reduce((out, [key, value]) => out.replaceAll(`{vars.${key}}`, String(value)), String(text));
+    const line = [spec.command, ...(spec.args ?? [])].map(fill);
+    const at = line.findIndex((part) => /(^|\/)worker\.sh$/.test(part));
+    const wrapped = at >= 0 && line.slice(at).includes("--");
+    const tool = wrapped ? line[line.indexOf("--", at) + 1] : line[0];
+    if (tool === undefined || tool === "") {
+      missing.push({ worker, tool: null });
+    } else if (!tool.includes("{") && !runnable(tool, repoRoot, env[worker]?.PATH ?? process.env.PATH ?? "")) {
       missing.push({ worker, tool, path: tool.includes("/") });
     }
   }
   return missing;
 }
 
-function runnable(tool, repoRoot) {
-  if (tool.includes("/")) {
-    const file = isAbsolute(tool) ? tool : join(repoRoot, tool);
-    try {
-      accessSync(file, constants.X_OK);
-      return statSync(file).isFile();
-    } catch {
-      return false;
-    }
+function executable(file) {
+  try {
+    return accessSync(file, constants.X_OK) === undefined && statSync(file).isFile();
+  } catch {
+    return false;
   }
-  return (process.env.PATH ?? "").split(delimiter).some((dir) => dir !== "" && runnable(join(dir, tool), repoRoot));
+}
+
+function runnable(tool, repoRoot, PATH) {
+  if (tool.includes("/")) return executable(isAbsolute(tool) ? tool : join(repoRoot, tool));
+  return PATH.split(delimiter).some((dir) => dir !== "" && executable(resolve(repoRoot, dir, tool)));
 }

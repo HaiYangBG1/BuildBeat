@@ -524,7 +524,9 @@ function recordStepResult(context, stepDef, { before, outputPath }, { exec, tree
   }
 
   let blockingFindings = [];
-  if (envelope?.findings) {
+  // Only a reviewer's report is review evidence: a verifier that writes
+  // findings must not make a verify-only commit look reviewed.
+  if (stepDef.readonly && envelope?.findings) {
     recordReviewFindings(context.repoRoot, ledger.state.run.work, {
       run: ledger.state.run.id,
       step,
@@ -648,7 +650,6 @@ function runSteps(context) {
         candidate: ledger.state.workspaces[workspace.workspaceId].candidate,
         planDigest: ledger.state.run.planDigest,
         evidenceDigest: lastEvidence?.digest ?? "UNVERIFIED",
-        ...(reviewed ? {} : { reviewed: false }),
       },
       reasons:
         blocking.length > 0

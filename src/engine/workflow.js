@@ -26,14 +26,8 @@ export const REVIEW_STEPS = [
 // A project that has not configured a reviewer yet (WORK-SINGLE-TOOL): the
 // commit is verified, not reviewed, and the run says so by pinning this text.
 export const VERIFY_ONLY_NAME = "verify-only";
-export const VERIFY_ONLY_TEXT = `kind: workflow
-version: 2
-name: verify-only
-steps:
-  - id: verify
-    worker: verifier
-  - id: wait-merge
-`;
+export const VERIFY_ONLY_TEXT = WORKFLOW_TEXT.replace(`name: ${WORKFLOW_NAME}`, `name: ${VERIFY_ONLY_NAME}`)
+  .replace("  - id: review\n    worker: reviewer\n    readonly: true\n", "");
 export const VERIFY_ONLY_DIGEST = `sha256:${createHash("sha256").update(VERIFY_ONLY_TEXT, "utf8").digest("hex")}`;
 
 // The flow a review runs: both steps when a reviewer is configured.

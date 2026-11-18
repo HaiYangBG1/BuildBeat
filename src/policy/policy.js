@@ -154,6 +154,19 @@ export function reviewClear(atMost, ctx) {
       : `no findings above ${atMost}`,
   };
 }
+// Nobody reviewed a verify-only commit, so nothing answers the findings
+// earlier reviews of the work raised: each above the floor holds the
+// approval until a person dismisses it.
+function earlierFindings(atMost, ctx) {
+  const rows = ctx.workDir ? readFindingsFile(join(ctx.workDir, "review-findings.jsonl")) : [];
+  const ruled = latestAdjudications(rows);
+  const above = (row) => row.kind === "finding" && (SEVERITY[row.severity] ?? 0) < SEVERITY[atMost];
+  const open = new Set(rows.filter((row) => above(row) && ruled.get(row.fingerprint)?.action !== "dismiss").map((row) => row.fingerprint));
+  return open.size
+    ? { ok: false, why: `${open.size} earlier finding(s) more severe than ${atMost} not dismissed, and nobody reviewed this commit` }
+    : { ok: true, why: "verified, not reviewed: no reviewer was configured" };
+}
+
 // What approving a commit requires, in the order a person would ask: did
 // verify pass on this commit, is the work description the accepted one, are
 // there screenshots when the work asks for them, and is every finding above
@@ -175,7 +188,7 @@ export function mergeChecks(
   // (WORK-SINGLE-TOOL); its approval records that nobody reviewed it.
   if (verdict.ok === true) {
     verdict = ctx.state?.run?.workflowRef === VERIFY_ONLY_NAME
-      ? { ok: true, why: "verified, not reviewed: no reviewer was configured" }
+      ? earlierFindings(maxSeverity, ctx)
       : reviewClear(maxSeverity, ctx);
   }
   return [

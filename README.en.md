@@ -144,7 +144,7 @@ Please set up BuildBeat (https://github.com/HaiYangBG1/BuildBeat) in this projec
    buildbeat --version
    If a version before 6 is installed and still has unfinished work, finish or cancel it with the old version before upgrading.
 3. Read SKILL.md and docs/guide/01-quickstart.en.md from the npm package (under $(npm root -g)/@haiyangbg/buildbeat/) and work the way SKILL.md describes from now on.
-4. Following the quickstart, put the templates into this project and update .gitignore. You write the code; the review runs in a separate read-only session of an AI command-line tool on this machine, and you yourself are fine if you are the only one (see docs/guide/04-adapter-guide.md). If you cannot set one up, verify without review for now and tell me.
+4. Following the quickstart, put the templates into this project and update .gitignore. You write the code; the review runs in a separate read-only session of an AI command-line tool on this machine, and you yourself are fine if you are the only one (see docs/guide/04-adapter-guide.en.md). If you cannot set one up, verify without review for now and tell me.
 5. When you're done, tell me in a sentence or two that we can start. From then on I'll just tell you in plain words what I want, and you run the commands.
 ```
 

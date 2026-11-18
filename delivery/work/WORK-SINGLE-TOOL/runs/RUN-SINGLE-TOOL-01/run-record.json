@@ -1,0 +1,82 @@
+{
+  "run": "RUN-SINGLE-TOOL-01",
+  "work": "WORK-SINGLE-TOOL",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "CANCELLED",
+    "reason": "worker infrastructure failure at review: exit 1 without a verdict; not a candidate defect"
+  },
+  "events": {
+    "from": 1,
+    "to": 12,
+    "lastDigest": "sha256:c39456e00c2db990a7116cc74515e8d3047218bc160224e1c354432048d91182"
+  },
+  "startedAt": "2026-11-18T13:01:06.196Z",
+  "finishedAt": "2026-11-18T13:02:29.955Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 0,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 1,
+    "workerMs": 83532
+  },
+  "workspaces": {
+    "RUN-SINGLE-TOOL-01": {
+      "repo": ".",
+      "branch": "run/RUN-SINGLE-TOOL-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-SINGLE-TOOL-01",
+      "base": "8e6d0a9ead57424f6440a467986282a122737551",
+      "candidate": "75f39feb0bb9581dc28e944a76be109ba8a9d8e9"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "75f39feb0bb9581dc28e944a76be109ba8a9d8e9",
+      "digest": "sha256:4101f766885c0feee09daa1a4216a47f0fa2997e67e170365787d900529ee7a2",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "75f39feb0bb9581dc28e944a76be109ba8a9d8e9",
+      "digest": "sha256:31da3b222cc5f992cf390471aae5c4a93634cafaf96971a8f6ef694cc57041c3",
+      "status": "failed",
+      "grade": "L2"
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

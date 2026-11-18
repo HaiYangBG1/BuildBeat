@@ -23,7 +23,7 @@ Which tools really work has to be verified for each one; a scripted reviewer onl
 
 A review needs a separate read-only session that did not write the code, not a product from another vendor. The tool you already use, run once headless, is a new session and can be the reviewer.
 
-**No review yet is fine.** Leave `workers.reviewer` out of the config and `buildbeat review` runs only the verification, then stops for the person's decision as usual; approving works as usual. The round records the verify-only flow (`verify-only`); the review output, `status`, the approval and `history --path` all say "verified, not reviewed", so it is never shown as reviewed. Add `workers.reviewer` when you want reviews.
+**No review yet is fine.** Leave `workers.reviewer` out of the config and `buildbeat review` runs only the verification, then stops for the person's decision as usual; approving works as usual. The round records the verify-only flow (`verify-only`); the review output, `status`, the approval and `history --path` all say "verified, not reviewed", so it is never shown as reviewed. A P0 or P1 an earlier review of the work raised and nobody ruled on still holds the approval until a person dismisses it; removing the reviewer does not get past it. Add `workers.reviewer` when you want reviews.
 
 **Setting up any tool as the reviewer:**
 

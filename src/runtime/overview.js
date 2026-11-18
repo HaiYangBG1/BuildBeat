@@ -591,7 +591,7 @@ export function renderOverview(rows, { decisions = false, extra = null } = {}) {
       const why = row.latest.terminalReason
         ? ` — ${row.latest.terminalReason.slice(0, 100)}`
         : "";
-      const unreviewed = row.latest.reviewed === false ? " (verified, not reviewed)" : "";
+      const unreviewed = row.latest.reviewed === false ? " (not reviewed)" : "";
       lines.push(
         `  latest ${row.latest.id} ${row.latest.status}${cand}${unreviewed}${wait} @ ${row.latest.at ?? "?"}${why}`,
       );

@@ -84,24 +84,40 @@ test("without a reviewer a commit is verified, not reviewed, and still left for 
   assert.doesNotMatch(reviewed.out, /step review:/);
   assert.match(reviewed.out, /reason: verified; not reviewed: no workers\.reviewer in the run config/);
   const status = cli(["status", "--repo", root, "--work", WORK]);
-  assert.match(status.out, new RegExp(`latest RUN-A-01 WAITING_HUMAN candidate ${sha.slice(0, 7)} \\(verified, not reviewed\\)`));
+  assert.match(status.out, new RegExp(`latest RUN-A-01 WAITING_HUMAN candidate ${sha.slice(0, 7)} \\(not reviewed\\)`));
+  // A verifier's report is not review evidence.
+  assert.equal(existsSync(join(root, "delivery", "work", WORK, "review-findings.jsonl")), false);
 
   const approved = decide(root, ["--action", "approve", "--candidate", sha]);
   assert.equal(approved.status, 0, approved.all);
   assert.match(approved.out, new RegExp(`candidate: ${sha} \\(verified, not reviewed\\)`));
-  assert.equal(jsonl(root, "decisions.jsonl").at(-1).subject.reviewed, false);
   const run = record(root, "RUN-A-01");
   assert.equal(run.workflow, "verify-only");
   assert.deepEqual(run.attempts, { verify: 1 });
   assert.equal(stage(root).stage, "MERGED");
   const traced = cli(["history", "--repo", root, "--path", "src/feature.txt"]);
-  assert.match(traced.out, /approved: .* \(RUN-A-01\), verified, not reviewed/);
+  assert.match(traced.out, /via run RUN-A-01 \(verified, not reviewed\)/);
 
   // A failing verify still fails the commit.
   commit(root, "drop the feature", { "src/feature.txt": null });
   const failed = review(root);
   assert.equal(failed.status, 1);
   assert.match(failed.out, /status: FAILED/);
+});
+
+test("dropping the reviewer does not approve past an earlier finding nobody ruled on", () => {
+  const { root } = fixture();
+  commit(root, "add the feature", { "src/feature.txt": "helo\n", "findings.json": JSON.stringify({ findings: [P1] }) });
+  assert.equal(review(root).status, 0);
+  write(root, "delivery/run-config.yaml", yaml(PROJECT_CONFIG.trim().split("\n").slice(0, 6)));
+  const sha = commit(root, "verify only from now on", { "findings.json": null });
+  assert.equal(review(root).status, 0);
+  const refused = decide(root, ["--action", "approve", "--candidate", sha]);
+  assert.equal(refused.status, 1);
+  assert.match(refused.err, /1 earlier finding\(s\) more severe than P2 not dismissed, and nobody reviewed this commit/);
+  const fingerprint = jsonl(root, "review-findings.jsonl").find((row) => row.kind === "finding").fingerprint;
+  assert.equal(decide(root, ["--action", "dismiss", "--fingerprint", fingerprint, "--note", "fixed"]).status, 0);
+  assert.equal(decide(root, ["--action", "approve", "--candidate", sha]).status, 0);
 });
 
 test("check names a worker's tool this machine does not have", () => {
@@ -120,6 +136,19 @@ test("check names a worker's tool this machine does not have", () => {
   const path = cli(["check", "--repo", root]);
   assert.equal(path.status, 1);
   assert.match(path.out, /PROBLEM reviewer: \.\/no\/such\/tool is not an executable file/);
+  // worker.sh as the command, a wrapper with nothing after "--", the
+  // worker's own PATH (with "." in it), and an optional reader.
+  const reviewer = (lines) => PROJECT_CONFIG.replace("    command: sh\n    args:\n      - tools/reviewer.sh", lines.join("\n"));
+  write(root, "delivery/run-config.yaml", reviewer(["    command: delivery/envelope/worker.sh", "    args:", "      - reviewer", "      - --", "      - no-such-ai-tool"]));
+  assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-ai-tool is not on PATH/);
+  write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - delivery/envelope/worker.sh", "      - reviewer", "      - --"]));
+  assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: names no tool after "--"/);
+  write(root, "tools/my-ai", "#!/bin/sh\n");
+  execFileSync("chmod", ["+x", join(root, "tools/my-ai")]);
+  write(root, "delivery/run-config.yaml", `${reviewer(["    command: my-ai", "    env:", "      PATH: .:tools"])}  reader:\n    command: no-such-reader\n`);
+  const own = cli(["check", "--repo", root]);
+  assert.equal(own.status, 0, own.all);
+  assert.match(own.out, /warning reader: no-such-reader is not on PATH/);
 });
 
 test("a blocking finding does not end the run: approval is refused until it is dismissed", () => {

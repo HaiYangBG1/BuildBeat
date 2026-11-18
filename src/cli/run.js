@@ -9,6 +9,7 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { VERIFY_ONLY_NAME } from "../engine/workflow.js";
 import { workAccepted } from "../policy/policy.js";
 import { acceptWork, approveReview, rejectReview } from "../runtime/decisions.js";
 import { checkRequires, missingWorkerTools } from "../runtime/env-contract.js";
@@ -638,7 +639,8 @@ function commandRelease(flags) {
     note: flags.note ?? null,
   });
   const repoLabel = repoLabelFor(repoRoot, flags.repo);
-  const bound = row.run ? `(${row.run})` : `(not reviewed: latest commit of ${workId} in ${row.ref})`;
+  const unreviewed = runsFor(repoRoot, workId).find((run) => run.id === row.run)?.workflow === VERIFY_ONLY_NAME;
+  const bound = row.run ? `(${row.run}${unreviewed ? ", verified, not reviewed" : ""})` : `(not reviewed: latest commit of ${workId} in ${row.ref})`;
   console.log(
     `readback ${row.status} (exit ${row.exitCode}) for ${row.ref} at ${row.commit.slice(0, 7)}${row.env ? ` in ${row.env}` : ""}, candidate ${row.candidate.slice(0, 7)} ${bound}${row.note ? ` — ${row.note}` : ""}`,
   );
@@ -687,12 +689,15 @@ function commandCheck(flags) {
   if (!options.adapterConfigs.reviewer) {
     console.log(`  ${NO_REVIEWER}`);
   }
-  for (const { worker, tool, path } of missingWorkerTools(options.adapterConfigs, repoRoot)) {
+  const tools = { repoRoot, env: options.workerEnv, vars: options.envelope?.vars };
+  for (const { worker, tool, path } of missingWorkerTools(options.adapterConfigs, tools)) {
     const fix = worker === "verifier"
       ? ""
       : `; put the AI command-line tool you have after "--"${worker === "reviewer" ? ", or remove workers.reviewer to verify only" : ""} (docs/guide/04-adapter-guide.md)`;
-    console.log(`  PROBLEM ${worker}: ${tool} is ${path ? "not an executable file" : "not on PATH"}${fix}`);
-    problems += 1;
+    const what = tool === null ? 'names no tool after "--"' : `${tool} is ${path ? "not an executable file" : "not on PATH"}`;
+    // The reader only runs for a reader test; a review does not need it.
+    console.log(`  ${worker === "reader" ? "warning" : "PROBLEM"} ${worker}: ${what}${fix}`);
+    if (worker !== "reader") problems += 1;
   }
   console.log(
     options.envelope
@@ -785,7 +790,7 @@ function commandDecide(flags) {
       candidate: flags.candidate,
     });
     console.log(`approved ${result.transition} as ${result.decisionRef} by ${describeActor(result)}`);
-    console.log(`  candidate: ${result.subject.candidate}${result.subject.reviewed === false ? " (verified, not reviewed)" : ""}`);
+    console.log(`  candidate: ${result.subject.candidate}${result.state.run.workflowRef === VERIFY_ONLY_NAME ? " (verified, not reviewed)" : ""}`);
     console.log(`  planDigest: ${result.subject.planDigest}`);
     console.log(
       `${result.runId} is terminal: SUCCEEDED (merge itself stays a manual external action)`,
