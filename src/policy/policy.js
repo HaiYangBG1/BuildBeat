@@ -154,16 +154,15 @@ export function reviewClear(atMost, ctx) {
       : `no findings above ${atMost}`,
   };
 }
-// A verify-only commit is held by each finding above the floor that the latest
-// review of a commit it builds on raised (ctx.raised; all, with none) until dismissed.
+// Nobody reviewed a verify-only commit, so every finding of the work above the
+// floor, fixed or not, holds it until a person dismisses it (owner's choice).
 function earlierFindings(atMost, ctx) {
   const rows = ctx.workDir ? readFindingsFile(join(ctx.workDir, "review-findings.jsonl")) : [];
   const ruled = latestAdjudications(rows);
   const above = (row) => row.kind === "finding" && (SEVERITY[row.severity] ?? 0) < SEVERITY[atMost];
-  const standing = (row) => ruled.get(row.fingerprint)?.action !== "dismiss" && (!ctx.raised || ctx.raised.includes(row.fingerprint));
-  const open = new Set(rows.filter((row) => above(row) && standing(row)).map((row) => row.fingerprint));
+  const open = new Set(rows.filter((row) => above(row) && ruled.get(row.fingerprint)?.action !== "dismiss").map((row) => row.fingerprint));
   return open.size
-    ? { ok: false, why: `${open.size} earlier finding(s) more severe than ${atMost} not dismissed, and nobody reviewed this commit` }
+    ? { ok: false, why: `${open.size} finding(s) of this work more severe than ${atMost} not dismissed, and nobody reviewed this commit; dismiss each once checked` }
     : { ok: true, why: "verified, not reviewed: no reviewer was configured" };
 }
 

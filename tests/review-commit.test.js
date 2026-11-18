@@ -116,13 +116,15 @@ test("dropping the reviewer does not approve past an earlier finding nobody rule
   assert.equal(review(root).status, 0);
   const refused = decide(root, ["--action", "approve", "--candidate", sha]);
   assert.equal(refused.status, 1);
-  assert.match(refused.err, /1 earlier finding\(s\) more severe than P2 not dismissed, and nobody reviewed this commit/);
+  assert.match(refused.err, /1 finding\(s\) of this work more severe than P2 not dismissed, and nobody reviewed this commit/);
   const fingerprint = jsonl(root, "review-findings.jsonl").find((row) => row.kind === "finding").fingerprint;
   assert.equal(decide(root, ["--action", "dismiss", "--fingerprint", fingerprint, "--note", "fixed"]).status, 0);
   assert.equal(decide(root, ["--action", "approve", "--candidate", sha]).status, 0);
 });
 
-test("a finding a later review no longer raised does not hold a verify-only approval", () => {
+// The owner's choice: a verify-only commit has no review to answer earlier
+// findings, so even a fixed one is dismissed by a person first.
+test("a fixed finding still holds a verify-only approval until a person dismisses it", () => {
   const { root } = fixture();
   commit(root, "add the feature", { "src/feature.txt": "helo\n", "findings.json": JSON.stringify({ findings: [P1] }) });
   assert.equal(review(root).status, 0);
@@ -131,6 +133,9 @@ test("a finding a later review no longer raised does not hold a verify-only appr
   write(root, "delivery/run-config.yaml", yaml(PROJECT_CONFIG.trim().split("\n").slice(0, 6)));
   const sha = commit(root, "verify only from now on");
   assert.equal(review(root).status, 0);
+  assert.equal(decide(root, ["--action", "approve", "--candidate", sha]).status, 1);
+  const fingerprint = jsonl(root, "review-findings.jsonl").find((row) => row.kind === "finding").fingerprint;
+  assert.equal(decide(root, ["--action", "dismiss", "--fingerprint", fingerprint, "--note", "fixed in the next commit"]).status, 0);
   const approved = decide(root, ["--action", "approve", "--candidate", sha]);
   assert.equal(approved.status, 0, approved.all);
 });
@@ -145,7 +150,7 @@ test("a newer commit's clean review does not clear an older commit sent verify-o
   assert.equal(review(root, ["--commit", old]).status, 0);
   const refused = decide(root, ["--action", "approve", "--candidate", old]);
   assert.equal(refused.status, 1);
-  assert.match(refused.err, /1 earlier finding\(s\) more severe than P2 not dismissed/);
+  assert.match(refused.err, /1 finding\(s\) of this work more severe than P2 not dismissed/);
 });
 
 test("check names a worker's tool this machine does not have", () => {
@@ -171,7 +176,7 @@ test("check names a worker's tool this machine does not have", () => {
   assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-ai-tool is not on PATH/);
   write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - delivery/envelope/worker.sh", "      - reviewer", "      - --"]));
   assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: names no tool after "--"/);
-  write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - -e", "      - delivery/envelope/worker.sh", "      - reviewer", "      - --", "      - no-such-ai-tool"]));
+  write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - -o", "      - pipefail", "      - delivery/envelope/worker.sh", "      - reviewer", "      - --", "      - no-such-ai-tool"]));
   assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-ai-tool is not on PATH/);
   // Only a command that is worker.sh, or a shell running it, wraps a tool;
   // the runtime fills vars into args, never into the command.
