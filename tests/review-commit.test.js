@@ -182,6 +182,12 @@ test("check names a worker's tool this machine does not have", () => {
   // the runtime fills vars into args, never into the command.
   write(root, "delivery/run-config.yaml", reviewer(["    command: no-such-runner", "    args:", "      - x", "      - delivery/envelope/worker.sh", "      - --", "      - node"]));
   assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-runner is not on PATH/);
+  // A shell running another script that only takes worker.sh as an argument
+  // is not the wrapper; neither is a -c command string.
+  write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - tools/reviewer.sh", "      - delivery/envelope/worker.sh", "      - --", "      - src/main.js"]));
+  assert.doesNotMatch(cli(["check", "--repo", root]).out, /PROBLEM/);
+  write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - -lc", "      - echo", "      - delivery/envelope/worker.sh", "      - --", "      - src/main.js"]));
+  assert.doesNotMatch(cli(["check", "--repo", root]).out, /PROBLEM/);
   write(root, "tools/reviewer.md", "review\n");
   write(root, "delivery/run-config.yaml", `envelope:\n  prompts: ../tools\n  vars:\n    tool: node\n${reviewer(["    command: \"{vars.tool}\""])}`);
   assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: \{vars\.tool\} is not on PATH/);
