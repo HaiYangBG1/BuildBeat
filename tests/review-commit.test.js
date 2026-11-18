@@ -135,6 +135,19 @@ test("a finding a later review no longer raised does not hold a verify-only appr
   assert.equal(approved.status, 0, approved.all);
 });
 
+test("a newer commit's clean review does not clear an older commit sent verify-only", () => {
+  const { root } = fixture();
+  const old = commit(root, "add the feature", { "src/feature.txt": "helo\n", "findings.json": JSON.stringify({ findings: [P1] }) });
+  assert.equal(review(root).status, 0);
+  commit(root, "fix the text", { "src/feature.txt": "hello\n", "findings.json": null });
+  assert.equal(review(root).status, 0);
+  commit(root, "verify only from now on", { "delivery/run-config.yaml": yaml(PROJECT_CONFIG.trim().split("\n").slice(0, 6)) });
+  assert.equal(review(root, ["--commit", old]).status, 0);
+  const refused = decide(root, ["--action", "approve", "--candidate", old]);
+  assert.equal(refused.status, 1);
+  assert.match(refused.err, /1 earlier finding\(s\) more severe than P2 not dismissed/);
+});
+
 test("check names a worker's tool this machine does not have", () => {
   const { root } = fixture({
     projectConfig: PROJECT_CONFIG.replace("    command: sh\n    args:\n      - tools/reviewer.sh", "    command: bash\n    args:\n      - delivery/envelope/worker.sh\n      - reviewer\n      - --\n      - no-such-ai-tool\n      - -p"),
@@ -152,12 +165,14 @@ test("check names a worker's tool this machine does not have", () => {
   assert.equal(path.status, 1);
   assert.match(path.out, /PROBLEM reviewer: \.\/no\/such\/tool is not an executable file/);
   // worker.sh as the command, a wrapper with nothing after "--", the
-  // worker's own PATH (with "." in it), and an optional reader.
+  // worker's own PATH (with "." in it); a reader is not checked.
   const reviewer = (lines) => PROJECT_CONFIG.replace("    command: sh\n    args:\n      - tools/reviewer.sh", lines.join("\n"));
   write(root, "delivery/run-config.yaml", reviewer(["    command: delivery/envelope/worker.sh", "    args:", "      - reviewer", "      - --", "      - no-such-ai-tool"]));
   assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-ai-tool is not on PATH/);
   write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - delivery/envelope/worker.sh", "      - reviewer", "      - --"]));
   assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: names no tool after "--"/);
+  write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - -e", "      - delivery/envelope/worker.sh", "      - reviewer", "      - --", "      - no-such-ai-tool"]));
+  assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-ai-tool is not on PATH/);
   // Only a command that is worker.sh, or a shell running it, wraps a tool;
   // the runtime fills vars into args, never into the command.
   write(root, "delivery/run-config.yaml", reviewer(["    command: no-such-runner", "    args:", "      - x", "      - delivery/envelope/worker.sh", "      - --", "      - node"]));
@@ -170,7 +185,7 @@ test("check names a worker's tool this machine does not have", () => {
   write(root, "delivery/run-config.yaml", `${reviewer(["    command: my-ai", "    env:", "      PATH: .:tools"])}  reader:\n    command: no-such-reader\n`);
   const own = cli(["check", "--repo", root]);
   assert.equal(own.status, 0, own.all);
-  assert.match(own.out, /warning reader: no-such-reader is not on PATH/);
+  assert.doesNotMatch(own.out, /(PROBLEM|warning) reader/);
 });
 
 test("a blocking finding does not end the run: approval is refused until it is dismissed", () => {

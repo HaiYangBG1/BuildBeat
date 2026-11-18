@@ -136,19 +136,17 @@ export function assertRequires(requires) {
   return result;
 }
 
-// The program a worker runs, when this machine does not have it: the command
-// itself, or the tool after "--" when the command wraps one with worker.sh
-// (WORK-SINGLE-TOOL): the command is worker.sh, or a shell running it. Found
-// later, every review would end CANCELLED. Looked up on the worker's own
-// PATH, args with the config's vars filled in as the runtime does; a name
-// still holding a runtime placeholder is skipped.
+// A worker's program this machine lacks (WORK-SINGLE-TOOL): the command, or the
+// tool after "--" when the command is worker.sh or a shell running it. Looked
+// up on the worker's PATH, vars filled into args as the runtime does.
 export function missingWorkerTools(workers, { repoRoot, env = {}, vars = {} }) {
   const missing = [];
   for (const [worker, spec] of Object.entries(workers ?? {})) {
     const fill = (text) => Object.entries(vars).reduce((out, [key, value]) => out.replaceAll(`{vars.${key}}`, String(value)), String(text));
     const line = [String(spec.command), ...(spec.args ?? []).map(fill)];
-    const at = [0, 1].find((index) => /(^|\/)worker\.sh$/.test(line[index] ?? "") && (index === 0 || /(^|\/)(ba|z)?sh$/.test(line[0])));
-    const wrapped = at !== undefined && line.includes("--", at);
+    const shell = /(^|\/)(ba|z)?sh$/.test(line[0]);
+    const at = line.findIndex((part, index) => /(^|\/)worker\.sh$/.test(part) && (index === 0 || (shell && line.slice(1, index).every((arg) => arg.startsWith("-")))));
+    const wrapped = at >= 0 && line.includes("--", at);
     const tool = wrapped ? line[line.indexOf("--", at) + 1] : line[0];
     if (tool === undefined || tool === "") {
       missing.push({ worker, tool: null });

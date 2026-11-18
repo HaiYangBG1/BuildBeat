@@ -617,7 +617,6 @@ function recordStepResult(context, stepDef, { before, outputPath }, { exec, tree
 // on the commit.
 function runSteps(context) {
   const { ledger, workspace, now, steps } = context;
-  const reviewed = steps.some((stepDef) => stepDef.readonly);
   let blocking = [];
   for (const [index, stepDef] of steps.entries()) {
     const started = beginStep(context, stepDef);
@@ -662,7 +661,7 @@ function runSteps(context) {
                 ),
             ]
           : [
-              reviewed
+              steps.some((stepDef) => stepDef.readonly)
                 ? "verified and reviewed with no blocking finding; the decision on this commit is the person's"
                 : "verified; not reviewed: no workers.reviewer in the run config; the decision on this commit is the person's",
             ],

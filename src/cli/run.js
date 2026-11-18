@@ -689,14 +689,14 @@ function commandCheck(flags) {
   if (!options.adapterConfigs.reviewer) {
     console.log(`  ${NO_REVIEWER}`);
   }
-  for (const { worker, tool, path } of missingWorkerTools(options.adapterConfigs, { repoRoot, env: options.workerEnv, vars: options.envelope?.vars })) {
-    const fix = worker === "verifier"
-      ? ""
-      : `; put the AI command-line tool you have after "--"${worker === "reviewer" ? ", or remove workers.reviewer to verify only" : ""} (docs/guide/04-adapter-guide.md)`;
+  const { verifier, reviewer } = options.adapterConfigs; // not the reader of a reader test
+  for (const { worker, tool, path } of missingWorkerTools(reviewer ? { verifier, reviewer } : { verifier }, { repoRoot, env: options.workerEnv, vars: options.envelope?.vars })) {
+    const fix = worker === "reviewer"
+      ? '; put the AI command-line tool you have after "--", or remove workers.reviewer to verify only (docs/guide/04-adapter-guide.md)'
+      : "";
     const what = tool === null ? 'names no tool after "--"' : `${tool} is ${path ? "not an executable file" : "not on PATH"}`;
-    // The reader only runs for a reader test; a review does not need it.
-    console.log(`  ${worker === "reader" ? "warning" : "PROBLEM"} ${worker}: ${what}${fix}`);
-    if (worker !== "reader") problems += 1;
+    console.log(`  PROBLEM ${worker}: ${what}${fix}`);
+    problems += 1;
   }
   console.log(
     options.envelope

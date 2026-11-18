@@ -154,9 +154,8 @@ export function reviewClear(atMost, ctx) {
       : `no findings above ${atMost}`,
   };
 }
-// Nobody reviewed a verify-only commit, so a finding above the floor that the
-// work's latest review raised (ctx.raised; any, with no review on record)
-// holds the approval until a person dismisses it, as status counts it.
+// A verify-only commit is held by each finding above the floor that the latest
+// review of a commit it builds on raised (ctx.raised; all, with none) until dismissed.
 function earlierFindings(atMost, ctx) {
   const rows = ctx.workDir ? readFindingsFile(join(ctx.workDir, "review-findings.jsonl")) : [];
   const ruled = latestAdjudications(rows);

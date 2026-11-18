@@ -67,6 +67,12 @@ function recordDecisionFile(repoRoot, work, line) {
   );
 }
 
+// What the work's latest review of this commit, or of one it builds on,
+// raised: what a verify-only approval of it must not pass (WORK-SINGLE-TOOL).
+const raisedUnder = (repoRoot, workId, commit) => runsFor(repoRoot, workId)
+  .filter((run) => run.reviewed && run.candidate && spawnSync("git", ["-C", repoRoot, "merge-base", "--is-ancestor", run.candidate, commit]).status === 0)
+  .at(-1)?.reviewed ?? null;
+
 // The run of a work that reviewed a commit and waits for the decision on it,
 // or null. A newer review supersedes an older waiting one, so there is
 // normally at most one; the most recently created wins. Runs an older
@@ -175,7 +181,7 @@ export function approveReview(
       state: ledger.state,
       candidate,
       workDir,
-      raised: runsFor(repoRoot, workId).filter((run) => run.reviewed).at(-1)?.reviewed ?? null,
+      raised: ledger.state.run.workflowRef === VERIFY_ONLY_NAME ? raisedUnder(repoRoot, workId, candidate) : null,
     });
     for (const row of rows) {
       ledger.append({
