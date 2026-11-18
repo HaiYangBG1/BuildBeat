@@ -69,7 +69,8 @@ test("a commit is verified, reviewed and left for the person; approval binds to 
 // stuck. The commit is verified, the person decides, and every place that
 // shows the decision says nobody reviewed it.
 test("without a reviewer a commit is verified, not reviewed, and still left for the person", () => {
-  const VERIFY_ONLY = yaml(PROJECT_CONFIG.trim().split("\n").slice(0, 6));
+  // A verifier that also hands in findings: they are not review evidence.
+  const VERIFY_ONLY = yaml(["workers:", "  verifier:", "    command: bash", "    args:", "      - -lc", '      - test -f src/feature.txt && { ! test -f findings.json || cp findings.json "$BUILDBEAT_OUTPUT"; }']);
   const { root } = fixture({ projectConfig: VERIFY_ONLY });
   const checked = cli(["check", "--repo", root, "--work", WORK]);
   assert.equal(checked.status, 0, checked.all);
@@ -91,12 +92,13 @@ test("without a reviewer a commit is verified, not reviewed, and still left for 
   const approved = decide(root, ["--action", "approve", "--candidate", sha]);
   assert.equal(approved.status, 0, approved.all);
   assert.match(approved.out, new RegExp(`candidate: ${sha} \\(verified, not reviewed\\)`));
+  assert.equal(jsonl(root, "decisions.jsonl").at(-1).reviewed, false);
   const run = record(root, "RUN-A-01");
   assert.equal(run.workflow, "verify-only");
   assert.deepEqual(run.attempts, { verify: 1 });
   assert.equal(stage(root).stage, "MERGED");
   const traced = cli(["history", "--repo", root, "--path", "src/feature.txt"]);
-  assert.match(traced.out, /via run RUN-A-01 \(verified, not reviewed\)/);
+  assert.match(traced.out, /via run RUN-A-01 \(not reviewed\)/);
 
   // A failing verify still fails the commit.
   commit(root, "drop the feature", { "src/feature.txt": null });
@@ -118,6 +120,19 @@ test("dropping the reviewer does not approve past an earlier finding nobody rule
   const fingerprint = jsonl(root, "review-findings.jsonl").find((row) => row.kind === "finding").fingerprint;
   assert.equal(decide(root, ["--action", "dismiss", "--fingerprint", fingerprint, "--note", "fixed"]).status, 0);
   assert.equal(decide(root, ["--action", "approve", "--candidate", sha]).status, 0);
+});
+
+test("a finding a later review no longer raised does not hold a verify-only approval", () => {
+  const { root } = fixture();
+  commit(root, "add the feature", { "src/feature.txt": "helo\n", "findings.json": JSON.stringify({ findings: [P1] }) });
+  assert.equal(review(root).status, 0);
+  commit(root, "fix the text", { "src/feature.txt": "hello\n", "findings.json": null });
+  assert.equal(review(root).status, 0);
+  write(root, "delivery/run-config.yaml", yaml(PROJECT_CONFIG.trim().split("\n").slice(0, 6)));
+  const sha = commit(root, "verify only from now on");
+  assert.equal(review(root).status, 0);
+  const approved = decide(root, ["--action", "approve", "--candidate", sha]);
+  assert.equal(approved.status, 0, approved.all);
 });
 
 test("check names a worker's tool this machine does not have", () => {
@@ -143,6 +158,13 @@ test("check names a worker's tool this machine does not have", () => {
   assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-ai-tool is not on PATH/);
   write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - delivery/envelope/worker.sh", "      - reviewer", "      - --"]));
   assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: names no tool after "--"/);
+  // Only a command that is worker.sh, or a shell running it, wraps a tool;
+  // the runtime fills vars into args, never into the command.
+  write(root, "delivery/run-config.yaml", reviewer(["    command: no-such-runner", "    args:", "      - x", "      - delivery/envelope/worker.sh", "      - --", "      - node"]));
+  assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-runner is not on PATH/);
+  write(root, "tools/reviewer.md", "review\n");
+  write(root, "delivery/run-config.yaml", `envelope:\n  prompts: ../tools\n  vars:\n    tool: node\n${reviewer(["    command: \"{vars.tool}\""])}`);
+  assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: \{vars\.tool\} is not on PATH/);
   write(root, "tools/my-ai", "#!/bin/sh\n");
   execFileSync("chmod", ["+x", join(root, "tools/my-ai")]);
   write(root, "delivery/run-config.yaml", `${reviewer(["    command: my-ai", "    env:", "      PATH: .:tools"])}  reader:\n    command: no-such-reader\n`);

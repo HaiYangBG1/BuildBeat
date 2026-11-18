@@ -154,14 +154,15 @@ export function reviewClear(atMost, ctx) {
       : `no findings above ${atMost}`,
   };
 }
-// Nobody reviewed a verify-only commit, so nothing answers the findings
-// earlier reviews of the work raised: each above the floor holds the
-// approval until a person dismisses it.
+// Nobody reviewed a verify-only commit, so a finding above the floor that the
+// work's latest review raised (ctx.raised; any, with no review on record)
+// holds the approval until a person dismisses it, as status counts it.
 function earlierFindings(atMost, ctx) {
   const rows = ctx.workDir ? readFindingsFile(join(ctx.workDir, "review-findings.jsonl")) : [];
   const ruled = latestAdjudications(rows);
   const above = (row) => row.kind === "finding" && (SEVERITY[row.severity] ?? 0) < SEVERITY[atMost];
-  const open = new Set(rows.filter((row) => above(row) && ruled.get(row.fingerprint)?.action !== "dismiss").map((row) => row.fingerprint));
+  const standing = (row) => ruled.get(row.fingerprint)?.action !== "dismiss" && (!ctx.raised || ctx.raised.includes(row.fingerprint));
+  const open = new Set(rows.filter((row) => above(row) && standing(row)).map((row) => row.fingerprint));
   return open.size
     ? { ok: false, why: `${open.size} earlier finding(s) more severe than ${atMost} not dismissed, and nobody reviewed this commit` }
     : { ok: true, why: "verified, not reviewed: no reviewer was configured" };

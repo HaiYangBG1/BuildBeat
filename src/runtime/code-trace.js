@@ -318,7 +318,7 @@ export function renderTrace(trace) {
   const span = from === to ? `${from}` : `${from}-${to}`;
   const lines = [`${trace.path}:${span} — ${plural(total, "line")}, ${plural(trace.works.length, "work")}`];
   for (const row of trace.works) {
-    const runs = row.via.filter((item) => item.kind === "run").map((item) => `${item.run}${item.unreviewed ? " (verified, not reviewed)" : ""}`);
+    const runs = row.via.filter((item) => item.kind === "run").map((item) => `${item.run}${item.unreviewed ? " (not reviewed)" : ""}`);
     const via = [
       ...(runs.length ? [`via run ${runs.join(", ")}`] : []),
       ...(row.via.some((item) => item.kind === "trailer") ? ["via Work trailer"] : []),

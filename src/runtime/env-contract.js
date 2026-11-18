@@ -138,33 +138,28 @@ export function assertRequires(requires) {
 
 // The program a worker runs, when this machine does not have it: the command
 // itself, or the tool after "--" when the command wraps one with worker.sh
-// (WORK-SINGLE-TOOL). Found later, every review of the commit would end
-// CANCELLED instead. Looked up on the worker's own PATH, after the config's
-// vars are filled in; a name still holding a runtime placeholder is skipped.
+// (WORK-SINGLE-TOOL): the command is worker.sh, or a shell running it. Found
+// later, every review would end CANCELLED. Looked up on the worker's own
+// PATH, args with the config's vars filled in as the runtime does; a name
+// still holding a runtime placeholder is skipped.
 export function missingWorkerTools(workers, { repoRoot, env = {}, vars = {} }) {
   const missing = [];
   for (const [worker, spec] of Object.entries(workers ?? {})) {
     const fill = (text) => Object.entries(vars).reduce((out, [key, value]) => out.replaceAll(`{vars.${key}}`, String(value)), String(text));
-    const line = [spec.command, ...(spec.args ?? [])].map(fill);
-    const at = line.findIndex((part) => /(^|\/)worker\.sh$/.test(part));
-    const wrapped = at >= 0 && line.slice(at).includes("--");
+    const line = [String(spec.command), ...(spec.args ?? []).map(fill)];
+    const at = [0, 1].find((index) => /(^|\/)worker\.sh$/.test(line[index] ?? "") && (index === 0 || /(^|\/)(ba|z)?sh$/.test(line[0])));
+    const wrapped = at !== undefined && line.includes("--", at);
     const tool = wrapped ? line[line.indexOf("--", at) + 1] : line[0];
     if (tool === undefined || tool === "") {
       missing.push({ worker, tool: null });
-    } else if (!tool.includes("{") && !runnable(tool, repoRoot, env[worker]?.PATH ?? process.env.PATH ?? "")) {
+    } else if (!(wrapped && tool.includes("{")) && !runnable(tool, repoRoot, env[worker]?.PATH ?? process.env.PATH ?? "")) {
       missing.push({ worker, tool, path: tool.includes("/") });
     }
   }
   return missing;
 }
 
-function executable(file) {
-  try {
-    return accessSync(file, constants.X_OK) === undefined && statSync(file).isFile();
-  } catch {
-    return false;
-  }
-}
+const executable = (file) => { try { return accessSync(file, constants.X_OK) === undefined && statSync(file).isFile(); } catch { return false; } };
 
 function runnable(tool, repoRoot, PATH) {
   if (tool.includes("/")) return executable(isAbsolute(tool) ? tool : join(repoRoot, tool));

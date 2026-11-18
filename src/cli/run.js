@@ -689,8 +689,7 @@ function commandCheck(flags) {
   if (!options.adapterConfigs.reviewer) {
     console.log(`  ${NO_REVIEWER}`);
   }
-  const tools = { repoRoot, env: options.workerEnv, vars: options.envelope?.vars };
-  for (const { worker, tool, path } of missingWorkerTools(options.adapterConfigs, tools)) {
+  for (const { worker, tool, path } of missingWorkerTools(options.adapterConfigs, { repoRoot, env: options.workerEnv, vars: options.envelope?.vars })) {
     const fix = worker === "verifier"
       ? ""
       : `; put the AI command-line tool you have after "--"${worker === "reviewer" ? ", or remove workers.reviewer to verify only" : ""} (docs/guide/04-adapter-guide.md)`;
