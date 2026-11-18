@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 
 import { workAccepted } from "../policy/policy.js";
 import { acceptWork, approveReview, rejectReview } from "../runtime/decisions.js";
-import { checkRequires } from "../runtime/env-contract.js";
+import { checkRequires, missingWorkerTools } from "../runtime/env-contract.js";
 import { adjudicateFinding } from "../runtime/findings.js";
 import { nextAttemptId } from "../runtime/envelope.js";
 import { candidateScreenshots, formatMs, nextReply } from "../runtime/hints.js";
@@ -313,7 +313,7 @@ function commandReader(flags) {
   }
   const spec = options.adapterConfigs.reader ?? options.adapterConfigs.reviewer;
   if (!spec) {
-    throw new Error(`reader needs workers.reader or workers.reviewer in ${options.files.join(" or ")}`);
+    throw new Error(`reader needs an AI command-line tool: add workers.reader (or workers.reviewer) to ${options.files.join(" or ")}`);
   }
   const adapter = createShellAdapter({
     name: `shell:${options.adapterConfigs.reader ? "reader" : "reviewer"}`,
@@ -514,6 +514,9 @@ function workIdOf(flags, command) {
   return workId;
 }
 
+const NO_REVIEWER =
+  "note: no reviewer configured; commits are verified, not reviewed (docs/guide/04-adapter-guide.md)";
+
 // Verify and review one existing commit of a work: the commit is checked out
 // by itself, the project's verifier runs on it and, when that passes, the
 // read-only reviewer. The change under review is what the commit adds after
@@ -581,6 +584,9 @@ function commandReview(flags) {
   };
   const runId = nextAttemptId(repoRoot, workId, options.family);
   console.log(`reviewing ${short} as ${runId} (changes since ${base.slice(0, 7)})`);
+  if (!options.adapters.reviewer) {
+    console.log(NO_REVIEWER);
+  }
   const result = reviewCommit({ ...options, runId, base, commit, verifyCheckout });
   for (const run of result.superseded ?? []) {
     console.log(
@@ -678,6 +684,16 @@ function commandCheck(flags) {
       `    environment: ${spec.inheritEnv === true ? "the host's (inheritEnv: true)" : "allowlist; host credentials withheld"}${env.length ? `, plus ${env.join(", ")}` : ""}`,
     );
   }
+  if (!options.adapterConfigs.reviewer) {
+    console.log(`  ${NO_REVIEWER}`);
+  }
+  for (const { worker, tool, path } of missingWorkerTools(options.adapterConfigs, repoRoot)) {
+    const fix = worker === "verifier"
+      ? ""
+      : `; put the AI command-line tool you have after "--"${worker === "reviewer" ? ", or remove workers.reviewer to verify only" : ""} (docs/guide/04-adapter-guide.md)`;
+    console.log(`  PROBLEM ${worker}: ${tool} is ${path ? "not an executable file" : "not on PATH"}${fix}`);
+    problems += 1;
+  }
   console.log(
     options.envelope
       ? `  prompts: ${options.envelope.source} (${Object.keys(options.envelope.prompts).join(", ") || "none found"}) ${options.envelope.digest}`
@@ -769,7 +785,7 @@ function commandDecide(flags) {
       candidate: flags.candidate,
     });
     console.log(`approved ${result.transition} as ${result.decisionRef} by ${describeActor(result)}`);
-    console.log(`  candidate: ${result.subject.candidate}`);
+    console.log(`  candidate: ${result.subject.candidate}${result.subject.reviewed === false ? " (verified, not reviewed)" : ""}`);
     console.log(`  planDigest: ${result.subject.planDigest}`);
     console.log(
       `${result.runId} is terminal: SUCCEEDED (merge itself stays a manual external action)`,

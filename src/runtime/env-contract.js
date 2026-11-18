@@ -6,6 +6,8 @@
 // resolved Node 14 — each burned runs before anyone saw the real cause.
 
 import { spawnSync } from "node:child_process";
+import { accessSync, constants, statSync } from "node:fs";
+import { delimiter, isAbsolute, join } from "node:path";
 
 export class EnvContractError extends Error {
   constructor(message) {
@@ -132,4 +134,34 @@ export function assertRequires(requires) {
     );
   }
   return result;
+}
+
+// The program a worker runs, when this machine does not have it: the command
+// itself, or the tool after "--" when the command wraps one with worker.sh
+// (WORK-SINGLE-TOOL). Found later, every review of the commit would end
+// CANCELLED instead.
+export function missingWorkerTools(workers, repoRoot) {
+  const missing = [];
+  for (const [worker, spec] of Object.entries(workers ?? {})) {
+    const args = (spec?.args ?? []).map(String);
+    const dash = args.indexOf("--");
+    const tool = dash > 0 && /worker\.sh$/.test(args[0]) ? args[dash + 1] : spec?.command;
+    if (typeof tool === "string" && tool !== "" && !runnable(tool, repoRoot)) {
+      missing.push({ worker, tool, path: tool.includes("/") });
+    }
+  }
+  return missing;
+}
+
+function runnable(tool, repoRoot) {
+  if (tool.includes("/")) {
+    const file = isAbsolute(tool) ? tool : join(repoRoot, tool);
+    try {
+      accessSync(file, constants.X_OK);
+      return statSync(file).isFile();
+    } catch {
+      return false;
+    }
+  }
+  return (process.env.PATH ?? "").split(delimiter).some((dir) => dir !== "" && runnable(join(dir, tool), repoRoot));
 }

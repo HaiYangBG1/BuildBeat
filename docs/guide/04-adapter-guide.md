@@ -18,3 +18,55 @@
 超时、崩溃、报告读不懂、exit 75 都记为工具故障，这一轮 `CANCELLED`。
 
 哪些工具真的跑通过，要各自验证；脚本化的审查者只能证明流程接得上，不能证明真实模型的能力。
+
+## 只有一个 AI 工具，或者先不配审查
+
+审查要的是另开一个没参与写代码的只读会话，不是另一家的产品。你正在用的那个工具，无头运行一次就是一个新会话，就能当审查者。
+
+**先不配审查也行。** 配置里不写 `workers.reviewer`，`buildbeat review` 只跑验证，过了照常停下等人决定，批准照常能做。这一轮记的是只验证的流程（`verify-only`）；送审输出、`status`、批准结果和 `history --path` 都标着"verified, not reviewed"，不会被说成审过了。以后想审，补上 `workers.reviewer` 就行。
+
+**给任意工具配审查命令：**
+
+1. 找到它的命令行。有的工具把命令行装在桌面应用里，不在 PATH 上（比如 WorkBuddy 在 `/Applications/WorkBuddy.app/Contents/Resources/app.asar.unpacked/cli/bin/codebuddy`），配置里写完整路径就行。命令行要单独登录的，先在终端里登录一次。
+2. 看它的 `--help`，找两样：无头运行（通常叫 `-p`、`--print`、`exec`），只读或只放行查看类命令的开关。`worker.sh` 把提示词作为最后一个参数交给它，所以它要能从最后一个参数读提示词。
+3. 写进 `workers.reviewer`，只改 `--` 后面的部分，再跑 `buildbeat check --repo .`：工具找不到会报出来。
+4. 送审一次，看是不是交回了报告。没交报告、报告读不懂、动了文件，这一轮都是 `CANCELLED`，不会被当成审过。
+
+几种常见写法，参数以各工具当时的 `--help` 为准：
+
+| 工具 | `--` 后面写什么 | 实测 |
+|---|---|---|
+| Codex | `codex exec -s read-only` | 本仓一直在用 |
+| Claude Code | `claude -p --tools Read,Grep,Glob,Bash --allowedTools Read Grep Glob "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" "Bash(printenv:*)" --permission-mode dontAsk` | 没实测 |
+| WorkBuddy | 它自带的 `codebuddy`（完整路径见上），参数同 Claude Code 一行 | 没实测 |
+| Cursor | `cursor-agent -p --mode ask` | 没实测 |
+| Gemini CLI | `gemini --approval-mode plan -p` | 没实测 |
+
+YAML 里每个参数写一行，例如 Claude Code 那一行写成：
+
+```yaml
+  reviewer:
+    command: bash
+    args:
+      - delivery/envelope/worker.sh
+      - reviewer
+      - --
+      - claude
+      - -p
+      - --tools
+      - Read,Grep,Glob,Bash
+      - --allowedTools
+      - Read
+      - Grep
+      - Glob
+      - Bash(git diff:*)
+      - Bash(git log:*)
+      - Bash(git show:*)
+      - Bash(printenv:*)
+      - --permission-mode
+      - dontAsk
+```
+
+**用同一个工具审，弱在哪：** 新上下文、只读、真实验证命令这三样都有；但写和审是同一个模型，盲点更可能重合。有两个工具时，仍然推荐换一个来审。工具自己没有只读开关时，运行时只兜得住"改了文件"（这一轮作废），兜不住它读本机别的文件。
+
+**工具没有命令行无头模式**（只有编辑器里的聊天窗口）：先不配审查、只跑验证；或者用[只用 Skill 和项目文件](12-without-runtime.md)的方式。两种都不能说做过独立审查。

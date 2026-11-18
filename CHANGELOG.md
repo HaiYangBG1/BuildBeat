@@ -2,6 +2,12 @@
 
 Earlier history: see tag v5.5.0.
 
+## Unreleased
+
+- The reviewer is optional (WORK-SINGLE-TOOL). A config without `workers.reviewer` is valid: `buildbeat review` runs the verifier, then stops for the person's decision, and the approval is allowed. Such a round pins a separate `verify-only` flow, its stop reason says `verified; not reviewed: no workers.reviewer in the run config`, and `review`, `status`, the approval output and `history --path` show "verified, not reviewed"; the approval row carries `subject.reviewed: false`. `check` and `review` print `note: no reviewer configured; commits are verified, not reviewed`. The verifier stays required.
+- `check` names a worker's program this machine does not have: the command, or for `worker.sh <role> -- <tool>` the tool after `--` (a name is looked up on PATH, a path must be an executable file). `PROBLEM reviewer: <tool> is not on PATH; put the AI command-line tool you have after "--", or remove workers.reviewer to verify only`, exit 1. Before, every review of such a config ended `CANCELLED`.
+- The guides, the template, the Skill and the README say that the reviewer can be the AI tool you already use, run headless in a separate read-only session, and show how to set up any tool (`04-adapter-guide`, "Only one AI tool, or no review yet"). Only codex is tested.
+
 ## v6.0.0 — 2026-11-11（主版本：运行时只做记、验、审、批，代码由会话写；只认当前写法；读者测试；路径不再带 v2）
 
 > **Published.** `@haiyangbg/buildbeat@6.0.0` was published on 2026-11-11 from `main` (release PR #131, merge commit `f4b8615`, annotated tag `v6.0.0`) through OIDC Trusted Publishing to dist-tag **`latest`** (run 43028519165; the publish and verify jobs both succeeded on the first attempt). The owner said to tag and publish, and had the driving session approve the `npm-publish` environment with the owner's account. Independent readback from `registry.npmjs.org`: version 6.0.0, integrity `sha512-vlG3uU+GpuMV1bjS+pTTwjEqgEu8gWViU0rqiizAkTap95QPqLXJT2DFa+MIJ/+Ai4rQZfgcKscj5SsjZAjvlQ==`, shasum `b6512e74849162217886eb6c252e04dcce471aa3`, 102 files, each byte-identical to the tagged source; an isolated install prints `6.0.0` and the bare command exits 0; SLSA v1 provenance; `npm audit signatures` verified the registry signature and the attestation. `next` was moved from `5.5.0` to `6.0.0` the same day, the owner confirming the npm login and 2FA in the browser.

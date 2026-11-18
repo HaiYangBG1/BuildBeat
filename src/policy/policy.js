@@ -4,6 +4,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { VERIFY_ONLY_NAME } from "../engine/workflow.js";
 import { checkScreenshotFile } from "../evidence/image.js";
 import { resolveRepoRef } from "../runtime/repo-ref.js";
 import {
@@ -170,7 +171,13 @@ export function mergeChecks(
   // UI work proves its real render: screenshots the verify step left for
   // this commit (lessons.md "静态稿拍板 → 返工螺旋").
   if (verdict.ok === true && requireScreenshot) verdict = screenshotsPresent(ctx);
-  if (verdict.ok === true) verdict = reviewClear(maxSeverity, ctx);
+  // A run that pinned the verify-only flow has no reviewer to wait for
+  // (WORK-SINGLE-TOOL); its approval records that nobody reviewed it.
+  if (verdict.ok === true) {
+    verdict = ctx.state?.run?.workflowRef === VERIFY_ONLY_NAME
+      ? { ok: true, why: "verified, not reviewed: no reviewer was configured" }
+      : reviewClear(maxSeverity, ctx);
+  }
   return [
     {
       policy: "merge-evidence-floor",

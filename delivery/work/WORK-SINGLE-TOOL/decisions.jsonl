@@ -1,0 +1,1 @@
+{"ts":"2026-11-18T12:33:03.269Z","decisionRef":"A-WORK-SINGLE-TOOL-1","decision":"approved","transition":"accept-work","subject":{"artifact":"work","digest":"sha256:a85724ad53ccd69c00df91913018942f88ee0d36c725fb2210245180151ca683"},"note":"所有者在对话里说：接受，开工","by":"HaiYangBG1","actor":{"kind":"human","id":"HaiYangBG1","source":"flag","via":"agent-session"}}

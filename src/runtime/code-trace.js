@@ -188,7 +188,7 @@ function deciders(dir, stage, mergedCandidate) {
   const closure = stage === "CLOSED" || stage === "CANCELLED" ? rows.find((row) => row.transition === "close-work") : null;
   return {
     approved: approval
-      ? { at: approval.ts ?? null, by: approval.by ?? null, who: describeActor(approval), run: approval.run ?? null, decisionRef: approval.decisionRef ?? null }
+      ? { at: approval.ts ?? null, by: approval.by ?? null, who: describeActor(approval), run: approval.run ?? null, decisionRef: approval.decisionRef ?? null, ...(approval.subject?.reviewed === false ? { reviewed: false } : {}) }
       : null,
     closed: closure
       ? { at: closure.ts ?? null, by: closure.by ?? null, who: describeActor(closure), decision: closure.decision ?? null, decisionRef: closure.decisionRef ?? null }
@@ -324,7 +324,7 @@ export function renderTrace(trace) {
       ...(row.via.some((item) => item.kind === "subject") ? ["via subject"] : []),
     ];
     lines.push(`  ${row.work}  ${row.stage ?? "NOT_FOUND"}  ${row.title ?? "(no records in reach)"} (${plural(row.lines, "line")}; ${via.join("; ")})`);
-    if (row.approved) lines.push(`    approved: ${row.approved.at} by ${row.approved.who}${row.approved.run ? ` (${row.approved.run})` : ""}`);
+    if (row.approved) lines.push(`    approved: ${row.approved.at} by ${row.approved.who}${row.approved.run ? ` (${row.approved.run})` : ""}${row.approved.reviewed === false ? ", verified, not reviewed" : ""}`);
     if (row.closed) lines.push(`    ${row.closed.decision === "cancelled" ? "cancelled" : "closed"}: ${row.closed.at} by ${row.closed.who}`);
     if (row.summary) lines.push(`    result: ${row.summary}`);
     if (row.read.length) lines.push(`    read: ${row.read.join(", ")}`);

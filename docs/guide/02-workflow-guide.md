@@ -7,14 +7,14 @@
 一轮是固定的三步，不能配置：
 
 1. 在这个提交的临时检出里跑项目的验证命令。
-2. 验证通过后，请只读的审查者看这项工作从起点到这个提交的改动。
+2. 验证通过后，请只读的审查者看这项工作从起点到这个提交的改动。没配审查者时跳过这一步，这一轮记为只验证（`verify-only`），各处都标"verified, not reviewed"。
 3. 删掉检出，停下等人的决定。
 
 运行时不写代码、不重试、不修复。收场有三种：
 
 - `FAILED`：验证没过，提交改了 `allowedPaths` 之外的目录，或验证后检出不干净、HEAD 被挪动。这是提交的问题，修好再送。
 - `CANCELLED`：超时、崩溃、exit 75、审查者没交报告或报告读不懂、审查者动了文件。这是工具的问题，不是对提交的判定，环境好了再送。
-- 等人决定：验证过了、审完了。还有没裁决的 P0、P1 时批准会被拒。
+- 等人决定：验证过了、审完了（或者没配审查者、只验证了）。还有没裁决的 P0、P1 时批准会被拒。
 
 修在新提交里再送审；同一项工作还在等决定的旧一轮自动记为 `SUPERSEDED`。审查进程被杀掉的那一轮，由下一次送审记为 `CANCELLED`。一个仓库同一时间只跑一轮审查。
 
@@ -22,7 +22,7 @@
 
 项目一份 `delivery/run-config.yaml`，样板是 `templates/run-config.example.yaml`：
 
-- `workers.verifier`、`workers.reviewer`：两条命令（`command`、`args`，可写 `timeoutMs`、`env`、`inheritEnv`）。可选的 `workers.reader` 是[读者测试](07-approval-guide.md)用的，不写就用审查者的命令。
+- `workers.verifier`、`workers.reviewer`：两条命令（`command`、`args`，可写 `timeoutMs`、`env`、`inheritEnv`）。验证必填；审查可以先不配，也可以用你手上那个工具，见[只有一个 AI 工具，或者先不配审查](04-adapter-guide.md#只有一个-ai-工具或者先不配审查)。可选的 `workers.reader` 是[读者测试](07-approval-guide.md)用的，不写就用审查者的命令。
 - `envelope`：审查提示词所在目录和变量。
 - `requires`：开跑前要有的命令和最低版本，缺了直接报清楚。
 - `redact`：证据日志落盘前脱敏用的正则。

@@ -7,14 +7,14 @@ The session writes the code and commits it. The runtime does one thing: `buildbe
 A round is three fixed steps and cannot be configured:
 
 1. Run the project's verification command in a temporary checkout of this commit.
-2. When the verification passes, have the read-only reviewer look at this work's changes from its starting point to this commit.
+2. When the verification passes, have the read-only reviewer look at this work's changes from its starting point to this commit. Without a configured reviewer this step is skipped: the round records the verify-only flow (`verify-only`) and everything shows "verified, not reviewed".
 3. Delete the checkout and stop for the human decision.
 
 The runtime does not write code, retry or repair. A round ends in one of three ways:
 
 - `FAILED`: the verification failed, the commit changed a directory outside `allowedPaths`, or after the verification the checkout was not clean or HEAD had moved. This is a problem with the commit; fix it and send again.
 - `CANCELLED`: a timeout, a crash, exit 75, a reviewer that handed in no report or an unreadable one, or a reviewer that changed files. This is a problem with a tool, not a verdict on the commit; send again when the environment is back.
-- Waiting for the human decision: the verification passed and the review is done. An approval is refused while a P0 or P1 finding is undecided.
+- Waiting for the human decision: the verification passed and the review is done (or, with no reviewer configured, only verified). An approval is refused while a P0 or P1 finding is undecided.
 
 Fix in a new commit and send it for review; an earlier round of the same work that is still waiting for a decision is recorded as `SUPERSEDED` automatically. A round whose review process was killed is recorded as `CANCELLED` by the next review. One repository runs one review round at a time.
 
@@ -22,7 +22,7 @@ Fix in a new commit and send it for review; an earlier round of the same work th
 
 A project has one `delivery/run-config.yaml`; the sample is `templates/run-config.example.yaml`:
 
-- `workers.verifier`, `workers.reviewer`: the two commands (`command`, `args`, and optionally `timeoutMs`, `env`, `inheritEnv`). The optional `workers.reader` is for the [reader test](07-approval-guide.en.md); without it the reviewer's command is used.
+- `workers.verifier`, `workers.reviewer`: the two commands (`command`, `args`, and optionally `timeoutMs`, `env`, `inheritEnv`). The verifier is required; the reviewer can wait, or be the tool you already use, see [Only one AI tool, or no review yet](04-adapter-guide.en.md#only-one-ai-tool-or-no-review-yet). The optional `workers.reader` is for the [reader test](07-approval-guide.en.md); without it the reviewer's command is used.
 - `envelope`: the directory of the review prompts, and variables.
 - `requires`: commands and minimum versions that must be there before a round starts; a missing one is reported plainly at once.
 - `redact`: regular expressions for masking evidence logs before they are written to disk.
