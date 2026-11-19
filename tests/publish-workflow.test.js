@@ -23,7 +23,6 @@ function fixture(t, { views, publishStatus, version = "1.20.0", distTag = "lates
   writeFileSync(tarball, "reviewed candidate\n");
   writeFileSync(path.join(state, "view-responses"), `${views.join("\n")}\n`);
   writeFileSync(path.join(state, "publish-calls"), "");
-  const outcomeFile = path.join(state, "outcome");
 
   const npm = path.join(bin, "npm");
   writeFileSync(
@@ -75,19 +74,10 @@ esac
       BUILDBEAT_CANDIDATE_TARBALL: tarball,
       BUILDBEAT_RECONCILE_ATTEMPTS: "3",
       BUILDBEAT_RECONCILE_DELAY_SECONDS: "0",
-      BUILDBEAT_PUBLISH_OUTCOME_FILE: outcomeFile,
     },
   });
   const publishCalls = () => readFileSync(path.join(state, "publish-calls"), "utf8");
-  // What the step that moves next is told: fresh, existing, or nothing.
-  const outcome = () => {
-    try {
-      return readFileSync(outcomeFile, "utf8");
-    } catch {
-      return "";
-    }
-  };
-  return { run, publishCalls, outcome };
+  return { run, publishCalls };
 }
 
 test("publishes an absent version", (t) => {
@@ -98,7 +88,6 @@ test("publishes an absent version", (t) => {
     mock.publishCalls(),
     /publish .*haiyangbg-buildbeat-1\.20\.0\.tgz --access public --tag latest/,
   );
-  assert.equal(mock.outcome(), "outcome=fresh\n");
 });
 
 test("routes a pre-release version onto dist-tag next", (t) => {
@@ -144,7 +133,6 @@ test("accepts an existing version only when integrity matches exactly", (t) => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /already contains the exact candidate/);
   assert.equal(mock.publishCalls(), "");
-  assert.equal(mock.outcome(), "outcome=existing\n");
 });
 
 test("rejects an existing version with different integrity", (t) => {
@@ -164,7 +152,6 @@ test("reconciles a failed publish response when the exact artifact appears", (t)
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /registry reconciliation proved the exact candidate on attempt 2/);
   assert.notEqual(mock.publishCalls(), "");
-  assert.equal(mock.outcome(), "outcome=fresh\n");
 });
 
 test("preserves the publish failure when reconciliation cannot prove the artifact", (t) => {
@@ -176,5 +163,4 @@ test("preserves the publish failure when reconciliation cannot prove the artifac
   assert.equal(result.status, 42);
   assert.match(result.stderr, /exact candidate could not be reconciled/);
   assert.notEqual(mock.publishCalls(), "");
-  assert.equal(mock.outcome(), "");
 });

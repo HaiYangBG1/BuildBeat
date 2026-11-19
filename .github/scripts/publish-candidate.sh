@@ -50,16 +50,6 @@ if [[ ! "$reconcile_delay_seconds" =~ ^[0-9]+$ ]]; then
   exit 2
 fi
 
-# Where to write whether this run published the version (fresh) or found
-# the identical artifact already there (existing), for the step that moves
-# next. Unset: not written.
-outcome_file="${BUILDBEAT_PUBLISH_OUTCOME_FILE:-}"
-report_outcome() {
-  if [[ -n "$outcome_file" ]]; then
-    printf 'outcome=%s\n' "$1" >> "$outcome_file"
-  fi
-}
-
 registry_integrity() {
   npm view "$package_name@$package_version" dist.integrity \
     --registry="$official_registry" 2>/dev/null || true
@@ -70,7 +60,6 @@ if [[ -n "$existing_integrity" ]]; then
   if [[ "$existing_integrity" == "$candidate_integrity" ]]; then
     printf 'Registry already contains the exact candidate %s@%s; continuing verification.\n' \
       "$package_name" "$package_version"
-    report_outcome existing
     exit 0
   fi
   echo "$package_name@$package_version already exists with different integrity." >&2
@@ -81,7 +70,6 @@ publish_status=0
 npm publish "$candidate_tarball" --access public --tag "$dist_tag" \
   --registry="$official_registry" || publish_status=$?
 if ((publish_status == 0)); then
-  report_outcome fresh
   exit 0
 fi
 
@@ -90,7 +78,6 @@ for ((attempt = 1; attempt <= reconcile_attempts; attempt += 1)); do
   if [[ "$existing_integrity" == "$candidate_integrity" ]]; then
     printf 'Publish response failed, but registry reconciliation proved the exact candidate on attempt %s.\n' \
       "$attempt"
-    report_outcome fresh
     exit 0
   fi
   if [[ -n "$existing_integrity" ]]; then

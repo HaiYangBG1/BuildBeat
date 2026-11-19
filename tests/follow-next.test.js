@@ -14,7 +14,7 @@ const SCRIPT = path.join(REPO_ROOT, ".github", "scripts", "follow-next.sh");
 
 // next: what `npm view <pkg> dist-tags.next` prints ("" for no tag);
 // addStatus: the exit status of `npm dist-tag add`.
-function fixture(t, { next, version, outcome = "fresh", addStatus = 0 }) {
+function fixture(t, { next, version, addStatus = 0 }) {
   const root = tempDir("buildbeat-follow-next-");
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const bin = path.join(root, "bin");
@@ -44,7 +44,6 @@ esac
       NPM_CONFIG_REGISTRY: "https://registry.npmjs.org/",
       BUILDBEAT_PACKAGE_NAME: "@haiyangbg/buildbeat",
       BUILDBEAT_PACKAGE_VERSION: version,
-      BUILDBEAT_PUBLISH_OUTCOME: outcome,
       MOCK_NEXT: next,
       MOCK_CALLS: calls,
       MOCK_ADD_STATUS: String(addStatus),
@@ -96,7 +95,7 @@ test("a newer pre-release on next is left alone; an older or equal one is not", 
   const newer = fixture(t, { next: "7.0.0-beta.1", version: "6.3.0" });
   const kept = newer.run();
   assert.equal(kept.status, 0, kept.stderr);
-  assert.match(kept.stdout, /newer pre-release 7\.0\.0-beta\.1/);
+  assert.match(kept.stdout, /newer 7\.0\.0-beta\.1/);
   assert.equal(newer.added(), "");
   assert.equal(newer.run("--check").status, 0);
 
@@ -115,33 +114,15 @@ test("a newer pre-release on next is left alone; an older or equal one is not", 
   }
 });
 
-test("a re-run of an older stable leaves a newer stable on next; a fresh publication of a lower stable moves it", (t) => {
-  // Re-run: the publish step found 6.2.0 already on the registry.
-  const rerun = fixture(t, { next: "6.3.0", version: "6.2.0", outcome: "existing" });
-  const kept = rerun.run();
-  assert.equal(kept.status, 0, kept.stderr);
-  assert.match(kept.stdout, /next holds the newer 6\.3\.0 and this run did not publish 6\.2\.0/);
-  assert.equal(rerun.added(), "");
-
-  // Fresh publication of 6.2.1 after 6.3.0: npm moved latest to it, next follows.
-  const lower = fixture(t, { next: "6.3.0", version: "6.2.1" });
-  assert.equal(lower.run("--check").status, 1);
-  assert.equal(lower.added(), "");
-  assert.equal(lower.run().status, 0);
-  assert.match(lower.added(), /dist-tag add @haiyangbg\/buildbeat@6\.2\.1 next/);
-
-  // A re-run still moves next forward when it is behind.
-  const behind = fixture(t, { next: "6.1.0", version: "6.2.0", outcome: "existing" });
-  assert.equal(behind.run().status, 0);
-  assert.match(behind.added(), /dist-tag add @haiyangbg\/buildbeat@6\.2\.0 next/);
-});
-
-test("refuses an unknown publish outcome", (t) => {
-  const mock = fixture(t, { next: "6.1.0", version: "6.2.0", outcome: "maybe" });
-  const result = mock.run();
-  assert.equal(result.status, 2);
-  assert.match(result.stderr, /fresh or existing/);
-  assert.equal(mock.added(), "");
+test("next only moves forward: a newer stable stays when an older line is published or re-run", (t) => {
+  for (const version of ["6.2.0", "6.2.1"]) {
+    const mock = fixture(t, { next: "6.3.0", version });
+    const result = mock.run();
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /next holds the newer 6\.3\.0; next only moves forward/);
+    assert.equal(mock.run("--check").status, 0);
+    assert.equal(mock.added(), "");
+  }
 });
 
 test("a failed move says which npm setting to enable", (t) => {
