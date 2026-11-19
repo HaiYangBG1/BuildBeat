@@ -108,7 +108,7 @@ export function computeWorkCost(repoRoot, workId, { ledgers = null } = {}) {
     cost.runs += 1;
     const spent = ledgerCost(ledger);
     cost.reviewRounds += spent.reviewRounds;
-    rounds.push(...reviewOutcomes({ id: state.run.id, startedAt: ledger.events?.[0]?.ts, evidence: state.evidence, terminal: state.terminal, humanWaits: spent.humanWaits }));
+    if (state.run.pass) rounds.push(...reviewOutcomes({ id: state.run.id, startedAt: ledger.events?.[0]?.ts, evidence: state.evidence, terminal: state.terminal, humanWaits: spent.humanWaits }));
   }
   const recordsDir = join(repoRoot, "delivery", "work", workId, "runs");
   if (existsSync(recordsDir)) {
@@ -126,7 +126,7 @@ export function computeWorkCost(repoRoot, workId, { ledgers = null } = {}) {
       cost.runs += 1;
       // Early records carry attempts only; the cost block is preferred.
       cost.reviewRounds += record.cost?.reviewRounds ?? record.attempts?.review ?? 0;
-      rounds.push(...reviewOutcomes({ id: entry, startedAt: record.startedAt, evidence: record.evidence, terminal: record.terminal, humanWaits: record.cost?.humanWaits }));
+      if (record.pass) rounds.push(...reviewOutcomes({ id: entry, startedAt: record.startedAt, evidence: record.evidence, terminal: record.terminal, humanWaits: record.cost?.humanWaits }));
     }
   }
   cost.findings = readFindingsAccount(repoRoot, workId).filter((row) => row.kind === "finding").length;
@@ -144,12 +144,14 @@ export function reviewerReports(evidence) {
   );
 }
 
-// The reviews a run finished, in order: "failed" when one raised a blocking
-// finding, "passed" when it raised none. A run that ended CANCELLED without
-// ever asking a person ended on broken tooling, so its last report is no
-// verdict (a reviewer that timed out may have written one first); a run a
-// person rejected also ends CANCELLED, after its review was done. Earlier
-// versions reviewed several times within one run; each counts.
+// The review a run finished: "failed" when it raised a blocking finding,
+// "passed" when it raised none. A run that ended CANCELLED without ever
+// asking a person ended on broken tooling, so its report is no verdict (a
+// reviewer that timed out may have written one first); a run a person
+// rejected also ends CANCELLED, after its review was done. Only runs this
+// version made count (pass: true, one review each): earlier versions
+// retried and waited within a run, and their records cannot tell which
+// report was a finished review.
 function reviewOutcomes({ id, startedAt, evidence, terminal, humanWaits }) {
   const reviews = reviewerReports(evidence);
   if (terminal?.status === "CANCELLED" && !(humanWaits > 0)) reviews.pop();

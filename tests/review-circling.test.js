@@ -101,9 +101,9 @@ test("only reviews the reviewer finished count: not a verifier's report, not a r
   assert.equal(computeWorkCost(root, work).blockingStreak, 0);
 });
 
-test("an earlier version's run counts each review it went through", () => {
+test("an earlier version's runs are not counted", () => {
   const { root, work } = fixture({ prefix: "bb-circling-" });
-  // A 5.x run reviewed three times within one run, blocking each time.
+  // A 5.x run (no pass: true) that reviewed three times within one run.
   write(root, `delivery/work/${work}/runs/RUN-A-01/run-record.json`, JSON.stringify({
     run: "RUN-A-01",
     work,
@@ -115,11 +115,10 @@ test("an earlier version's run counts each review it went through", () => {
       status: "failed",
     })),
   }));
-  assert.equal(computeWorkCost(root, work).blockingStreak, 3);
+  assert.equal(computeWorkCost(root, work).blockingStreak, 0);
   blockingCommit(root, work);
-  assert.doesNotMatch(review(root, work).all, /^stop:/m);
-  blockingCommit(root, work);
-  assert.equal(review(root, work).all.match(STOP)?.[1], "5");
+  review(root, work);
+  assert.equal(computeWorkCost(root, work).blockingStreak, 1);
 });
 
 test("a work past its decision does not show the streak", () => {
