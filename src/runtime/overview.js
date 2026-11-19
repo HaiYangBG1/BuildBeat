@@ -463,7 +463,8 @@ export function computeOverview(
         : {}),
       runs: runs.length,
       reader: readerStanding(repoRoot, workId),
-      cost,
+      // The streak sits on the row; cost keeps the shape it always had.
+      cost: cost ? { runs: cost.runs, reviewRounds: cost.reviewRounds, findings: cost.findings } : null,
       blockingStreak: cost?.blockingStreak ?? 0,
       latest: latest
         ? {
