@@ -14,8 +14,10 @@ permissions:
 env:
   BUILDBEAT_PACKAGE_NAME: "@haiyangbg/buildbeat"
 
+# One publication at a time across all tags: a stable release reads next and
+# then moves it, and a pre-release published in between must not be lost.
 concurrency:
-  group: npm-publish-${{ inputs.tag }}
+  group: npm-publish
   cancel-in-progress: false
 
 jobs:
@@ -78,7 +80,16 @@ jobs:
           test "$(git cat-file -t "$RELEASE_TAG")" = "tag"
           test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$(git rev-parse HEAD)"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/remotes/origin/$dispatch_branch")"
+          # A new publication comes from the branch tip. Once this exact
+          # version is on the registry (a re-run after a failed later step),
+          # the commit only has to stay in the branch's history: publishing
+          # then accepts nothing but the identical artifact.
+          release_version="${RELEASE_TAG#v}"
+          if [[ "$(npm view "$BUILDBEAT_PACKAGE_NAME@$release_version" version 2>/dev/null || true)" = "$release_version" ]]; then
+            git merge-base --is-ancestor HEAD "refs/remotes/origin/$dispatch_branch"
+          else
+            test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/remotes/origin/$dispatch_branch")"
+          fi
 
           package_version="$(node -p "require('./package.json').version")"
           test "$(node -p "require('./package.json').name")" = "$BUILDBEAT_PACKAGE_NAME"

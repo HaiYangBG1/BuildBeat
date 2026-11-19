@@ -53,7 +53,12 @@ core_greater() {
   echo 0
 }
 
-current_next="$(npm view "$package_name" dist-tags.next --registry="$official_registry" 2>/dev/null || true)"
+# A failed read is not an empty tag: moving next blind could replace a newer
+# pre-release. A package with no next prints nothing and exits 0.
+if ! current_next="$(npm view "$package_name" dist-tags.next --registry="$official_registry")"; then
+  echo "Could not read dist-tag next of $package_name; nothing was changed." >&2
+  exit 1
+fi
 
 if [[ "$current_next" == "$package_version" ]]; then
   printf 'next already points at %s.\n' "$package_version"

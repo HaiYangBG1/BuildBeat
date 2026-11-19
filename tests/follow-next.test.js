@@ -25,7 +25,10 @@ function fixture(t, { next, version, addStatus = 0 }) {
     `#!/usr/bin/env bash
 set -euo pipefail
 case "\${1:-}" in
-  view) [[ -n "$MOCK_NEXT" ]] && printf '%s\\n' "$MOCK_NEXT"; exit 0 ;;
+  view)
+    [[ "$MOCK_NEXT" = "__ERROR__" ]] && exit 1
+    [[ -n "$MOCK_NEXT" ]] && printf '%s\\n' "$MOCK_NEXT"
+    exit 0 ;;
   dist-tag) printf '%s\\n' "$*" >> "$MOCK_CALLS"; exit "$MOCK_ADD_STATUS" ;;
   *) echo "Unexpected mocked npm command: $*" >&2; exit 97 ;;
 esac
@@ -57,9 +60,24 @@ test("a stable release moves next from the previous stable", (t) => {
   assert.equal(mock.added(), "dist-tag add @haiyangbg/buildbeat@6.2.0 next --registry=https://registry.npmjs.org/\n");
   assert.match(result.stdout, /next now points at 6\.2\.0/);
   // Before the move, the check says next is behind.
+});
+
+test("--check reads and never moves next", (t) => {
+  const mock = fixture(t, { next: "6.1.0", version: "6.2.0" });
   const check = mock.run("--check");
   assert.equal(check.status, 1);
   assert.match(check.stderr, /next points at 6\.1\.0, not at the stable 6\.2\.0/);
+  assert.equal(mock.added(), "");
+});
+
+test("a failed read of next changes nothing", (t) => {
+  const mock = fixture(t, { next: "__ERROR__", version: "6.2.0" });
+  for (const args of [[], ["--check"]]) {
+    const result = mock.run(...args);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Could not read dist-tag next/);
+  }
+  assert.equal(mock.added(), "");
 });
 
 test("next already on this version, or with no next yet", (t) => {
@@ -90,7 +108,9 @@ test("a newer pre-release on next is left alone; an older or equal one is not", 
     const older = fixture(t, { next, version: "6.3.0" });
     assert.equal(older.run().status, 0);
     assert.match(older.added(), /dist-tag add @haiyangbg\/buildbeat@6\.3\.0 next/, next);
+    const before = older.added();
     assert.equal(older.run("--check").status, 1, next);
+    assert.equal(older.added(), before, `--check moved next (${next})`);
   }
 });
 
