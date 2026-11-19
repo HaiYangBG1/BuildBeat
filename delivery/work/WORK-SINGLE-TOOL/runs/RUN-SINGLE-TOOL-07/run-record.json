@@ -1,0 +1,96 @@
+{
+  "run": "RUN-SINGLE-TOOL-07",
+  "work": "WORK-SINGLE-TOOL",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-SINGLE-TOOL-08 (same work WORK-SINGLE-TOOL)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:411c3c53f230dc62e0082ccd3157fef52dec8f9826b459d035d62a33d49d3774"
+  },
+  "startedAt": "2026-11-18T14:45:54.206Z",
+  "finishedAt": "2026-11-18T15:08:19.222Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 1190934
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 153860
+  },
+  "workspaces": {
+    "RUN-SINGLE-TOOL-07": {
+      "repo": ".",
+      "branch": "run/RUN-SINGLE-TOOL-07",
+      "worktreePath": ".buildbeat/worktrees/RUN-SINGLE-TOOL-07",
+      "base": "8e6d0a9ead57424f6440a467986282a122737551",
+      "candidate": "6991f9e1e6e7f3fa33831ab74aff0794b3810996"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-07/logs/verify-1.log",
+      "kind": "command",
+      "subject": "6991f9e1e6e7f3fa33831ab74aff0794b3810996",
+      "digest": "sha256:dd0b12d534d0dc812d0f9b70292ee8ceb908d656d58bfa85f46e815d801cdfd5",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-07/logs/review-1.log",
+      "kind": "command",
+      "subject": "6991f9e1e6e7f3fa33831ab74aff0794b3810996",
+      "digest": "sha256:f1c56d8a793debbd328578423f5602d8a6699e6701c18ebc272d36f295a8c738",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-07/outputs/review-1.json",
+      "kind": "review",
+      "subject": "6991f9e1e6e7f3fa33831ab74aff0794b3810996",
+      "digest": "sha256:54bfeeeacf82ad878153eae2d0bde49f850534904604a4d9eebd063394e5647f",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/runtime/env-contract.js 将 `bash -euo pipefail delivery/envelope/worker.sh reviewer -- no-such-ai-tool` 中的 `pipefail` 误认成脚本名，导致审查工具缺失时 `buildbeat check` 仍会通过。"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

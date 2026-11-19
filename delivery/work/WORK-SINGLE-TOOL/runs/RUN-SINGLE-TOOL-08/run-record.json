@@ -1,0 +1,123 @@
+{
+  "run": "RUN-SINGLE-TOOL-08",
+  "work": "WORK-SINGLE-TOOL",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 17,
+    "lastDigest": "sha256:810b3cd6c458f6c724fd3b64e3a7f190e968a3e245a6dbbb4d75526cdb16a236"
+  },
+  "startedAt": "2026-11-18T15:08:19.224Z",
+  "finishedAt": "2026-11-19T02:12:13.143Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 1,
+        "ms": 39601444
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 232224
+  },
+  "workspaces": {
+    "RUN-SINGLE-TOOL-08": {
+      "repo": ".",
+      "branch": "run/RUN-SINGLE-TOOL-08",
+      "worktreePath": ".buildbeat/worktrees/RUN-SINGLE-TOOL-08",
+      "base": "8e6d0a9ead57424f6440a467986282a122737551",
+      "candidate": "040778e64b05de8204aa65ce8b9295c4c3b630fc"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-08/logs/verify-1.log",
+      "kind": "command",
+      "subject": "040778e64b05de8204aa65ce8b9295c4c3b630fc",
+      "digest": "sha256:c6048e4a77623c51ea630bf6cff3ce798a8e297ef8e4974503616d6178731f61",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-08/logs/review-1.log",
+      "kind": "command",
+      "subject": "040778e64b05de8204aa65ce8b9295c4c3b630fc",
+      "digest": "sha256:8feb37c7dca71a5743bda2c7b3bf59f8a4371e2f664ce1dc5d08f79ec75dd68e",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-08/outputs/review-1.json",
+      "kind": "review",
+      "subject": "040778e64b05de8204aa65ce8b9295c4c3b630fc",
+      "digest": "sha256:3dabaf71a76bc7e6929be83fce5d0f02803a38d9998c09bc377cc206c94be173",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/runtime/env-contract.js 仅在组合选项末尾识别 `o`，导致有效命令 `bash -oue pipefail delivery/envelope/worker.sh reviewer -- no-such-ai-tool` 被误判为以 `pipefail` 为脚本，`buildbeat check` 漏报缺失的审查工具。"
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "040778e64b05de8204aa65ce8b9295c4c3b630fc",
+        "planDigest": "sha256:a85724ad53ccd69c00df91913018942f88ee0d36c725fb2210245180151ca683",
+        "evidenceDigest": "sha256:3dabaf71a76bc7e6929be83fce5d0f02803a38d9998c09bc377cc206c94be173"
+      },
+      "decisionRef": "D-RUN-SINGLE-TOOL-08-1",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-SINGLE-TOOL-08-1",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "040778e64b05de8204aa65ce8b9295c4c3b630fc",
+        "planDigest": "sha256:a85724ad53ccd69c00df91913018942f88ee0d36c725fb2210245180151ca683",
+        "evidenceDigest": "sha256:3dabaf71a76bc7e6929be83fce5d0f02803a38d9998c09bc377cc206c94be173"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}
