@@ -1,0 +1,6 @@
+# What WORK-AUTO-NEXT may change; everything else comes from delivery/run-config.yaml.
+allowedPaths:
+  - .github
+  - tests
+  - docs/RELEASING.md
+  - CHANGELOG.md

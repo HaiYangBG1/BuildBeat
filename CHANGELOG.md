@@ -2,6 +2,10 @@
 
 Earlier history: see tag v5.5.0.
 
+## Unreleased
+
+- Releasing no longer needs anyone to log in to npm (WORK-AUTO-NEXT). After a stable version reaches `latest`, the publish job points `next` at it with the same Trusted Publishing identity (`.github/scripts/follow-next.sh`), unless `next` already holds a newer version: `next` only moves forward, and an older line published or re-run leaves it where it is. The verify job checks both tags. Publications run one at a time across all tags, queued rather than cancelled. Both jobs use npm 11.21.2. This needs "Allow npm dist-tag" enabled once for the trusted publisher on npmjs.com; while it is off, the publish job fails after publishing and says so, and re-running the failed jobs finishes the move.
+
 ## v6.2.0 — 2026-11-19（审查可以先不配；用手上任意一个 AI 工具当审查者）
 
 > **Published.** `@haiyangbg/buildbeat@6.2.0` was published on 2026-11-19 from `main` (release PR #142, merge commit `72aa229`, annotated tag `v6.2.0`) through OIDC Trusted Publishing to dist-tag **`latest`** (run 44487037552; the publish and verify jobs both succeeded on the first attempt). The owner said to release, and the driving session approved the `npm-publish` environment with the owner's account as for 6.1.0. Independent readback from `registry.npmjs.org`: version 6.2.0, integrity `sha512-tXcCS7QY/C+TYLMpYC3EhkJoStX6ZEZKw7RLn/3bto6+/cUmtYB/uGNoUsI6ws6tIJRVlZX5K10bBwzrXE1qdw==`, shasum `79956a809ec2a7c63271b8dbfde774f4d565d087`, 102 files, each byte-identical to the tagged source; an isolated install prints `6.2.0` and the bare command exits 0 without writing; SLSA v1 provenance; `npm audit signatures` verified the registry signature and the attestation. `next` was moved from `6.1.0` to `6.2.0` the same day, the owner confirming the npm login and the web authentication. The Claude Code plugin is 0.9.0.

@@ -1,0 +1,7 @@
+# actionlint 1.7.12 does not know the concurrency `queue` key yet, which
+# GitHub documents (queue: single | max). Ignore only that message, only in
+# the publish workflow.
+paths:
+  .github/workflows/publish.yml:
+    ignore:
+      - 'unexpected key "queue" for "concurrency" section'

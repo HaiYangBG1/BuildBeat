@@ -1,0 +1,100 @@
+{
+  "run": "RUN-AUTO-NEXT-05",
+  "work": "WORK-AUTO-NEXT",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-AUTO-NEXT-06 (same work WORK-AUTO-NEXT)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:9947fb35bedb801059a4c2b9a3d4ac85d622fd9c73c45619c184159cf08d6844"
+  },
+  "startedAt": "2026-11-19T11:03:31.133Z",
+  "finishedAt": "2026-11-19T11:32:43.867Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 1523296
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 229251
+  },
+  "workspaces": {
+    "RUN-AUTO-NEXT-05": {
+      "repo": ".",
+      "branch": "run/RUN-AUTO-NEXT-05",
+      "worktreePath": ".buildbeat/worktrees/RUN-AUTO-NEXT-05",
+      "base": "631c81a10cd841b09fa5649ebfc759184bf12d0c",
+      "candidate": "8193d041921a75848a9e32b46073e90aaf1ef13c"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-05/logs/verify-1.log",
+      "kind": "command",
+      "subject": "8193d041921a75848a9e32b46073e90aaf1ef13c",
+      "digest": "sha256:f3ba1bae01f6c34a07b84fecb9ca90429d972c3a6f63f3d8e6a7854dc015687a",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-05/logs/review-1.log",
+      "kind": "command",
+      "subject": "8193d041921a75848a9e32b46073e90aaf1ef13c",
+      "digest": "sha256:ec8f0d31ed5942a67277bcccd1c352bfb24fa6ba4b519b40c9ce765ec016f753",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-05/outputs/review-1.json",
+      "kind": "review",
+      "subject": "8193d041921a75848a9e32b46073e90aaf1ef13c",
+      "digest": "sha256:c127c4467d510903471eb29dec93b9e3a3808ed1b39d3a64aa7ff542c42b3de2",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "较低版本的稳定版已发布到 `latest`、但首次更新 `next` 失败时，`.github/scripts/follow-next.sh:81` 会在重跑中因 `existing` 跳过补写并返回成功，导致 `next` 仍指向较高的稳定版，后续校验也无法修复。"
+        },
+        {
+          "severity": "P1",
+          "summary": "重跑旧稳定版时，若首次完整性查询失败且 npm 拒绝重复发布，`.github/scripts/publish-candidate.sh:93` 会在随后读到相同制品时误报 `fresh`，导致发布步骤把 `next` 从较新的稳定版拨回旧版。 [npm 发布实现](https://github.com/npm/cli/blob/v11.21.2/lib/commands/publish.js#L1092-L1109)"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

@@ -1,0 +1,104 @@
+{
+  "run": "RUN-AUTO-NEXT-02",
+  "work": "WORK-AUTO-NEXT",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-AUTO-NEXT-03 (same work WORK-AUTO-NEXT)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:596fb8571b753186e7e57cd96e830c0c0ebc282dd7eace7139e4aed834057fdb"
+  },
+  "startedAt": "2026-11-19T10:46:53.465Z",
+  "finishedAt": "2026-11-19T10:52:25.002Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 83247
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 248031
+  },
+  "workspaces": {
+    "RUN-AUTO-NEXT-02": {
+      "repo": ".",
+      "branch": "run/RUN-AUTO-NEXT-02",
+      "worktreePath": ".buildbeat/worktrees/RUN-AUTO-NEXT-02",
+      "base": "631c81a10cd841b09fa5649ebfc759184bf12d0c",
+      "candidate": "98cf8be6accb5f107621dd5328102d97f8103bff"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-02/logs/verify-1.log",
+      "kind": "command",
+      "subject": "98cf8be6accb5f107621dd5328102d97f8103bff",
+      "digest": "sha256:36d298651953bf267c877d5fa6d1d0b30c72e278de0f46472fe6cb5176c3eaa5",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-02/logs/review-1.log",
+      "kind": "command",
+      "subject": "98cf8be6accb5f107621dd5328102d97f8103bff",
+      "digest": "sha256:821cb30c1208276d253d488c93897d9cc641dcbe972d7e170bfcab89e566b79b",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-02/outputs/review-1.json",
+      "kind": "review",
+      "subject": "98cf8be6accb5f107621dd5328102d97f8103bff",
+      "digest": "sha256:395192ee58d29ddeeccfad8eeebb8f8645cdac0bd8ee4c4d495b85f36dea5f7d",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "`.github/workflows/publish.yml:88` 放行已发布的旧稳定版重跑，导致新版已经占据 `latest` 和 `next` 时，旧任务仍会把 `next` 改回旧版，后续校验失败也不会恢复标签。"
+        },
+        {
+          "severity": "P1",
+          "summary": "`.github/workflows/publish.yml:19` 将不同标签的发布放进同一并发组并沿用默认的单等待位，一个发布正在运行且另一个正在等待时，第三个发布会取消等待中的发布，即使三个标签各不相同。 [GitHub 并发队列文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency#example-queueing-multiple-pending-runs)"
+        },
+        {
+          "severity": "P2",
+          "summary": "`.github/workflows/publish.yml:88` 将稳定版补挂 `next` 所需的祖先提交例外也用于预发布版，放宽了预发布原有的分支尖端校验，超出已确认的恢复范围。"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

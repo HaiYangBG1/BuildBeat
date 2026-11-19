@@ -1,0 +1,100 @@
+{
+  "run": "RUN-AUTO-NEXT-04",
+  "work": "WORK-AUTO-NEXT",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-AUTO-NEXT-05 (same work WORK-AUTO-NEXT)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:ed7b7b601aa90b8c7c4501764178d695b7fb3c9396b8639ddba26c8235a5c111"
+  },
+  "startedAt": "2026-11-19T10:57:37.382Z",
+  "finishedAt": "2026-11-19T11:03:31.128Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 95652
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 257858
+  },
+  "workspaces": {
+    "RUN-AUTO-NEXT-04": {
+      "repo": ".",
+      "branch": "run/RUN-AUTO-NEXT-04",
+      "worktreePath": ".buildbeat/worktrees/RUN-AUTO-NEXT-04",
+      "base": "631c81a10cd841b09fa5649ebfc759184bf12d0c",
+      "candidate": "d4bb6e2c7de63f69858723f4cd9cb31844d3039a"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-04/logs/verify-1.log",
+      "kind": "command",
+      "subject": "d4bb6e2c7de63f69858723f4cd9cb31844d3039a",
+      "digest": "sha256:a9498e190fb0185a10e691458c7c5e74fedcb473c661fc8069f13155bb28135b",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-04/logs/review-1.log",
+      "kind": "command",
+      "subject": "d4bb6e2c7de63f69858723f4cd9cb31844d3039a",
+      "digest": "sha256:e9d1c63afcd939bf6b1426913b1fa83b1ef932e73b40214883dad7eeac825e62",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-04/outputs/review-1.json",
+      "kind": "review",
+      "subject": "d4bb6e2c7de63f69858723f4cd9cb31844d3039a",
+      "digest": "sha256:0c2a67adae7a06c440786768f8d7b84f674e56d107f8d573ba76ede40b15cb51",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "首次发布版本号较低的稳定版时，如果 npm 暂时仍返回旧的 `latest`，`.github/scripts/follow-next.sh:79` 会误判为旧版重跑并跳过更新 `next`，随后只重跑失败的 `verify` 任务也无法补写标签。 [npm 发布可见性说明](https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/#packages-are-scanned-before-they-become-available) [GitHub 重跑文档](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs#re-running-failed-jobs-in-a-workflow)"
+        },
+        {
+          "severity": "P1",
+          "summary": "`.github/scripts/follow-next.sh:65` 在判断 `next` 是否已经符合验收要求前读取 `latest`，导致 `next` 已指向目标稳定版或应保留的较新预发布版时，发布步骤和 `--check` 仍会因这次额外查询失败而退出 1。"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

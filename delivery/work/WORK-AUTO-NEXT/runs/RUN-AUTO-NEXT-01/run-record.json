@@ -1,0 +1,112 @@
+{
+  "run": "RUN-AUTO-NEXT-01",
+  "work": "WORK-AUTO-NEXT",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-AUTO-NEXT-02 (same work WORK-AUTO-NEXT)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:4a77f2f848dac4c8945f5625094433e16535c0d46383ed6e73e2c84f32d47759"
+  },
+  "startedAt": "2026-11-19T10:40:37.571Z",
+  "finishedAt": "2026-11-19T10:46:53.462Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 65290
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 310360
+  },
+  "workspaces": {
+    "RUN-AUTO-NEXT-01": {
+      "repo": ".",
+      "branch": "run/RUN-AUTO-NEXT-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-AUTO-NEXT-01",
+      "base": "631c81a10cd841b09fa5649ebfc759184bf12d0c",
+      "candidate": "dcd38dfbdb7e02fd9b40916ee54c7fb6742d30a3"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "dcd38dfbdb7e02fd9b40916ee54c7fb6742d30a3",
+      "digest": "sha256:8fb1b8bee47d5a334f36ae5e58de64b49c0e51d2d00bce2462e108b7ace37cb9",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "dcd38dfbdb7e02fd9b40916ee54c7fb6742d30a3",
+      "digest": "sha256:6f4e9a70b42800767f0865c6ef7c0ae6a59f578453b602b83030b491f50bbbc6",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "dcd38dfbdb7e02fd9b40916ee54c7fb6742d30a3",
+      "digest": "sha256:edd5f14ceee1307bed20d13446a9129ba7022bca995b8978a5216510776b8aec",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "`.github/scripts/follow-next.sh:56` 把读取 `next` 失败当作标签为空，随后仍然执行 `npm dist-tag add`，因此一次读取故障就可能覆盖本应保留的更新预发布版。"
+        },
+        {
+          "severity": "P1",
+          "summary": "`.github/workflows/publish.yml:18` 按版本标签隔离并发，如果更新的预发布版在稳定版读完 `next` 后、写入前发布，稳定版会覆盖刚更新的 `next`，且稳定版校验仍可通过。"
+        },
+        {
+          "severity": "P1",
+          "summary": "稳定版已发布但更新 `next` 失败后，如果 `origin/main` 在重跑前已有新提交，`.github/workflows/publish.yml:81` 会拒绝原发布提交，导致工作说明承诺的重跑恢复无法完成。 [GitHub 重跑文档](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)"
+        },
+        {
+          "severity": "P1",
+          "summary": "`tests/follow-next.test.js:60` 和 `tests/follow-next.test.js:93` 只检查 `--check` 发现版本不符时的退出结果，即使该模式误执行 `npm dist-tag add` 后仍返回失败，测试也会通过。"
+        },
+        {
+          "severity": "P2",
+          "summary": "`docs/RELEASING.md` 的可信发布绑定示例只授予 `npm publish`，且一次性设置步骤未说明如何为现有绑定补上 `Allow npm dist-tag`，照示例新建的绑定仍无法更新 `next`。 [npm 可信发布文档](https://docs.npmjs.com/trusted-publishers/#managing-dist-tags-with-trusted-publishing)"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}
