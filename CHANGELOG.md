@@ -2,6 +2,10 @@
 
 Earlier history: see tag v5.5.0.
 
+## Unreleased
+
+- Reviews that keep finding blocking problems now ask for a person (WORK-REVIEW-CIRCLING). When a work's reviews raise a P0 or P1 several rounds in a row, `review` prints `stop: <n> reviews in a row found blocking problems; before fixing again, show the user where they keep coming from and ask whether to narrow the work, rule on the findings, or keep fixing` at 5, 10, 15 … in a row, and `status` shows `blocking streak: <n> reviews in a row found blocking problems` for a work not yet merged, closed or cancelled (`blockingStreak` in `--json`). A round that reviewed nothing (verification failed, the tooling broke) neither counts nor resets the streak; a review with no blocking finding, rejected or not, resets it. Only reviews this version ran count, from the run ledgers or the run records; runs of earlier versions are left out. Nothing is refused: the Skill tells the session to stop and ask. A work in another project had gone through 108 reviews, each fix inviting the next finding, without anyone being asked.
+
 ## v6.0.0 — 2026-11-11（主版本：运行时只做记、验、审、批，代码由会话写；只认当前写法；读者测试；路径不再带 v2）
 
 > **Published.** `@haiyangbg/buildbeat@6.0.0` was published on 2026-11-11 from `main` (release PR #131, merge commit `f4b8615`, annotated tag `v6.0.0`) through OIDC Trusted Publishing to dist-tag **`latest`** (run 43028519165; the publish and verify jobs both succeeded on the first attempt). The owner said to tag and publish, and had the driving session approve the `npm-publish` environment with the owner's account. Independent readback from `registry.npmjs.org`: version 6.0.0, integrity `sha512-vlG3uU+GpuMV1bjS+pTTwjEqgEu8gWViU0rqiizAkTap95QPqLXJT2DFa+MIJ/+Ai4rQZfgcKscj5SsjZAjvlQ==`, shasum `b6512e74849162217886eb6c252e04dcce471aa3`, 102 files, each byte-identical to the tagged source; an isolated install prints `6.0.0` and the bare command exits 0; SLSA v1 provenance; `npm audit signatures` verified the registry signature and the attestation. `next` was moved from `5.5.0` to `6.0.0` the same day, the owner confirming the npm login and 2FA in the browser.

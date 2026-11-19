@@ -1,0 +1,124 @@
+{
+  "run": "RUN-REVIEW-CIRCLING-04",
+  "work": "WORK-REVIEW-CIRCLING",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 17,
+    "lastDigest": "sha256:d4e8f1231aa0dddcd8f722198deab049b14bc91369224cc289aa82b56ee08640"
+  },
+  "startedAt": "2026-11-19T03:41:21.849Z",
+  "finishedAt": "2026-11-19T04:07:34.880Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 1,
+        "ms": 1348038
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 224768
+  },
+  "workspaces": {
+    "RUN-REVIEW-CIRCLING-04": {
+      "repo": ".",
+      "branch": "run/RUN-REVIEW-CIRCLING-04",
+      "worktreePath": ".buildbeat/worktrees/RUN-REVIEW-CIRCLING-04",
+      "base": "85d12e656983e285a967f9b4708fae406be94f72",
+      "candidate": "6bdb7810dd7e93b0358d97ea165c38bd674ea7c6"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CIRCLING-04/logs/verify-1.log",
+      "kind": "command",
+      "subject": "6bdb7810dd7e93b0358d97ea165c38bd674ea7c6",
+      "digest": "sha256:3bf38ffc0a7c9d4b64a432ca14d842c349e9803bb139664b96ed1b3c94ae313e",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CIRCLING-04/logs/review-1.log",
+      "kind": "command",
+      "subject": "6bdb7810dd7e93b0358d97ea165c38bd674ea7c6",
+      "digest": "sha256:97bdf3e25062c87f2f1ca26735cec361c183ab53d316063993566b5520fd95d0",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CIRCLING-04/outputs/review-1.json",
+      "kind": "review",
+      "subject": "6bdb7810dd7e93b0358d97ea165c38bd674ea7c6",
+      "digest": "sha256:ce067c7fd9315965123773c7f79ab4254a16f295e77524bbe6f03657d79c7eb8",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "`src/runtime/work-cost.js` 新增的 `pass` 筛选超出已确认工作说明，把时间和结果齐全、只完成过一次阻断审查的旧运行也排除，导致同一工作升级后再连续四轮审出阻断问题时漏报第五轮 `stop:`。"
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "6bdb7810dd7e93b0358d97ea165c38bd674ea7c6",
+        "planDigest": "sha256:a3a249b3500006f5dbcd29bcf2bcb83113ad02e4d1de999728a4f5e1359a250c",
+        "evidenceDigest": "sha256:ce067c7fd9315965123773c7f79ab4254a16f295e77524bbe6f03657d79c7eb8"
+      },
+      "decisionRef": "D-RUN-REVIEW-CIRCLING-04-1",
+      "actor": {
+        "kind": "human",
+        "id": "haiyangbg",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-REVIEW-CIRCLING-04-1",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "6bdb7810dd7e93b0358d97ea165c38bd674ea7c6",
+        "planDigest": "sha256:a3a249b3500006f5dbcd29bcf2bcb83113ad02e4d1de999728a4f5e1359a250c",
+        "evidenceDigest": "sha256:ce067c7fd9315965123773c7f79ab4254a16f295e77524bbe6f03657d79c7eb8"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

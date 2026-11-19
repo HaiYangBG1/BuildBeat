@@ -25,7 +25,7 @@ test("work cost adds up review rounds and findings across superseded runs", () =
   const second = reviewWith(root, work);
   assert.deepEqual(second.superseded, [first.runId]);
 
-  assert.deepEqual(computeWorkCost(root, work), { runs: 2, reviewRounds: 2, findings: 1 });
+  assert.deepEqual(computeWorkCost(root, work), { runs: 2, reviewRounds: 2, findings: 1, blockingStreak: 0 });
   const rows = computeOverview(root, { work });
   assert.equal(rows[0].runs, 2);
   assert.equal(rows[0].cost.reviewRounds, 2);
@@ -35,7 +35,7 @@ test("work cost adds up review rounds and findings across superseded runs", () =
   // directory is gone.
   assert.equal(record(root, work, first.runId).cost.reviewRounds, 1);
   rmSync(join(root, ".buildbeat", "runtime", "runs", first.runId), { recursive: true, force: true });
-  assert.deepEqual(computeWorkCost(root, work), { runs: 2, reviewRounds: 2, findings: 1 });
+  assert.deepEqual(computeWorkCost(root, work), { runs: 2, reviewRounds: 2, findings: 1, blockingStreak: 0 });
 });
 
 test("durations and the cost line render in plain units", () => {

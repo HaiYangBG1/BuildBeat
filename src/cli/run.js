@@ -32,6 +32,7 @@ import { closeWork, renderReleases, runReadback, summarizeReleases } from "../ru
 import { writeResultDraft } from "../runtime/closeout.js";
 import { installCommitHook, trailerWarning } from "../runtime/hooks.js";
 import { reviewCommit } from "../runtime/orchestrator.js";
+import { blockingStreakStop, computeWorkCost, reviewerReports } from "../runtime/work-cost.js";
 import { absoluteArgs, readerStanding, READER_QUESTIONS, runReaderTest } from "../runtime/reader.js";
 import { createShellAdapter } from "../adapters/shell.js";
 import { describeActor, selfMergeApproval } from "../runtime/actor.js";
@@ -600,6 +601,13 @@ function commandReview(flags) {
   }
   const ledger = EventLedger.open(result.ledgerPath);
   printState(ledger.state, ledger, { repoLabel });
+  // This round raised blocking findings again: every fifth such round in a
+  // row, the session stops and asks the user before fixing again.
+  const thisReview = reviewerReports(ledger.state.evidence).at(-1);
+  if (thisReview?.status === "failed") {
+    const stop = blockingStreakStop(computeWorkCost(repoRoot, workId).blockingStreak);
+    if (stop) console.log(stop);
+  }
   // A run that ended reviewed nothing a person can decide on.
   if (ledger.state.terminal) {
     console.log(
