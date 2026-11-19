@@ -312,7 +312,7 @@ test("the JSON of one repository's status keeps its shape", () => {
   expected.works[0].intent = expected.works[0].plan = { exists: true, accepted: true, stale: false, by: "owner", actor: owner, at: decision.ts };
   expected.works[0].decisions = [{ ts: decision.ts, decisionRef: decision.decisionRef, transition: "accept-work",
     decision: "approved", by: "owner", actor: owner, who: "owner (person)" }];
-  expected.works[0].next = "write delivery/run-config.yaml (workers.verifier, workers.reviewer), then buildbeat review --repo . --work LOCAL; or, if it was doc-only, close out: write delivery/work/LOCAL/result.md, then buildbeat decide --repo . --work LOCAL --action close --by <you>";
+  expected.works[0].next = "write delivery/run-config.yaml (workers.verifier; workers.reviewer is optional), then buildbeat review --repo . --work LOCAL; or, if it was doc-only, close out: write delivery/work/LOCAL/result.md, then buildbeat decide --repo . --work LOCAL --action close --by <you>";
   assert.equal(cli(root, "--work", "LOCAL", "--json"), JSON.stringify(expected, null, 2) + "\n");
 
   const candidate = commit(root, "change for LOCAL\n\nWork: LOCAL", { "src/feature.txt": "hello\n" });

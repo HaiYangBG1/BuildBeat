@@ -20,6 +20,7 @@ import { EventLedger } from "../storage/event-ledger.js";
 import { acquireLock, releaseLock } from "../workspace/workspace-manager.js";
 import { actorFrom } from "./actor.js";
 import { writeRunRecord } from "./run-record.js";
+import { VERIFY_ONLY_NAME } from "../engine/workflow.js";
 
 const KERNEL = { kind: "kernel", id: "orchestrator" };
 
@@ -215,6 +216,7 @@ export function approveReview(
       decision: "approved",
       transition: pending.transition,
       subject: pending.subject,
+      ...(ledger.state.run.workflowRef === VERIFY_ONLY_NAME ? { reviewed: false } : {}),
       by: who.id,
       actor: who,
     });

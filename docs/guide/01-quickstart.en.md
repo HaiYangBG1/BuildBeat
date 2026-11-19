@@ -42,6 +42,8 @@ envelope:
   prompts: envelope/prompts
 ```
 
+One AI tool is enough: it reviews in a separate read-only session. To skip review for now, delete the `reviewer` block and only verify. See [Only one AI tool, or no review yet](04-adapter-guide.en.md#only-one-ai-tool-or-no-review-yet).
+
 The sample also has `requires` (environment checks before a review), `redact` (masking in evidence), `requireScreenshot` (projects with a UI), `release` (the readback command) and `maxReviewSeverity`. When one work must differ from the project, write only the keys to override in `delivery/work/WORK-X/run-config.yaml`; that file also takes `allowedPaths` (the directories this work may change) and `base` (the commit the work starts from). An unknown key is an error.
 
 A review ends in one of three ways. `FAILED`: the verification failed or the commit changed a directory out of scope; fix and send again. `CANCELLED`: a tool had trouble, which is not a verdict on the commit; send again when the environment is back. Waiting for the human decision: an approval is refused while a P0 or P1 finding is undecided. Fix in a new commit and send it; the earlier round is superseded.

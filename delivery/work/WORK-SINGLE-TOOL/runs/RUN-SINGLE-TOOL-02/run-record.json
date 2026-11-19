@@ -1,0 +1,136 @@
+{
+  "run": "RUN-SINGLE-TOOL-02",
+  "work": "WORK-SINGLE-TOOL",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-SINGLE-TOOL-03 (same work WORK-SINGLE-TOOL)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:c71f2df8f79c30687f41afab422cd12979e97a5afc5a10080e175b8ec6f588bc"
+  },
+  "startedAt": "2026-11-18T13:33:10.288Z",
+  "finishedAt": "2026-11-18T13:43:12.446Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 293534
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 308156
+  },
+  "workspaces": {
+    "RUN-SINGLE-TOOL-02": {
+      "repo": ".",
+      "branch": "run/RUN-SINGLE-TOOL-02",
+      "worktreePath": ".buildbeat/worktrees/RUN-SINGLE-TOOL-02",
+      "base": "8e6d0a9ead57424f6440a467986282a122737551",
+      "candidate": "75f39feb0bb9581dc28e944a76be109ba8a9d8e9"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-02/logs/verify-1.log",
+      "kind": "command",
+      "subject": "75f39feb0bb9581dc28e944a76be109ba8a9d8e9",
+      "digest": "sha256:b37fcd4c2d8dff173399ef95b557141efba24d89035884c5db1da54f59664559",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-02/logs/review-1.log",
+      "kind": "command",
+      "subject": "75f39feb0bb9581dc28e944a76be109ba8a9d8e9",
+      "digest": "sha256:dcb51268b9a58431b8cdb10f6309784dcae56582dcd0c4d93e69790e587a8ea2",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-02/outputs/review-1.json",
+      "kind": "review",
+      "subject": "75f39feb0bb9581dc28e944a76be109ba8a9d8e9",
+      "digest": "sha256:ff7c36cd2c1f77102a74e0b131083c3c70b0aff741dbd4b10372db69abec716a",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/policy/policy.js 按 verify-only 流程直接放行审查门槛，同一提交已有未裁决的 P0/P1 时，移除 reviewer 后重新送审即可获批。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/runtime/overview.js 仅凭流程名显示「verified, not reviewed」，导致验证仍在运行、已经失败或因工具故障取消的提交也被标为验证通过。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/runtime/orchestrator.js 在只验证流程中仍把 verifier 输出的 findings 记为审查证据，后续启用 reviewer 时会把该提交当作已审起点，漏审此前的改动。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/runtime/code-trace.js 只从已合入主干的批准记录读取未审查标记，导致 history --path 在等待批准或已批准待合并时均不显示该提交未经审查。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/runtime/env-contract.js 按宿主 PATH 和原始参数查找工具，忽略 reviewer 的 env.PATH 和运行时参数替换，导致 check 对同一份可执行配置误报缺失，也可能放过实际找不到的工具。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/runtime/env-contract.js 递归解析 PATH 候选路径，PATH 以当前目录「.」开头时会反复查找同一个命令并触发栈溢出，check 无法完成。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/runtime/env-contract.js 只在第一个参数是 worker.sh 时识别包装器，直接把可执行的 worker.sh 配为 command 会漏检缺失的审查工具，样板写法在 -- 后漏填工具也会通过 check。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/runtime/orchestrator.js 将 reviewed 新增到 HUMAN_REQUESTED.subject 并传入 DECISION_RECORDED，扩展了冻结的台账事件载荷，触及 work.md 明定须停下交所有者决定的条件。"
+        },
+        {
+          "severity": "P2",
+          "summary": "src/cli/run.js 把新增的工具预检扩展到了 verifier 和 reader，导致项目即使只跑验证，也会因当前用不到的可选 reader 工具缺失而在 check 退出 1，超出已确认的审查工具检查范围。"
+        },
+        {
+          "severity": "P2",
+          "summary": "src/cli/run.js 的上线回读只在没有运行编号时显示「未审查」，已批准的 verify-only 提交有运行编号，回读结果因此遗漏其未审查状态。"
+        },
+        {
+          "severity": "P2",
+          "summary": "README.en.md 安装步骤第 4 步指向中文 04-adapter-guide.md，英文读者按指引无法直接到达本次新增的英文配置说明。"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

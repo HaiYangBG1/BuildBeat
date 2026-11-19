@@ -18,6 +18,7 @@ import { readReleases } from "./release.js";
 import { computeWorkCost, renderBlockingStreak, renderWorkCost } from "./work-cost.js";
 import { readerStanding, renderReaderStanding } from "./reader.js";
 import { codeCommitsOf } from "./work-commits.js";
+import { VERIFY_ONLY_NAME } from "../engine/workflow.js";
 
 function sha256File(path) {
   return `sha256:${createHash("sha256").update(readFileSync(path, "utf8"), "utf8").digest("hex")}`;
@@ -381,7 +382,7 @@ export function computeOverview(
         stage = "READY_TO_RUN";
         next = reviewable
           ? `commit the change, then ${review}`
-          : `write delivery/run-config.yaml (workers.verifier, workers.reviewer), then ${review}; or, if it was doc-only, close out: ${closeOut}`;
+          : `write delivery/run-config.yaml (workers.verifier; workers.reviewer is optional), then ${review}; or, if it was doc-only, close out: ${closeOut}`;
       }
     } else if (latest.status === "RUNNING") {
       stage = "RUNNING";
@@ -475,6 +476,7 @@ export function computeOverview(
             source: latest.source,
             terminalReason: latest.terminal?.reason ?? null,
             waiting: latest.pendingHuman?.transition ?? null,
+            ...(latest.workflow === VERIFY_ONLY_NAME ? { reviewed: false } : {}),
           }
         : null,
       merged,
@@ -597,8 +599,9 @@ export function renderOverview(rows, { decisions = false, extra = null } = {}) {
       const why = row.latest.terminalReason
         ? ` — ${row.latest.terminalReason.slice(0, 100)}`
         : "";
+      const unreviewed = row.latest.reviewed === false ? " (not reviewed)" : "";
       lines.push(
-        `  latest ${row.latest.id} ${row.latest.status}${cand}${wait} @ ${row.latest.at ?? "?"}${why}`,
+        `  latest ${row.latest.id} ${row.latest.status}${cand}${unreviewed}${wait} @ ${row.latest.at ?? "?"}${why}`,
       );
     }
     const selfMerge = row.selfMergeApproval;

@@ -1,0 +1,96 @@
+{
+  "run": "RUN-SINGLE-TOOL-06",
+  "work": "WORK-SINGLE-TOOL",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-SINGLE-TOOL-07 (same work WORK-SINGLE-TOOL)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:ad114d6a7daabed74651655cb5e3600f3986e765e4c77a95ea1049abef5b7440"
+  },
+  "startedAt": "2026-11-18T14:36:36.209Z",
+  "finishedAt": "2026-11-18T14:45:54.204Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 370084
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 187657
+  },
+  "workspaces": {
+    "RUN-SINGLE-TOOL-06": {
+      "repo": ".",
+      "branch": "run/RUN-SINGLE-TOOL-06",
+      "worktreePath": ".buildbeat/worktrees/RUN-SINGLE-TOOL-06",
+      "base": "8e6d0a9ead57424f6440a467986282a122737551",
+      "candidate": "36381d4809d680b681e9a2b8aa6c5d424c03576f"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-06/logs/verify-1.log",
+      "kind": "command",
+      "subject": "36381d4809d680b681e9a2b8aa6c5d424c03576f",
+      "digest": "sha256:b7227170d22f12f09629ab8a2af41abaf34da741c60d622174e3d90d59e73a05",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-06/logs/review-1.log",
+      "kind": "command",
+      "subject": "36381d4809d680b681e9a2b8aa6c5d424c03576f",
+      "digest": "sha256:f6448fe2b27a0822e54fe7d2b35c083c7eb89e89ef19c17b7737dcaf945e6172",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-06/outputs/review-1.json",
+      "kind": "review",
+      "subject": "36381d4809d680b681e9a2b8aa6c5d424c03576f",
+      "digest": "sha256:1a86517c4896ca2acd4c060e01ff630fda52156bee51ad61cce87192614c7e75",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/runtime/env-contract.js 将 `bash tools/reviewer.sh delivery/envelope/worker.sh -- src/main.js` 中作为参数传入的 `worker.sh` 误认成实际执行的脚本，导致 `check` 把源文件 `src/main.js` 当作审查工具检查，并对有效配置误报失败。"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

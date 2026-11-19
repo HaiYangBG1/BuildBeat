@@ -41,7 +41,7 @@ description: BuildBeat 把每项需求为什么做、定了什么、做到哪记
 
 - 用户只需理解工作、进度和决定；命令和编号由会话处理。
 - 一项工作对一个可验收的结果负责。范围内继续推进，不因单个文件或步骤完成就结束。
-- 写的不审。审查者是另一个上下文里的只读 AI；会话自己说"检查过了"不算证据，只有 Git 和真实命令的结果算。
+- 写的不审。审查者是另一个上下文里的只读 AI，可以就是用户正在用的那个工具另开一个无头会话；会话自己说"检查过了"不算证据，只有 Git 和真实命令的结果算。没配审查者的项目只验证不审查，对用户如实说"验证过、没审查"。
 - 决定身份如实记。用户在对话里明确说出的决定，用 `--as human --by <owner>` 转达，记录会注明经 AI 会话录入；会话不得替人批准。
 - `delivery/` 跟代码一起进 Git，不要用 `.gitignore` 或 `.git/info/exclude` 排除它。其中的截图、压缩包和日志不进 Git，`templates/gitignore.template` 已写好规则。工作文件夹只放这项工作的记录和它确实要用的少量文件；命令输出、一次性脚本不放进去，结论写进 `result.md`。这几条 `accept` 和 `check` 都会提醒。
 - `buildbeat hooks install --repo .` 装一个 commit-msg 钩子，标题里只写了一个工作编号时自动补 `Work:` 标记，不覆盖项目已有的钩子。
@@ -61,7 +61,7 @@ description: BuildBeat 把每项需求为什么做、定了什么、做到哪记
 
 ## 配置
 
-项目一份 `delivery/run-config.yaml`，说这个项目里一个提交怎么验、怎么审。样板是 `templates/run-config.example.yaml`，照抄后把验证命令和审查命令换成真实的；`templates/envelope/` 复制成 `delivery/envelope/`。
+项目一份 `delivery/run-config.yaml`，说这个项目里一个提交怎么验、怎么审。样板是 `templates/run-config.example.yaml`，照抄后把验证命令和审查命令换成真实的；`templates/envelope/` 复制成 `delivery/envelope/`。审查命令用本机已有的 AI 命令行工具，只有一个就用它；按[只有一个 AI 工具，或者先不配审查](docs/guide/04-adapter-guide.md#只有一个-ai-工具或者先不配审查)的步骤配，配完跑 `buildbeat check`。用户暂时不想配审查，就删掉 `reviewer` 那段，不要因此卡住安装。
 
 单项工作要和项目不一样时，在 `delivery/work/<ID>/run-config.yaml` 里只写要覆盖的键。那里还能写 `allowedPaths`（这项工作能改哪些目录）、`base`（从哪个提交算起）、`release`（声明这项工作要上线，关窗前必须回读通过）。
 

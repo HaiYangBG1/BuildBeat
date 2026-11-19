@@ -16,7 +16,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import { REVIEW_STEPS, WORKFLOW_DIGEST, WORKFLOW_NAME } from "../engine/workflow.js";
+import { reviewFlow } from "../engine/workflow.js";
 import { collectCommandEvidence } from "../evidence/collector.js";
 import { checkScreenshotFile, screenshotFormat } from "../evidence/image.js";
 import { currentScreenshots } from "../policy/policy.js";
@@ -524,7 +524,8 @@ function recordStepResult(context, stepDef, { before, outputPath }, { exec, tree
   }
 
   let blockingFindings = [];
-  if (envelope?.findings) {
+  // Only a reviewer's report is review evidence, never a verifier's.
+  if (stepDef.readonly && envelope?.findings) {
     recordReviewFindings(context.repoRoot, ledger.state.run.work, {
       run: ledger.state.run.id,
       step,
@@ -611,12 +612,13 @@ function recordStepResult(context, stepDef, { before, outputPath }, { exec, tree
   return blockingFindings;
 }
 
-// Verify, then review, each once. Ends the run, or leaves it waiting for the
-// person's decision on the commit.
+// Verify, then review, each once (verify alone when no reviewer is
+// configured). Ends the run, or leaves it waiting for the person's decision
+// on the commit.
 function runSteps(context) {
-  const { ledger, workspace, now } = context;
+  const { ledger, workspace, now, steps } = context;
   let blocking = [];
-  for (const [index, stepDef] of REVIEW_STEPS.entries()) {
+  for (const [index, stepDef] of steps.entries()) {
     const started = beginStep(context, stepDef);
     const ran = executeStep(context, stepDef, started);
     const result = recordStepResult(context, stepDef, started, ran);
@@ -630,7 +632,7 @@ function runSteps(context) {
       ts: now(),
       data: {
         from: stepDef.id,
-        to: REVIEW_STEPS[index + 1]?.id ?? "wait-merge",
+        to: steps[index + 1]?.id ?? "wait-merge",
         cause: `outcome:${blocking.length > 0 ? "findings-blocking" : "succeeded"}`,
       },
     });
@@ -659,7 +661,9 @@ function runSteps(context) {
                 ),
             ]
           : [
-              "verified and reviewed with no blocking finding; the decision on this commit is the person's",
+              steps.some((stepDef) => stepDef.readonly)
+                ? "verified and reviewed with no blocking finding; the decision on this commit is the person's"
+                : "verified; not reviewed: no workers.reviewer in the run config; the decision on this commit is the person's",
             ],
       kind: "final-decision",
     },
@@ -801,8 +805,8 @@ function settleInterruptedRuns(repoRoot, workId, newRunId, now) {
 //   CANCELLED      the tooling failed (timeout, crash, exit 75, no review
 //                  report, a reviewer that wrote or exited non-zero): no
 //                  verdict on the commit
-//   WAITING_HUMAN  verified and reviewed: the decision on this commit is the
-//                  person's. Blocking findings do not end the run; the merge
+//   WAITING_HUMAN  verified and reviewed (verified only, when no reviewer is
+//                  configured): the decision on this commit is the person's. Blocking findings do not end the run; the merge
 //                  checks refuse the approval while they stand
 //
 // The checkout and its branch are removed before this returns. The subject
@@ -815,13 +819,10 @@ export function reviewCommit(options) {
       "repoRoot, workId, runId, base and commit are required",
     );
   }
-  for (const { worker } of REVIEW_STEPS) {
-    if (!options.adapters?.[worker]) {
-      throw new OrchestratorError(
-        `no ${worker} configured; a review needs a verifier and a reviewer`,
-      );
-    }
+  if (!options.adapters?.verifier) {
+    throw new OrchestratorError("no verifier configured; a review needs a verifier");
   }
+  const flow = reviewFlow(Boolean(options.adapters.reviewer));
   // Environment contract first: a missing or too-old binary fails here with
   // a readable cause instead of spending a run on an implicit PATH fact.
   if (options.requires?.length) {
@@ -857,6 +858,7 @@ export function reviewCommit(options) {
       const context = {
         repoRoot,
         adapters: options.adapters,
+        steps: flow.steps,
         now,
         runtimeDir: join(repoRoot, ".buildbeat", "runtime"),
         ledger,
@@ -884,11 +886,11 @@ export function reviewCommit(options) {
         work: workId,
         data: {
           pass: true,
-          workflowRef: WORKFLOW_NAME,
-          workflowDigest: WORKFLOW_DIGEST,
+          workflowRef: flow.name,
+          workflowDigest: flow.digest,
           base: workspace.base,
           riskPreset: "standard",
-          entry: REVIEW_STEPS[0].id,
+          entry: flow.steps[0].id,
           planDigest: planDigest ?? "UNVERIFIED",
           intentDigest: "UNVERIFIED",
           ...(options.deliveryChecks

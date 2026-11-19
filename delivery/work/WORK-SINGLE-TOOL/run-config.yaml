@@ -1,0 +1,11 @@
+# What WORK-SINGLE-TOOL may change; everything else comes from delivery/run-config.yaml.
+allowedPaths:
+  - src
+  - tests
+  - templates
+  - docs/guide
+  - docs/CAPABILITY-MATRIX.md
+  - SKILL.md
+  - README.md
+  - README.en.md
+  - CHANGELOG.md

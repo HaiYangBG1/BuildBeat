@@ -6,6 +6,8 @@
 // resolved Node 14 — each burned runs before anyone saw the real cause.
 
 import { spawnSync } from "node:child_process";
+import { accessSync, constants, statSync } from "node:fs";
+import { delimiter, isAbsolute, join, resolve } from "node:path";
 
 export class EnvContractError extends Error {
   constructor(message) {
@@ -132,4 +134,41 @@ export function assertRequires(requires) {
     );
   }
   return result;
+}
+
+// A worker's program this machine lacks (WORK-SINGLE-TOOL): the command, or the
+// tool after "--" when the command is worker.sh or a shell running it. Looked
+// up on the worker's PATH, vars filled into args as the runtime does.
+export function missingWorkerTools(workers, { repoRoot, env = {}, vars = {} }) {
+  const missing = [];
+  for (const [worker, spec] of Object.entries(workers ?? {})) {
+    const fill = (text) => Object.entries(vars).reduce((out, [key, value]) => out.replaceAll(`{vars.${key}}`, String(value)), String(text));
+    const line = [String(spec.command), ...(spec.args ?? []).map(fill)];
+    const at = [0, /(^|\/)(ba|z)?sh$/.test(line[0]) ? scriptAt(line) : -1].find((index) => /(^|\/)worker\.sh$/.test(line[index] ?? "")) ?? -1;
+    const wrapped = at >= 0 && line.includes("--", at);
+    const tool = wrapped ? line[line.indexOf("--", at) + 1] : line[0];
+    if (tool === undefined || tool === "") {
+      missing.push({ worker, tool: null });
+    } else if (!(wrapped && tool.includes("{")) && !runnable(tool, repoRoot, env[worker]?.PATH ?? process.env.PATH ?? "")) {
+      missing.push({ worker, tool, path: tool.includes("/") });
+    }
+  }
+  return missing;
+}
+
+// A shell's script: its first argument past options and their values; none with -c.
+function scriptAt(line) {
+  for (let index = 1; index < line.length; index += 1) {
+    if (/^[-+][a-zA-Z]*c[a-zA-Z]*$/.test(line[index])) return -1;
+    else if (/^([-+][a-zA-Z]*[oO]|--rcfile|--init-file)$/.test(line[index])) index += 1;
+    else if (!/^[-+]/.test(line[index])) return index;
+  }
+  return -1;
+}
+
+const executable = (file) => { try { return accessSync(file, constants.X_OK) === undefined && statSync(file).isFile(); } catch { return false; } };
+
+function runnable(tool, repoRoot, PATH) {
+  if (tool.includes("/")) return executable(isAbsolute(tool) ? tool : join(repoRoot, tool));
+  return PATH.split(delimiter).some((dir) => dir !== "" && executable(resolve(repoRoot, dir, tool)));
 }

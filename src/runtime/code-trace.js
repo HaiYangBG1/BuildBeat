@@ -15,6 +15,7 @@ import { execFile, execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { availableParallelism } from "node:os";
 import { promisify } from "node:util";
+import { VERIFY_ONLY_NAME } from "../engine/workflow.js";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 
 import { EventLedger } from "../storage/event-ledger.js";
@@ -97,7 +98,7 @@ function recordedRuns(roots) {
           const { run, workspaces } = ledger.state;
           const space = run ? workspaces[run.id] : null;
           if (run?.work && space?.base && space?.candidate) {
-            runs.set(run.id, { work: run.work, run: run.id, base: space.base, candidate: space.candidate });
+            runs.set(run.id, { work: run.work, run: run.id, base: space.base, candidate: space.candidate, unreviewed: run.workflowRef === VERIFY_ONLY_NAME });
           }
         } catch {
           // an unreadable ledger is left out, not guessed
@@ -113,9 +114,10 @@ function recordedRuns(roots) {
         const file = join(runsRoot, entry, "run-record.json");
         if (runs.has(entry) || !existsSync(file)) continue;
         try {
-          const space = JSON.parse(readFileSync(file, "utf8")).workspaces?.[entry];
+          const record = JSON.parse(readFileSync(file, "utf8"));
+          const space = record.workspaces?.[entry];
           if (space?.base && space?.candidate) {
-            runs.set(entry, { work, run: entry, base: space.base, candidate: space.candidate });
+            runs.set(entry, { work, run: entry, base: space.base, candidate: space.candidate, unreviewed: record.workflow === VERIFY_ONLY_NAME });
           }
         } catch {
           // an unreadable record is left out, not guessed
@@ -260,11 +262,11 @@ export async function traceLines(spec, { repo = process.cwd(), callers = [], cwd
   for (const { commit } of blamed) {
     const fact = facts.get(commit) ?? { time: 0, subject: "", trailers: [], paths: [] };
     const found = new Map();
-    const add = (work, kind, run) => {
+    const add = (work, kind, run, unreviewed) => {
       if (!found.has(work)) found.set(work, []);
-      found.get(work).push(run ? { kind, run } : { kind });
+      found.get(work).push(run ? { kind, run, ...(unreviewed ? { unreviewed } : {}) } : { kind });
     };
-    for (const item of ranges.get(commit) ?? []) add(item.work, "run", item.run);
+    for (const item of ranges.get(commit) ?? []) add(item.work, "run", item.run, item.unreviewed);
     for (const clue of commitClues(fact)) add(clue.work, clue.kind);
     // Only a commit nothing else explains is read by its subject.
     if (found.size === 0) {
@@ -316,7 +318,7 @@ export function renderTrace(trace) {
   const span = from === to ? `${from}` : `${from}-${to}`;
   const lines = [`${trace.path}:${span} — ${plural(total, "line")}, ${plural(trace.works.length, "work")}`];
   for (const row of trace.works) {
-    const runs = row.via.filter((item) => item.kind === "run").map((item) => item.run);
+    const runs = row.via.filter((item) => item.kind === "run").map((item) => `${item.run}${item.unreviewed ? " (not reviewed)" : ""}`);
     const via = [
       ...(runs.length ? [`via run ${runs.join(", ")}`] : []),
       ...(row.via.some((item) => item.kind === "trailer") ? ["via Work trailer"] : []),

@@ -25,9 +25,11 @@ const PROJECT_KEYS = [
   "maxReviewSeverity",
 ];
 const WORK_KEYS = [...PROJECT_KEYS, "allowedPaths", "base"];
-const WORKERS = ["verifier", "reviewer"];
-// Optional: the reader of a reader test; the reviewer's command when absent.
-const KNOWN_WORKERS = [...WORKERS, "reader"];
+const WORKERS = ["verifier"];
+// Optional: the reviewer (without one a commit is verified, not reviewed;
+// WORK-SINGLE-TOOL) and the reader of a reader test (the reviewer's command
+// when absent).
+const KNOWN_WORKERS = [...WORKERS, "reviewer", "reader"];
 const ENVELOPE_KEYS = ["prompts", "vars", "pin"];
 const LISTS = ["requires", "redact", "allowedPaths"];
 
@@ -259,7 +261,7 @@ export function loadReviewConfig(repoRoot, workId = null, { workers: needWorkers
   const work = workId ? readConfig(repoRoot, workConfigRef(workId), WORK_KEYS) : null;
   if (!project && !work) {
     throw new Error(
-      `no ${PROJECT_CONFIG} in this repository: write one that names workers.verifier and workers.reviewer`,
+      `no ${PROJECT_CONFIG} in this repository: write one that names workers.verifier (and workers.reviewer to have commits reviewed)`,
     );
   }
   const config = {};

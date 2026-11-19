@@ -1,0 +1,120 @@
+{
+  "run": "RUN-SINGLE-TOOL-03",
+  "work": "WORK-SINGLE-TOOL",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-SINGLE-TOOL-04 (same work WORK-SINGLE-TOOL)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:87cf87a2db86284072a12c78748e1eae2b31bef5efffbbfd92bc65bff1739e71"
+  },
+  "startedAt": "2026-11-18T13:43:12.448Z",
+  "finishedAt": "2026-11-18T13:52:33.398Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 238730
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 321943
+  },
+  "workspaces": {
+    "RUN-SINGLE-TOOL-03": {
+      "repo": ".",
+      "branch": "run/RUN-SINGLE-TOOL-03",
+      "worktreePath": ".buildbeat/worktrees/RUN-SINGLE-TOOL-03",
+      "base": "8e6d0a9ead57424f6440a467986282a122737551",
+      "candidate": "0cdbb9edf7da1dc4b95b619fc047558286fb12c5"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-03/logs/verify-1.log",
+      "kind": "command",
+      "subject": "0cdbb9edf7da1dc4b95b619fc047558286fb12c5",
+      "digest": "sha256:8542006b224b17c47208d5c17aa4d132e33b008cd1448aafd75527dae0c7a791",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-03/logs/review-1.log",
+      "kind": "command",
+      "subject": "0cdbb9edf7da1dc4b95b619fc047558286fb12c5",
+      "digest": "sha256:af2a1263c120d238af1505bfc45158fe907a8c571ed9fc42abd9eb6971219cc1",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-SINGLE-TOOL-03/outputs/review-1.json",
+      "kind": "review",
+      "subject": "0cdbb9edf7da1dc4b95b619fc047558286fb12c5",
+      "digest": "sha256:002e1d7eb492e457260fdd780df93c9aaf2af7be7ec5fe4d98a8748497314230",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "src/policy/policy.js 的 earlierFindings 扫描全部历史问题，导致 P1 已修复且后续审查通过后，切换到只验证仍会拒绝批准，与 status 显示的零个待处理问题矛盾。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/runtime/code-trace.js 仅凭流程名在 history --path 中显示「verified, not reviewed」，导致验证失败或仍在运行的提交也被标成验证通过。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/runtime/orchestrator.js 移除 reviewed 后，decisions.jsonl 的批准记录没有任何字段说明该提交未经审查，只有批准命令的即时输出显示这一事实。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/runtime/env-contract.js 在 check 时展开 reviewer.command 中的 {vars.tool}，实际启动时却按字面值查找命令，导致变量指向已安装工具时预检通过、送审失败。"
+        },
+        {
+          "severity": "P1",
+          "summary": "src/runtime/env-contract.js 把任意参数位置的 worker.sh 都识别为包装器，导致普通审查命令缺失时，只要其参数含有 worker.sh、-- 和一个已安装程序，check 就会漏报。"
+        },
+        {
+          "severity": "P1",
+          "summary": "tests/review-commit.test.js 的只验证用例仅让 verifier 检查文件是否存在，没有让它向 BUILDBEAT_OUTPUT 提交 findings，即使恢复把验证报告当成审查证据的旧逻辑，该断言也会通过。"
+        },
+        {
+          "severity": "P2",
+          "summary": "src/cli/run.js 新增了可见的「warning reader」提示，导致只配置验证、尚未运行读者测试的项目也收到读者工具告警，超出 work.md 确认的 reviewer 工具预检范围。"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

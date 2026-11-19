@@ -42,6 +42,8 @@ envelope:
   prompts: envelope/prompts
 ```
 
+只有一个 AI 工具也行：审查用它另开一个只读会话；暂时不想配审查，删掉 `reviewer` 那段，只跑验证。见[只有一个 AI 工具，或者先不配审查](04-adapter-guide.md#只有一个-ai-工具或者先不配审查)。
+
 样板里还有 `requires`（开跑前检查环境）、`redact`（证据脱敏）、`requireScreenshot`（有界面的项目）、`release`（上线回读命令）和 `maxReviewSeverity`。单项工作要和项目不一样时，在 `delivery/work/WORK-X/run-config.yaml` 里只写要覆盖的键；那里还能写 `allowedPaths`（这项工作能改哪些目录）和 `base`（从哪个提交算起）。写了不认识的键会直接报错。
 
 一轮审查有三种收场：`FAILED` 是验证没过或改了范围外的目录，修好再送；`CANCELLED` 是工具出了问题，不是对提交的判定，环境好了再送；等人决定时，还有没裁决的 P0、P1 就不能批准。修在新提交里再送审，旧的那一轮自动作废。

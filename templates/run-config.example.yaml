@@ -35,7 +35,9 @@ workers:
     args:
       - -lc
       - npm test
-  # 只读审查。换工具只改 `--` 后面的命令：codex exec … / claude -p … / 任意脚本
+  # 只读审查，可以就是你正在用的那个 AI 工具（另开一个无头会话）；换工具只改 `--` 后面的命令，
+  # 各工具写法见 docs/guide/04-adapter-guide.md「只有一个 AI 工具，或者先不配审查」。
+  # 暂时不想配审查：删掉 reviewer 这一段，送审只跑验证，记录里标明没审查。
   reviewer:
     command: bash
     args:

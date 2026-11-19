@@ -4,6 +4,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { VERIFY_ONLY_NAME } from "../engine/workflow.js";
 import { checkScreenshotFile } from "../evidence/image.js";
 import { resolveRepoRef } from "../runtime/repo-ref.js";
 import {
@@ -153,6 +154,18 @@ export function reviewClear(atMost, ctx) {
       : `no findings above ${atMost}`,
   };
 }
+// Nobody reviewed a verify-only commit, so every finding of the work above the
+// floor, fixed or not, holds it until a person dismisses it (owner's choice).
+function earlierFindings(atMost, ctx) {
+  const rows = ctx.workDir ? readFindingsFile(join(ctx.workDir, "review-findings.jsonl")) : [];
+  const ruled = latestAdjudications(rows);
+  const above = (row) => row.kind === "finding" && (SEVERITY[row.severity] ?? 0) < SEVERITY[atMost];
+  const open = new Set(rows.filter((row) => above(row) && ruled.get(row.fingerprint)?.action !== "dismiss").map((row) => row.fingerprint));
+  return open.size
+    ? { ok: false, why: `${open.size} finding(s) of this work more severe than ${atMost} not dismissed, and nobody reviewed this commit; dismiss each once checked` }
+    : { ok: true, why: "verified, not reviewed: no reviewer was configured" };
+}
+
 // What approving a commit requires, in the order a person would ask: did
 // verify pass on this commit, is the work description the accepted one, are
 // there screenshots when the work asks for them, and is every finding above
@@ -170,7 +183,13 @@ export function mergeChecks(
   // UI work proves its real render: screenshots the verify step left for
   // this commit (lessons.md "静态稿拍板 → 返工螺旋").
   if (verdict.ok === true && requireScreenshot) verdict = screenshotsPresent(ctx);
-  if (verdict.ok === true) verdict = reviewClear(maxSeverity, ctx);
+  // A run that pinned the verify-only flow has no reviewer to wait for
+  // (WORK-SINGLE-TOOL); its approval records that nobody reviewed it.
+  if (verdict.ok === true) {
+    verdict = ctx.state?.run?.workflowRef === VERIFY_ONLY_NAME
+      ? earlierFindings(maxSeverity, ctx)
+      : reviewClear(maxSeverity, ctx);
+  }
   return [
     {
       policy: "merge-evidence-floor",

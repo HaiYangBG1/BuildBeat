@@ -7,7 +7,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { ROOT, cli, commit, decide as decideWork, fixture, git, jsonl as rows, record as runRecord, review as reviewWork, statusRow, write, yaml } from "./support/review.js";
+import { PROJECT_CONFIG, ROOT, cli, commit, decide as decideWork, fixture, git, jsonl as rows, record as runRecord, review as reviewWork, statusRow, write, yaml } from "./support/review.js";
 import { tempDir } from "./support/tmp.js";
 
 const WORK = "WORK-A";
@@ -63,6 +63,142 @@ test("a commit is verified, reviewed and left for the person; approval binds to 
   const again = decide(root, ["--action", "approve", "--candidate", sha]);
   assert.equal(again.status, 1);
   assert.match(again.err, /no reviewed commit of WORK-A waits for a decision/);
+});
+
+// WORK-SINGLE-TOOL: a project that has not configured a reviewer yet is not
+// stuck. The commit is verified, the person decides, and every place that
+// shows the decision says nobody reviewed it.
+test("without a reviewer a commit is verified, not reviewed, and still left for the person", () => {
+  // A verifier that also hands in findings: they are not review evidence.
+  const VERIFY_ONLY = yaml(["workers:", "  verifier:", "    command: bash", "    args:", "      - -lc", '      - test -f src/feature.txt && { ! test -f findings.json || cp findings.json "$BUILDBEAT_OUTPUT"; }']);
+  const { root } = fixture({ projectConfig: VERIFY_ONLY });
+  const checked = cli(["check", "--repo", root, "--work", WORK]);
+  assert.equal(checked.status, 0, checked.all);
+  assert.match(checked.out, /note: no reviewer configured; commits are verified, not reviewed/);
+
+  const sha = commit(root, "add the feature", { "src/feature.txt": "hello\n", "findings.json": JSON.stringify({ findings: [P1] }) });
+  const reviewed = review(root);
+  assert.equal(reviewed.status, 0, reviewed.all);
+  assert.match(reviewed.out, /note: no reviewer configured/);
+  assert.match(reviewed.out, /workflow: verify-only @ sha256:/);
+  assert.match(reviewed.out, /step verify: SUCCEEDED/);
+  assert.doesNotMatch(reviewed.out, /step review:/);
+  assert.match(reviewed.out, /reason: verified; not reviewed: no workers\.reviewer in the run config/);
+  const status = cli(["status", "--repo", root, "--work", WORK]);
+  assert.match(status.out, new RegExp(`latest RUN-A-01 WAITING_HUMAN candidate ${sha.slice(0, 7)} \\(not reviewed\\)`));
+  // A verifier's report is not review evidence.
+  assert.equal(existsSync(join(root, "delivery", "work", WORK, "review-findings.jsonl")), false);
+
+  const approved = decide(root, ["--action", "approve", "--candidate", sha]);
+  assert.equal(approved.status, 0, approved.all);
+  assert.match(approved.out, new RegExp(`candidate: ${sha} \\(verified, not reviewed\\)`));
+  assert.equal(jsonl(root, "decisions.jsonl").at(-1).reviewed, false);
+  const run = record(root, "RUN-A-01");
+  assert.equal(run.workflow, "verify-only");
+  assert.deepEqual(run.attempts, { verify: 1 });
+  assert.equal(stage(root).stage, "MERGED");
+  const traced = cli(["history", "--repo", root, "--path", "src/feature.txt"]);
+  assert.match(traced.out, /via run RUN-A-01 \(not reviewed\)/);
+
+  // A failing verify still fails the commit.
+  commit(root, "drop the feature", { "src/feature.txt": null });
+  const failed = review(root);
+  assert.equal(failed.status, 1);
+  assert.match(failed.out, /status: FAILED/);
+});
+
+test("dropping the reviewer does not approve past an earlier finding nobody ruled on", () => {
+  const { root } = fixture();
+  commit(root, "add the feature", { "src/feature.txt": "helo\n", "findings.json": JSON.stringify({ findings: [P1] }) });
+  assert.equal(review(root).status, 0);
+  write(root, "delivery/run-config.yaml", yaml(PROJECT_CONFIG.trim().split("\n").slice(0, 6)));
+  const sha = commit(root, "verify only from now on", { "findings.json": null });
+  assert.equal(review(root).status, 0);
+  const refused = decide(root, ["--action", "approve", "--candidate", sha]);
+  assert.equal(refused.status, 1);
+  assert.match(refused.err, /1 finding\(s\) of this work more severe than P2 not dismissed, and nobody reviewed this commit/);
+  const fingerprint = jsonl(root, "review-findings.jsonl").find((row) => row.kind === "finding").fingerprint;
+  assert.equal(decide(root, ["--action", "dismiss", "--fingerprint", fingerprint, "--note", "fixed"]).status, 0);
+  assert.equal(decide(root, ["--action", "approve", "--candidate", sha]).status, 0);
+});
+
+// The owner's choice: a verify-only commit has no review to answer earlier
+// findings, so even a fixed one is dismissed by a person first.
+test("a fixed finding still holds a verify-only approval until a person dismisses it", () => {
+  const { root } = fixture();
+  commit(root, "add the feature", { "src/feature.txt": "helo\n", "findings.json": JSON.stringify({ findings: [P1] }) });
+  assert.equal(review(root).status, 0);
+  commit(root, "fix the text", { "src/feature.txt": "hello\n", "findings.json": null });
+  assert.equal(review(root).status, 0);
+  write(root, "delivery/run-config.yaml", yaml(PROJECT_CONFIG.trim().split("\n").slice(0, 6)));
+  const sha = commit(root, "verify only from now on");
+  assert.equal(review(root).status, 0);
+  assert.equal(decide(root, ["--action", "approve", "--candidate", sha]).status, 1);
+  const fingerprint = jsonl(root, "review-findings.jsonl").find((row) => row.kind === "finding").fingerprint;
+  assert.equal(decide(root, ["--action", "dismiss", "--fingerprint", fingerprint, "--note", "fixed in the next commit"]).status, 0);
+  const approved = decide(root, ["--action", "approve", "--candidate", sha]);
+  assert.equal(approved.status, 0, approved.all);
+});
+
+test("a newer commit's clean review does not clear an older commit sent verify-only", () => {
+  const { root } = fixture();
+  const old = commit(root, "add the feature", { "src/feature.txt": "helo\n", "findings.json": JSON.stringify({ findings: [P1] }) });
+  assert.equal(review(root).status, 0);
+  commit(root, "fix the text", { "src/feature.txt": "hello\n", "findings.json": null });
+  assert.equal(review(root).status, 0);
+  commit(root, "verify only from now on", { "delivery/run-config.yaml": yaml(PROJECT_CONFIG.trim().split("\n").slice(0, 6)) });
+  assert.equal(review(root, ["--commit", old]).status, 0);
+  const refused = decide(root, ["--action", "approve", "--candidate", old]);
+  assert.equal(refused.status, 1);
+  assert.match(refused.err, /1 finding\(s\) of this work more severe than P2 not dismissed/);
+});
+
+test("check names a worker's tool this machine does not have", () => {
+  const { root } = fixture({
+    projectConfig: PROJECT_CONFIG.replace("    command: sh\n    args:\n      - tools/reviewer.sh", "    command: bash\n    args:\n      - delivery/envelope/worker.sh\n      - reviewer\n      - --\n      - no-such-ai-tool\n      - -p"),
+  });
+  const missing = cli(["check", "--repo", root]);
+  assert.equal(missing.status, 1, missing.all);
+  assert.match(missing.out, /PROBLEM reviewer: no-such-ai-tool is not on PATH; put the AI command-line tool you have after "--", or remove workers\.reviewer to verify only/);
+  // A path to an executable file and a tool on PATH both count as present.
+  write(root, "delivery/run-config.yaml", PROJECT_CONFIG.replace("    command: sh", `    command: ${process.execPath}`));
+  const present = cli(["check", "--repo", root]);
+  assert.equal(present.status, 0, present.all);
+  assert.doesNotMatch(present.out, /PROBLEM/);
+  write(root, "delivery/run-config.yaml", PROJECT_CONFIG.replace("    command: sh", "    command: ./no/such/tool"));
+  const path = cli(["check", "--repo", root]);
+  assert.equal(path.status, 1);
+  assert.match(path.out, /PROBLEM reviewer: \.\/no\/such\/tool is not an executable file/);
+  // worker.sh as the command, a wrapper with nothing after "--", the
+  // worker's own PATH (with "." in it); a reader is not checked.
+  const reviewer = (lines) => PROJECT_CONFIG.replace("    command: sh\n    args:\n      - tools/reviewer.sh", lines.join("\n"));
+  write(root, "delivery/run-config.yaml", reviewer(["    command: delivery/envelope/worker.sh", "    args:", "      - reviewer", "      - --", "      - no-such-ai-tool"]));
+  assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-ai-tool is not on PATH/);
+  write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - delivery/envelope/worker.sh", "      - reviewer", "      - --"]));
+  assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: names no tool after "--"/);
+  for (const options of [["-o", "pipefail"], ["-euo", "pipefail"]]) {
+    write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", ...options.map((arg) => `      - ${arg}`), "      - delivery/envelope/worker.sh", "      - reviewer", "      - --", "      - no-such-ai-tool"]));
+    assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-ai-tool is not on PATH/);
+  }
+  // Only a command that is worker.sh, or a shell running it, wraps a tool;
+  // the runtime fills vars into args, never into the command.
+  write(root, "delivery/run-config.yaml", reviewer(["    command: no-such-runner", "    args:", "      - x", "      - delivery/envelope/worker.sh", "      - --", "      - node"]));
+  assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: no-such-runner is not on PATH/);
+  // A shell running another script that only takes worker.sh as an argument
+  // is not the wrapper; neither is a -c command string.
+  write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - tools/reviewer.sh", "      - delivery/envelope/worker.sh", "      - --", "      - src/main.js"]));
+  assert.doesNotMatch(cli(["check", "--repo", root]).out, /PROBLEM/);
+  write(root, "delivery/run-config.yaml", reviewer(["    command: bash", "    args:", "      - -lc", "      - echo", "      - delivery/envelope/worker.sh", "      - --", "      - src/main.js"]));
+  assert.doesNotMatch(cli(["check", "--repo", root]).out, /PROBLEM/);
+  write(root, "tools/reviewer.md", "review\n");
+  write(root, "delivery/run-config.yaml", `envelope:\n  prompts: ../tools\n  vars:\n    tool: node\n${reviewer(["    command: \"{vars.tool}\""])}`);
+  assert.match(cli(["check", "--repo", root]).out, /PROBLEM reviewer: \{vars\.tool\} is not on PATH/);
+  write(root, "tools/my-ai", "#!/bin/sh\n");
+  execFileSync("chmod", ["+x", join(root, "tools/my-ai")]);
+  write(root, "delivery/run-config.yaml", `${reviewer(["    command: my-ai", "    env:", "      PATH: .:tools"])}  reader:\n    command: no-such-reader\n`);
+  const own = cli(["check", "--repo", root]);
+  assert.equal(own.status, 0, own.all);
+  assert.doesNotMatch(own.out, /(PROBLEM|warning) reader/);
 });
 
 test("a blocking finding does not end the run: approval is refused until it is dismissed", () => {
@@ -325,7 +461,7 @@ test("review refuses, before recording anything, what it could not stand behind"
     commit(root, "add the feature", { "src/feature.txt": "hello\n" });
     const refused = review(root);
     assert.equal(refused.status, 1);
-    assert.match(refused.err, /no delivery\/run-config\.yaml in this repository: write one that names workers\.verifier and workers\.reviewer/);
+    assert.match(refused.err, /no delivery\/run-config\.yaml in this repository: write one that names workers\.verifier \(and workers\.reviewer to have commits reviewed\)/);
     nothingRecorded(root);
   });
   await t.test("a name that is not a commit", () => {
@@ -364,12 +500,12 @@ test("the project config has only what a review needs; a work overrides what it 
     assert.match(refused.err, /- run: unknown key/);
     assert.match(refused.err, /- allowedPaths: must be a list/);
   });
-  await t.test("a verifier and a reviewer are both required", () => {
-    const { root } = fixture({ projectConfig: yaml(["workers:", "  verifier:", "    command: bash"]) });
+  await t.test("a verifier is required", () => {
+    const { root } = fixture({ projectConfig: yaml(["workers:", "  reviewer:", "    command: sh"]) });
     commit(root, "add the feature", { "src/feature.txt": "hello\n" });
     const refused = review(root);
     assert.equal(refused.status, 1);
-    assert.match(refused.err, /- workers\.reviewer: required and missing/);
+    assert.match(refused.err, /- workers\.verifier: required and missing/);
   });
   await t.test("a work swaps its verifier and keeps the project's reviewer", () => {
     const { root } = fixture({

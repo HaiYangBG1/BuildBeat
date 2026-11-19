@@ -68,7 +68,7 @@ test("status derives each work's stage and next move from its records, its runs 
   assert.equal(rows["WORK-C"].plan.stale, true);
   assert.match(rows["WORK-C"].next, /accept --repo \. --work WORK-C --by <you> {3}# work\.md changed since acceptance$/);
   assert.equal(rows["WORK-D"].stage, "READY_TO_RUN");
-  assert.match(rows["WORK-D"].next, /^write delivery\/run-config\.yaml \(workers\.verifier, workers\.reviewer\), then buildbeat review --repo \. --work WORK-D; or, /);
+  assert.match(rows["WORK-D"].next, /^write delivery\/run-config\.yaml \(workers\.verifier; workers\.reviewer is optional\), then buildbeat review --repo \. --work WORK-D; or, /);
   assert.match(rows["WORK-D"].next, /if it was doc-only, close out: write delivery\/work\/WORK-D\/result\.md, then buildbeat decide --repo \. --work WORK-D --action close --by <you>$/);
   assert.equal(rows["WORK-D"].envFacts, true);
   assert.equal(rows["WORK-H"].stage, "CLOSED");

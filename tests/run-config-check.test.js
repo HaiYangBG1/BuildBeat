@@ -57,9 +57,10 @@ test("a valid config loads into what a review takes", () => {
 });
 
 test("a missing config and missing workers are named", () => {
-  assert.throws(() => loadReviewConfig(project(null)), /no delivery\/run-config\.yaml in this repository: write one that names workers\.verifier and workers\.reviewer/);
-  one(problems(["workers:", "  verifier:", "    command: bash"]), /^workers\.reviewer: required and missing/);
-  assert.deepEqual(problems(["redact: []"]), ["workers.verifier: required and missing", "workers.reviewer: required and missing"]);
+  assert.throws(() => loadReviewConfig(project(null)), /no delivery\/run-config\.yaml in this repository: write one that names workers\.verifier \(and workers\.reviewer to have commits reviewed\)/);
+  // The reviewer is optional (WORK-SINGLE-TOOL); the verifier is not.
+  assert.deepEqual(problems(["workers:", "  verifier:", "    command: bash"]), []);
+  assert.deepEqual(problems(["redact: []"]), ["workers.verifier: required and missing"]);
 });
 
 test("unknown keys are rejected with the closest spelling", () => {
