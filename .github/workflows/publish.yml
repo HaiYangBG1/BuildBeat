@@ -16,9 +16,12 @@ env:
 
 # One publication at a time across all tags: a stable release reads next and
 # then moves it, and a pre-release published in between must not be lost.
+# queue: max keeps every waiting publication (the default keeps one and
+# cancels the rest).
 concurrency:
   group: npm-publish
   cancel-in-progress: false
+  queue: max
 
 jobs:
   publish:

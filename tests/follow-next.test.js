@@ -95,7 +95,7 @@ test("a newer pre-release on next is left alone; an older or equal one is not", 
   const newer = fixture(t, { next: "7.0.0-beta.1", version: "6.3.0" });
   const kept = newer.run();
   assert.equal(kept.status, 0, kept.stderr);
-  assert.match(kept.stdout, /newer pre-release 7\.0\.0-beta\.1/);
+  assert.match(kept.stdout, /newer 7\.0\.0-beta\.1/);
   assert.equal(newer.added(), "");
   assert.equal(newer.run("--check").status, 0);
 
@@ -112,6 +112,15 @@ test("a newer pre-release on next is left alone; an older or equal one is not", 
     assert.equal(older.run("--check").status, 1, next);
     assert.equal(older.added(), before, `--check moved next (${next})`);
   }
+});
+
+test("a re-run of an older stable release leaves a newer stable on next", (t) => {
+  const mock = fixture(t, { next: "6.3.0", version: "6.2.0" });
+  const result = mock.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /next holds the newer 6\.3\.0; leaving it for 6\.2\.0/);
+  assert.equal(mock.run("--check").status, 0);
+  assert.equal(mock.added(), "");
 });
 
 test("a failed move says which npm setting to enable", (t) => {

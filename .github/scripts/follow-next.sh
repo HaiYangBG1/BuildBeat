@@ -3,7 +3,8 @@
 # same version, with the publish job's Trusted Publishing (OIDC) identity: no
 # npm login, no one-time password. `--check` only reads and reports whether
 # next is where it should be. A next that holds a newer pre-release (its
-# MAJOR.MINOR.PATCH is greater than this version's) is left alone.
+# MAJOR.MINOR.PATCH is greater than this version's) is left alone, and so is
+# a next already on a newer stable (a re-run of an older release).
 set -euo pipefail
 
 package_name="${BUILDBEAT_PACKAGE_NAME:-@haiyangbg/buildbeat}"
@@ -64,8 +65,8 @@ if [[ "$current_next" == "$package_version" ]]; then
   printf 'next already points at %s.\n' "$package_version"
   exit 0
 fi
-if [[ "$current_next" =~ ^[0-9]+\.[0-9]+\.[0-9]+-.+$ && "$(core_greater "$current_next" "$package_version")" == 1 ]]; then
-  printf 'next holds the newer pre-release %s; leaving it for %s.\n' "$current_next" "$package_version"
+if [[ "$current_next" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ && "$(core_greater "$current_next" "$package_version")" == 1 ]]; then
+  printf 'next holds the newer %s; leaving it for %s.\n' "$current_next" "$package_version"
   exit 0
 fi
 
