@@ -131,13 +131,14 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Publish or reconcile the exact candidate through npm Trusted Publishing
+        id: publish
         shell: bash
         env:
           BUILDBEAT_PACKAGE_VERSION: ${{ steps.candidate.outputs.version }}
           BUILDBEAT_CANDIDATE_INTEGRITY: ${{ steps.candidate.outputs.integrity }}
           BUILDBEAT_CANDIDATE_TARBALL: ${{ steps.candidate.outputs.tarball }}
           BUILDBEAT_DIST_TAG: ${{ steps.policy.outputs.dist_tag }}
-        run: bash .github/scripts/publish-candidate.sh
+        run: BUILDBEAT_PUBLISH_OUTCOME_FILE="$GITHUB_OUTPUT" bash .github/scripts/publish-candidate.sh
 
       # A stable release also moves next, so `@next` never lags behind
       # `@latest`; the same OIDC identity does it (npm 11.21.0 or later, and
@@ -147,6 +148,7 @@ jobs:
         shell: bash
         env:
           BUILDBEAT_PACKAGE_VERSION: ${{ steps.candidate.outputs.version }}
+          BUILDBEAT_PUBLISH_OUTCOME: ${{ steps.publish.outputs.outcome }}
         run: bash .github/scripts/follow-next.sh
 
   verify:

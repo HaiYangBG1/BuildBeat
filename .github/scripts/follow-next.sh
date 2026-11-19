@@ -3,16 +3,18 @@
 # same version, with the publish job's Trusted Publishing (OIDC) identity: no
 # npm login, no one-time password. `--check` only reads and reports whether
 # next is where it should be. A next that holds a newer pre-release (its
-# MAJOR.MINOR.PATCH is greater than this version's) is left alone, and so is
-# a newer stable on next while latest is not this version (a re-run of an
-# older release, which does not move latest). A first publication of a lower
-# stable does move latest, so next follows it.
+# MAJOR.MINOR.PATCH is greater than this version's) is left alone. A newer
+# stable on next is left alone only when this run did not publish the
+# version (BUILDBEAT_PUBLISH_OUTCOME=existing: a re-run of an older release,
+# which leaves latest where it is); a fresh publication of a lower stable
+# moved latest to it, so next follows.
 set -euo pipefail
 
 package_name="${BUILDBEAT_PACKAGE_NAME:-@haiyangbg/buildbeat}"
 official_registry="https://registry.npmjs.org/"
 package_version="${BUILDBEAT_PACKAGE_VERSION:-}"
 mode="${1:-move}"
+publish_outcome="${BUILDBEAT_PUBLISH_OUTCOME:-fresh}"
 
 if [[ "${NPM_CONFIG_REGISTRY:-}" != "$official_registry" ]]; then
   echo "NPM_CONFIG_REGISTRY must be pinned to $official_registry" >&2
@@ -24,6 +26,10 @@ if [[ "$package_name" != "@haiyangbg/buildbeat" ]]; then
 fi
 if [[ ! "$package_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]]; then
   echo "BUILDBEAT_PACKAGE_VERSION must use MAJOR.MINOR.PATCH with an optional pre-release suffix." >&2
+  exit 2
+fi
+if [[ "$publish_outcome" != "fresh" && "$publish_outcome" != "existing" ]]; then
+  echo "BUILDBEAT_PUBLISH_OUTCOME must be fresh or existing." >&2
   exit 2
 fi
 if [[ "$mode" != "move" && "$mode" != "--check" ]]; then
@@ -62,10 +68,6 @@ if ! current_next="$(npm view "$package_name" dist-tags.next --registry="$offici
   echo "Could not read dist-tag next of $package_name; nothing was changed." >&2
   exit 1
 fi
-if ! current_latest="$(npm view "$package_name" dist-tags.latest --registry="$official_registry")"; then
-  echo "Could not read dist-tag latest of $package_name; nothing was changed." >&2
-  exit 1
-fi
 
 if [[ "$current_next" == "$package_version" ]]; then
   printf 'next already points at %s.\n' "$package_version"
@@ -76,9 +78,9 @@ if [[ "$current_next" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ && "$(core_greater "$cur
     printf 'next holds the newer pre-release %s; leaving it for %s.\n' "$current_next" "$package_version"
     exit 0
   fi
-  if [[ "$current_latest" != "$package_version" ]]; then
-    printf 'next holds the newer %s and latest is %s, not %s; leaving next.\n' \
-      "$current_next" "${current_latest:-nothing}" "$package_version"
+  if [[ "$publish_outcome" == "existing" ]]; then
+    printf 'next holds the newer %s and this run did not publish %s; leaving next.\n' \
+      "$current_next" "$package_version"
     exit 0
   fi
 fi
