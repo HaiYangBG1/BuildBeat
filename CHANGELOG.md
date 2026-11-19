@@ -4,7 +4,7 @@ Earlier history: see tag v5.5.0.
 
 ## Unreleased
 
-- Releasing no longer needs anyone to log in to npm (WORK-AUTO-NEXT). After a stable version reaches `latest`, the publish job points `next` at it with the same Trusted Publishing identity (`.github/scripts/follow-next.sh`), unless `next` already holds a newer version; the verify job checks both tags. Publications run one at a time across all tags, queued rather than cancelled. Both jobs use npm 11.21.2. This needs "Allow npm dist-tag" enabled once for the trusted publisher on npmjs.com; while it is off, the publish job fails after publishing and says so, and re-running the failed jobs finishes the move.
+- Releasing no longer needs anyone to log in to npm (WORK-AUTO-NEXT). After a stable version reaches `latest`, the publish job points `next` at it with the same Trusted Publishing identity (`.github/scripts/follow-next.sh`), unless `next` holds a newer pre-release, or a newer stable while `latest` is another version (a re-run of an older release); the verify job checks both tags. Publications run one at a time across all tags, queued rather than cancelled. Both jobs use npm 11.21.2. This needs "Allow npm dist-tag" enabled once for the trusted publisher on npmjs.com; while it is off, the publish job fails after publishing and says so, and re-running the failed jobs finishes the move.
 
 ## v6.2.0 — 2026-11-19（审查可以先不配；用手上任意一个 AI 工具当审查者）
 

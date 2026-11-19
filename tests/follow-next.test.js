@@ -14,7 +14,7 @@ const SCRIPT = path.join(REPO_ROOT, ".github", "scripts", "follow-next.sh");
 
 // next: what `npm view <pkg> dist-tags.next` prints ("" for no tag);
 // addStatus: the exit status of `npm dist-tag add`.
-function fixture(t, { next, version, addStatus = 0 }) {
+function fixture(t, { next, version, latest = version, addStatus = 0 }) {
   const root = tempDir("buildbeat-follow-next-");
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const bin = path.join(root, "bin");
@@ -26,8 +26,10 @@ function fixture(t, { next, version, addStatus = 0 }) {
 set -euo pipefail
 case "\${1:-}" in
   view)
-    [[ "$MOCK_NEXT" = "__ERROR__" ]] && exit 1
-    [[ -n "$MOCK_NEXT" ]] && printf '%s\\n' "$MOCK_NEXT"
+    value="$MOCK_NEXT"
+    [[ "\${3:-}" = "dist-tags.latest" ]] && value="$MOCK_LATEST"
+    [[ "$value" = "__ERROR__" ]] && exit 1
+    [[ -n "$value" ]] && printf '%s\\n' "$value"
     exit 0 ;;
   dist-tag) printf '%s\\n' "$*" >> "$MOCK_CALLS"; exit "$MOCK_ADD_STATUS" ;;
   *) echo "Unexpected mocked npm command: $*" >&2; exit 97 ;;
@@ -45,6 +47,7 @@ esac
       BUILDBEAT_PACKAGE_NAME: "@haiyangbg/buildbeat",
       BUILDBEAT_PACKAGE_VERSION: version,
       MOCK_NEXT: next,
+      MOCK_LATEST: latest,
       MOCK_CALLS: calls,
       MOCK_ADD_STATUS: String(addStatus),
     },
@@ -95,7 +98,7 @@ test("a newer pre-release on next is left alone; an older or equal one is not", 
   const newer = fixture(t, { next: "7.0.0-beta.1", version: "6.3.0" });
   const kept = newer.run();
   assert.equal(kept.status, 0, kept.stderr);
-  assert.match(kept.stdout, /newer 7\.0\.0-beta\.1/);
+  assert.match(kept.stdout, /newer pre-release 7\.0\.0-beta\.1/);
   assert.equal(newer.added(), "");
   assert.equal(newer.run("--check").status, 0);
 
@@ -114,12 +117,28 @@ test("a newer pre-release on next is left alone; an older or equal one is not", 
   }
 });
 
-test("a re-run of an older stable release leaves a newer stable on next", (t) => {
-  const mock = fixture(t, { next: "6.3.0", version: "6.2.0" });
+test("a re-run of an older stable leaves a newer stable on next; a first publication of a lower stable moves it", (t) => {
+  // Re-run: latest stayed on the newer 6.3.0.
+  const rerun = fixture(t, { next: "6.3.0", latest: "6.3.0", version: "6.2.0" });
+  const kept = rerun.run();
+  assert.equal(kept.status, 0, kept.stderr);
+  assert.match(kept.stdout, /next holds the newer 6\.3\.0 and latest is 6\.3\.0, not 6\.2\.0/);
+  assert.equal(rerun.run("--check").status, 0);
+  assert.equal(rerun.added(), "");
+
+  // First publication of 6.2.1 after 6.3.0: npm moved latest to it.
+  const lower = fixture(t, { next: "6.3.0", latest: "6.2.1", version: "6.2.1" });
+  assert.equal(lower.run("--check").status, 1);
+  assert.equal(lower.added(), "");
+  assert.equal(lower.run().status, 0);
+  assert.match(lower.added(), /dist-tag add @haiyangbg\/buildbeat@6\.2\.1 next/);
+});
+
+test("a failed read of latest changes nothing", (t) => {
+  const mock = fixture(t, { next: "6.3.0", latest: "__ERROR__", version: "6.2.0" });
   const result = mock.run();
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /next holds the newer 6\.3\.0; leaving it for 6\.2\.0/);
-  assert.equal(mock.run("--check").status, 0);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Could not read dist-tag latest/);
   assert.equal(mock.added(), "");
 });
 
