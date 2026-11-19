@@ -1,0 +1,96 @@
+{
+  "run": "RUN-REVIEW-CIRCLING-03",
+  "work": "WORK-REVIEW-CIRCLING",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-REVIEW-CIRCLING-04 (same work WORK-REVIEW-CIRCLING)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:321ad2764d32f1b227bf272528dc18aa9a2a9651acaafcb3067299a37c640b1e"
+  },
+  "startedAt": "2026-11-19T03:35:10.203Z",
+  "finishedAt": "2026-11-19T03:41:21.847Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 141229
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 230214
+  },
+  "workspaces": {
+    "RUN-REVIEW-CIRCLING-03": {
+      "repo": ".",
+      "branch": "run/RUN-REVIEW-CIRCLING-03",
+      "worktreePath": ".buildbeat/worktrees/RUN-REVIEW-CIRCLING-03",
+      "base": "85d12e656983e285a967f9b4708fae406be94f72",
+      "candidate": "b62431664f0ecca98ecdb4bce0025f41c32c790e"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CIRCLING-03/logs/verify-1.log",
+      "kind": "command",
+      "subject": "b62431664f0ecca98ecdb4bce0025f41c32c790e",
+      "digest": "sha256:8990240d3cc3a7d822ac3fac860d39da54d37c8ddeea654a3300a92b19395b1e",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CIRCLING-03/logs/review-1.log",
+      "kind": "command",
+      "subject": "b62431664f0ecca98ecdb4bce0025f41c32c790e",
+      "digest": "sha256:a8b0a63930a650e75eefd5b80f04fa6c74113f7bb4b1e6943f333ba593c3858e",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CIRCLING-03/outputs/review-1.json",
+      "kind": "review",
+      "subject": "b62431664f0ecca98ecdb4bce0025f41c32c790e",
+      "digest": "sha256:74785b676887fac82ea5c762c8cfdd398950a86c8f10e002d4d55ff6cfbf1792",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "`src/runtime/work-cost.js:155` 会把 5.x 审查器写出报告后以非零状态退出、等待重试又被取消的轮次计为已完成审查，导致原本为 4 的连续阻断轮数被误增到 5 或清零。"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}

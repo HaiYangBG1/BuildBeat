@@ -1,0 +1,100 @@
+{
+  "run": "RUN-REVIEW-CIRCLING-02",
+  "work": "WORK-REVIEW-CIRCLING",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-REVIEW-CIRCLING-03 (same work WORK-REVIEW-CIRCLING)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:7b964d85cce9525754446146214b942da1ba7ec74808a29a56ada5a2dbb9077e"
+  },
+  "startedAt": "2026-11-19T03:25:49.840Z",
+  "finishedAt": "2026-11-19T03:35:10.201Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 275762
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 284247
+  },
+  "workspaces": {
+    "RUN-REVIEW-CIRCLING-02": {
+      "repo": ".",
+      "branch": "run/RUN-REVIEW-CIRCLING-02",
+      "worktreePath": ".buildbeat/worktrees/RUN-REVIEW-CIRCLING-02",
+      "base": "85d12e656983e285a967f9b4708fae406be94f72",
+      "candidate": "ab0e094b06cacbbb3cf0dde965a3be4d512850d4"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CIRCLING-02/logs/verify-1.log",
+      "kind": "command",
+      "subject": "ab0e094b06cacbbb3cf0dde965a3be4d512850d4",
+      "digest": "sha256:e4a5950af26bac707aebbb9820d5dafc73cea38c9162e136bd2e4360ce64aef4",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CIRCLING-02/logs/review-1.log",
+      "kind": "command",
+      "subject": "ab0e094b06cacbbb3cf0dde965a3be4d512850d4",
+      "digest": "sha256:b2f2051a2b989029780bfa46628e95078de5ba4560f8f41ee6abd6a9422e5cd7",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CIRCLING-02/outputs/review-1.json",
+      "kind": "review",
+      "subject": "ab0e094b06cacbbb3cf0dde965a3be4d512850d4",
+      "digest": "sha256:04a314721f35fead7664977c37c3c718b5af1057ffd28095e5506cbe132b97ae",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "`src/runtime/work-cost.js:148` 会丢弃人工拒绝合并前已完成的审查结果，导致连续四轮有阻断后，一轮通过审查但被拒绝合并，下一轮有阻断时仍误报为连续第五轮。"
+        },
+        {
+          "severity": "P1",
+          "summary": "`src/cli/run.js:606` 会把验证器的 P1 报告当成本轮审查结果，导致连续第五轮后，下一次验证因改动越界而未进入审查时仍重复打印 `stop:`。"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}
