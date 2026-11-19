@@ -106,8 +106,9 @@ export function computeWorkCost(repoRoot, workId, { ledgers = null } = {}) {
     }
     seen.add(state.run.id);
     cost.runs += 1;
-    cost.reviewRounds += ledgerCost(ledger).reviewRounds;
-    rounds.push(...reviewOutcomes({ id: state.run.id, startedAt: ledger.events?.[0]?.ts, evidence: state.evidence, terminal: state.terminal }));
+    const spent = ledgerCost(ledger);
+    cost.reviewRounds += spent.reviewRounds;
+    rounds.push(...reviewOutcomes({ id: state.run.id, startedAt: ledger.events?.[0]?.ts, evidence: state.evidence, terminal: state.terminal, humanWaits: spent.humanWaits }));
   }
   const recordsDir = join(repoRoot, "delivery", "work", workId, "runs");
   if (existsSync(recordsDir)) {
@@ -125,7 +126,7 @@ export function computeWorkCost(repoRoot, workId, { ledgers = null } = {}) {
       cost.runs += 1;
       // Early records carry attempts only; the cost block is preferred.
       cost.reviewRounds += record.cost?.reviewRounds ?? record.attempts?.review ?? 0;
-      rounds.push(...reviewOutcomes({ id: entry, startedAt: record.startedAt, evidence: record.evidence, terminal: record.terminal }));
+      rounds.push(...reviewOutcomes({ id: entry, startedAt: record.startedAt, evidence: record.evidence, terminal: record.terminal, humanWaits: record.cost?.humanWaits }));
     }
   }
   cost.findings = readFindingsAccount(repoRoot, workId).filter((row) => row.kind === "finding").length;
@@ -133,19 +134,25 @@ export function computeWorkCost(repoRoot, workId, { ledgers = null } = {}) {
   return cost;
 }
 
-// The reviews a run finished, in order: "failed" when one raised a blocking
-// finding, "passed" when it raised none. Only the reviewer's own reports
-// count (outputs/review-<n>.json; a verifier may write findings too). A run
-// that ended CANCELLED ended on broken tooling, so its last report is no
-// verdict: a reviewer that timed out may have written one first. Earlier
-// versions reviewed several times within one run; each counts.
+// The reviewer's own reports among a run's evidence, in order: a verifier
+// may write findings too, recorded under the same kind.
 const REVIEW_REPORT = /(?:^|\/)review-\d+\.json$/;
 
-function reviewOutcomes({ id, startedAt, evidence, terminal }) {
-  const reviews = (evidence ?? []).filter(
+export function reviewerReports(evidence) {
+  return (evidence ?? []).filter(
     (item) => item.kind === "review" && REVIEW_REPORT.test(String(item.ref ?? "")) && (item.status === "failed" || item.status === "passed"),
   );
-  if (terminal?.status === "CANCELLED") reviews.pop();
+}
+
+// The reviews a run finished, in order: "failed" when one raised a blocking
+// finding, "passed" when it raised none. A run that ended CANCELLED without
+// ever asking a person ended on broken tooling, so its last report is no
+// verdict (a reviewer that timed out may have written one first); a run a
+// person rejected also ends CANCELLED, after its review was done. Earlier
+// versions reviewed several times within one run; each counts.
+function reviewOutcomes({ id, startedAt, evidence, terminal, humanWaits }) {
+  const reviews = reviewerReports(evidence);
+  if (terminal?.status === "CANCELLED" && !(humanWaits > 0)) reviews.pop();
   return reviews.map((item, index) => ({ id, index, startedAt, outcome: item.status }));
 }
 

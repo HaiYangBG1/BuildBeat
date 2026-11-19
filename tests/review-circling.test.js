@@ -7,8 +7,8 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { renderOverview } from "../src/runtime/overview.js";
-import { computeWorkCost } from "../src/runtime/work-cost.js";
-import { cli, commit, fixture, review, reviewWith, statusRow, worker, write } from "./support/review.js";
+import { computeWorkCost, reviewerReports } from "../src/runtime/work-cost.js";
+import { cli, commit, decide, fixture, review, reviewWith, statusRow, worker, write } from "./support/review.js";
 
 const STOP = /^stop: (\d+) reviews in a row found blocking problems; before fixing again, show the user where they keep coming from and ask whether to narrow the work, rule on the findings, or keep fixing$/m;
 
@@ -127,4 +127,30 @@ test("a work past its decision does not show the streak", () => {
   assert.match(renderOverview([row]), /^ {2}blocking streak: 3 reviews in a row found blocking problems$/m);
   assert.doesNotMatch(renderOverview([{ ...row, merged: true }]), /blocking streak/);
   assert.doesNotMatch(renderOverview([{ ...row, stage: "CLOSED" }]), /blocking streak/);
+});
+
+test("a review a person rejected still counts as a review without blocking findings", () => {
+  const { root, work } = fixture({ prefix: "bb-circling-" });
+  const p1 = [{ severity: "P1", summary: "wrong" }];
+  for (let n = 0; n < 4; n += 1) {
+    commit(root, `try\n\nWork: ${work}`, { "src/feature.txt": `try ${n}\n` });
+    reviewWith(root, work, { findings: p1 });
+  }
+  commit(root, `clean\n\nWork: ${work}`, { "src/feature.txt": "clean\n" });
+  reviewWith(root, work);
+  const rejected = decide(root, work, ["--action", "reject", "--reason", "not what I want"]);
+  assert.equal(rejected.status, 0, rejected.all);
+  assert.equal(computeWorkCost(root, work).blockingStreak, 0);
+  blockingCommit(root, work);
+  assert.doesNotMatch(review(root, work).all, /^stop:/m);
+  assert.equal(computeWorkCost(root, work).blockingStreak, 1);
+});
+
+test("only the reviewer's reports are reviews", () => {
+  const at = (ref, status) => ({ ref: `.buildbeat/runtime/runs/RUN-A-01/outputs/${ref}`, kind: "review", status });
+  assert.deepEqual(
+    reviewerReports([at("verify-1.json", "failed"), { ref: "logs/review-1.log", kind: "command", status: "passed" }, at("review-1.json", "passed")]).map((item) => item.ref),
+    [".buildbeat/runtime/runs/RUN-A-01/outputs/review-1.json"],
+  );
+  assert.deepEqual(reviewerReports([at("verify-1.json", "failed")]), []);
 });
