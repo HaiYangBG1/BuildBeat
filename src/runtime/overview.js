@@ -585,7 +585,8 @@ export function renderOverview(rows, { decisions = false, extra = null } = {}) {
       lines.push(`  cost: ${renderWorkCost(row.cost)}`);
     }
     // Reviews that keep finding blocking problems: the cue to ask a person.
-    if (row.blockingStreak > 0 && !settled) {
+    // A merged work sent for review again is past its decision too.
+    if (row.blockingStreak > 0 && !settled && !row.merged) {
       lines.push(`  ${renderBlockingStreak(row.blockingStreak)}`);
     }
     if (row.latest) {

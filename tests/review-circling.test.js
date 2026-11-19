@@ -6,8 +6,9 @@ import { readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
+import { renderOverview } from "../src/runtime/overview.js";
 import { computeWorkCost } from "../src/runtime/work-cost.js";
-import { cli, commit, fixture, review, reviewWith, statusRow, worker } from "./support/review.js";
+import { cli, commit, fixture, review, reviewWith, statusRow, worker, write } from "./support/review.js";
 
 const STOP = /^stop: (\d+) reviews in a row found blocking problems; before fixing again, show the user where they keep coming from and ask whether to narrow the work, rule on the findings, or keep fixing$/m;
 
@@ -78,4 +79,52 @@ test("a round that reviewed nothing is skipped; a clean review ends the streak",
   blockingCommit(root, work);
   review(root, work);
   assert.equal(statusRow(root, work).blockingStreak, 1);
+});
+
+test("only reviews the reviewer finished count: not a verifier's report, not a reviewer that timed out", () => {
+  const { root, work } = fixture({ prefix: "bb-circling-" });
+  const p1 = [{ severity: "P1", summary: "wrong" }];
+  for (let n = 0; n < 3; n += 1) {
+    commit(root, `try\n\nWork: ${work}`, { "src/feature.txt": `try ${n}\n` });
+    reviewWith(root, work, { findings: p1 });
+  }
+  // The reviewer wrote a report, then timed out: the tooling broke.
+  commit(root, `slow\n\nWork: ${work}`, { "src/feature.txt": "slow\n" });
+  const slow = reviewWith(root, work, { reviewer: worker({ timedOut: true, exitCode: null, envelope: { findings: p1 } }) });
+  assert.equal(slow.state.terminal.status, "CANCELLED");
+  assert.equal(computeWorkCost(root, work).blockingStreak, 3);
+
+  // A verifier that reports findings is not the review: the clean review
+  // after it ends the streak.
+  commit(root, `clean\n\nWork: ${work}`, { "src/feature.txt": "clean\n" });
+  reviewWith(root, work, { verifier: worker({ envelope: { findings: p1 } }) });
+  assert.equal(computeWorkCost(root, work).blockingStreak, 0);
+});
+
+test("an earlier version's run counts each review it went through", () => {
+  const { root, work } = fixture({ prefix: "bb-circling-" });
+  // A 5.x run reviewed three times within one run, blocking each time.
+  write(root, `delivery/work/${work}/runs/RUN-A-01/run-record.json`, JSON.stringify({
+    run: "RUN-A-01",
+    work,
+    terminal: { status: "STOPPED", reason: "stopped by a person" },
+    startedAt: "2026-01-01T00:00:00.000Z",
+    evidence: [1, 2, 3].map((n) => ({
+      ref: `.buildbeat/runtime/runs/RUN-A-01/outputs/review-${n}.json`,
+      kind: "review",
+      status: "failed",
+    })),
+  }));
+  assert.equal(computeWorkCost(root, work).blockingStreak, 3);
+  blockingCommit(root, work);
+  assert.doesNotMatch(review(root, work).all, /^stop:/m);
+  blockingCommit(root, work);
+  assert.equal(review(root, work).all.match(STOP)?.[1], "5");
+});
+
+test("a work past its decision does not show the streak", () => {
+  const row = { work: "WORK-A", stage: "MERGE_DECISION", plan: { exists: true, accepted: true }, workArtifact: "work", runs: 3, blockingStreak: 3 };
+  assert.match(renderOverview([row]), /^ {2}blocking streak: 3 reviews in a row found blocking problems$/m);
+  assert.doesNotMatch(renderOverview([{ ...row, merged: true }]), /blocking streak/);
+  assert.doesNotMatch(renderOverview([{ ...row, stage: "CLOSED" }]), /blocking streak/);
 });

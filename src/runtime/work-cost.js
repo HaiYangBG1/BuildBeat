@@ -97,7 +97,7 @@ export function ledgerCost(ledger, { now = Date.now() } = {}) {
 export function computeWorkCost(repoRoot, workId, { ledgers = null } = {}) {
   const cost = { runs: 0, reviewRounds: 0, findings: 0, blockingStreak: 0 };
   const seen = new Set();
-  // Each run's last review outcome and when the run started, for the streak.
+  // Every review a run finished and when the run started, for the streak.
   const rounds = [];
   for (const { ledger } of ledgers ?? readRunLedgers(repoRoot)) {
     const state = ledger.state;
@@ -107,7 +107,7 @@ export function computeWorkCost(repoRoot, workId, { ledgers = null } = {}) {
     seen.add(state.run.id);
     cost.runs += 1;
     cost.reviewRounds += ledgerCost(ledger).reviewRounds;
-    rounds.push({ id: state.run.id, startedAt: ledger.events?.[0]?.ts, outcome: lastReviewOutcome(state.evidence) });
+    rounds.push(...reviewOutcomes({ id: state.run.id, startedAt: ledger.events?.[0]?.ts, evidence: state.evidence, terminal: state.terminal }));
   }
   const recordsDir = join(repoRoot, "delivery", "work", workId, "runs");
   if (existsSync(recordsDir)) {
@@ -125,7 +125,7 @@ export function computeWorkCost(repoRoot, workId, { ledgers = null } = {}) {
       cost.runs += 1;
       // Early records carry attempts only; the cost block is preferred.
       cost.reviewRounds += record.cost?.reviewRounds ?? record.attempts?.review ?? 0;
-      rounds.push({ id: entry, startedAt: record.startedAt, outcome: lastReviewOutcome(record.evidence) });
+      rounds.push(...reviewOutcomes({ id: entry, startedAt: record.startedAt, evidence: record.evidence, terminal: record.terminal }));
     }
   }
   cost.findings = readFindingsAccount(repoRoot, workId).filter((row) => row.kind === "finding").length;
@@ -133,22 +133,34 @@ export function computeWorkCost(repoRoot, workId, { ledgers = null } = {}) {
   return cost;
 }
 
-// "failed" when the run's last review raised a blocking finding, "passed"
-// when it raised none, null when the run reviewed nothing (verification
-// failed, the tooling broke, or it is still running).
-function lastReviewOutcome(evidence) {
-  const review = [...(evidence ?? [])].reverse().find((item) => item.kind === "review");
-  return review?.status === "failed" || review?.status === "passed" ? review.status : null;
+// The reviews a run finished, in order: "failed" when one raised a blocking
+// finding, "passed" when it raised none. Only the reviewer's own reports
+// count (outputs/review-<n>.json; a verifier may write findings too). A run
+// that ended CANCELLED ended on broken tooling, so its last report is no
+// verdict: a reviewer that timed out may have written one first. Earlier
+// versions reviewed several times within one run; each counts.
+const REVIEW_REPORT = /(?:^|\/)review-\d+\.json$/;
+
+function reviewOutcomes({ id, startedAt, evidence, terminal }) {
+  const reviews = (evidence ?? []).filter(
+    (item) => item.kind === "review" && REVIEW_REPORT.test(String(item.ref ?? "")) && (item.status === "failed" || item.status === "passed"),
+  );
+  if (terminal?.status === "CANCELLED") reviews.pop();
+  return reviews.map((item, index) => ({ id, index, startedAt, outcome: item.status }));
 }
 
 // How many of the latest reviews in a row raised a blocking finding. A run
-// that reviewed nothing neither counts nor breaks the streak; a review with
+// that reviewed nothing (verification failed, the tooling broke, still
+// running) neither counts nor breaks the streak; a review with
 // no blocking finding ends it. A work once went through 108 reviews this
 // way, each fix inviting the next finding, and nothing asked a person.
 function blockingStreak(rounds) {
-  const reviewed = rounds
-    .filter((round) => round.outcome !== null)
-    .sort((a, b) => (Date.parse(a.startedAt) || 0) - (Date.parse(b.startedAt) || 0) || attemptNumber(a.id) - attemptNumber(b.id));
+  const reviewed = [...rounds].sort(
+    (a, b) =>
+      (Date.parse(a.startedAt) || 0) - (Date.parse(b.startedAt) || 0) ||
+      attemptNumber(a.id) - attemptNumber(b.id) ||
+      a.index - b.index,
+  );
   let streak = 0;
   for (const round of reviewed) {
     streak = round.outcome === "failed" ? streak + 1 : 0;
