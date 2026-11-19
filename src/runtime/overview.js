@@ -15,7 +15,7 @@ import { directory, discoverRepos, hasProjectConfig, pathLabel, readRunLedgers, 
 import { fingerprintFinding, latestAdjudications, readFindingsAccount } from "./findings.js";
 import { nextReply } from "./hints.js";
 import { readReleases } from "./release.js";
-import { computeWorkCost, renderWorkCost } from "./work-cost.js";
+import { computeWorkCost, renderBlockingStreak, renderWorkCost } from "./work-cost.js";
 import { readerStanding, renderReaderStanding } from "./reader.js";
 import { codeCommitsOf } from "./work-commits.js";
 
@@ -252,6 +252,7 @@ export function computeOverview(
     }
     const workDir = join(workRoot, workId);
     const runs = runsFor(repoRoot, workId, ledgersOf(repoRoot, context));
+    const cost = runs.length > 0 ? computeWorkCost(repoRoot, workId, { ledgers: ledgersOf(repoRoot, context) }) : null;
     const decisions = readJsonl(join(workDir, "decisions.jsonl"));
     const description = descriptionStatus(workDir, decisions);
     const legacy = !description.exists && heldWork(workDir);
@@ -462,7 +463,8 @@ export function computeOverview(
         : {}),
       runs: runs.length,
       reader: readerStanding(repoRoot, workId),
-      cost: runs.length > 0 ? computeWorkCost(repoRoot, workId, { ledgers: ledgersOf(repoRoot, context) }) : null,
+      cost,
+      blockingStreak: cost?.blockingStreak ?? 0,
       latest: latest
         ? {
             id: latest.id,
@@ -580,6 +582,10 @@ export function renderOverview(rows, { decisions = false, extra = null } = {}) {
       // What this work has already consumed across every run, superseded
       // ones included: the number a "continue or cut" decision needs.
       lines.push(`  cost: ${renderWorkCost(row.cost)}`);
+    }
+    // Reviews that keep finding blocking problems: the cue to ask a person.
+    if (row.blockingStreak > 0 && !settled) {
+      lines.push(`  ${renderBlockingStreak(row.blockingStreak)}`);
     }
     if (row.latest) {
       const cand = row.latest.candidate

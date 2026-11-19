@@ -95,8 +95,10 @@ export function ledgerCost(ledger, { now = Date.now() } = {}) {
 // findings. Runtime ledgers first, run records for runs whose runtime is
 // gone (another machine, a cleaned directory).
 export function computeWorkCost(repoRoot, workId, { ledgers = null } = {}) {
-  const cost = { runs: 0, reviewRounds: 0, findings: 0 };
+  const cost = { runs: 0, reviewRounds: 0, findings: 0, blockingStreak: 0 };
   const seen = new Set();
+  // Each run's last review outcome and when the run started, for the streak.
+  const rounds = [];
   for (const { ledger } of ledgers ?? readRunLedgers(repoRoot)) {
     const state = ledger.state;
     if (ledger.corruption || !state.run || state.run.work !== workId) {
@@ -105,6 +107,7 @@ export function computeWorkCost(repoRoot, workId, { ledgers = null } = {}) {
     seen.add(state.run.id);
     cost.runs += 1;
     cost.reviewRounds += ledgerCost(ledger).reviewRounds;
+    rounds.push({ id: state.run.id, startedAt: ledger.events?.[0]?.ts, outcome: lastReviewOutcome(state.evidence) });
   }
   const recordsDir = join(repoRoot, "delivery", "work", workId, "runs");
   if (existsSync(recordsDir)) {
@@ -122,10 +125,55 @@ export function computeWorkCost(repoRoot, workId, { ledgers = null } = {}) {
       cost.runs += 1;
       // Early records carry attempts only; the cost block is preferred.
       cost.reviewRounds += record.cost?.reviewRounds ?? record.attempts?.review ?? 0;
+      rounds.push({ id: entry, startedAt: record.startedAt, outcome: lastReviewOutcome(record.evidence) });
     }
   }
   cost.findings = readFindingsAccount(repoRoot, workId).filter((row) => row.kind === "finding").length;
+  cost.blockingStreak = blockingStreak(rounds);
   return cost;
+}
+
+// "failed" when the run's last review raised a blocking finding, "passed"
+// when it raised none, null when the run reviewed nothing (verification
+// failed, the tooling broke, or it is still running).
+function lastReviewOutcome(evidence) {
+  const review = [...(evidence ?? [])].reverse().find((item) => item.kind === "review");
+  return review?.status === "failed" || review?.status === "passed" ? review.status : null;
+}
+
+// How many of the latest reviews in a row raised a blocking finding. A run
+// that reviewed nothing neither counts nor breaks the streak; a review with
+// no blocking finding ends it. A work once went through 108 reviews this
+// way, each fix inviting the next finding, and nothing asked a person.
+function blockingStreak(rounds) {
+  const reviewed = rounds
+    .filter((round) => round.outcome !== null)
+    .sort((a, b) => (Date.parse(a.startedAt) || 0) - (Date.parse(b.startedAt) || 0) || attemptNumber(a.id) - attemptNumber(b.id));
+  let streak = 0;
+  for (const round of reviewed) {
+    streak = round.outcome === "failed" ? streak + 1 : 0;
+  }
+  return streak;
+}
+
+// Runs started in the same millisecond keep their numbered order
+// (RUN-X-100 after RUN-X-99, which a string sort would not give).
+function attemptNumber(id) {
+  return Number(/-(\d+)$/.exec(String(id))?.[1] ?? 0);
+}
+
+// Every this many blocking reviews in a row, `review` tells the session to
+// stop and ask the user before fixing again.
+export const BLOCKING_STREAK_STOP = 5;
+
+export function blockingStreakStop(streak) {
+  return streak > 0 && streak % BLOCKING_STREAK_STOP === 0
+    ? `stop: ${streak} reviews in a row found blocking problems; before fixing again, show the user where they keep coming from and ask whether to narrow the work, rule on the findings, or keep fixing`
+    : null;
+}
+
+export function renderBlockingStreak(streak) {
+  return `blocking streak: ${streak} review${streak === 1 ? "" : "s"} in a row found blocking problems`;
 }
 
 export function renderWorkCost(cost) {
