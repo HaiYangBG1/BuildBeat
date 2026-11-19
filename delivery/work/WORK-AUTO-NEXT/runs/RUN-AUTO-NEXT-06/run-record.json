@@ -1,0 +1,124 @@
+{
+  "run": "RUN-AUTO-NEXT-06",
+  "work": "WORK-AUTO-NEXT",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUCCEEDED",
+    "reason": "final decision approved; the external action (merge) stays manual"
+  },
+  "events": {
+    "from": 1,
+    "to": 17,
+    "lastDigest": "sha256:400939580da3f434d1ed62bad59edccc519b34c3edf9b979e0f4e5b89462053e"
+  },
+  "startedAt": "2026-11-19T11:32:43.873Z",
+  "finishedAt": "2026-11-19T11:38:07.425Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 1,
+        "ms": 88060
+      },
+      "superseded": {
+        "count": 0,
+        "ms": 0
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 235306
+  },
+  "workspaces": {
+    "RUN-AUTO-NEXT-06": {
+      "repo": ".",
+      "branch": "run/RUN-AUTO-NEXT-06",
+      "worktreePath": ".buildbeat/worktrees/RUN-AUTO-NEXT-06",
+      "base": "631c81a10cd841b09fa5649ebfc759184bf12d0c",
+      "candidate": "5b2fcd44f70e0f97d65db98ce4f82197e5928061"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-06/logs/verify-1.log",
+      "kind": "command",
+      "subject": "5b2fcd44f70e0f97d65db98ce4f82197e5928061",
+      "digest": "sha256:e12defb30e121d30d16bad896a58d2cd1fdf119c15b350e18d4bbe14389405d9",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-06/logs/review-1.log",
+      "kind": "command",
+      "subject": "5b2fcd44f70e0f97d65db98ce4f82197e5928061",
+      "digest": "sha256:3d708c7622ce1ee837532f9e13b30b7a60e380512c6e1ee12d8f27560bea0ffb",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-06/outputs/review-1.json",
+      "kind": "review",
+      "subject": "5b2fcd44f70e0f97d65db98ce4f82197e5928061",
+      "digest": "sha256:63bea94d11a866879066da0f2b81df995668eb1f351adf5ea444d5b695f7bb57",
+      "status": "passed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P2",
+          "summary": "`docs/RELEASING.md:14` 未明确「`next` 只往前挪」仅适用于稳定版补挂，补发较低版本的预发布版仍会直接写入 `next`，可能将标签拨回较旧版本。"
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "approved",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "5b2fcd44f70e0f97d65db98ce4f82197e5928061",
+        "planDigest": "sha256:4505d8cfd1381832a7fd648a6b2b62c4951b6044df76f6e5265293b140e46a2a",
+        "evidenceDigest": "sha256:63bea94d11a866879066da0f2b81df995668eb1f351adf5ea444d5b695f7bb57"
+      },
+      "decisionRef": "D-RUN-AUTO-NEXT-06-1",
+      "actor": {
+        "kind": "human",
+        "id": "HaiYangBG1",
+        "source": "flag",
+        "via": "agent-session"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "decisionRef": "D-RUN-AUTO-NEXT-06-1",
+      "transition": "enter-wait-merge",
+      "subject": {
+        "candidate": "5b2fcd44f70e0f97d65db98ce4f82197e5928061",
+        "planDigest": "sha256:4505d8cfd1381832a7fd648a6b2b62c4951b6044df76f6e5265293b140e46a2a",
+        "evidenceDigest": "sha256:63bea94d11a866879066da0f2b81df995668eb1f351adf5ea444d5b695f7bb57"
+      },
+      "stale": false
+    }
+  ],
+  "unverified": []
+}

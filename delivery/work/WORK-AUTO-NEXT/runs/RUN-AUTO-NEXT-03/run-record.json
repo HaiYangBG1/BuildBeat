@@ -1,0 +1,104 @@
+{
+  "run": "RUN-AUTO-NEXT-03",
+  "work": "WORK-AUTO-NEXT",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-AUTO-NEXT-04 (same work WORK-AUTO-NEXT)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:1e2e7b36563b8f1a7d5fa0113b7196d0a2fc391d80aed6824c0d5dc7129cc163"
+  },
+  "startedAt": "2026-11-19T10:52:25.005Z",
+  "finishedAt": "2026-11-19T10:57:37.374Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 41368
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 270780
+  },
+  "workspaces": {
+    "RUN-AUTO-NEXT-03": {
+      "repo": ".",
+      "branch": "run/RUN-AUTO-NEXT-03",
+      "worktreePath": ".buildbeat/worktrees/RUN-AUTO-NEXT-03",
+      "base": "631c81a10cd841b09fa5649ebfc759184bf12d0c",
+      "candidate": "9d5a2d925aacd4db9cb3ab2a3628789edcced70c"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-03/logs/verify-1.log",
+      "kind": "command",
+      "subject": "9d5a2d925aacd4db9cb3ab2a3628789edcced70c",
+      "digest": "sha256:c945dc704cf34e27fb66450cae2b3fa4648abd31664f384febe887c4fee72468",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-03/logs/review-1.log",
+      "kind": "command",
+      "subject": "9d5a2d925aacd4db9cb3ab2a3628789edcced70c",
+      "digest": "sha256:4c6daabc132de7e3f7d508bececd4574f94e1c689f1a0c203705e957f11a3b8c",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-AUTO-NEXT-03/outputs/review-1.json",
+      "kind": "review",
+      "subject": "9d5a2d925aacd4db9cb3ab2a3628789edcced70c",
+      "digest": "sha256:e8f14bdec8ace62cf19a30506679c311f37159272c294b497ec689bfb618c7ff",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "首次发布较低的稳定版时，`.github/scripts/follow-next.sh:68` 会保留 `next` 上较高的稳定版并让校验通过，导致 `latest` 与 `next` 指向不同的稳定版，超出工作说明只允许保留较新预发布版的例外。 [npm 发布实现](https://github.com/npm/cli/blob/v11.21.2/lib/commands/publish.js#L1092-L1109)"
+        },
+        {
+          "severity": "P2",
+          "summary": "`.github/actionlint.yaml` 新增了已确认工作说明未列出的验收豁免，实测将 `queue: max` 改成无效值后仍能通过 actionlint。"
+        },
+        {
+          "severity": "P2",
+          "summary": "`docs/RELEASING.md` 和 `CHANGELOG.md` 把 `queue: max` 描述为保留所有等待中的发布，但 GitHub 最多允许 100 个运行等待，队列满后会取消新增运行。 [GitHub 并发队列文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency#example-queueing-multiple-pending-runs)"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}
