@@ -2,7 +2,7 @@
 
 Earlier history: see tag v5.5.0.
 
-## Unreleased
+## v6.1.0 — 2026-11-19（审查连续几轮都审出阻断问题时停下找人）
 
 - Reviews that keep finding blocking problems now ask for a person (WORK-REVIEW-CIRCLING). When a work's reviews raise a P0 or P1 several rounds in a row, `review` prints `stop: <n> reviews in a row found blocking problems; before fixing again, show the user where they keep coming from and ask whether to narrow the work, rule on the findings, or keep fixing` at 5, 10, 15 … in a row, and `status` shows `blocking streak: <n> reviews in a row found blocking problems` for a work not yet merged, closed or cancelled (`blockingStreak` in `--json`). A round that reviewed nothing (verification failed, the tooling broke) neither counts nor resets the streak; a review with no blocking finding, rejected or not, resets it. Only reviews this version ran count, from the run ledgers or the run records; runs of earlier versions are left out. Nothing is refused: the Skill tells the session to stop and ask. A work in another project had gone through 108 reviews, each fix inviting the next finding, without anyone being asked.
 
