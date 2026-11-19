@@ -1,0 +1,7 @@
+# What WORK-REVIEW-CIRCLING may change; everything else comes from delivery/run-config.yaml.
+allowedPaths:
+  - src
+  - tests
+  - SKILL.md
+  - docs/guide
+  - CHANGELOG.md
