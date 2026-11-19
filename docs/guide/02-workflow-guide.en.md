@@ -18,6 +18,8 @@ The runtime does not write code, retry or repair. A round ends in one of three w
 
 Fix in a new commit and send it for review; an earlier round of the same work that is still waiting for a decision is recorded as `SUPERSEDED` automatically. A round whose review process was killed is recorded as `CANCELLED` by the next review. One repository runs one review round at a time.
 
+When review after review of a work finds a P0 or P1, `review` prints a `stop:` line every fifth one in a row, and `status` shows `blocking streak: <n> reviews in a row found blocking problems`. A round that reviewed nothing (verification failed, a tool broke) neither counts nor resets it; a review with no blocking finding resets it. On `stop:`, do not fix again yet: show the user how many rounds in a row, where the findings keep coming from and whether the same place is being changed back and forth, and ask whether to narrow the work, rule on the findings, or keep fixing. It is a prompt, not a gate: the next review still runs.
+
 ## Configuration
 
 A project has one `delivery/run-config.yaml`; the sample is `templates/run-config.example.yaml`:

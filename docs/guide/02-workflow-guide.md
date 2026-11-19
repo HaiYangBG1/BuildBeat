@@ -18,6 +18,8 @@
 
 修在新提交里再送审；同一项工作还在等决定的旧一轮自动记为 `SUPERSEDED`。审查进程被杀掉的那一轮，由下一次送审记为 `CANCELLED`。一个仓库同一时间只跑一轮审查。
 
+一项工作连续几轮都审出 P0、P1 时，`review` 每满 5 轮打印一行 `stop:`，`status` 显示 `blocking streak: <n> reviews in a row found blocking problems`。验证没过、工具故障没审到的轮次不算也不清零；有一轮审完没有阻断问题就清零。看到 `stop:` 先别接着修，把情况拿给用户：连续几轮、问题集中在哪、是不是在反复改同一处，请用户在缩小范围、裁决这些问题、继续修三者里选。这只是提示，不拦送审。
+
 ## 配置
 
 项目一份 `delivery/run-config.yaml`，样板是 `templates/run-config.example.yaml`：

@@ -1,0 +1,104 @@
+{
+  "run": "RUN-REVIEW-CIRCLING-01",
+  "work": "WORK-REVIEW-CIRCLING",
+  "workflow": "software-delivery",
+  "pass": true,
+  "deliveryChecks": {
+    "artifact": "work",
+    "requireAcceptance": true,
+    "requireIntent": false,
+    "maxSeverity": "P2"
+  },
+  "terminal": {
+    "status": "SUPERSEDED",
+    "reason": "superseded by RUN-REVIEW-CIRCLING-02 (same work WORK-REVIEW-CIRCLING)"
+  },
+  "events": {
+    "from": 1,
+    "to": 15,
+    "lastDigest": "sha256:0cc680f11c13e0a87b6b619b05b747ce219c23491d3162a3a5c71972a06e4943"
+  },
+  "startedAt": "2026-11-19T03:13:19.603Z",
+  "finishedAt": "2026-11-19T03:25:49.838Z",
+  "attempts": {
+    "verify": 1,
+    "review": 1
+  },
+  "budgets": {},
+  "cost": {
+    "reviewRounds": 1,
+    "humanWaits": 1,
+    "waits": {
+      "decided": {
+        "count": 0,
+        "ms": 0
+      },
+      "superseded": {
+        "count": 1,
+        "ms": 272889
+      },
+      "stopped": {
+        "count": 0,
+        "ms": 0
+      },
+      "open": {
+        "count": 0,
+        "ms": 0
+      }
+    },
+    "infraFailures": 0,
+    "workerMs": 473820
+  },
+  "workspaces": {
+    "RUN-REVIEW-CIRCLING-01": {
+      "repo": ".",
+      "branch": "run/RUN-REVIEW-CIRCLING-01",
+      "worktreePath": ".buildbeat/worktrees/RUN-REVIEW-CIRCLING-01",
+      "base": "85d12e656983e285a967f9b4708fae406be94f72",
+      "candidate": "4a3d57c64381c9ccceaf836349d0af99e3c897c7"
+    }
+  },
+  "evidence": [
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CIRCLING-01/logs/verify-1.log",
+      "kind": "command",
+      "subject": "4a3d57c64381c9ccceaf836349d0af99e3c897c7",
+      "digest": "sha256:26b53cdbb522847998ed1d400f0fb3ae07861b46846599378833587103c4ed8e",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CIRCLING-01/logs/review-1.log",
+      "kind": "command",
+      "subject": "4a3d57c64381c9ccceaf836349d0af99e3c897c7",
+      "digest": "sha256:41fafb55839bb45175cab6ba7c5932dd5cfcbfaa449c4c32819660d2bda958d2",
+      "status": "passed",
+      "grade": "L2"
+    },
+    {
+      "ref": ".buildbeat/runtime/runs/RUN-REVIEW-CIRCLING-01/outputs/review-1.json",
+      "kind": "review",
+      "subject": "4a3d57c64381c9ccceaf836349d0af99e3c897c7",
+      "digest": "sha256:36de8c591ad6ea9e522b64ee47e008cc0218b4b797313e7874f93f8b4c1aa933",
+      "status": "failed",
+      "grade": "L2",
+      "findings": [
+        {
+          "severity": "P1",
+          "summary": "`src/runtime/work-cost.js` 对每个旧运行只计最后一次审查，导致同一旧运行内连续三次审出阻断问题、升级后又连续两次审出阻断问题时，只计为三轮并漏报第五轮的 `stop:`。"
+        },
+        {
+          "severity": "P1",
+          "summary": "验证器写出含 `findings` 的报告后，如果审查器超时，`src/runtime/work-cost.js` 会把验证器的报告计作审查结果，使本应跳过的轮次增加或清零连续计数。"
+        },
+        {
+          "severity": "P1",
+          "summary": "已合并的工作再次送审并进入 `MERGE_DECISION` 后，`src/runtime/overview.js` 仍会在 `status` 文本中显示 `blocking streak`，违反工作说明中对已合并工作的显示限制。"
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "approvals": [],
+  "unverified": []
+}
