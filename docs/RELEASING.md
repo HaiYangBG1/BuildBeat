@@ -8,10 +8,10 @@ Release evidence at source package version `@haiyangbg/buildbeat@6.2.0`; latest 
 
 | Channel | Source | dist-tag | How |
 |---|---|---|---|
-| Stable | tip of `main` (a release branch → pull request → merge commit → annotated tag `vX.Y.Z` on that commit) | `latest` | `workflow_dispatch` of `publish.yml` with the exact tag; the workflow refuses a tag that is not on `main` for the stable channel |
+| Stable | tip of `main` (a release branch → pull request → merge commit → annotated tag `vX.Y.Z` on that commit) | `latest`, then `next` follows | `workflow_dispatch` of `publish.yml` with the exact tag; the workflow refuses a tag that is not on `main` for the stable channel |
 | Pre-release | the dispatching release branch, version `X.Y.Z-beta.N` | `next` | same dispatch; `latest` never moves for a pre-release |
 
-`main` is protected (pull request only, seven required checks, admins included, no force-push); work lands on feature branches and reaches `main` through PRs. `next` is only for pre-releases.
+`main` is protected (pull request only, seven required checks, admins included, no force-push); work lands on feature branches and reaches `main` through PRs. A stable release also points `next` at its version, from the same publish job and its Trusted Publishing identity, unless `next` holds a newer pre-release (one whose `MAJOR.MINOR.PATCH` is greater); nobody logs in to npm for it. This needs "Allow npm dist-tag" enabled once for the trusted publisher on npmjs.com (Settings → Trusted publishing). If it is off, the publish job fails after publishing with that instruction; enable it and re-run the failed jobs: the publish step recognizes the identical package already published and goes on to move `next`.
 
 ## Release invariants
 
@@ -44,7 +44,7 @@ gitleaks git --no-banner --redact --no-color
 git diff --check
 ```
 
-Record the candidate's integrity from a pack made with the same toolchain as `publish.yml` (Node 24, npm 11.19.0), for example `npx --yes npm@11.19.0 pack --json` under Node 24. A pack from another Node major compresses differently, so its `integrity` will not equal the registry's even when the contents are identical (3.3.0: candidate packed under Node 22). When the toolchains differ, compare the SHA-256 of the decompressed tarballs (`gunzip -c <tgz> | shasum -a 256`) and the file listings instead, and say so in the evidence.
+Record the candidate's integrity from a pack made with the same toolchain as `publish.yml` (Node 24, npm 11.21.2), for example `npx --yes npm@11.21.2 pack --json` under Node 24. A pack from another Node major compresses differently, so its `integrity` will not equal the registry's even when the contents are identical (3.3.0: candidate packed under Node 22). When the toolchains differ, compare the SHA-256 of the decompressed tarballs (`gunzip -c <tgz> | shasum -a 256`) and the file listings instead, and say so in the evidence.
 
 Before pushing a tag, confirm that the package name/version is absent from the official registry and that the candidate commit's `main` CI is green. An `E404` only proves point-in-time absence; it does not reserve the name.
 
@@ -96,7 +96,7 @@ Only after this readback should the matching GitHub Release be published and doc
 
 ## Trusted Publishing releases
 
-For Trusted Publishing, the public npm package must be bound to this repository and `.github/workflows/publish.yml`. The workflow is deliberately manual: a human supplies one exact annotated tag only after the release commit is the current `main` HEAD and its CI is green. The OIDC-bearing `publish` job uses a GitHub-hosted runner, Node 24, pinned npm 11.19.0, immutable full-SHA action references, `contents: read`, job-scoped `id-token: write`, and the protected `npm-publish` GitHub Environment. That Environment must be restricted to protected branches and require an authorized release reviewer; its branch policy and explicit approval form the server-side dispatch boundary.
+For Trusted Publishing, the public npm package must be bound to this repository and `.github/workflows/publish.yml`. The workflow is deliberately manual: a human supplies one exact annotated tag only after the release commit is the current `main` HEAD and its CI is green. The OIDC-bearing `publish` job uses a GitHub-hosted runner, Node 24, pinned npm 11.21.2, immutable full-SHA action references, `contents: read`, job-scoped `id-token: write`, and the protected `npm-publish` GitHub Environment. That Environment must be restricted to protected branches and require an authorized release reviewer; its branch policy and explicit approval form the server-side dispatch boundary.
 
 Before publishing, the job rejects a non-semantic or lightweight tag, any dispatch outside `main`, a tag/checkout/event/remote-HEAD mismatch, a package-version mismatch, or failed release checks. It then packs one exact tarball. If the registry version already exists, publication may continue only when `dist.integrity` exactly matches that candidate. If `npm publish` returns an ambiguous failure, bounded registry reconciliation accepts only the same integrity. A different artifact fails closed.
 

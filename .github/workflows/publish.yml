@@ -47,7 +47,7 @@ jobs:
           package-manager-cache: false
 
       - name: Install the pinned OIDC-capable npm CLI
-        run: npm install --global npm@11.19.0
+        run: npm install --global npm@11.21.2
 
       - name: Validate tag, ancestry, and package version
         id: policy
@@ -125,6 +125,16 @@ jobs:
           BUILDBEAT_DIST_TAG: ${{ steps.policy.outputs.dist_tag }}
         run: bash .github/scripts/publish-candidate.sh
 
+      # A stable release also moves next, so `@next` never lags behind
+      # `@latest`; the same OIDC identity does it (npm 11.21.0 or later, and
+      # "Allow npm dist-tag" enabled for this trusted publisher on npmjs.com).
+      - name: Point dist-tag next at a stable release
+        if: steps.policy.outputs.dist_tag == 'latest'
+        shell: bash
+        env:
+          BUILDBEAT_PACKAGE_VERSION: ${{ steps.candidate.outputs.version }}
+        run: bash .github/scripts/follow-next.sh
+
   verify:
     name: Verify ${{ inputs.tag }} from npm
     needs: publish
@@ -151,7 +161,7 @@ jobs:
           package-manager-cache: false
 
       - name: Install the pinned verification npm CLI
-        run: npm install --global npm@11.19.0
+        run: npm install --global npm@11.21.2
 
       - name: Verify exact official-registry artifact
         shell: bash
@@ -197,8 +207,9 @@ jobs:
                 exit 0
               fi
             else
-              if [[ "$latest_pointer" = "$package_version" ]]; then
-                printf 'Verified stable routing: latest=%s.\n' "$latest_pointer"
+              if [[ "$latest_pointer" = "$package_version" ]] \
+                && BUILDBEAT_PACKAGE_VERSION="$package_version" bash .github/scripts/follow-next.sh --check; then
+                printf 'Verified stable routing: latest=%s, next=%s.\n' "$latest_pointer" "$next_pointer"
                 exit 0
               fi
             fi

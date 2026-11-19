@@ -693,7 +693,9 @@ def check_publish_workflow() -> list[str]:
         "id-token: write",
         "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
         "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
-        "npm install --global npm@11.19.0",
+        "npm install --global npm@11.21.2",
+        "bash .github/scripts/follow-next.sh",
+        "follow-next.sh --check",
         # Channel-aware ancestry guard: stable releases stay pinned to main;
         # pre-releases must sit on the exact origin tip of the dispatching
         # release branch and are forced onto dist-tag next.
