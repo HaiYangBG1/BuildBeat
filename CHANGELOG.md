@@ -2,7 +2,9 @@
 
 Earlier history: see tag v5.5.0.
 
-## Unreleased
+## v6.2.1 — 2026-11-19（发版不再需要登录 npm）
+
+> **Published.** `@haiyangbg/buildbeat@6.2.1` was published on 2026-11-19 from `main` (release PR #146, merge commit `9cb074f`, annotated tag `v6.2.1`) through OIDC Trusted Publishing to dist-tag **`latest`** (run 44523014501). The first attempt published the package but could not move `next` (E403, "This trusted publisher cannot manage dist-tags": "Allow npm dist-tag" had not been saved on the trusted publisher). After the owner enabled it, re-running the failed jobs found the identical package already published, moved `next` to `6.2.1` with the workflow's own identity, and the verify job passed, including the `latest` and `next` check; nobody logged in to npm. The driving session approved the `npm-publish` environment for both attempts with the owner's account, as the owner said to release end to end. Independent readback from `registry.npmjs.org`: version 6.2.1, integrity `sha512-agrMUPbJXzsHDxsoqHVqku1VB0EvEDOhAoyR0rFFQKObf3CgrxThSq+fIQmHG9R1SX5iuirxQEyGWfYwGBNAlw==`, shasum `b5a54f7d1f2b8dbffccb9ec44bde8f1fc197dafb`, 102 files, each byte-identical to the tagged source; an isolated install prints `6.2.1` and the bare command exits 0 without writing; SLSA v1 provenance; `npm audit signatures` verified the registry signature and the attestation. The Claude Code plugin stays 0.9.0.
 
 - Releasing no longer needs anyone to log in to npm (WORK-AUTO-NEXT). After a stable version reaches `latest`, the publish job points `next` at it with the same Trusted Publishing identity (`.github/scripts/follow-next.sh`), unless `next` already holds a newer version: `next` only moves forward, and an older line published or re-run leaves it where it is. The verify job checks both tags. Publications run one at a time across all tags, queued rather than cancelled. Both jobs use npm 11.21.2. This needs "Allow npm dist-tag" enabled once for the trusted publisher on npmjs.com; while it is off, the publish job fails after publishing and says so, and re-running the failed jobs finishes the move.
 
